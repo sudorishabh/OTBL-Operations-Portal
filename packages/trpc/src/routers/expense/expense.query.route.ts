@@ -1,4 +1,4 @@
-import { eq, sum, desc, and, ne } from "drizzle-orm";
+import { eq, sum, desc, and, ne, count } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -21,10 +21,30 @@ const {
 
 export const expenseQueryRouter = router({
   getExpenses: protectedProcedure
-    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .input(z.object({
+      work_order_site_id: z.number().positive(),
+      page: z.number().min(1).default(1),
+      limit: z.number().min(1).max(100).default(20),
+    }))
     .query(
       handleQuery(async ({ input, ctx }) => {
+        const { work_order_site_id, page, limit } = input;
+        const offset = (page - 1) * limit;
         try {
+          const [totalResult] = await ctx.db
+            .select({ count: count() })
+            .from(workOrderSiteExpenseTable)
+            .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id));
+
+          const total = totalResult?.count ?? 0;
+
+          if (total === 0) {
+            return {
+              expenses: [],
+              pagination: { page, limit, total, totalPages: 0, hasMore: false },
+            };
+          }
+
           const expenses = await ctx.db
             .select({
               id: workOrderSiteExpenseTable.id,
@@ -51,15 +71,15 @@ export const expenseQueryRouter = router({
               contractorTable,
               eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
             )
-            .where(
-              eq(
-                workOrderSiteExpenseTable.work_order_site_id,
-                input.work_order_site_id,
-              ),
-            )
-            .orderBy(desc(workOrderSiteExpenseTable.expense_date));
+            .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id))
+            .orderBy(desc(workOrderSiteExpenseTable.expense_date), desc(workOrderSiteExpenseTable.created_at))
+            .limit(limit)
+            .offset(offset);
 
-          return { expenses };
+          const totalPages = Math.ceil(total / limit);
+          const hasMore = offset + expenses.length < total;
+
+          return { expenses, pagination: { page, limit, total, totalPages, hasMore } };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching expenses");
         }
@@ -132,7 +152,56 @@ export const expenseQueryRouter = router({
             incomeTotal += Number(result[0]?.total ?? 0);
           }
 
-          return { byType, grandTotal, regularTotal, exceededTotal, incomeTotal };
+          // Per-activity aggregation (deduplicates qty for multi-type records)
+          const activityRows = await ctx.db
+            .select({
+              activity_key: workOrderSiteExpenseTable.activity_key,
+              expense_date: workOrderSiteExpenseTable.expense_date,
+              quantity: workOrderSiteExpenseTable.quantity,
+              is_exceeded: workOrderSiteExpenseTable.is_exceeded,
+              description: workOrderSiteExpenseTable.description,
+              notes: workOrderSiteExpenseTable.notes,
+              contractor_id: workOrderSiteExpenseTable.contractor_id,
+              invoice_number: workOrderSiteExpenseTable.invoice_number,
+              document_url: workOrderSiteExpenseTable.document_url,
+              amount: workOrderSiteExpenseTable.amount,
+            })
+            .from(workOrderSiteExpenseTable)
+            .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id));
+
+          const byActivity: Record<string, { totalAmount: number; exceededAmount: number; totalQuantity: number; count: number }> = {};
+          const seenForQty = new Set<string>();
+
+          for (const row of activityRows) {
+            if (!row.activity_key) continue;
+            if (!byActivity[row.activity_key]) {
+              byActivity[row.activity_key] = { totalAmount: 0, exceededAmount: 0, totalQuantity: 0, count: 0 };
+            }
+            const amt = Number(row.amount || 0);
+            byActivity[row.activity_key]!.totalAmount += amt;
+            if (row.is_exceeded) byActivity[row.activity_key]!.exceededAmount += amt;
+            byActivity[row.activity_key]!.count += 1;
+
+            if (row.quantity) {
+              const qtyKey = [
+                row.activity_key,
+                String(row.expense_date),
+                row.quantity,
+                String(!!row.is_exceeded),
+                row.description ?? "",
+                row.notes ?? "",
+                String(row.contractor_id ?? ""),
+                row.invoice_number ?? "",
+                row.document_url ?? "",
+              ].join("||");
+              if (!seenForQty.has(qtyKey)) {
+                seenForQty.add(qtyKey);
+                byActivity[row.activity_key]!.totalQuantity += Number(row.quantity || 0);
+              }
+            }
+          }
+
+          return { byType, grandTotal, regularTotal, exceededTotal, incomeTotal, byActivity };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching expense summary");
         }

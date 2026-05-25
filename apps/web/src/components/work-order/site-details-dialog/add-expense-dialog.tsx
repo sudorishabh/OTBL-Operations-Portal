@@ -97,6 +97,7 @@ export interface Expense {
 interface Props {
   open: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
   workOrderSiteId: number;
   officeId: number;
   editingExpense?: Expense | null;
@@ -120,6 +121,7 @@ const formatCurrency = (v: number) =>
 const AddExpenseDialog = ({
   open,
   onClose,
+  onSuccess,
   workOrderSiteId,
   officeId,
   editingExpense,
@@ -260,6 +262,7 @@ const AddExpenseDialog = ({
       utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: workOrderSiteId });
       utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: workOrderSiteId });
       toast.success("Expense updated");
+      onSuccess?.();
       onClose();
     },
     onError: (e: any) => toast.error(e.message || "Failed to update expense"),
@@ -376,6 +379,7 @@ const AddExpenseDialog = ({
             ? "Exceeded expense recorded"
             : "Expense recorded",
       );
+      onSuccess?.();
       onClose();
     } catch (e: any) {
       toast.error(e.message || "Failed to save expenses");

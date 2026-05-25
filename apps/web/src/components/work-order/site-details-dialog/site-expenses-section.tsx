@@ -60,6 +60,7 @@ import {
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
+import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import AddExpenseDialog, {
   EXPENSE_TYPE_LABELS,
   ActivityOption,
@@ -140,6 +141,20 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
   const [activityFilter, setActivityFilter] = useState<string>("__all__");
   const [breakdownGroup, setBreakdownGroup] = useState<ExpenseRecordGroup | null>(null);
 
+  const [expensePage, setExpensePage] = useState(1);
+  const [expensesList, setExpensesList] = useState<Expense[]>([]);
+  const [expensesPagination, setExpensesPagination] = useState<{ total: number; totalPages: number; hasMore: boolean } | null>(null);
+
+  const resetExpenseList = () => {
+    setExpensePage(1);
+    setExpensesList([]);
+    setExpensesPagination(null);
+  };
+
+  useEffect(() => {
+    resetExpenseList();
+  }, [woSiteId]);
+
   const siteActivitiesQuery = trpc.workOrderSiteQuery.getSiteActivities.useQuery(
     { work_order_site_id: woSiteId },
     { enabled: !!woSiteId },
@@ -156,9 +171,21 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
   );
 
   const expensesQuery = trpc.expenseQuery.getExpenses.useQuery(
-    { work_order_site_id: woSiteId },
+    { work_order_site_id: woSiteId, page: expensePage },
     { enabled: !!woSiteId },
   );
+
+  useEffect(() => {
+    if (!expensesQuery.isLoading && expensesQuery.data?.expenses && expensesQuery.data.pagination?.page === expensePage) {
+      const fetched = expensesQuery.data.expenses as Expense[];
+      if (expensePage === 1) {
+        setExpensesList(fetched);
+      } else {
+        setExpensesList(prev => [...prev, ...fetched]);
+      }
+      setExpensesPagination(expensesQuery.data.pagination);
+    }
+  }, [expensesQuery.dataUpdatedAt, expensePage]);
 
   const summaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery(
     { work_order_site_id: woSiteId },
@@ -167,7 +194,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
 
   const deleteExpenseMutation = trpc.expenseMutation.deleteExpense.useMutation();
 
-  const expenses: Expense[] = expensesQuery.data?.expenses ?? [];
+  const expenses: Expense[] = expensesList;
   const summary = summaryQuery.data;
   const incomeTotal = summary?.incomeTotal ?? 0;
   const expenseTotal = summary?.grandTotal ?? 0;
@@ -234,22 +261,12 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
     }));
   }, [siteActivitiesQuery.data, restorationDataQuery.data, bioremediationDataQuery.data]);
 
-  // Compute used qty per activity (count once per consolidated record).
-  // Note: exceeded expenses are counted too — being over budget doesn't mean
-  // the quantity wasn't used. Excluding them previously hid real spend from
-  // the SOR-availability view.
   const usedQtyByActivity = useMemo(() => {
-    const map: Record<string, number> = {};
-    const seen = new Set<string>();
-    for (const exp of expenses) {
-      if (!exp.activity_key || !exp.quantity) continue;
-      const recordKey = getExpenseRecordKey(exp);
-      if (seen.has(recordKey)) continue;
-      seen.add(recordKey);
-      map[exp.activity_key] = (map[exp.activity_key] ?? 0) + Number(exp.quantity);
-    }
-    return map;
-  }, [expenses]);
+    const byActivity = summaryQuery.data?.byActivity ?? {};
+    return Object.fromEntries(
+      Object.entries(byActivity).map(([k, v]) => [k, v.totalQuantity])
+    );
+  }, [summaryQuery.data?.byActivity]);
 
   // Group expenses by activity_key (activity-wise data)
   const { groupedExpenses, activityGroups } = useMemo(() => {
@@ -281,6 +298,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
     if (!deletingGroupIds || deletingGroupIds.length === 0) return;
     try {
       await Promise.all(deletingGroupIds.map((id) => deleteExpenseMutation.mutateAsync({ id })));
+      resetExpenseList();
       await utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: woSiteId });
       await utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: woSiteId });
       toast.success("Expense record deleted");
@@ -740,7 +758,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
       </div>
 
       {/* Expenses Table — consolidated rows */}
-      {expensesQuery.isLoading ? (
+      {expensesQuery.isLoading && expensePage === 1 ? (
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
       ) : recordGroupsFlat.length === 0 ? (
         <div className='text-center py-10 border border-dashed rounded-xl bg-gray-50/30'>
@@ -774,6 +792,11 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
           <div className='flex items-center justify-between px-4 py-2.5 bg-gray-50 border-t text-xs'>
             <span className='text-gray-500'>
               {recordGroupsFlat.length} record{recordGroupsFlat.length !== 1 ? "s" : ""}
+              {expensesPagination && expensesPagination.total > expenses.length && (
+                <span className='text-gray-400 ml-1'>
+                  (showing {expenses.length} of {expensesPagination.total} entries)
+                </span>
+              )}
               {exceededTotal > 0 && (
                 <span className='text-orange-600 ml-2'>
                   · {formatCurrency(exceededTotal)} exceeded
@@ -787,9 +810,17 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         </div>
       )}
 
+      {expensesPagination?.hasMore && (
+        <LoadMoreBtn
+          onClick={() => setExpensePage(prev => prev + 1)}
+          loading={expensesQuery.isLoading && expensePage > 1}
+        />
+      )}
+
       <AddExpenseDialog
         open={dialogOpen}
         onClose={handleCloseDialog}
+        onSuccess={resetExpenseList}
         workOrderSiteId={woSiteId}
         officeId={officeId}
         editingExpense={editingExpense}

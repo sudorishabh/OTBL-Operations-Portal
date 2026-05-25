@@ -124,63 +124,13 @@ const PhaseForm = ({
 
   const isReadOnly = hasExistingData && !isEditMode;
 
-  // Per-activity expense data for the Completion tab (spent + exceeded).
-  const expensesQuery = trpc.expenseQuery.getExpenses.useQuery(
+  // Per-activity expense aggregation for the Completion tab (spent + exceeded).
+  const expenseSummaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery(
     { work_order_site_id: woSiteId },
     { enabled: phase === "completion" && woSiteId > 0 },
   );
 
-  const expensesByActivity = React.useMemo(() => {
-    const map: Record<
-      string,
-      {
-        totalAmount: number;
-        exceededAmount: number;
-        totalQuantity: number;
-        count: number;
-      }
-    > = {};
-    // Mirror of getExpenseRecordKey in site-expenses-section.tsx — used to
-    // dedupe quantity across rows that represent the same logical expense
-    // split into multiple expense_type rows (multi-add).
-    const seenForQty = new Set<string>();
-    const rows = expensesQuery.data?.expenses ?? [];
-    for (const exp of rows) {
-      if (!exp.activity_key) continue;
-      if (!map[exp.activity_key]) {
-        map[exp.activity_key] = {
-          totalAmount: 0,
-          exceededAmount: 0,
-          totalQuantity: 0,
-          count: 0,
-        };
-      }
-      const amt = parseFloat(exp.amount || "0") || 0;
-      map[exp.activity_key]!.totalAmount += amt;
-      if (exp.is_exceeded) map[exp.activity_key]!.exceededAmount += amt;
-      map[exp.activity_key]!.count += 1;
-
-      if (exp.quantity) {
-        const recordKey = [
-          exp.activity_key,
-          String(exp.expense_date),
-          exp.quantity,
-          String(!!exp.is_exceeded),
-          exp.description ?? "",
-          exp.notes ?? "",
-          (exp as any).contractor_name ?? "",
-          exp.invoice_number ?? "",
-          exp.document_url ?? "",
-        ].join("||");
-        if (!seenForQty.has(recordKey)) {
-          seenForQty.add(recordKey);
-          map[exp.activity_key]!.totalQuantity +=
-            parseFloat(exp.quantity || "0") || 0;
-        }
-      }
-    }
-    return map;
-  }, [expensesQuery.data]);
+  const expensesByActivity = expenseSummaryQuery.data?.byActivity ?? {};
 
   const [file, setFile] = useState<File | null>(null);
   const [subWoFile, setSubWoFile] = useState<File | null>(null);

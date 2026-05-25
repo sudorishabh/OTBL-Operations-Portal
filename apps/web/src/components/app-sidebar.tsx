@@ -119,7 +119,7 @@ const SidebarMenuList = ({ item, isActive }: SidebarMenuListProps) => {
 function AppSidebar() {
   let pathname = usePathname();
   const { state } = useSidebar();
-  const { user } = useAuthContext();
+  const { user, logout } = useAuthContext();
 
   const visibleNavLinks = useMemo(() => {
     return sidebarLinks.filter((item) => {
@@ -188,6 +188,19 @@ function AppSidebar() {
           <SidebarMenu className='mt-2'>
             {footerLinks.map((item) => {
               const isActive = pathname === item.link;
+              if (item.title === "Logout") {
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      tooltip={item.title}
+                      onClick={() => logout()}
+                      className='h-7 pl-3 text-gray-300! hover:bg-emerald-600/65 focus:bg-transparent!'>
+                      <item.icon className='h-4 w-4' />
+                      <span className='text-xs'>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              }
               return (
                 <SidebarMenuList
                   key={item.title}
