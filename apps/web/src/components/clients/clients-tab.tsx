@@ -21,6 +21,16 @@ interface Client {
   name: string;
   email: string;
   contact_number: string;
+  address?: string;
+  state?: string;
+  city?: string;
+  pincode?: string;
+  status?: string;
+  created_at?: string | Date;
+  contacts_count?: number;
+  work_order_number?: number;
+  proposal_number?: number;
+  sites_work_done?: number;
 }
 
 interface ClientContactsTableProps {
@@ -93,7 +103,7 @@ const ClientsTab = ({ tab }: Props) => {
         <ClientCard
           key={client.id}
           client={client}
-          contactsCount={+client?.contact_number || 0}
+          contactsCount={client.contacts_count ?? 0}
         />
       ))}
     </div>

@@ -54,7 +54,7 @@ const UserTable = () => {
   const { userNamesOrder, setUserNamesOrder, searchQuery, filters } =
     useUserManagementContext();
 
-  const allUsersQueryLimit = 100;
+  const allUsersQueryLimit = 50;
 
   const {
     data: allUsersData,
@@ -240,7 +240,7 @@ const UserTable = () => {
         </TableHeader>
         <TableBody>
           {allUsersList.map((user) => (
-            <TableRow key={`user-${user.id}`}>
+            <TableRow key={`user-${user.email}`}>
               <TableCell className='pl-6'>
                 <StatusIndicator
                   status={user.status as "active" | "inactive"}

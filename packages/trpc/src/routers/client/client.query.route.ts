@@ -14,11 +14,12 @@ import { escapeLike } from "../../helper/escape-like";
 import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
 
-const { 
-  clientTable, 
-  clientContactTable, 
-  workOrderTable, 
+const {
+  clientTable,
+  clientContactTable,
+  workOrderTable,
   workOrderSiteTable,
+  proposalTable,
   scheduleOfRatesTable,
   cleaningUpSoilAreaTable,
   liftingRecoveryOilSlushTable,
@@ -119,11 +120,59 @@ export const clientQueryRouter = router({
       }
 
       try {
-        return await ctx.db
+        const clients = await ctx.db
           .select()
           .from(clientTable)
           .where(clientQuery)
           .orderBy(desc(clientTable.created_at));
+
+        if (clients.length === 0) return [];
+
+        const ids = clients.map((c) => c.id);
+
+        const [contactCounts, workOrderCounts, proposalCounts, siteCounts] =
+          await Promise.all([
+            ctx.db
+              .select({ client_id: clientContactTable.client_id, cnt: count() })
+              .from(clientContactTable)
+              .where(inArray(clientContactTable.client_id, ids))
+              .groupBy(clientContactTable.client_id),
+            ctx.db
+              .select({ client_id: workOrderTable.client_id, cnt: count() })
+              .from(workOrderTable)
+              .where(inArray(workOrderTable.client_id, ids))
+              .groupBy(workOrderTable.client_id),
+            ctx.db
+              .select({ client_id: proposalTable.client_id, cnt: count() })
+              .from(proposalTable)
+              .where(inArray(proposalTable.client_id, ids))
+              .groupBy(proposalTable.client_id),
+            ctx.db
+              .select({
+                client_id: workOrderTable.client_id,
+                cnt: count(workOrderSiteTable.id),
+              })
+              .from(workOrderTable)
+              .leftJoin(
+                workOrderSiteTable,
+                eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+              )
+              .where(inArray(workOrderTable.client_id, ids))
+              .groupBy(workOrderTable.client_id),
+          ]);
+
+        const contactMap = new Map(contactCounts.map((r) => [r.client_id, r.cnt]));
+        const workOrderMap = new Map(workOrderCounts.map((r) => [r.client_id, r.cnt]));
+        const proposalMap = new Map(proposalCounts.map((r) => [r.client_id, r.cnt]));
+        const siteMap = new Map(siteCounts.map((r) => [r.client_id, r.cnt]));
+
+        return clients.map((client) => ({
+          ...client,
+          contacts_count: contactMap.get(client.id) ?? 0,
+          work_order_number: workOrderMap.get(client.id) ?? 0,
+          proposal_number: proposalMap.get(client.id) ?? 0,
+          sites_work_done: siteMap.get(client.id) ?? 0,
+        }));
       } catch (error) {
         throw fromDatabaseError(error, "Fetching clients");
       }

@@ -619,11 +619,6 @@ export const bioSampleTable = mysqlTable("bio_samples", {
 
   application_month: varchar("application_month", { length: 255 }).notNull(),
 
-  // estimated_quantity: decimal("estimated_quantity", {
-  //   precision: 10,
-  //   scale: 2,
-  // }).notNull(),
-
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
