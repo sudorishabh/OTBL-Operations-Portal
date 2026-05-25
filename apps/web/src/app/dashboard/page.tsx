@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -26,14 +26,14 @@ import {
   Building2,
   CheckCircle2,
   Clock3,
-  ContactRound,
   LogOut,
   MapPin,
   ReceiptIndianRupee,
   Shield,
   Tent,
+  UserCheck,
   Users,
-  Webhook,
+  Users2,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -41,10 +41,10 @@ import { useMemo, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { capitalFirstLetter } from "@pkg/utils";
 
-type DashboardOfficeRow =
-  RouterOutputs["officeQuery"]["getOffices"]["offices"][number];
 type DashboardWorkOrderRow =
   RouterOutputs["workOrderQuery"]["getAll"]["workOrders"][number];
+type DashboardOfficeRow =
+  RouterOutputs["officeQuery"]["getOffices"]["offices"][number];
 
 function formatShortDate(value: Date | string | null | undefined) {
   if (value == null) return "—";
@@ -127,25 +127,23 @@ export default function DashboardPage() {
         return {
           title: "Full access",
           description:
-            "You can view and manage offices, clients, and work orders across the entire organization.",
+            "View and manage all offices, clients, and work orders across the organization.",
         };
       case "office":
         return {
-          title: "Office-scoped access",
+          title: "Office-scoped",
           description:
-            "Figures and lists below are limited to offices and work you are assigned to.",
+            "Figures are limited to offices and work you are assigned to.",
         };
       case "site_only":
         return {
           title: "Site assignment",
-          description:
-            "You are being routed to your assigned sites. This overview may not apply to your role.",
+          description: "You are routed to your assigned sites.",
         };
       case "wo_site_upload":
         return {
-          title: "Field upload mode",
-          description:
-            "You are being routed to your work order site upload workspace.",
+          title: "Field upload",
+          description: "You are routed to your work order site upload workspace.",
         };
       default:
         return {
@@ -170,7 +168,7 @@ export default function DashboardPage() {
     return (
       <PageWrapper
         title='Overview'
-        description='sas'>
+        description='OTBL management dashboard'>
         <DashboardPageSkeleton />
       </PageWrapper>
     );
@@ -189,75 +187,53 @@ export default function DashboardPage() {
           type='button'
           variant='outline'
           size='sm'
-          className='gap-2 bg-white shadow-sm'
+          className='gap-1.5 bg-white shadow-sm'
           onClick={() => logout()}>
-          <LogOut className='size-4' />
+          <LogOut className='size-3.5' />
           Log out
         </Button>
       }>
-      <div className='mt-6 space-y-6'>
-        <div className='grid gap-4 md:grid-cols-2'>
-          <Card className='border-cyan-900/15 shadow-sm'>
-            <CardHeader className='pb-2'>
-              <CardTitle className='flex items-center gap-2 text-base text-cyan-900'>
-                <Shield className='size-4 shrink-0' />
-                Access & scope
-              </CardTitle>
-              <CardDescription>{scopeCopy.description}</CardDescription>
-            </CardHeader>
-            <CardContent className='flex flex-wrap items-center gap-2'>
-              <Badge
-                variant='secondary'
-                className='font-normal'>
-                {scopeCopy.title}
-              </Badge>
-              {user?.status && (
-                <Badge
-                  variant='outline'
-                  className='font-normal capitalize'>
-                  Account: {user.status}
-                </Badge>
-              )}
-            </CardContent>
-          </Card>
+      <div className='mt-4 space-y-4'>
+        {/* Context bar */}
+        <Card className='shadow-sm border-cyan-900/10'>
+          <CardContent className='px-4 py-2.5'>
+            <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm'>
+              <Shield className='size-3.5 shrink-0 text-cyan-800' />
+              <span className='font-medium text-cyan-900'>{scopeCopy.title}</span>
+              <Separator orientation='vertical' className='h-3.5 hidden sm:block' />
+              <span className='text-muted-foreground text-xs'>{scopeCopy.description}</span>
+              <div className='ml-auto flex items-center gap-2'>
+                {user?.status && (
+                  <Badge
+                    variant='outline'
+                    className='h-5 px-1.5 text-[10px] font-normal capitalize'>
+                    {user.status}
+                  </Badge>
+                )}
+                {user?.email && (
+                  <span className='text-xs text-muted-foreground hidden sm:inline'>
+                    {user.email}
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className='shadow-sm'>
-            <CardHeader className='pb-2'>
-              <CardTitle className='text-base text-cyan-900'>
-                Your profile
-              </CardTitle>
-              <CardDescription>Contact and identifier</CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-1 text-sm'>
-              <p>
-                <span className='text-muted-foreground'>Email </span>
-                <span className='font-medium'>{user?.email ?? "—"}</span>
-              </p>
-              <p>
-                <span className='text-muted-foreground'>Role </span>
-                <span className='font-medium capitalize'>{user?.role}</span>
-              </p>
-              <p>
-                <span className='text-muted-foreground'>User ID </span>
-                <span className='font-mono text-xs'>{user?.id ?? "—"}</span>
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
+        {/* Stats grid */}
         <div>
-          <h2 className='mb-3 text-sm font-semibold uppercase tracking-wide text-cyan-900'>
+          <p className='mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground'>
             At a glance
-          </h2>
-          <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+          </p>
+          <div className='grid gap-2 sm:grid-cols-2 lg:grid-cols-4'>
             <StatTile
-              icon={Webhook}
+              icon={Users2}
               label='Clients'
               value={clientsQuery.data?.totalClients}
               loading={statsLoading}
             />
             <StatTile
-              icon={ContactRound}
+              icon={UserCheck}
               label='Client contacts'
               value={clientsQuery.data?.totalContacts}
               loading={statsLoading}
@@ -270,13 +246,13 @@ export default function DashboardPage() {
             />
             <StatTile
               icon={MapPin}
-              label='Sites (under offices)'
+              label='Sites'
               value={officeStats.siteTotal}
               loading={statsLoading}
             />
             <StatTile
               icon={ReceiptIndianRupee}
-              label='Work orders'
+              label='Total work orders'
               value={woTotalQuery.data?.pagination.total}
               loading={statsLoading}
             />
@@ -285,130 +261,125 @@ export default function DashboardPage() {
               label='Pending'
               value={woPendingQuery.data?.pagination.total}
               loading={statsLoading}
-              hint='Active pipeline'
+              accent='yellow'
             />
             <StatTile
               icon={CheckCircle2}
               label='Completed'
               value={woCompletedQuery.data?.pagination.total}
               loading={statsLoading}
-              hint='Closed successfully'
+              accent='green'
             />
             <StatTile
               icon={XCircle}
               label='Cancelled'
               value={woCancelledQuery.data?.pagination.total}
               loading={statsLoading}
-              hint='Stopped / void'
+              accent='red'
             />
           </div>
         </div>
 
+        {/* Recent work orders + quick nav */}
         <div className='grid gap-4 lg:grid-cols-3'>
           <Card className='lg:col-span-2 shadow-sm'>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <div>
-                <CardTitle className='text-base text-cyan-900'>
-                  Recent work orders
-                </CardTitle>
-                <CardDescription>
-                  Latest activity in your visible scope
-                </CardDescription>
-              </div>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 px-4 pt-3 pb-2'>
+              <CardTitle className='text-sm font-semibold text-cyan-900'>
+                Recent work orders
+              </CardTitle>
               <Button
                 variant='ghost'
                 size='sm'
                 asChild
-                className='text-cyan-800'>
+                className='h-7 gap-1 px-2 text-xs text-cyan-800'>
                 <Link href='/dashboard/work-order'>
                   View all
-                  <ArrowRight className='ml-1 size-4' />
+                  <ArrowRight className='size-3' />
                 </Link>
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className='p-0'>
               {woRecentQuery.isLoading ? (
-                <div className='space-y-2'>
+                <div className='space-y-1.5 px-4 pb-4'>
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton
                       key={i}
-                      className='h-10 w-full'
+                      className='h-8 w-full'
                     />
                   ))}
                 </div>
               ) : woRecentQuery.isError ? (
-                <p className='text-sm text-destructive'>
+                <p className='px-4 pb-4 text-xs text-destructive'>
                   Could not load work orders. Refresh and try again.
                 </p>
               ) : recentWorkOrders.length === 0 ? (
-                <p className='text-sm text-muted-foreground'>
-                  No work orders yet. Create one from a client or work order
-                  page when you are ready.
+                <p className='px-4 pb-4 text-xs text-muted-foreground'>
+                  No work orders yet.
                 </p>
               ) : (
-                <div className='rounded-md border bg-white'>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className='text-xs'>Code</TableHead>
-                        <TableHead className='text-xs'>Title</TableHead>
-                        <TableHead className='text-xs'>Client</TableHead>
-                        <TableHead className='text-xs'>Office</TableHead>
-                        <TableHead className='text-xs'>Updated</TableHead>
-                        <TableHead className='text-xs'>Status</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow className='hover:bg-transparent'>
+                      <TableHead className='px-4 text-[11px] font-semibold'>Code</TableHead>
+                      <TableHead className='text-[11px] font-semibold'>Title</TableHead>
+                      <TableHead className='text-[11px] font-semibold'>Client</TableHead>
+                      <TableHead className='hidden lg:table-cell text-[11px] font-semibold'>Office</TableHead>
+                      <TableHead className='hidden md:table-cell text-[11px] font-semibold'>Updated</TableHead>
+                      <TableHead className='text-[11px] font-semibold'>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentWorkOrders.map((wo) => (
+                      <TableRow
+                        key={wo.id}
+                        className='text-xs'>
+                        <TableCell className='px-4 py-2 font-medium'>
+                          <Link
+                            href={`/dashboard/work-order/${wo.id}`}
+                            className='text-cyan-800 underline-offset-2 hover:underline'>
+                            {wo.code}
+                          </Link>
+                        </TableCell>
+                        <TableCell className='max-w-[160px] truncate py-2'>
+                          {wo.title}
+                        </TableCell>
+                        <TableCell className='py-2 max-w-[120px] truncate'>
+                          {wo.client_name ?? "—"}
+                        </TableCell>
+                        <TableCell className='hidden lg:table-cell py-2 max-w-[120px] truncate'>
+                          {wo.office_name ?? "—"}
+                        </TableCell>
+                        <TableCell className='hidden md:table-cell py-2 whitespace-nowrap text-muted-foreground'>
+                          {formatShortDate(wo.updated_at ?? wo.created_at)}
+                        </TableCell>
+                        <TableCell className='py-2'>
+                          <Badge
+                            variant='secondary'
+                            className={cn(
+                              "h-5 px-1.5 text-[10px]",
+                              workOrderStatusBadgeClass(wo.status),
+                            )}>
+                            {capitalFirstLetter(wo.status)}
+                          </Badge>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentWorkOrders.map((wo) => (
-                        <TableRow key={wo.id}>
-                          <TableCell className='text-xs font-medium'>
-                            <Link
-                              href={`/dashboard/work-order/${wo.id}`}
-                              className='text-cyan-800 underline-offset-2 hover:underline'>
-                              {wo.code}
-                            </Link>
-                          </TableCell>
-                          <TableCell className='max-w-[200px] truncate text-xs'>
-                            {wo.title}
-                          </TableCell>
-                          <TableCell className='text-xs'>
-                            {wo.client_name ?? "—"}
-                          </TableCell>
-                          <TableCell className='text-xs'>
-                            {wo.office_name ?? "—"}
-                          </TableCell>
-                          <TableCell className='text-xs whitespace-nowrap'>
-                            {formatShortDate(wo.updated_at ?? wo.created_at)}
-                          </TableCell>
-                          <TableCell className='text-xs'>
-                            <Badge
-                              variant='secondary'
-                              className={cn(
-                                workOrderStatusBadgeClass(wo.status),
-                              )}>
-                              {capitalFirstLetter(wo.status)}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
 
           <Card className='shadow-sm'>
-            <CardHeader>
-              <CardTitle className='text-base text-cyan-900'>
+            <CardHeader className='px-4 pt-3 pb-2'>
+              <CardTitle className='text-sm font-semibold text-cyan-900'>
                 Quick navigation
               </CardTitle>
-              <CardDescription>Open common areas of the app</CardDescription>
             </CardHeader>
-            <CardContent className='flex flex-col gap-2'>
+            <CardContent className='flex flex-col gap-1 px-3 pb-3 pt-0'>
               <QuickLink
                 href='/dashboard/client'
-                icon={Webhook}
+                icon={Users2}
                 label='Clients'
               />
               <QuickLink
@@ -441,33 +412,48 @@ function StatTile({
   label,
   value,
   loading,
-  hint,
+  accent,
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
   value: number | undefined;
   loading: boolean;
-  hint?: string;
+  accent?: "yellow" | "green" | "red";
 }) {
+  const iconBg = accent === "yellow"
+    ? "bg-yellow-50 text-yellow-700"
+    : accent === "green"
+      ? "bg-green-50 text-green-700"
+      : accent === "red"
+        ? "bg-red-50 text-red-600"
+        : "bg-cyan-900/10 text-cyan-900";
+
+  const numColor = accent === "yellow"
+    ? "text-yellow-700"
+    : accent === "green"
+      ? "text-green-700"
+      : accent === "red"
+        ? "text-red-600"
+        : "text-cyan-900";
+
   return (
     <Card className='shadow-sm'>
-      <CardContent>
-        <div className='flex items-start justify-between gap-2'>
-          <div>
-            <p className='text-xs font-medium text-muted-foreground'>{label}</p>
+      <CardContent className='p-3'>
+        <div className='flex items-center justify-between gap-2'>
+          <div className='min-w-0'>
+            <p className='truncate text-[11px] font-medium text-muted-foreground'>
+              {label}
+            </p>
             {loading ? (
-              <Skeleton className='mt-2 h-8 w-16' />
+              <Skeleton className='mt-1.5 h-6 w-12' />
             ) : (
-              <p className='mt-1 text-2xl font-semibold tabular-nums text-cyan-900'>
+              <p className={cn("mt-0.5 text-xl font-semibold tabular-nums", numColor)}>
                 {value ?? 0}
               </p>
             )}
-            {/* {hint && !loading && (
-              <p className='mt-1 text-[11px] text-muted-foreground'>{hint}</p>
-            )} */}
           </div>
-          <div className='rounded-md bg-cyan-900/10 p-2 text-cyan-900'>
-            <Icon className='size-4' />
+          <div className={cn("shrink-0 rounded-md p-1.5", iconBg)}>
+            <Icon className='size-3.5' />
           </div>
         </div>
       </CardContent>
@@ -487,12 +473,12 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className='flex items-center justify-between rounded-lg border border-transparent bg-white px-3 py-2 text-sm font-medium text-cyan-900 shadow-sm transition-colors hover:border-cyan-900/20 hover:bg-cyan-50/80'>
+      className='flex items-center justify-between rounded-md border border-transparent bg-gray-50 px-3 py-2 text-xs font-medium text-cyan-900 transition-colors hover:border-cyan-900/15 hover:bg-cyan-50'>
       <span className='flex items-center gap-2'>
-        <Icon className='size-4' />
+        <Icon className='size-3.5 text-cyan-700' />
         {label}
       </span>
-      <ArrowRight className='size-4 opacity-50' />
+      <ArrowRight className='size-3 opacity-40' />
     </Link>
   );
 }
