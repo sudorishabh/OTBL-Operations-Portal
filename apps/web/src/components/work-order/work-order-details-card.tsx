@@ -329,11 +329,11 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       </Card>
 
       <div className='rounded-xl border bg-white shadow-sm overflow-hidden'>
-        <div className='flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-200'>
+        <div className='flex flex-col md:flex-row flex-nowrap divide-y md:divide-y-0 md:divide-x divide-gray-200'>
           <StatGroup
             title='Sites'
             icon={MapPin}
-            className='lg:w-2/9'>
+            className='md:w-2/9'>
             <Stat
               label='Total'
               value={Number(stats.totalSites).toLocaleString()}
@@ -349,7 +349,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
           <StatGroup
             title='Income & Activity'
             icon={IndianRupee}
-            className='lg:w-3/9'>
+            className='md:w-3/9'>
             <Stat
               label='Income'
               value={formatCurrency(income)}
@@ -368,7 +368,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
           <StatGroup
             title='Profit & Loss'
             icon={Wallet}
-            className='lg:w-4/9'>
+            className='md:w-4/9'>
             <Stat
               label='Expenses'
               icon={TrendingDown}
