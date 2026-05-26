@@ -54,9 +54,9 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
       className='bg-white rounded-xl cursor-pointer border border-gray-200 shadow-sm hover:shadow-md overflow-hidden group'
       onClick={handleCardClick}>
       <div className='flex flex-col px-5 py-5'>
-        <div className='flex items-center gap-6'>
+        <div className='flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6'>
           {/* Client name / date / status */}
-          <div className='shrink-0 w-72'>
+          <div className='w-full sm:w-72 sm:shrink-0'>
             <h3 className='text-base font-bold text-gray-800 line-clamp-1'>
               {capitalFirstLetter(client.name)}
             </h3>
@@ -89,10 +89,10 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
           </div>
 
           {/* Divider */}
-          <div className='h-16 w-px bg-gray-100 shrink-0' />
+          <div className='hidden sm:block h-16 w-px bg-gray-100 shrink-0' />
 
           {/* Location & Contact */}
-          <div className='flex-1 grid grid-cols-2 gap-6'>
+          <div className='flex-1 grid grid-cols-2 gap-4 sm:gap-6'>
             {/* Location */}
             <div>
               <div className='flex items-center gap-1.5 mb-2'>
@@ -137,7 +137,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
           </div>
 
           {/* Arrow */}
-          <div className='shrink-0'>
+          <div className='hidden sm:block shrink-0'>
             <Btn
               variant='arrow'
               arrowType='right'
