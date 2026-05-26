@@ -1,8 +1,8 @@
 import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const CardSkeleton = () => (
-  <div className='bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-5'>
+export const CardSkeleton = () => (
+  <div className='bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-6'>
     <div className='flex items-center gap-6'>
       {/* Left: name + date + badge */}
       <div className='shrink-0 w-72 space-y-2'>
