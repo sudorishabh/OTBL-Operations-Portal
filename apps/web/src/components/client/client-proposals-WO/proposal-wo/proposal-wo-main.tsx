@@ -43,7 +43,7 @@ const ProposalWOMain = ({ clientId }: Props) => {
   return (
     <div className='flex flex-col lg:flex-row gap-5'>
       <div className='w-full lg:w-8/12 bg-white shadow-sm py- px-0.5 rounded-xl border'>
-        <div className='flex items-center justify-between py-2 px-4'>
+        <div className='flex flex-wrap items-center justify-between gap-y-2 py-2 px-4'>
           <h3 className='text-sm ml-2 font-semibold text-gray-900 flex items-center gap-2'>
             Proposal - Work Orders
             {total > 0 && (
