@@ -6,6 +6,7 @@ const allowedOrigins = [
   appEnv.MOBILE_CLIENT,
   "https://site.otbl.co.in",
   "https://otbl.co.in",
+  "https://otbl.teri.res.in",
 ].filter((o): o is string => Boolean(o));
 
 const corsOptions = {
