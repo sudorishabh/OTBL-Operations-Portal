@@ -225,7 +225,7 @@ export default function DashboardPage() {
           <p className='mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground'>
             At a glance
           </p>
-          <div className='grid gap-2 sm:grid-cols-2 lg:grid-cols-4'>
+          <div className='grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4'>
             <StatTile
               icon={Users2}
               label='Clients'
@@ -438,22 +438,22 @@ function StatTile({
 
   return (
     <Card className='shadow-sm'>
-      <CardContent className='p-3'>
-        <div className='flex items-center justify-between gap-2'>
+      <CardContent className='p-1 sm:p-3'>
+        <div className='flex items-center justify-between gap-1'>
           <div className='min-w-0'>
-            <p className='truncate text-[11px] font-medium text-muted-foreground'>
+            <p className='truncate text-[9px] sm:text-[11px] font-medium text-muted-foreground leading-tight'>
               {label}
             </p>
             {loading ? (
-              <Skeleton className='mt-1.5 h-6 w-12' />
+              <Skeleton className='mt-0.5 h-4 w-8 sm:mt-1.5 sm:h-6 sm:w-12' />
             ) : (
-              <p className={cn("mt-0.5 text-xl font-semibold tabular-nums", numColor)}>
+              <p className={cn("text-base sm:text-xl font-semibold tabular-nums leading-tight", numColor)}>
                 {value ?? 0}
               </p>
             )}
           </div>
-          <div className={cn("shrink-0 rounded-md p-1.5", iconBg)}>
-            <Icon className='size-3.5' />
+          <div className={cn("shrink-0 rounded p-1 sm:p-1.5", iconBg)}>
+            <Icon className='size-2.5 sm:size-3.5' />
           </div>
         </div>
       </CardContent>
