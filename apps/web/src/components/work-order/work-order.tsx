@@ -267,8 +267,8 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
           />
         ) : (
           <div className='rounded-lg border bg-white p-6'>
-            <div className='flex items-center justify-between mb-4'>
-              <div className='flex items-center gap-6'>
+            <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4'>
+              <div className='flex flex-wrap items-center gap-3'>
                 <h2 className='text-md font-semibold'>
                   Work Order Sites ({pagination?.total || 0})
                 </h2>
@@ -292,40 +292,38 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
                   </TabsList>
                 </Tabs>
               </div>
-              <div className=' bg-whit rounded-lg px- py-'>
-                {workOrderData?.scheduleOfRates &&
-                  workOrderData?.scheduleOfRates.length > 0 && (
-                    <div className='flex gap-4 justify-end'>
+              {workOrderData?.scheduleOfRates &&
+                workOrderData?.scheduleOfRates.length > 0 && (
+                  <div className='flex flex-wrap gap-2'>
+                    <CustomButton
+                      text='View Schedule of Rates'
+                      variant='outline'
+                      Icon={Rows3}
+                      onClick={() => setParam("dialog", "schedule-of-rates")}
+                    />
+                    <CustomButton
+                      text='View All Expenses'
+                      variant='outline'
+                      Icon={ReceiptIndianRupee}
+                      onClick={() => setParam("dialog", "all-expenses")}
+                    />
+                    {woOperatorUploadsCount > 0 && (
                       <CustomButton
-                        text='View Schedule of Rates'
+                        text={`Operator Uploads (${woOperatorUploadsCount})`}
                         variant='outline'
-                        Icon={Rows3}
-                        onClick={() => setParam("dialog", "schedule-of-rates")}
+                        Icon={FolderOpen}
+                        onClick={() => setParam("dialog", "operator-uploads")}
                       />
-                      <CustomButton
-                        text='View All Expenses'
-                        variant='outline'
-                        Icon={ReceiptIndianRupee}
-                        onClick={() => setParam("dialog", "all-expenses")}
-                      />
-                      {woOperatorUploadsCount > 0 && (
-                        <CustomButton
-                          text={`Operator Uploads (${woOperatorUploadsCount})`}
-                          variant='outline'
-                          Icon={FolderOpen}
-                          onClick={() => setParam("dialog", "operator-uploads")}
-                        />
-                      )}
-                      <CustomButton
-                        variant='primary'
-                        Icon={Plus}
-                        text='Create Site'
-                        onClick={handleCrateSiteDialog}
-                        disabled={isWorkOrderCompleted}
-                      />
-                    </div>
-                  )}
-              </div>
+                    )}
+                    <CustomButton
+                      variant='primary'
+                      Icon={Plus}
+                      text='Create Site'
+                      onClick={handleCrateSiteDialog}
+                      disabled={isWorkOrderCompleted}
+                    />
+                  </div>
+                )}
             </div>
 
             {sitesList.length > 0 ? (

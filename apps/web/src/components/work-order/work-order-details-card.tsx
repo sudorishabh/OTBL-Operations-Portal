@@ -108,7 +108,7 @@ const StatGroup = ({
       <Icon className='size-3' />
       {title}
     </div>
-    <div className='flex  items-start gap-6 justify-between'>{children}</div>
+    <div className='flex flex-wrap items-start gap-6'>{children}</div>
   </div>
 );
 
@@ -167,7 +167,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
     <div className='flex flex-col gap-4'>
       <Card className='relative shadow-sm gap-1 border-[0.1px] bg-linear-to-br border-emerald-400 from-white to-gray-50'>
         <CardHeader className='pb-3'>
-          <div className='flex items-start justify-between'>
+          <div className='flex flex-wrap items-start justify-between gap-3'>
             <div>
               <CardTitle className='text-lg  font-semibold text-gray-800 flex items-center gap-2'>
                 <FileText className='size-4 text-emerald-600' />
@@ -180,7 +180,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
                 </span>
               </div>
             </div>
-            <div className='flex items-center gap-4'>
+            <div className='flex flex-wrap items-center gap-2'>
               <Badge className={`${getStatusColor(workOrder.status)} border`}>
                 {workOrder.status.charAt(0).toUpperCase() +
                   workOrder.status.slice(1)}
