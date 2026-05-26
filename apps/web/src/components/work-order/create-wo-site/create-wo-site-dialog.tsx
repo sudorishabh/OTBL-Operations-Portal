@@ -349,7 +349,7 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                       Technical Details & Schedule
                     </h4>
                   </div>
-                  <div className='grid grid-cols-2 gap-4'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                     <FormField
                       control={control}
                       name='process_type'
@@ -461,7 +461,7 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                       )}
                     />
 
-                    <div className='grid grid-cols-2 gap-4 col-span-2'>
+                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 col-span-2'>
                       <Input
                         control={control}
                         fieldName='date'
@@ -636,8 +636,8 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                         </p>
                       </div>
                     </div>
-                    <div className='grid grid-cols-2 gap-4'>
-                      <div className='col-span-2'>
+                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                      <div className='col-span-1 sm:col-span-2'>
                         <Input
                           control={control}
                           fieldName='new_site.name'

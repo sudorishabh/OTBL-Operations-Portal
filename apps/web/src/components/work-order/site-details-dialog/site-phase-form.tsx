@@ -158,7 +158,7 @@ export const SitePhaseForm = ({
   }) => (
     <div className='bg-gray-50/50 p-4 rounded-lg border border-gray-100 mb-4'>
       <h4 className='text-sm font-medium text-gray-700 mb-3'>{label}</h4>
-      <div className='grid grid-cols-3 gap-4'>
+      <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
         <CustomInput
           control={control as any}
           fieldName={`${prefix}.estimated_quantity`}

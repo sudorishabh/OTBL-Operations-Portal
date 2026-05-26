@@ -612,7 +612,7 @@ const AddExpenseDialog = ({
                     onChange={(e) => setNewContractorName(e.target.value)}
                     className='h-9 text-sm bg-white'
                   />
-                  <div className='grid grid-cols-2 gap-2'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
                     <Input
                       placeholder='Contact number' value={newContractorContact}
                       onChange={(e) => setNewContractorContact(e.target.value)}
@@ -657,7 +657,7 @@ const AddExpenseDialog = ({
           </div>
 
           {/* Date + Invoice */}
-          <div className='grid grid-cols-2 gap-3'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
             <div className='space-y-1.5'>
               <Label className='text-xs font-medium text-gray-700'>
                 Date <span className='text-red-500'>*</span>
