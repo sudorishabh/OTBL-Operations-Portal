@@ -141,7 +141,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
             <Btn
               variant='arrow'
               arrowType='right'
-              className='border-0'
+              className='border-0 group-hover:bg-emerald-600'
             />
           </div>
         </div>
