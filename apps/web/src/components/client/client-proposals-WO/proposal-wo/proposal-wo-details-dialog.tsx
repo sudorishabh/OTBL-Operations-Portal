@@ -174,7 +174,7 @@ const ResolvedWorkOrderSide = ({
 
   return (
     <div
-      className={`pl-3 rounded transition-colors duration-200 -m-1 p-1 ${
+      className={`md:pl-3 rounded transition-colors duration-200 -m-1 p-1 ${
         workOrder ? "cursor-pointer hover:bg-emerald-50/50" : ""
       }`}
       onClick={() => {
@@ -288,8 +288,8 @@ const ResolvedWorkOrderSide = ({
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 const ProposalCardSkeleton = () => (
-  <div className='rounded-xl border border-gray-100 bg-white p-5 animate-pulse'>
-    <div className='flex items-stretch gap-4'>
+  <div className='rounded-xl border border-gray-100 bg-white p-3 sm:p-5 animate-pulse'>
+    <div className='flex flex-col md:flex-row items-stretch gap-4'>
       {/* Proposal side */}
       <div className='flex-1 space-y-3'>
         <div className='flex items-center gap-2'>
@@ -305,7 +305,7 @@ const ProposalCardSkeleton = () => (
       </div>
 
       {/* Link indicator */}
-      <div className='flex items-center justify-center w-10'>
+      <div className='flex items-center justify-center md:w-10'>
         <div className='h-8 w-8 bg-gray-200 rounded-full' />
       </div>
 
@@ -465,10 +465,10 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
                   className={`group rounded-md border bg-gray-100/50 shadow-sm hover:shadow-md
                     transition-all duration-300
                     ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
-                  <div className='p-5'>
-                    <div className='grid grid-cols-[1fr_48px_1fr] items-stretch gap-0'>
+                  <div className='p-3 sm:p-5'>
+                    <div className='grid grid-cols-1 md:grid-cols-[1fr_48px_1fr] items-stretch gap-0'>
                       <div
-                        className='pr-3 cursor-pointer rounded hover:bg-sky-50/50 transition-colors duration-200 -m-1 p-1'
+                        className='md:pr-3 cursor-pointer rounded hover:bg-sky-50/50 transition-colors duration-200 -m-1 p-1'
                         onClick={() => {
                           deleteParams(["dialog", "window"]);
                           setTimeout(() => {
@@ -530,9 +530,9 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
                       </div>
 
                       {/* ─── Link Indicator ──────────────────────── */}
-                      <div className='relative flex items-center justify-center'>
+                      <div className='relative flex items-center justify-center py-3 md:py-0'>
                         <div className='absolute inset-0 flex items-center justify-center'>
-                          <div className='h-full w-px border-l border-dashed border-gray-300' />
+                          <div className='w-full h-px md:h-full md:w-px border-t md:border-t-0 md:border-l border-dashed border-gray-300' />
                         </div>
                         <div
                           className={`relative z-10 inline-flex items-center justify-center rounded-full border-2 bg-white p-2 shadow-sm transition-transform duration-200 group-hover:scale-110 ${
