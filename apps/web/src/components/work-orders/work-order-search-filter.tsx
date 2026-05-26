@@ -25,8 +25,8 @@ const WorkOrderSearchNFilter = () => {
     filters.office_id !== undefined;
 
   return (
-    <div className='flex items-center gap-4'>
-      <div className='relative flex-1 w-80'>
+    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
+      <div className='relative w-full sm:w-80 sm:flex-1 sm:max-w-md'>
         <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
         <Input
           type='text'
@@ -36,7 +36,7 @@ const WorkOrderSearchNFilter = () => {
           className='pl-10 h-8 bg-white'
         />
       </div>
-      <div className='flex items-center gap-3 text-xs'>
+      <div className='flex flex-wrap items-center gap-2 sm:gap-3 text-xs'>
         {/* Status Filter */}
         <Select
           value={filters.status}

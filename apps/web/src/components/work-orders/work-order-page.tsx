@@ -66,7 +66,7 @@ const WorkOrderPage = () => {
         <WorkOrdersSkeleton />
       ) : (
         <div className='w-full mt-8'>
-          <div className='flex justify-between items-center flex-1 mb-4'>
+          <div className='mb-4'>
             <WorkOrderSearchNFilter />
           </div>
 

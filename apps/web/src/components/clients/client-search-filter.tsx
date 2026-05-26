@@ -51,8 +51,8 @@ const ClientSearchFilter = ({
   };
 
   return (
-    <div className='flex items-center gap-4'>
-      <div className='w-80'>
+    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
+      <div className='w-full sm:w-80'>
         <Input
           mode='standalone'
           type='text'
@@ -69,7 +69,7 @@ const ClientSearchFilter = ({
           disabled={isLoading}
         />
       </div>
-      <div className='flex items-center gap-3 text-xs'>
+      <div className='flex flex-wrap items-center gap-2 sm:gap-3 text-xs'>
         {/* Filter - Status for Clients, Client for Contacts */}
         {isClientsTab ? (
           <Input

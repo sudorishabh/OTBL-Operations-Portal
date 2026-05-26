@@ -24,9 +24,9 @@ const UserPage = () => {
         value={currentTab}
         onValueChange={(value) => setParam("tab", value)}
         className='w-full mt-8'>
-        <div className='flex justify-between items-center flex-1 mb-4'>
+        <div className='flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between'>
           <UserSearchNFilter />
-          <TabsList className='bg-gray-300/60 h-8!'>
+          <TabsList className='bg-gray-300/60 h-8! self-start sm:self-auto'>
             <TabsTrigger
               value='all'
               className='text-xs cursor-pointer'>

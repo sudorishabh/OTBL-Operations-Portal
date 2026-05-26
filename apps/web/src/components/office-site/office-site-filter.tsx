@@ -24,9 +24,9 @@ const OfficeSiteFilter = ({
   hasActiveFilters: boolean;
 }) => {
   return (
-    <div className='flex justify-between items-center mb-6'>
-      <div className='flex items-center gap-4'>
-        <div className='flex-1 w-80'>
+    <div className='mb-6'>
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
+        <div className='w-full sm:w-80'>
           <Input
             mode='standalone'
             type='text'
@@ -38,7 +38,7 @@ const OfficeSiteFilter = ({
             className='h-8 placeholder:text-xs'
           />
         </div>
-        <div className='flex items-center gap-3 text-xs'>
+        <div className='flex flex-wrap items-center gap-2 sm:gap-3 text-xs'>
           <Input
             mode='standalone'
             isWhiteBg={true}

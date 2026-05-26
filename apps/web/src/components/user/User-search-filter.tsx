@@ -38,8 +38,8 @@ const UserSearchFilter = () => {
   return (
     <>
       {isAllUsers || isCategoryDialog ? (
-        <div className=' flex items-center gap-4'>
-          <div className='flex-1 w-80'>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
+          <div className='w-full sm:w-80'>
             <Input
               mode='standalone'
               isWhiteBg={true}
@@ -50,7 +50,7 @@ const UserSearchFilter = () => {
             />
           </div>
 
-          <div className='flex items-center gap-3 text-xs'>
+          <div className='flex flex-wrap items-center gap-2 sm:gap-3 text-xs'>
             {!isCategoryDialog && (
               <Input
                 mode='standalone'
