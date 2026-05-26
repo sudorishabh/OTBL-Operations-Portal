@@ -1,8 +1,9 @@
 "use client";
 
 import AppSidebar from "@/components/app-sidebar";
-import { SidebarInset } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { trpc } from "@/lib/trpc";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -86,7 +87,22 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {!hideSidebar && <AppSidebar />}
-      <SidebarInset className={insetClass}>{children}</SidebarInset>
+      <SidebarInset className={insetClass}>
+        {!hideSidebar && (
+          <header className='sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-gray-200 bg-cyan-900 px-3 md:hidden'>
+            <SidebarTrigger className='text-gray-100 hover:bg-emerald-600/65 hover:text-gray-100' />
+            <Image
+              src='/otbl-logo.png'
+              alt='OTBL'
+              width={64}
+              height={32}
+              className='h-8 w-auto object-contain'
+              loading='eager'
+            />
+          </header>
+        )}
+        {children}
+      </SidebarInset>
     </>
   );
 }
