@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1777030919617,
-      "tag": "0000_misty_klaw",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1777530375315,
-      "tag": "0001_slimy_serpent_society",
+      "when": 1779774663005,
+      "tag": "0000_aromatic_taskmaster",
       "breakpoints": true
     }
   ]

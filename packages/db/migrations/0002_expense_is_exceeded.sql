@@ -1,1 +1,0 @@
-ALTER TABLE `wo_site_expenses` ADD COLUMN `is_exceeded` tinyint NOT NULL DEFAULT 0;
