@@ -202,7 +202,7 @@ const SiteDetailsCard = ({
     "N/A";
   return (
     <div className='bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-5 border'>
-      <div className='flex items-center justify-between mb-4 gap-2'>
+      <div className='flex flex-wrap items-center justify-between mb-4 gap-2'>
         <h3 className='text-xs font-medium text-gray-500 uppercase tracking-wide'>
           Site Information
         </h3>

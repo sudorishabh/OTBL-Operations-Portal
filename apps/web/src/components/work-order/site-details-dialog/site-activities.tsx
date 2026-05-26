@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { constants } from "@pkg/utils";
 import { BioremediationSections } from "./bioremediation-sections";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -611,7 +612,7 @@ const PhaseForm = ({
         </div>
 
         {phase === "estimate_sub-wo" ? (
-          <div className='grid grid-cols-2 gap-3'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
             <div className='space-y-1.5'>
               <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
                 Sub WO
@@ -658,7 +659,7 @@ const PhaseForm = ({
               {/* Existing Bills */}
               {(siteDocuments?.filter((d) => d.type === "bills").length || 0) >
                 0 && (
-                <div className='grid grid-cols-2 gap-2 mb-3'>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3'>
                   {siteDocuments
                     ?.filter((d) => d.type === "bills")
                     .map((doc, index) => (
@@ -746,6 +747,7 @@ const PhaseForm = ({
         );
         return (
           <div className='rounded-xl border bg-gray-100/50 overflow-hidden'>
+            <div className='overflow-x-auto'>
             <Table className='w-full text-xs'>
               <TableHeader>
                 <TableRow className='border-b'>
@@ -1006,6 +1008,7 @@ const PhaseForm = ({
                 })}
               </TableBody>
             </Table>
+            </div>
           </div>
         );
       })()}
@@ -1152,13 +1155,14 @@ const SiteActivities = ({
             </span>
           </div>
           <div
-            className={
+            className={cn(
+              "overflow-x-auto",
               (siteActivitiesQuery.data?.filter(
                 (a: any) => a.sor_estimated_quantity,
               ).length || 0) > 5
                 ? "max-h-40 overflow-y-auto"
-                : undefined
-            }>
+                : undefined,
+            )}>
             <Table className='w-full text-[11px]'>
               <TableHeader>
                 <TableRow className='border-slate-100 hover:bg-transparent'>

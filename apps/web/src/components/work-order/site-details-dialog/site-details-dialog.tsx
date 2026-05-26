@@ -39,7 +39,7 @@ const CompletionExpenseSummary = ({ woSiteId }: { woSiteId: number }) => {
         </p>
         <p className='text-[10px] text-slate-400'>Finalised totals for this site</p>
       </div>
-      <div className='grid grid-cols-3 divide-x divide-slate-100'>
+      <div className='grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100'>
         {/* Income */}
         <div className='px-4 py-3 bg-white'>
           <div className='flex items-center gap-1.5 mb-1'>

@@ -578,7 +578,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
       </Dialog>
 
       {/* Summary Cards */}
-      <div className='grid grid-cols-3 gap-2'>
+      <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
         <div className='rounded-lg border bg-emerald-50/60 border-emerald-100 p-2.5'>
           <div className='flex items-center gap-1 mb-0.5'>
             <TrendingUp className='w-2.5 h-2.5 text-emerald-600' />
@@ -716,7 +716,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
       </div>
 
       {/* Header + Add button */}
-      <div className='flex items-center justify-between'>
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
         <div className='flex items-center gap-2'>
           <ReceiptIndianRupee className='w-4 h-4 text-gray-400' />
           <h3 className='text-sm font-semibold text-gray-700 whitespace-nowrap'>Expense List</h3>
@@ -732,9 +732,9 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
             </Badge>
           )}
         </div>
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-2 flex-wrap'>
           <Select value={activityFilter} onValueChange={setActivityFilter}>
-            <SelectTrigger className='h-8 text-xs w-[220px]'>
+            <SelectTrigger className='h-8 text-xs w-full sm:w-[220px]'>
               <SelectValue placeholder='Filter by activity' />
             </SelectTrigger>
             <SelectContent>
@@ -769,7 +769,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
           </p>
         </div>
       ) : (
-        <div className='rounded-md border border-gray-100 overflow-hidden'>
+        <div className='rounded-md border border-gray-100 overflow-x-auto'>
           <Table>
             <TableHeader>
               <TableRow className='bg-gray-50/50 hover:bg-gray-50/50'>
