@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { constants } from "@pkg/utils";
 import {
@@ -264,7 +264,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
   const usedQtyByActivity = useMemo(() => {
     const byActivity = summaryQuery.data?.byActivity ?? {};
     return Object.fromEntries(
-      Object.entries(byActivity).map(([k, v]) => [k, v.totalQuantity])
+      Object.entries(byActivity).map(([k, v]) => [k, (v as { totalQuantity: number }).totalQuantity])
     );
   }, [summaryQuery.data?.byActivity]);
 

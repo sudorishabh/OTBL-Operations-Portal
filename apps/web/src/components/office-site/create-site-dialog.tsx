@@ -59,7 +59,7 @@ const CreateSiteDialog = () => {
   );
   const [operatorSearch, setOperatorSearch] = useState("");
   const [operatorPage, setOperatorPage] = useState(1);
-  const itemsPerPage = 50;
+  const itemsPerPage = 20;
 
   const utils = trpc.useUtils();
   const { handleError } = useApiError();
