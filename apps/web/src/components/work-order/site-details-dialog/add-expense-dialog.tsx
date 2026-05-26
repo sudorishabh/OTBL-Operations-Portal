@@ -370,8 +370,6 @@ const AddExpenseDialog = ({
           }),
         ),
       );
-      await utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: workOrderSiteId });
-      await utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: workOrderSiteId });
       toast.success(
         items.length > 1
           ? `${items.length} expense entries recorded`
@@ -381,6 +379,8 @@ const AddExpenseDialog = ({
       );
       onSuccess?.();
       onClose();
+      utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: workOrderSiteId });
+      utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: workOrderSiteId });
     } catch (e: any) {
       toast.error(e.message || "Failed to save expenses");
     } finally {

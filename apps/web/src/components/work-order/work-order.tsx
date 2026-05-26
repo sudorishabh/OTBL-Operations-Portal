@@ -346,11 +346,14 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
                     />
                   </TabsContent>
                 </Tabs>
-                {pagination?.hasMore && (
+                {isFetchingMore && (
+                  <WorkOrderSitesSkeleton />
+                )}
+                {!isFetchingMore && pagination?.hasMore && (
                   <div className='flex justify-center mt-4'>
                     <LoadMoreBtn
                       onClick={handleLoadMore}
-                      loading={isFetchingMore}
+                      loading={false}
                     />
                   </div>
                 )}

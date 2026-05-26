@@ -130,7 +130,10 @@ const PhaseForm = ({
     { enabled: phase === "completion" && woSiteId > 0 },
   );
 
-  const expensesByActivity = expenseSummaryQuery.data?.byActivity ?? {};
+  const expensesByActivity = React.useMemo(
+    () => expenseSummaryQuery.data?.byActivity ?? {},
+    [expenseSummaryQuery.data?.byActivity],
+  );
 
   const [file, setFile] = useState<File | null>(null);
   const [subWoFile, setSubWoFile] = useState<File | null>(null);
