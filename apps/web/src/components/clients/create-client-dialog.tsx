@@ -543,6 +543,8 @@ const CreateClientDialog = () => {
                 text='Add Client'
                 variant='primary'
                 type='submit'
+                disabled={addClientWithContacts.isPending}
+                loading={addClientWithContacts.isPending}
               />
             </div>
           </div>
