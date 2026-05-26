@@ -79,12 +79,12 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
   };
 
   return (
-    <div className='bg-white rounded-xl hover:border-emerald-400 border border-gray-50 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden  p-4'>
-      <div className='flex items-start justify-between border- pb-2 mb-2'>
-        <div>
+    <div className='bg-white rounded-xl hover:border-emerald-400 border border-gray-50 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden p-3 sm:p-4'>
+      <div className='flex flex-col gap-3 pb-2 mb-2 lg:flex-row lg:items-start lg:justify-between'>
+        <div className='min-w-0'>
           <div>
-            <div className='flex items-center relative gap-3'>
-              <h3 className='text-gray-800 font-medium'>
+            <div className='flex flex-wrap items-center relative gap-2 sm:gap-3'>
+              <h3 className='text-gray-800 font-medium break-words'>
                 {capitalizeEachWord(office.name)}
               </h3>
               <div className='bg-sky-100 group rounded-full text-xs text-sky-800 flex items-center px-2.5 py-1 max-w-full'>
@@ -93,7 +93,7 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                   Information
                 </span>
 
-                <div className='hidden group-hover:block absolute left-0 top-full mt-2 w-80 sm:w-96 bg-white border border-gray-200 rounded-md drop-shadow-xl p-3 text-sm text-gray-700 z-30'>
+                <div className='hidden group-hover:block absolute left-0 top-full mt-2 w-72 sm:w-96 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-md drop-shadow-xl p-3 text-sm text-gray-700 z-30'>
                   <div className='flex items-start justify-between'>
                     <div>
                       <div className='font-medium text-gray-800'>
@@ -151,13 +151,13 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
           )}
           <div className='mt-1'></div>
         </div>
-        <div className='text-right flex items-center gap-4'>
+        <div className='flex flex-wrap items-center gap-2 lg:gap-4 lg:justify-end lg:text-right'>
           <div className='rounded-full flex items-center gap-2 border px-1.5 py-1.5 bg-gray-100'>
-            <span className='text-xs font-medium px-2 py-0.5 rounded-full'>
+            <span className='text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap'>
               {office.siteCount} {office.siteCount === 1 ? "Site" : "Sites"}
             </span>
             <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full border border-green-200 ${
+              className={`text-xs font-medium px-2 py-0.5 rounded-full border border-green-200 whitespace-nowrap ${
                 office.status === "active"
                   ? "bg-green-200 text-green-900"
                   : "bg-gray-200 text-gray-900"

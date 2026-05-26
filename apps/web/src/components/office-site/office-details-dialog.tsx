@@ -135,11 +135,11 @@ const OfficeDetailsDialog = () => {
       <div className='space-y-4'>
         {/* Office Info Card */}
         {officeInfo && (
-          <div className='rounded-xl border border-slate-200 bg-slate-50 p-4 flex flex-col gap-3'>
-            <div className='flex items-start justify-between gap-2'>
-              <div className='flex items-center gap-2'>
+          <div className='rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4 flex flex-col gap-3'>
+            <div className='flex flex-wrap items-start justify-between gap-2'>
+              <div className='flex items-center gap-2 min-w-0'>
                 <Building2 className='w-4 h-4 text-primary shrink-0 mt-0.5' />
-                <span className='text-sm font-semibold text-slate-800'>
+                <span className='text-sm font-semibold text-slate-800 break-words'>
                   {capitalizeEachWord(officeInfo.name)}
                 </span>
               </div>
@@ -217,29 +217,31 @@ const OfficeDetailsDialog = () => {
               {allSites.map((site) => (
                 <Card
                   key={site.id}
-                  className=' py-4 gap-4 rounded-sm'>
-                  <CardHeader className='px-4 gap-0'>
-                    <div className='flex items-start justify-between'>
-                      <div>
-                        <CardTitle className='text-base flex items-center gap-2'>
-                          {capitalizeEachWord(site.name)}{" "}
+                  className='py-4 gap-4 rounded-sm'>
+                  <CardHeader className='px-3 sm:px-4 gap-0'>
+                    <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
+                      <div className='min-w-0'>
+                        <CardTitle className='text-base flex flex-wrap items-center gap-2'>
+                          <span className='break-words'>
+                            {capitalizeEachWord(site.name)}
+                          </span>
                           {site.status === "active" ? (
-                            <span className='bg-green-100 text-green-800 px-2 rounded-full text-xs'>
+                            <span className='bg-green-100 text-green-800 px-2 rounded-full text-xs shrink-0'>
                               Active
                             </span>
                           ) : (
-                            <span className='bg-red-100 text-red-800 px-2 rounded-full text-xs'>
+                            <span className='bg-red-100 text-red-800 px-2 rounded-full text-xs shrink-0'>
                               Inactive
                             </span>
                           )}
                         </CardTitle>
-                        <CardDescription className='text-xs'>
+                        <CardDescription className='text-xs break-words'>
                           {capitalFirstLetter(site.address)},{" "}
                           {capitalizeEachWord(site.city)},{" "}
                           {capitalizeEachWord(site.state)} - {site.pincode}
                         </CardDescription>
                       </div>
-                      <div className='flex items-center gap-2'>
+                      <div className='flex items-center gap-2 shrink-0'>
                         <div className='text-xs text-muted-foreground'>
                           {format(new Date(site.created_at), "dd MMM yyyy")}
                         </div>
@@ -247,7 +249,7 @@ const OfficeDetailsDialog = () => {
                     </div>
                   </CardHeader>
 
-                  <CardContent className='px-4'>
+                  <CardContent className='px-3 sm:px-4'>
                     {site.users && site.users.length > 0 ? (
                       <div className='border rounded-lg bg-white overflow-x-auto'>
                         <Table className='bg-gray-100/50'>
