@@ -399,7 +399,7 @@ const SiteDetailsCard = ({
 
             <ScrollArea
               className={`${measurementSheetDocs.length > 4 ? "h-40" : "h-auto"} pr-3`}>
-              <div className='grid grid-cols-1 sm:grid-cols-4 gap-2'>
+              <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2'>
                 {measurementSheetDocs.map((doc: any, index: number) => (
                   <div
                     key={doc.id}
