@@ -302,7 +302,7 @@ const RightSidePanel = ({ proposals }: Props) => {
   const activeWOs = activeTab === "ongoing" ? ongoingWOs : completedWOs;
 
   return (
-    <div className='w-4/12 bg-linear-to-br from-white to-gray-50 shadow-sm px-0.5 rounded-xl border flex flex-col'>
+    <div className='w-full lg:w-4/12 bg-linear-to-br from-white to-gray-50 shadow-sm px-0.5 rounded-xl border flex flex-col'>
       {/* ─── Header ─────────────────────────────────────────────── */}
       <div className='px-4 py-2'>
         <div className='flex items-center justify-between mb-2'>

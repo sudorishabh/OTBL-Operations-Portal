@@ -168,7 +168,7 @@ const ClientDetailsCard = ({ clientId }: Props) => {
         <CardHeader className='pb-0'>
           <div className='flex items-start justify-between gap-4'>
             <div className='min-w-0'>
-              <div className='flex items-center gap-3 mt-2 text-xs'>
+              <div className='flex flex-wrap items-center gap-3 mt-2 text-xs'>
                 <Badge
                   className={`${getStatusColor(client.status)} rounded-md`}>
                   {capitalFirstLetter(client.status)}
@@ -218,7 +218,7 @@ const ClientDetailsCard = ({ clientId }: Props) => {
 
         <CardContent>
           <div className='gap-6 text-sm'>
-            <div className='flex justify-between'>
+            <div className='flex flex-col sm:flex-row justify-between gap-4'>
               <div className='flex items-start gap-4 flex-1'>
                 <InfoSection
                   Icon={MapPin}
@@ -257,7 +257,7 @@ const ClientDetailsCard = ({ clientId }: Props) => {
                     Icon={Users}
                     text='View Contacts'
                     onClick={() => toggleDialog("contacts")}
-                    className='mt-2 absolute top-3 right-4.5'
+                    className='mt-2 sm:absolute sm:top-3 sm:right-4.5'
                   />
                 </InfoSection>
               </div>
