@@ -4,10 +4,6 @@ import OfficeSiteTable from "./office-site-table";
 import { capitalizeEachWord, capitalFirstLetter } from "@pkg/utils";
 import CustomButton from "@/components/shared/btn";
 import useHandleParams from "@/hooks/useHandleParams";
-import dynamic from "next/dynamic";
-import { Suspense } from "react";
-import PageLoading from "@/components/loading/PageLoading";
-const CreateSiteDialog = dynamic(() => import("./create-site-dialog"));
 
 type Site = {
   id: number;
@@ -199,9 +195,6 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
         </div>
       )}
 
-      <Suspense fallback={<PageLoading />}>
-        <CreateSiteDialog />
-      </Suspense>
     </div>
   );
 };

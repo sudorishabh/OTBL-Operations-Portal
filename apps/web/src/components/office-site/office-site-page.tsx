@@ -10,6 +10,7 @@ import OfficeSiteFilter from "./office-site-filter";
 import OfficeSiteSkeleton from "../skeleton/office-site/office-site-skeleton";
 
 const CreateOfficeDialog = dynamic(() => import("./create-office-dialog"));
+const CreateSiteDialog = dynamic(() => import("./create-site-dialog"));
 const OfficeDetailsDialog = dynamic(() => import("./office-details-dialog"));
 const ManageOfficeMembersDialog = dynamic(
   () => import("./manage-office-members-dialog"),
@@ -82,6 +83,7 @@ const OfficeSitePage = () => {
 
       <Suspense fallback={null}>
         <CreateOfficeDialog />
+        <CreateSiteDialog />
         <OfficeDetailsDialog />
         <ManageOfficeMembersDialog />
       </Suspense>

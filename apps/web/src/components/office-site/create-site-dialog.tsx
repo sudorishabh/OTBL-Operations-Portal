@@ -64,6 +64,8 @@ const CreateSiteDialog = () => {
   const utils = trpc.useUtils();
   const { handleError } = useApiError();
 
+  const [allOperators, setAllOperators] = useState<any[]>([]);
+
   const { data: operatorsData, isLoading: isLoadingOperators } =
     trpc.userQuery.getUsersByRole.useQuery(
       {
@@ -77,7 +79,15 @@ const CreateSiteDialog = () => {
       },
     );
 
-  const operators = operatorsData?.users || [];
+  useEffect(() => {
+    if (!operatorsData?.users) return;
+    if (operatorPage === 1) {
+      setAllOperators(operatorsData.users);
+    } else {
+      setAllOperators((prev) => [...prev, ...operatorsData.users]);
+    }
+  }, [operatorsData]);
+
   const hasMoreOperators = operatorsData?.pagination?.hasMore || false;
 
   const { data: siteData, isLoading: isSiteLoading } =
@@ -122,6 +132,7 @@ const CreateSiteDialog = () => {
     setSelectedOperators([]);
     setOperatorSearch("");
     setOperatorPage(1);
+    setAllOperators([]);
   }, [searchParams, router, form]);
 
   const toggleOperator = (user: SelectedUser) => {
@@ -185,7 +196,7 @@ const CreateSiteDialog = () => {
       }
       open={isOpenDialog}
       size={isCreateMode ? "lg" : "sm"}
-      isLoading={isSiteLoading || (isCreateMode && isLoadingOperators)}
+      isLoading={isSiteLoading}
       setOpen={handleClose}>
       <Form {...form}>
         <CustomForm onSubmit={form.handleSubmit(onSubmit)}>
@@ -271,7 +282,7 @@ const CreateSiteDialog = () => {
                   <div className='p-4'>
                     <ScrollArea className='h-56 pr-3 -mr-3'>
                       <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                        {operators.map((user: any) => {
+                        {allOperators.map((user: any) => {
                           const isSelected = selectedOperators.some(
                             (u) => u.id === user.id,
                           );
@@ -327,7 +338,7 @@ const CreateSiteDialog = () => {
                             </div>
                           );
                         })}
-                        {!isLoadingOperators && operators.length === 0 && (
+                        {!isLoadingOperators && allOperators.length === 0 && (
                           <div className='col-span-2 flex flex-col items-center justify-center py-10 text-gray-500'>
                             <div className='h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-3'>
                               <Users className='h-6 w-6 text-gray-400' />
