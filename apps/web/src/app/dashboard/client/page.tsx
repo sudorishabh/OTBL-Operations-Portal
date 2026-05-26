@@ -2,6 +2,7 @@ import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import React, { Suspense } from "react";
 import CreateClientButton from "@/components/clients/create-client-btn";
 import ClientsPage from "@/components/clients/clients-page";
+import ClientsPageSkeleton from "@/components/skeleton/clients/clients-page-skeleton";
 
 const page = () => {
   return (
@@ -13,7 +14,9 @@ const page = () => {
           <CreateClientButton />
         </Suspense>
       }>
-      <ClientsPage />
+      <Suspense fallback={<ClientsPageSkeleton />}>
+        <ClientsPage />
+      </Suspense>
     </PageWrapper>
   );
 };
