@@ -251,75 +251,127 @@ const OfficeDetailsDialog = () => {
 
                   <CardContent className='px-3 sm:px-4'>
                     {site.users && site.users.length > 0 ? (
-                      <div className='border rounded-lg bg-white overflow-x-auto'>
-                        <Table className='bg-gray-100/50'>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className='text-xs h-8'>
-                                Name
-                              </TableHead>
-                              <TableHead className='text-xs h-8'>
-                                Role
-                              </TableHead>
-                              <TableHead className='text-xs h-8'>
-                                Email
-                              </TableHead>
-                              <TableHead className='text-xs h-8'>
-                                Contact
-                              </TableHead>
-                              <TableHead className='text-xs h-8 text-right w-[72px]'>
-                                Remove
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {site.users.map((user: any, idx: number) => (
-                              <TableRow
-                                key={`${site.id}-${user.user_id ?? user.email}-${idx}`}>
-                                <TableCell className='text-xs py-2'>
-                                  <div className='flex items-center gap-2'>
-                                    <StatusIndicator
-                                      status={
-                                        user.status ? "active" : "inactive"
-                                      }
-                                      size='sm'
-                                    />
+                      <>
+                        {/* Mobile: stacked user cards */}
+                        <div className='sm:hidden space-y-2'>
+                          {site.users.map((user: any, idx: number) => (
+                            <div
+                              key={`m-${site.id}-${user.user_id ?? user.email}-${idx}`}
+                              className='flex items-start justify-between gap-2 rounded-md border bg-white p-2.5'>
+                              <div className='min-w-0 flex-1 space-y-0.5'>
+                                <div className='flex items-center gap-2 min-w-0'>
+                                  <StatusIndicator
+                                    status={
+                                      user.status ? "active" : "inactive"
+                                    }
+                                    size='sm'
+                                  />
+                                  <span className='text-xs font-medium truncate'>
                                     {capitalizeEachWord(user.name || "N/A")}
-                                  </div>
-                                </TableCell>
-                                <TableCell className='text-xs py-2'>
-                                  {capitalizeEachWord(user.role || "N/A")}
-                                </TableCell>
-                                <TableCell className='text-xs py-2'>
+                                  </span>
+                                  <span className='text-[10px] text-muted-foreground shrink-0'>
+                                    · {capitalizeEachWord(user.role || "N/A")}
+                                  </span>
+                                </div>
+                                <p className='text-[11px] text-muted-foreground truncate'>
                                   {user.email || "N/A"}
-                                </TableCell>
-                                <TableCell className='text-xs py-2'>
-                                  {user.contact_number || "N/A"}
-                                </TableCell>
-                                <TableCell className='text-xs py-2 text-right'>
-                                  {typeof user.user_id === "number" ? (
-                                    <button
-                                      type='button'
-                                      disabled={removeFromSite.isPending}
-                                      onClick={() =>
-                                        removeFromSite.mutate({
-                                          site_id: site.id,
-                                          user_id: user.user_id,
-                                        })
-                                      }
-                                      className='inline-flex rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
-                                      aria-label={`Remove ${user.name || "operator"} from site`}>
-                                      <UserMinus className='h-4 w-4' />
-                                    </button>
-                                  ) : null}
-                                </TableCell>
+                                </p>
+                                {user.contact_number && (
+                                  <p className='text-[11px] text-muted-foreground'>
+                                    {user.contact_number}
+                                  </p>
+                                )}
+                              </div>
+                              {typeof user.user_id === "number" && (
+                                <button
+                                  type='button'
+                                  disabled={removeFromSite.isPending}
+                                  onClick={() =>
+                                    removeFromSite.mutate({
+                                      site_id: site.id,
+                                      user_id: user.user_id,
+                                    })
+                                  }
+                                  className='shrink-0 inline-flex rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
+                                  aria-label={`Remove ${user.name || "operator"} from site`}>
+                                  <UserMinus className='h-4 w-4' />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* sm and up: table */}
+                        <div className='hidden sm:block border rounded-lg bg-white overflow-x-auto'>
+                          <Table className='bg-gray-100/50'>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className='text-xs h-8'>
+                                  Name
+                                </TableHead>
+                                <TableHead className='text-xs h-8'>
+                                  Role
+                                </TableHead>
+                                <TableHead className='text-xs h-8'>
+                                  Email
+                                </TableHead>
+                                <TableHead className='text-xs h-8'>
+                                  Contact
+                                </TableHead>
+                                <TableHead className='text-xs h-8 text-right w-[72px]'>
+                                  Remove
+                                </TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
+                            </TableHeader>
+                            <TableBody>
+                              {site.users.map((user: any, idx: number) => (
+                                <TableRow
+                                  key={`${site.id}-${user.user_id ?? user.email}-${idx}`}>
+                                  <TableCell className='text-xs py-2'>
+                                    <div className='flex items-center gap-2'>
+                                      <StatusIndicator
+                                        status={
+                                          user.status ? "active" : "inactive"
+                                        }
+                                        size='sm'
+                                      />
+                                      {capitalizeEachWord(user.name || "N/A")}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className='text-xs py-2'>
+                                    {capitalizeEachWord(user.role || "N/A")}
+                                  </TableCell>
+                                  <TableCell className='text-xs py-2'>
+                                    {user.email || "N/A"}
+                                  </TableCell>
+                                  <TableCell className='text-xs py-2'>
+                                    {user.contact_number || "N/A"}
+                                  </TableCell>
+                                  <TableCell className='text-xs py-2 text-right'>
+                                    {typeof user.user_id === "number" ? (
+                                      <button
+                                        type='button'
+                                        disabled={removeFromSite.isPending}
+                                        onClick={() =>
+                                          removeFromSite.mutate({
+                                            site_id: site.id,
+                                            user_id: user.user_id,
+                                          })
+                                        }
+                                        className='inline-flex rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
+                                        aria-label={`Remove ${user.name || "operator"} from site`}>
+                                        <UserMinus className='h-4 w-4' />
+                                      </button>
+                                    ) : null}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </>
                     ) : (
-                      <span className='text-xs text-gray-500 py-1 bg-red-50 rounded px-2'>
+                      <span className='inline-block text-xs text-gray-500 py-1 bg-red-50 rounded px-2'>
                         No operators assigned to this site yet.
                       </span>
                     )}
