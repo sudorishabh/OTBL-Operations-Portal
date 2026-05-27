@@ -5,15 +5,19 @@ export const USER_ROLES = {
   ADMIN: "admin",
   MANAGER: "manager",
   OPERATOR: "operator",
+  VIEWER: "viewer",
 } as const;
 
 export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
-// Role hierarchy for permission checking
+// Role hierarchy for permission checking. Viewer sits at the bottom: it can
+// read (no query is role-gated) but is denied every mutation by a dedicated
+// middleware, so it never needs to satisfy a write-procedure's minimum role.
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   admin: 5,
   manager: 4,
   operator: 2,
+  viewer: 1,
 };
 
 /**

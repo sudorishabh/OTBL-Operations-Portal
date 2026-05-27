@@ -25,7 +25,7 @@ export const userTable = mysqlTable(
     contact_number: varchar("contact_number", { length: 15 }),
     role: varchar("role", {
       length: 50,
-      enum: [ROLES.ADMIN, ROLES.MANAGER, ROLES.OPERATOR],
+      enum: [ROLES.ADMIN, ROLES.MANAGER, ROLES.OPERATOR, ROLES.VIEWER],
     })
       .notNull()
       .default(ROLES.OPERATOR),

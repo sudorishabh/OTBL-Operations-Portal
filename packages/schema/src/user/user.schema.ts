@@ -20,6 +20,7 @@ const userRoleEnum = z.enum([
   ROLES.ADMIN,
   ROLES.MANAGER,
   ROLES.OPERATOR,
+  ROLES.VIEWER,
 ]);
 
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
@@ -57,7 +58,7 @@ export const getAllUsersSchema = z.object({
   limit: limitValidator,
   searchQuery: searchQueryValidator,
   role: z
-    .enum(["all", ROLES.MANAGER, ROLES.OPERATOR])
+    .enum(["all", ROLES.MANAGER, ROLES.OPERATOR, ROLES.VIEWER])
     .optional(),
   status: z.enum([...statusEnum.options, "all"]).optional(),
   userNamesOrder: sortOrderValidator,

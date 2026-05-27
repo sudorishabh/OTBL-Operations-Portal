@@ -2,14 +2,16 @@ export const ROLES = {
   ADMIN: "admin",
   MANAGER: "manager",
   OPERATOR: "operator",
+  VIEWER: "viewer",
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 export const ROLE_HIERARCHY: Record<Role, number> = {
-  admin: 3,
-  manager: 2,
-  operator: 1,
+  admin: 4,
+  manager: 3,
+  operator: 2,
+  viewer: 1,
 };
 
 export const STATUS = {
