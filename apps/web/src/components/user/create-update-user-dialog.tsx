@@ -370,6 +370,7 @@ const CreateUpdateUserDialog = () => {
                 text={isEditMode ? "Update" : "Create"}
                 variant='primary'
                 type='submit'
+                disableForViewer
               />
             </div>
           </form>

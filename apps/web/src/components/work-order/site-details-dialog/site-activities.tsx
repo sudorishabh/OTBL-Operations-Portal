@@ -1022,6 +1022,7 @@ const PhaseForm = ({
             Icon={Pencil}
             onClick={() => setIsEditMode(true)}
             type='button'
+            disableForViewer
           />
         ) : (
           <>
@@ -1040,6 +1041,7 @@ const PhaseForm = ({
               type='button'
               loading={isLoading}
               disabled={isLoading}
+              disableForViewer
             />
           </>
         )}

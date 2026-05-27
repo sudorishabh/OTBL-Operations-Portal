@@ -13,6 +13,7 @@ const CreateClientBtn = () => {
       Icon={Plus}
       onClick={() => setParam("dialog", "create-client")}
       variant='primary'
+      disableForViewer
     />
   );
 };

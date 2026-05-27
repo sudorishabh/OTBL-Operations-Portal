@@ -182,6 +182,7 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
             Icon={Plus}
             variant='outline'
             onClick={handleAddSiteDialogOpen}
+            disableForViewer
           />
         </div>
       </div>

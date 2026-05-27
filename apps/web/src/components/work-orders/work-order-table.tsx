@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import { useWorkOrderManagementContext } from "@/contexts/WorkOrderManagementContext";
+import { useIsViewer } from "@/contexts/AuthContext";
 import { IWorkOrder, IWorkOrderPagination } from "@/types/work-order.types";
 import { capitalFirstLetter } from "@pkg/utils";
 // import { IWorkOrder,IWorkOrderPagination } from "@pkg/schema";
@@ -45,6 +46,7 @@ const WorkOrderTable = ({
   onEdit,
 }: Props) => {
   const { workOrderOrder, setWorkOrderOrder } = useWorkOrderManagementContext();
+  const isViewer = useIsViewer();
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -207,7 +209,9 @@ const WorkOrderTable = ({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align='end'>
                         {onEdit && (
-                          <DropdownMenuItem onClick={() => onEdit(workOrder)}>
+                          <DropdownMenuItem
+                            disabled={isViewer}
+                            onClick={() => onEdit(workOrder)}>
                             <Edit className='mr-2 h-4 w-4' />
                             Edit Work Order
                           </DropdownMenuItem>

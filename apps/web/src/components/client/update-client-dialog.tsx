@@ -485,6 +485,7 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                   variant='primary'
                   type='submit'
                   loading={updateClientMutation.isPending}
+                  disableForViewer
                 />
               </div>
             </div>

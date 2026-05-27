@@ -132,6 +132,7 @@ const ClientSearchFilter = ({
             variant='primary'
             Icon={UserPlus}
             className='h-8 text-xs'
+            disableForViewer
           />
         )}
       </div>

@@ -321,6 +321,7 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
                       text='Create Site'
                       onClick={handleCrateSiteDialog}
                       disabled={isWorkOrderCompleted}
+                      disableForViewer
                     />
                   </div>
                 )}

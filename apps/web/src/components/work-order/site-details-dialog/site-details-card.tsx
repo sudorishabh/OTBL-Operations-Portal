@@ -31,6 +31,7 @@ import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import toast from "react-hot-toast";
 import DeferredFilePicker from "@/components/shared/deferred-file-picker";
 import CustomButton from "@/components/shared/btn";
+import { useIsViewer } from "@/contexts/AuthContext";
 
 const InfoCard = ({
   icon: Icon,
@@ -105,6 +106,7 @@ const SiteDetailsCard = ({
   operatorUploadsCount = 0,
   onOpenOperatorUploads,
 }: Props) => {
+  const isViewer = useIsViewer();
   const [measurementSheetFiles, setMeasurementSheetFiles] = useState<File[]>(
     [],
   );
@@ -369,6 +371,7 @@ const SiteDetailsCard = ({
               text={isUploadingAll ? "Uploading..." : "Upload All"}
               loading={isUploadingAll}
               className='w-full mt-2  h-9 text-xs shadow-sm'
+              disableForViewer
             />
             {measurementSheetUpload.isUploading && (
               <div className='mt-1'>
@@ -436,6 +439,7 @@ const SiteDetailsCard = ({
                                 handleDeleteDocument(doc.id);
                               }}
                               disabled={
+                                isViewer ||
                                 deleteMeasurementSheetMutation.isPending
                               }>
                               <Trash2 className='w-3 h-3' />

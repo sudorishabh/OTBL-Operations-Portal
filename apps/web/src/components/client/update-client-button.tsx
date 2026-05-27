@@ -10,6 +10,7 @@ const UpdateClientButton = () => {
       text='Edit details'
       variant='primary'
       Icon={PencilLine}
+      disableForViewer
     />
   );
 };

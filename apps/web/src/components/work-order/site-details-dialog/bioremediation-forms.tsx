@@ -132,6 +132,7 @@ export const ContaminatedSoilForm = ({
             Icon={Save}
             text={mutation.isPending ? "Saving..." : "Save"}
             loading={mutation.isPending}
+            disableForViewer
           />
         </div>
       </form>
@@ -192,6 +193,7 @@ export const BioSamplesForm = ({
               variant='outline'
               Icon={Plus}
               text='Add Sample'
+              disableForViewer
               onClick={() =>
                 append({
                   tph_document_url: "",
@@ -254,6 +256,7 @@ export const BioSamplesForm = ({
             Icon={Save}
             text={mutation.isPending ? "Saving..." : "Save Samples"}
             loading={mutation.isPending}
+            disableForViewer
           />
         </div>
       </form>
@@ -316,6 +319,7 @@ export const OilZappingForm = ({
               variant='outline'
               Icon={Plus}
               text='Add Entry'
+              disableForViewer
               onClick={() =>
                 append({
                   document_url: "",
@@ -368,6 +372,7 @@ export const OilZappingForm = ({
             Icon={Save}
             text={mutation.isPending ? "Saving..." : "Save Zapping"}
             loading={mutation.isPending}
+            disableForViewer
           />
         </div>
       </form>

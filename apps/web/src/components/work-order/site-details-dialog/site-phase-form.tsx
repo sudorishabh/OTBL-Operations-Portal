@@ -205,6 +205,7 @@ export const SitePhaseForm = ({
                 variant='outline'
                 Icon={Plus}
                 text='Add Sample'
+                disableForViewer
                 onClick={() =>
                   appendSample({
                     tph_document_url: "",
@@ -272,6 +273,7 @@ export const SitePhaseForm = ({
                 variant='outline'
                 Icon={Plus}
                 text='Add Zapping'
+                disableForViewer
                 onClick={() =>
                   appendZapping({
                     document_url: "",
@@ -328,6 +330,7 @@ export const SitePhaseForm = ({
               text={isLoading ? "Saving..." : "Save Phase Data"}
               loading={isLoading}
               className='w-full sm:w-auto'
+              disableForViewer
             />
           </div>
         </form>
@@ -370,6 +373,7 @@ export const SitePhaseForm = ({
             text={isLoading ? "Saving..." : "Save Phase Data"}
             loading={isLoading}
             className='w-full sm:w-auto'
+            disableForViewer
           />
         </div>
       </form>

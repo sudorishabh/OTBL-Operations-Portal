@@ -12,6 +12,7 @@ const CreateOfficeBtn = () => {
       Icon={Plus}
       variant='primary'
       onClick={() => setParam("dialog", "create-office")}
+      disableForViewer
     />
   );
 };

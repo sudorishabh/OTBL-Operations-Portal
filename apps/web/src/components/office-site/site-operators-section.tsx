@@ -140,6 +140,7 @@ const SiteOperatorsSection: React.FC<Props> = ({ siteId, siteUsers }) => {
                       variant='outline'
                       className='h-7 text-[10px] px-2 shrink-0'
                       disabled={onSite || assignMutation.isPending}
+                      disableForViewer
                       onClick={() =>
                         assignMutation.mutate({
                           site_id: siteId,

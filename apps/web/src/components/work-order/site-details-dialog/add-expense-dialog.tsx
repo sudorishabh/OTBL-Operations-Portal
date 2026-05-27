@@ -631,6 +631,7 @@ const AddExpenseDialog = ({
                       loading={createContractorMutation.isPending}
                       disabled={createContractorMutation.isPending}
                       className='h-8 text-xs flex-1'
+                      disableForViewer
                     />
                     <button
                       type='button' onClick={() => setShowAddContractor(false)}

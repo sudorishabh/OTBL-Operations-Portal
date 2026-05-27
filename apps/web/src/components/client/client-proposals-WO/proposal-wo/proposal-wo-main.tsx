@@ -58,6 +58,7 @@ const ProposalWOMain = ({ clientId }: Props) => {
               variant='outline'
               Icon={Plus}
               onClick={() => setParam("dialog", "create-proposal")}
+              disableForViewer
             />
             <CustomButton
               variant='arrow'

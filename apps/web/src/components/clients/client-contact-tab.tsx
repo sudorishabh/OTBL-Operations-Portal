@@ -1,6 +1,7 @@
 import React from "react";
 import { trpc } from "@/lib/trpc";
 import { useClientManagementContext } from "@/contexts/ClientManagementContext";
+import { useIsViewer } from "@/contexts/AuthContext";
 import {
   Table,
   TableBody,
@@ -44,6 +45,7 @@ interface ClientContact {
 }
 const ClientContactTab = ({ tab }: Props) => {
   const isClientContactTab = tab === "contacts";
+  const isViewer = useIsViewer();
   const { contactSearchQuery, contactFilters } = useClientManagementContext();
   const utils = trpc.useUtils();
   const { handleError } = useApiError();
@@ -173,7 +175,7 @@ const ClientContactTab = ({ tab }: Props) => {
                       onClick={() =>
                         handleDeleteContact(contact.id, contact.name)
                       }
-                      disabled={deleteClientContact.isPending}>
+                      disabled={isViewer || deleteClientContact.isPending}>
                       <Trash2 className='mr-2 h-4 w-4' />
                       Delete Contact
                     </DropdownMenuItem>

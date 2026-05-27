@@ -60,6 +60,7 @@ import {
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
+import { useIsViewer } from "@/contexts/AuthContext";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import AddExpenseDialog, {
   EXPENSE_TYPE_LABELS,
@@ -135,6 +136,7 @@ interface Props {
 
 const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
   const utils = trpc.useUtils();
+  const isViewer = useIsViewer();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingGroupIds, setDeletingGroupIds] = useState<number[] | null>(null);
@@ -494,7 +496,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
                       e.stopPropagation();
                       if (primaryExpenseForEdit) handleEdit(primaryExpenseForEdit);
                     }}
-                    disabled={!primaryExpenseForEdit}
+                    disabled={isViewer || !primaryExpenseForEdit}
                     className='p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-30'>
                     <Pencil className='w-3 h-3' />
                   </button>
@@ -513,7 +515,8 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
                       e.stopPropagation();
                       setDeletingGroupIds(group.ids);
                     }}
-                    className='p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors'>
+                    disabled={isViewer}
+                    className='p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed'>
                     <Trash2 className='w-3 h-3' />
                   </button>
                 </TooltipTrigger>
@@ -753,6 +756,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
             Icon={Plus}
             onClick={() => { setEditingExpense(null); setDialogOpen(true); }}
             className='h-8 text-xs'
+            disableForViewer
           />
         </div>
       </div>

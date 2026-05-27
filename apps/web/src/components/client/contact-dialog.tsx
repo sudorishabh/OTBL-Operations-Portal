@@ -88,6 +88,7 @@ const ContactDialog = ({ open, onClose, users, clientId }: Props) => {
                 variant='primary'
                 Icon={UserPlus}
                 className='h-8'
+                disableForViewer
                 onClick={() => {
                   form.reset({
                     client_id: Number(clientId),
@@ -262,6 +263,7 @@ const ContactDialog = ({ open, onClose, users, clientId }: Props) => {
                 variant='primary'
                 type='submit'
                 disabled={addClientContact.isPending}
+                disableForViewer
               />
             </div>
           </CustomForm>

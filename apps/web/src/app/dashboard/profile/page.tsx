@@ -281,6 +281,7 @@ export default function ProfilePage() {
                         text='Save changes'
                         type='submit'
                         variant='primary'
+                        disableForViewer
                       />
                     </div>
                   </form>
@@ -345,6 +346,7 @@ export default function ProfilePage() {
                       text='Update password'
                       type='submit'
                       variant='primary'
+                      disableForViewer
                     />
                   </div>
                 </form>

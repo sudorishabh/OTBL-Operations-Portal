@@ -505,6 +505,7 @@ const CreateOfficeDialog = () => {
               variant='primary'
               loading={form.formState.isSubmitting}
               disabled={form.formState.isSubmitting}
+              disableForViewer
             />
           </div>
         </CustomForm>

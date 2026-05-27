@@ -804,6 +804,7 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                     loading={addSiteMutation.isPending}
                     type='submit'
                     className='px-8'
+                    disableForViewer
                   />
                 </div>
               </div>

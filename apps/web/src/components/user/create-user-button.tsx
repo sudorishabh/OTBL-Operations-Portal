@@ -11,6 +11,7 @@ const CreateUserButton = () => {
       Icon={Plus}
       variant='primary'
       onClick={() => setParam("dialog", "create-user")}
+      disableForViewer
     />
   );
 };

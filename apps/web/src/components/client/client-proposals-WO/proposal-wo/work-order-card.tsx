@@ -290,6 +290,7 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
                 });
               }}
               variant='outline'
+              disableForViewer
               className='hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700'
             />
           </div>

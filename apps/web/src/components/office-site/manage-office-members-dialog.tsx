@@ -6,6 +6,7 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { trpc } from "@/lib/trpc";
 import Input from "@/components/shared/input";
 import CustomButton from "@/components/shared/btn";
+import { useIsViewer } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -27,6 +28,7 @@ const { ROLES } = constants;
 type PickedUser = { id: number; name: string; email: string };
 
 const ManageOfficeMembersDialog = () => {
+  const isViewer = useIsViewer();
   const { getParam, deleteParams } = useHandleParams();
   const isOpen = getParam("dialog") === "manage-office-members";
   const officeIdParam = getParam("officeId");
@@ -220,7 +222,7 @@ const ManageOfficeMembersDialog = () => {
                       </span>
                       <button
                         type='button'
-                        disabled={busy}
+                        disabled={busy || isViewer}
                         onClick={() =>
                           onRemove(data.manager!.id, "Manager")
                         }
@@ -250,7 +252,7 @@ const ManageOfficeMembersDialog = () => {
                           </span>
                           <button
                             type='button'
-                            disabled={busy}
+                            disabled={busy || isViewer}
                             onClick={() =>
                               onRemove(op.id, "Operator")
                             }
@@ -361,6 +363,7 @@ const ManageOfficeMembersDialog = () => {
                                 variant='outline'
                                 className='h-8 text-xs px-3'
                                 disabled={busy}
+                                disableForViewer
                                 onClick={() =>
                                   onAssignManager({
                                     id: user.id,
@@ -434,6 +437,7 @@ const ManageOfficeMembersDialog = () => {
                                 variant='outline'
                                 className='h-8 text-xs px-3'
                                 disabled={busy}
+                                disableForViewer
                                 onClick={() =>
                                   onAssignOperator({
                                     id: user.id,

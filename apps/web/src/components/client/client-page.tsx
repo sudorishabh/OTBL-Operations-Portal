@@ -40,6 +40,7 @@ const ClientContent = ({ clientId }: { clientId: string }) => {
           variant='primary'
           Icon={PencilLine}
           onClick={() => setParam("dialog", "update-client")}
+          disableForViewer
         />
       }>
       <div className='mt-4 space-y-4'>

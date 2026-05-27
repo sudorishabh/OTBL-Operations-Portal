@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import { useUserManagementContext } from "@/contexts/UserManagementContext";
+import { useIsViewer } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
@@ -47,6 +48,7 @@ interface Pagination {
 
 const UserTable = () => {
   const { setParams } = useHandleParams();
+  const isViewer = useIsViewer();
   const [currentPage, setCurrentPage] = useState(1);
   const [allUsersList, setAllUsersList] = useState<userTypes.AllUserType[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -298,6 +300,7 @@ const UserTable = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align='end'>
                     <DropdownMenuItem
+                      disabled={isViewer}
                       onClick={() => {
                         setParams({
                           "dialog-over": "update-user",

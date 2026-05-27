@@ -545,6 +545,7 @@ const CreateClientDialog = () => {
                 type='submit'
                 disabled={addClientWithContacts.isPending}
                 loading={addClientWithContacts.isPending}
+                disableForViewer
               />
             </div>
           </div>

@@ -246,6 +246,7 @@ const CreateClientContactDialog = () => {
               variant='primary'
               type='submit'
               disabled={addClientContact.isPending}
+              disableForViewer
             />
           </div>
         </CustomForm>

@@ -119,6 +119,7 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
             text='Add Activity'
             variant='outline'
             onClick={addScheduleOfRate}
+            disableForViewer
           />
         </div>
 
@@ -131,6 +132,7 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
               text='Add Your First Activity'
               variant='outline'
               onClick={addScheduleOfRate}
+              disableForViewer
             />
           </div>
         ) : (
@@ -299,6 +301,7 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
           variant='primary'
           loading={isLoading}
           disabled={isLoading || fields.length === 0 || hasInvalidActivities}
+          disableForViewer
         />
       </div>
     </div>

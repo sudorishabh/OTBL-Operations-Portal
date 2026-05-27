@@ -1,6 +1,8 @@
+"use client";
 import React from "react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
+import { useIsViewer } from "@/contexts/AuthContext";
 import {
   ArrowDownRight,
   ArrowLeft,
@@ -24,6 +26,12 @@ interface Props {
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
   loading?: boolean;
+  /**
+   * Disable this button for the read-only viewer role. Use on any
+   * create/edit/delete/save action so viewers see it greyed out with a
+   * "read-only" tooltip. The backend independently rejects the write.
+   */
+  disableForViewer?: boolean;
 }
 
 const Btn = ({
@@ -36,7 +44,12 @@ const Btn = ({
   type = "button",
   disabled = false,
   loading = false,
+  disableForViewer = false,
 }: Props) => {
+  const isViewer = useIsViewer();
+  const blockedForViewer = disableForViewer && isViewer && variant !== "arrow";
+  const isDisabled = disabled || loading || blockedForViewer;
+
   let variantStyle = "";
   let variantIconStyle = "";
 
@@ -86,16 +99,33 @@ const Btn = ({
             <ArrowDownRight className='h-4 w-4 text-emerald-700 group-hover:text-white' />
           ) : null}
         </div>
+      ) : blockedForViewer ? (
+        <span
+          title='Read-only access — viewers cannot make changes'
+          className='inline-block cursor-not-allowed'>
+          <Button
+            type={type}
+            className={cn(variantStyle, "cursor-not-allowed", className)}
+            disabled>
+            {Icon && (
+              <Icon
+                className={variantIconStyle}
+                size={16}
+              />
+            )}
+            {text}
+          </Button>
+        </span>
       ) : (
         <Button
           type={type}
           className={cn(
             variantStyle,
-            disabled || loading ? "cursor-not-allowed" : "",
+            isDisabled ? "cursor-not-allowed" : "",
             className,
           )}
           onClick={onClick}
-          disabled={disabled || loading}>
+          disabled={isDisabled}>
           {loading && <Loader className='animate-spin' />}
           {Icon && !loading && (
             <Icon
