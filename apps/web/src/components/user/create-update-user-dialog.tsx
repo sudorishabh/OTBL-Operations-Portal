@@ -125,7 +125,7 @@ const CreateUpdateUserDialog = () => {
           name: userQuery.name ?? "",
           email: userQuery.email ?? "",
           contact_number: userQuery.contact_number ?? "",
-          role: userQuery.role as "manager" | "operator",
+          role: userQuery.role as "manager" | "operator" | "viewer",
           password: "",
         });
       } else if (isAddMode) {
@@ -354,6 +354,7 @@ const CreateUpdateUserDialog = () => {
               selectOptions={[
                 { label: "Manager", value: "manager" },
                 { label: "Operator", value: "operator" },
+                { label: "Viewer", value: "viewer" },
               ]}
               placeholder='Select role'
             />

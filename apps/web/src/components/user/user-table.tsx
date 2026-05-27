@@ -142,6 +142,8 @@ const UserTable = () => {
         return "destructive";
       case "manager":
         return "default";
+      case "viewer":
+        return "secondary";
       default:
         return "outline";
     }

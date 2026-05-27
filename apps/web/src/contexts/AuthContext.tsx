@@ -41,9 +41,10 @@ export const useHasRole = (requiredRole: string): boolean => {
   if (!user) return false;
 
   const roleHierarchy: Record<string, number> = {
-    admin: 3,
-    manager: 2,
-    operator: 1,
+    admin: 4,
+    manager: 3,
+    operator: 2,
+    viewer: 1,
   };
 
   const userLevel = roleHierarchy[user.role] || 0;
@@ -70,4 +71,13 @@ export const useIsAdmin = (): boolean => useHasRole("admin");
  * Hook to check if user is manager or higher
  */
 export const useIsManager = (): boolean => useHasRole("manager");
+
+/**
+ * Hook to check if the current user is a viewer (read-only role).
+ * Use this to disable create/edit/delete actions in the UI.
+ */
+export const useIsViewer = (): boolean => {
+  const { user } = useAuthContext();
+  return user?.role === "viewer";
+};
 
