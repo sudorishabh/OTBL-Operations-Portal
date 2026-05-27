@@ -14,8 +14,8 @@ const {
   proposalTable,
 } = schema;
 
-/** Unrestricted data access (no office filter). Managers/operators must be in `office_users` to see office-scoped data; they are not listed here so unassigned managers do not see all offices. */
-const FULL_ACCESS_ROLES: UserRole[] = [USER_ROLES.ADMIN];
+/** Unrestricted data access (no office filter). Managers/operators must be in `office_users` to see office-scoped data; they are not listed here so unassigned managers do not see all offices. Viewer is read-only but sees everything (writes are blocked separately by middleware). */
+const FULL_ACCESS_ROLES: UserRole[] = [USER_ROLES.ADMIN, USER_ROLES.VIEWER];
 
 /** How the dashboard should present: full nav, office-scoped nav, WO-site upload only, or no nav. */
 export type DashboardUi =
@@ -55,7 +55,7 @@ export async function getAccessScope(
   userId: number,
   globalRole: UserRole,
 ): Promise<AccessScope> {
-  if (globalRole === USER_ROLES.ADMIN) {
+  if (globalRole === USER_ROLES.ADMIN || globalRole === USER_ROLES.VIEWER) {
     return { kind: "full" };
   }
 
