@@ -118,6 +118,34 @@ export const hasAnyRole = (allowedRoles: UserRole[]) => {
 };
 
 /**
+ * Read-only enforcement for the viewer role.
+ *
+ * Viewers may read everything but must never write. Mutations are gated
+ * inconsistently across routers (admin / manager / protected / public), so
+ * instead of relying on the role hierarchy we deny every mutation centrally
+ * here. This middleware is attached to `publicProcedure`, so all procedures
+ * inherit it. Auth mutations (login / logout / refresh) are exempt so a
+ * viewer can still sign in and out.
+ */
+export const denyViewerWrites = t.middleware(({ ctx, type, path, next }) => {
+  if (
+    type === "mutation" &&
+    ctx.user?.role === USER_ROLES.VIEWER &&
+    !path.startsWith("authMutation.")
+  ) {
+    throw appErrorToTRPCError(
+      createInsufficientPermissionsError("a role with write access", {
+        userMessage:
+          "Viewers have read-only access and cannot make changes.",
+        devMessage: `Viewer role attempted mutation "${path}"`,
+      }),
+    );
+  }
+
+  return next();
+});
+
+/**
  * Preset role middlewares for common use cases
  */
 export const isAdmin = hasRole(USER_ROLES.ADMIN);

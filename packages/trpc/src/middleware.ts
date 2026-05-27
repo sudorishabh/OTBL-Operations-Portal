@@ -9,6 +9,7 @@ import {
   isManager,
   isOperator,
   isAdminOrManager,
+  denyViewerWrites,
   USER_ROLES,
   type UserRole,
 } from "./authorization";
@@ -48,7 +49,8 @@ const errorHandlingMiddleware = t.middleware(async ({ next }) => {
  */
 export const publicProcedure = t.procedure
   .use(loggingMiddleware)
-  .use(errorHandlingMiddleware);
+  .use(errorHandlingMiddleware)
+  .use(denyViewerWrites);
 
 /**
  * Protected procedure - requires authentication
