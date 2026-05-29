@@ -381,6 +381,7 @@ const OfficeDetailsDialog = () => {
                     )}
                     {canManageMembers && (
                       <SiteOperatorsSection
+                        officeId={Number(officeId)}
                         siteId={site.id}
                         siteUsers={site.users ?? []}
                       />

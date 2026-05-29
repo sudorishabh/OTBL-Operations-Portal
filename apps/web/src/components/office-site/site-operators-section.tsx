@@ -1,34 +1,42 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import Input from "@/components/shared/input";
 import CustomButton from "@/components/shared/btn";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Mail, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { capitalizeEachWord, constants } from "@pkg/utils";
+import { capitalizeEachWord } from "@pkg/utils";
 import toast from "react-hot-toast";
 import { useApiError } from "@/hooks/useApiError";
-
-const { ROLES } = constants;
 
 type SiteUserRow = {
   user_id?: number | null;
   email?: string | null;
 };
 
+/** Office operator as returned by getOfficeUsers.operators. Declared locally
+ * because the deep tRPC router inference can widen this query's output. */
+type OfficeOperator = {
+  id: number;
+  name: string | null;
+  email: string | null;
+};
+
 type Props = {
+  officeId: number;
   siteId: number;
   siteUsers: SiteUserRow[];
 };
 
-const SiteOperatorsSection: React.FC<Props> = ({ siteId, siteUsers }) => {
+const SiteOperatorsSection: React.FC<Props> = ({
+  officeId,
+  siteId,
+  siteUsers,
+}) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [accumulated, setAccumulated] = useState<any[]>([]);
-  const itemsPerPage = 50;
 
   const utils = trpc.useUtils();
   const { handleError } = useApiError();
@@ -42,39 +50,23 @@ const SiteOperatorsSection: React.FC<Props> = ({ siteId, siteUsers }) => {
     onError: (e: unknown) => handleError(e, { showToast: true }),
   });
 
-  const { data: operatorsData, isLoading } =
-    trpc.userQuery.getUsersByRole.useQuery(
-      {
-        role: ROLES.OPERATOR,
-        page,
-        limit: itemsPerPage,
-        search,
-      },
-      { enabled: open },
+  // Only this site's office operators are assignable — not every operator in
+  // the system.
+  const { data: officeUsers, isLoading } =
+    trpc.officeQuery.getOfficeUsers.useQuery(
+      { office_id: officeId },
+      { enabled: open && officeId > 0 },
     );
 
-  useEffect(() => {
-    setPage(1);
-    setAccumulated([]);
-  }, [search]);
-
-  useEffect(() => {
-    if (!operatorsData?.users) return;
-    if (page === 1) {
-      setAccumulated(operatorsData.users);
-    } else {
-      setAccumulated((prev) => {
-        const ids = new Set(prev.map((u: { id: number }) => u.id));
-        const next = operatorsData.users.filter(
-          (u: { id: number }) => !ids.has(u.id),
-        );
-        return [...prev, ...next];
-      });
-    }
-  }, [operatorsData?.users, page]);
-
-  const operators = accumulated;
-  const hasMore = operatorsData?.pagination?.hasMore ?? false;
+  const allOperators = (officeUsers?.operators ?? []) as OfficeOperator[];
+  const q = search.trim().toLowerCase();
+  const operators = q
+    ? allOperators.filter(
+        (u) =>
+          (u.name ?? "").toLowerCase().includes(q) ||
+          (u.email ?? "").toLowerCase().includes(q),
+      )
+    : allOperators;
 
   const assignedIds = new Set(
     siteUsers
@@ -102,16 +94,13 @@ const SiteOperatorsSection: React.FC<Props> = ({ siteId, siteUsers }) => {
             mode='standalone'
             placeholder='Search operators...'
             value={search}
-            onChange={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
+            onChange={(value) => setSearch(value)}
             inputIcon={Search}
             className='max-w-md'
           />
           <ScrollArea className='h-48 pr-2'>
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
-              {operators.map((user: any) => {
+              {operators.map((user) => {
                 const onSite = assignedIds.has(user.id);
                 return (
                   <div
@@ -122,11 +111,13 @@ const SiteOperatorsSection: React.FC<Props> = ({ siteId, siteUsers }) => {
                     )}>
                     <div className='flex items-center gap-2 min-w-0'>
                       <div className='h-8 w-8 shrink-0 rounded-full bg-[#035864]/10 text-[#035864] flex items-center justify-center font-semibold'>
-                        {String(user.name).slice(0, 2).toUpperCase()}
+                        {String(user.name ?? "?")
+                          .slice(0, 2)
+                          .toUpperCase()}
                       </div>
                       <div className='min-w-0'>
                         <p className='font-medium truncate'>
-                          {capitalizeEachWord(user.name)}
+                          {capitalizeEachWord(user.name ?? "Unknown")}
                         </p>
                         <p className='text-muted-foreground flex items-center gap-1 truncate'>
                           <Mail className='h-3 w-3 shrink-0' />
@@ -151,21 +142,20 @@ const SiteOperatorsSection: React.FC<Props> = ({ siteId, siteUsers }) => {
                   </div>
                 );
               })}
-              {!isLoading && operators.length === 0 && (
+              {!isLoading && allOperators.length === 0 && (
                 <p className='col-span-full text-center text-xs text-muted-foreground py-6'>
-                  No operators match your search
+                  No operators in this office yet
                 </p>
               )}
+              {!isLoading &&
+                allOperators.length > 0 &&
+                operators.length === 0 && (
+                  <p className='col-span-full text-center text-xs text-muted-foreground py-6'>
+                    No operators match your search
+                  </p>
+                )}
             </div>
           </ScrollArea>
-          {hasMore && (
-            <button
-              type='button'
-              onClick={() => setPage((p) => p + 1)}
-              className='w-full py-2 text-xs text-slate-500 hover:text-[#035864] border border-dashed rounded-md'>
-              Load more...
-            </button>
-          )}
         </div>
       )}
     </div>
