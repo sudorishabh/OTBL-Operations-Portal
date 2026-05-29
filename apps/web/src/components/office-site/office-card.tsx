@@ -109,7 +109,7 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
   };
 
   return (
-    <div className='bg-white rounded-xl hover:border-emerald-400 border border-gray-50 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden p-3 sm:p-4'>
+    <div className='bg-white rounded-xl hover:border-emerald-400 border border-gray-50 shadow-sm hover:shadow-lg transition-all duration-300 p-3 sm:p-4'>
       <div className='flex flex-col gap-3 pb-2 mb-2 lg:flex-row lg:items-start lg:justify-between'>
         <div className='min-w-0'>
           <div>
