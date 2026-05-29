@@ -7,6 +7,7 @@ import useHandleParams from "@/hooks/useHandleParams";
 import SiteDetailsCard from "./site-details-card";
 import SiteActivities from "./site-activities";
 import SiteExpensesSection from "./site-expenses-section";
+import WoSiteOperatorsSection from "./wo-site-operators-section";
 import { TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -163,6 +164,8 @@ const SiteDetailDialog = () => {
             setParam("site-dialog", "operator-uploads")
           }
         />
+
+        {woSiteId > 0 && <WoSiteOperatorsSection woSiteId={woSiteId} />}
 
         <Tabs defaultValue='estimate'>
           <TabsList className='w-full grid grid-cols-3 h-9'>
