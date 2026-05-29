@@ -66,6 +66,11 @@ export async function getAccessScope(
 
   const officeIds = [...new Set(officeRows.map((r) => r.office_id))];
 
+  // Upload access is granted per work-order-site via workOrderSiteUserTable.
+  // A WO-site row belongs to exactly one work order, so this scopes the
+  // operator to the specific work-order-site(s) they were assigned to — not to
+  // every WO-site that happens to reuse the same master site across unrelated
+  // work orders.
   const directWoSiteRows = await db
     .select({
       wosId: workOrderSiteTable.id,
@@ -81,32 +86,20 @@ export async function getAccessScope(
     )
     .where(eq(workOrderSiteUserTable.user_id, userId));
 
-  // Operators assigned to a master site (siteUserTable) inherit upload access
-  // to every WO-site at that site. This is the primary assignment path today;
-  // direct WO-site assignment (workOrderSiteUserTable) is the older mechanism.
+  // Master-site assignment (siteUserTable) no longer auto-grants upload access
+  // to every WO-site at that site — that over-granted across unrelated work
+  // orders. It now only marks the operator as eligible to be assigned to a
+  // specific WO-site (see setWorkOrderSiteOperators) and acts as the
+  // empty-dashboard fallback below.
   const siteAssignmentRows = await db
     .select({ siteId: siteUserTable.site_id })
     .from(siteUserTable)
     .where(eq(siteUserTable.user_id, userId));
 
-  const assignedSiteIds = [
-    ...new Set(siteAssignmentRows.map((r) => r.siteId)),
-  ];
-  const hasSiteAssignment = assignedSiteIds.length > 0;
-
-  let derivedWoSiteRows: { wosId: number; woId: number }[] = [];
-  if (assignedSiteIds.length > 0) {
-    derivedWoSiteRows = await db
-      .select({
-        wosId: workOrderSiteTable.id,
-        woId: workOrderSiteTable.work_order_id,
-      })
-      .from(workOrderSiteTable)
-      .where(inArray(workOrderSiteTable.site_id, assignedSiteIds));
-  }
+  const hasSiteAssignment = siteAssignmentRows.length > 0;
 
   const mergedWoSites = new Map<number, number>();
-  for (const r of [...directWoSiteRows, ...derivedWoSiteRows]) {
+  for (const r of directWoSiteRows) {
     mergedWoSites.set(r.wosId, r.woId);
   }
   const workOrderSiteIds = [...mergedWoSites.keys()];
