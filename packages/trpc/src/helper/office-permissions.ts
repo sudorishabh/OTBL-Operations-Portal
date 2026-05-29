@@ -5,6 +5,7 @@ import { USER_ROLES } from "../authorization";
 import {
   appErrorToTRPCError,
   createInsufficientPermissionsError,
+  createUnauthorizedError,
 } from "../errors";
 
 const { officeUserTable } = schema;
@@ -62,8 +63,23 @@ export async function isOfficeManager(
 
 type PermissionCtx = {
   db: Database;
-  user: { sub: string; role: string };
+  // `user` is typed as nullable on the mutation handler context even inside
+  // protected procedures, so resolve and assert it here rather than relying
+  // on a non-null assertion at every call site.
+  user?: { sub: string; role: string } | null;
 };
+
+/** Narrow the possibly-null context user, throwing UNAUTHORIZED if absent. */
+function requireUser(ctx: PermissionCtx): { sub: string; role: string } {
+  if (!ctx.user?.sub) {
+    throw appErrorToTRPCError(
+      createUnauthorizedError("You must be logged in to perform this action.", {
+        devMessage: "office-permissions guard reached without an authenticated user",
+      }),
+    );
+  }
+  return ctx.user;
+}
 
 /**
  * Guard: caller must be a global admin OR a member (manager/operator) of the
@@ -74,14 +90,15 @@ export async function assertOfficeMember(
   ctx: PermissionCtx,
   officeId: number,
 ): Promise<OfficeRole | "admin"> {
-  if (ctx.user.role === USER_ROLES.ADMIN) return "admin";
+  const user = requireUser(ctx);
+  if (user.role === USER_ROLES.ADMIN) return "admin";
 
-  const role = await getOfficeRole(ctx.db, parseInt(ctx.user.sub), officeId);
+  const role = await getOfficeRole(ctx.db, parseInt(user.sub), officeId);
   if (!role) {
     throw appErrorToTRPCError(
       createInsufficientPermissionsError("a member of this office", {
         userMessage: "You don't have access to this office.",
-        devMessage: `User ${ctx.user.sub} is not a member of office ${officeId}`,
+        devMessage: `User ${user.sub} is not a member of office ${officeId}`,
       }),
     );
   }
@@ -98,15 +115,16 @@ export async function assertOfficeManager(
   ctx: PermissionCtx,
   officeId: number,
 ): Promise<void> {
-  if (ctx.user.role === USER_ROLES.ADMIN) return;
+  const user = requireUser(ctx);
+  if (user.role === USER_ROLES.ADMIN) return;
 
-  const role = await getOfficeRole(ctx.db, parseInt(ctx.user.sub), officeId);
+  const role = await getOfficeRole(ctx.db, parseInt(user.sub), officeId);
   if (role !== "manager") {
     throw appErrorToTRPCError(
       createInsufficientPermissionsError("the manager of this office", {
         userMessage:
           "Only this office's manager can approve or change this status.",
-        devMessage: `User ${ctx.user.sub} has office role "${role ?? "none"}" for office ${officeId}; manager required`,
+        devMessage: `User ${user.sub} has office role "${role ?? "none"}" for office ${officeId}; manager required`,
       }),
     );
   }

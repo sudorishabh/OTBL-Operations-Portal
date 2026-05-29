@@ -1,5 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { schema } from "@pkg/db";
+import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../middleware";
 import { workOrderSchemas } from "@pkg/schema";
@@ -10,6 +11,7 @@ import {
   alreadyExists,
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { assertOfficeMember } from "../../helper/office-permissions";
 
 const {
   workOrderTable,
@@ -54,6 +56,10 @@ export const workOrderMutationRouter = router({
         const proposal = existingProposal[0]!;
         const officeId = proposal.office_id;
 
+        // Drafting a work order is an office-staff action: caller must belong
+        // to the office (manager or operator). Activation is manager-only.
+        await assertOfficeMember(ctx, officeId);
+
         // Build work order data object
         const workOrderData = {
           code: input.code,
@@ -69,6 +75,8 @@ export const workOrderMutationRouter = router({
           document_key: input.document_key,
           process_type: input.process_type,
           description: input.description || null,
+          // Force draft state; activation is a separate manager-only step.
+          status: constants.WORK_ORDER_STATUS.PENDING,
           created_by: parseInt(ctx.user!.sub),
         };
 

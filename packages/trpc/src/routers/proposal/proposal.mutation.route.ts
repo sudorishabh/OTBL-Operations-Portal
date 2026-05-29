@@ -1,18 +1,26 @@
 import { eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
+import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
-import { managerProcedure } from "../../middleware";
+import { protectedProcedure } from "../../middleware";
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { assertOfficeMember } from "../../helper/office-permissions";
 import { proposalSchemas } from "@pkg/schema";
 
 const { proposalTable, clientTable, officeTable } = schema;
 
 export const proposalMutationRouter = router({
-  createProposal: managerProcedure
+  // Drafting a proposal is an office-staff action: any member (manager or
+  // operator) of the target office may create one. It is forced into the
+  // `pending` state — only the office manager can approve it later.
+  createProposal: protectedProcedure
     .input(proposalSchemas.createProposalSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
+        // Caller must belong to the office this proposal is filed under
+        await assertOfficeMember(ctx, input.office_id);
+
         // Verify client exists
         const client = await ctx.db
           .select()
@@ -40,6 +48,9 @@ export const proposalMutationRouter = router({
         try {
           const result = await ctx.db.insert(proposalTable).values({
             ...input,
+            // Force draft state regardless of payload; approval is a
+            // separate, manager-only transition.
+            status: constants.PROPOSAL_STATUS.PENDING,
           });
 
           return {
