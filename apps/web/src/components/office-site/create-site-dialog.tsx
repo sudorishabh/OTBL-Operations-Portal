@@ -83,13 +83,17 @@ const CreateSiteDialog = () => {
     );
 
   useEffect(() => {
+    // Re-sync when the dialog (re)opens too: on reopen React Query serves the
+    // cached operators with the same reference, so depending on `operatorsData`
+    // alone would not re-fire and `allOperators` (cleared on close) stays empty.
+    if (!isCreateMode) return;
     if (!operatorsData?.users) return;
     if (operatorPage === 1) {
       setAllOperators(operatorsData.users);
     } else {
       setAllOperators((prev) => [...prev, ...operatorsData.users]);
     }
-  }, [operatorsData]);
+  }, [operatorsData, isCreateMode]);
 
   const hasMoreOperators = operatorsData?.pagination?.hasMore || false;
 
