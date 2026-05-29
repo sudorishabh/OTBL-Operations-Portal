@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { router } from "../../trpc";
 import { protectedProcedure, isAdmin } from "../../middleware";
 import { sharepointSchemas } from "@pkg/schema";
@@ -155,5 +156,44 @@ export const sharePointQueryRouter = router({
           cause: error,
         });
       }
+    }),
+
+  /**
+   * Resolve temporary, pre-authenticated direct download URLs for a set of
+   * drive-item ids. Used to render image thumbnails — the stored document_url
+   * is a SharePoint sharing/viewer page, which cannot be used as an <img>
+   * source. Best-effort: failed/missing items are omitted, and an unconfigured
+   * tenant yields an empty list, so callers degrade gracefully (no thumbnails)
+   * instead of erroring.
+   */
+  getDownloadUrls: protectedProcedure
+    .input(z.object({ fileIds: z.array(z.string().min(1)).max(100) }))
+    .query(async ({ input, ctx }) => {
+      const empty: { id: string; url: string; mimeType: string }[] = [];
+      if (input.fileIds.length === 0 || !isSharePointConfigured(ctx.appEnv)) {
+        return { urls: empty };
+      }
+
+      const config = getSharePointConfig(ctx.appEnv);
+      const service = createSharePointService(config);
+
+      const uniqueIds = [...new Set(input.fileIds)];
+      const settled = await Promise.allSettled(
+        uniqueIds.map((id) => service.getFileDownloadUrl(id)),
+      );
+
+      const urls = settled.flatMap((res, i) =>
+        res.status === "fulfilled"
+          ? [
+              {
+                id: uniqueIds[i]!,
+                url: res.value.downloadUrl,
+                mimeType: res.value.mimeType,
+              },
+            ]
+          : [],
+      );
+
+      return { urls };
     }),
 });
