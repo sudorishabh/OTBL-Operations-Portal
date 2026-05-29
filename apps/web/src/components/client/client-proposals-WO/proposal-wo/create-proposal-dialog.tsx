@@ -8,9 +8,11 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import CustomInput from "@/components/shared/input";
+import OfficeSelect from "@/components/shared/office-select";
 import CustomButton from "@/components/shared/btn";
 import { trpc } from "@/lib/trpc";
 import CustomForm from "@/components/shared/form";
@@ -208,10 +210,6 @@ const CreateProposalDialog = ({ clientId }: Props) => {
   }
 
   const offices = officesData?.offices ?? [];
-  const officesOptions = offices.map((office: any) => ({
-    label: office.name,
-    value: office.id.toString(),
-  }));
   const isSubmitting =
     form.formState.isSubmitting || addProposal.isPending || isUploading;
 
@@ -232,17 +230,25 @@ const CreateProposalDialog = ({ clientId }: Props) => {
               placeholder='Enter code'
             />
 
-            <CustomInput
+            <FormField
               control={form.control}
-              fieldName='office_id'
-              Label='Office'
-              isSelect={true}
-              selectOptions={officesOptions}
-              disabled={isLoadingOffices}
-              placeholder={
-                isLoadingOffices ? "Loading offices..." : "Select an office"
-              }
-              parseValue={(val) => Number(val)}
+              name='office_id'
+              render={({ field }) => (
+                <FormItem className='space-y-1'>
+                  <FormLabel className='text-xs font-medium text-neutral-700'>
+                    Office
+                  </FormLabel>
+                  <FormControl>
+                    <OfficeSelect
+                      offices={offices}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isLoading={isLoadingOffices}
+                    />
+                  </FormControl>
+                  <FormMessage className='text-xs' />
+                </FormItem>
+              )}
             />
           </div>
 
