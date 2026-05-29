@@ -38,6 +38,9 @@ interface Props {
     updated_at: string;
     office_id: number;
     office_name: string | null;
+    /** Manager approval gate — true once the office manager has approved. */
+    is_approved?: boolean;
+    approved_by_name?: string | null;
   };
   stats: {
     totalSites: number;
@@ -181,6 +184,22 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
               </div>
             </div>
             <div className='flex flex-wrap items-center gap-2'>
+              {workOrder.status !== "cancelled" &&
+                (workOrder.is_approved ? (
+                  <Badge
+                    className='bg-emerald-100 text-emerald-800 border-emerald-200 border'
+                    title={
+                      workOrder.approved_by_name
+                        ? `Approved by ${workOrder.approved_by_name}`
+                        : "Approved"
+                    }>
+                    Approved
+                  </Badge>
+                ) : (
+                  <Badge className='bg-amber-100 text-amber-800 border-amber-200 border'>
+                    Draft · awaiting approval
+                  </Badge>
+                ))}
               <Badge className={`${getStatusColor(workOrder.status)} border`}>
                 {workOrder.status.charAt(0).toUpperCase() +
                   workOrder.status.slice(1)}

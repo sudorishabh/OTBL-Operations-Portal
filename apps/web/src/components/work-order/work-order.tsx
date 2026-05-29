@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter, getEffectiveWorkOrderStatus } from "@pkg/utils";
 import { useRouter } from "next/navigation";
 import WorkOrderDetailsCard from "./work-order-details-card";
+import WorkOrderApprovalActions from "./work-order-approval-actions";
 import { File, FolderOpen, Plus, ReceiptIndianRupee, Rows3 } from "lucide-react";
 import ScheduleOfRatesTable from "./schedule-of-rates-table";
 import CreateWorkOrderSiteDialog from "./create-wo-site/create-wo-site-dialog";
@@ -252,6 +253,16 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
         }
       }}>
       <div className='mt-4 space-y-4'>
+        {workOrderData.canManage && (
+          <div className='flex justify-end'>
+            <WorkOrderApprovalActions
+              workOrderId={Number(workOrderId)}
+              status={derivedWorkOrder.status}
+              isApproved={!!derivedWorkOrder.is_approved}
+              canManage={workOrderData.canManage}
+            />
+          </div>
+        )}
         <WorkOrderDetailsCard
           workOrder={derivedWorkOrder}
           stats={statsForComponent}

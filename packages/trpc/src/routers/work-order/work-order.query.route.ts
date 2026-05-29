@@ -22,6 +22,8 @@ const {
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { getOfficeRole } from "../../helper/office-permissions";
+import { USER_ROLES } from "../../authorization";
 import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
 
@@ -642,6 +644,8 @@ export const workOrderQueryRouter = router({
             proposal_id: workOrderTable.proposal_id,
             status: workOrderTable.status,
             cancellation_reason: workOrderTable.cancellation_reason,
+            approved_at: workOrderTable.approved_at,
+            approved_by: workOrderTable.approved_by,
             created_at: workOrderTable.created_at,
             updated_at: workOrderTable.updated_at,
           })
@@ -658,7 +662,30 @@ export const workOrderQueryRouter = router({
           });
         }
 
-        const workOrder = workOrders[0];
+        // Non-null: the length === 0 check above already throws notFound.
+        const workOrder = workOrders[0]!;
+
+        // Per-office manager capability: only an admin or the manager of this
+        // work order's office may approve/cancel it. The client uses this flag
+        // to show the approval controls; the mutations enforce it server-side.
+        const officeRole = await getOfficeRole(
+          ctx.db,
+          Number(ctx.user!.sub),
+          workOrder.office_id,
+        );
+        const canManage =
+          ctx.user!.role === USER_ROLES.ADMIN || officeRole === "manager";
+
+        // Resolve the approver's name when the gate is set.
+        let approvedByName: string | null = null;
+        if (workOrder.approved_by) {
+          const [approver] = await ctx.db
+            .select({ name: userTable.name })
+            .from(userTable)
+            .where(eq(userTable.id, workOrder.approved_by))
+            .limit(1);
+          approvedByName = approver?.name ?? null;
+        }
 
         const woSites = await ctx.db
           .select({
@@ -934,7 +961,12 @@ export const workOrderQueryRouter = router({
           .where(eq(scheduleOfRatesTable.work_order_id, id));
 
         return {
-          workOrder,
+          workOrder: {
+            ...workOrder,
+            approved_by_name: approvedByName,
+            is_approved: workOrder.approved_at != null,
+          },
+          canManage,
           sites: sitesWithDetails,
           scheduleOfRates,
           stats: {
