@@ -8,6 +8,13 @@
       "when": 1779774663005,
       "tag": "0000_aromatic_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1780037561755,
+      "tag": "0001_mighty_the_twelve",
+      "breakpoints": true
     }
   ]
 }

@@ -3,9 +3,12 @@ import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../middleware";
-import { notFound, fromDatabaseError } from "../../errors";
+import { notFound, fromDatabaseError, businessRule } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
-import { assertOfficeMember } from "../../helper/office-permissions";
+import {
+  assertOfficeMember,
+  assertOfficeManager,
+} from "../../helper/office-permissions";
 import { proposalSchemas } from "@pkg/schema";
 
 const { proposalTable, clientTable, officeTable } = schema;
@@ -59,6 +62,77 @@ export const proposalMutationRouter = router({
           };
         } catch (error) {
           throw fromDatabaseError(error, "Creating proposal");
+        }
+      }),
+    ),
+
+  // Manager-only: approve a drafted (pending) proposal.
+  approveProposal: protectedProcedure
+    .input(proposalSchemas.approveProposalSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const [proposal] = await ctx.db
+          .select()
+          .from(proposalTable)
+          .where(eq(proposalTable.id, input.proposal_id));
+
+        if (!proposal) {
+          throw notFound("Proposal", input.proposal_id);
+        }
+
+        // Only this proposal's office manager (or an admin) may approve it.
+        await assertOfficeManager(ctx, proposal.office_id);
+
+        if (proposal.status !== constants.PROPOSAL_STATUS.PENDING) {
+          throw businessRule(
+            `Only pending proposals can be approved (current status: ${proposal.status}).`,
+          );
+        }
+
+        try {
+          await ctx.db
+            .update(proposalTable)
+            .set({ status: constants.PROPOSAL_STATUS.APPROVED })
+            .where(eq(proposalTable.id, input.proposal_id));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Approving proposal");
+        }
+      }),
+    ),
+
+  // Manager-only: reject a drafted (pending) proposal.
+  rejectProposal: protectedProcedure
+    .input(proposalSchemas.rejectProposalSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const [proposal] = await ctx.db
+          .select()
+          .from(proposalTable)
+          .where(eq(proposalTable.id, input.proposal_id));
+
+        if (!proposal) {
+          throw notFound("Proposal", input.proposal_id);
+        }
+
+        await assertOfficeManager(ctx, proposal.office_id);
+
+        if (proposal.status !== constants.PROPOSAL_STATUS.PENDING) {
+          throw businessRule(
+            `Only pending proposals can be rejected (current status: ${proposal.status}).`,
+          );
+        }
+
+        try {
+          await ctx.db
+            .update(proposalTable)
+            .set({ status: constants.PROPOSAL_STATUS.REJECTED })
+            .where(eq(proposalTable.id, input.proposal_id));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Rejecting proposal");
         }
       }),
     ),

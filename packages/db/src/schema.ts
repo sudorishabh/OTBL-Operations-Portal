@@ -200,6 +200,13 @@ export const workOrderTable = mysqlTable(
       .notNull()
       .default(WORK_ORDER_STATUS.PENDING),
     cancellation_reason: text("cancellation_reason"),
+    // Manager approval gate. A work order is a draft while approved_at IS NULL
+    // and goes live once the office manager approves it. Kept separate from
+    // `status` so the pending/completed/cancelled lifecycle is untouched.
+    approved_at: timestamp("approved_at"),
+    approved_by: int("approved_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
     created_by: int("created_by").references(() => userTable.id, {
       onDelete: "set null",
     }),
@@ -211,6 +218,7 @@ export const workOrderTable = mysqlTable(
     index("wo_office_idx").on(table.office_id),
     index("wo_status_idx").on(table.status),
     index("wo_dates_idx").on(table.start_date, table.end_date),
+    index("wo_approved_at_idx").on(table.approved_at),
   ],
 );
 

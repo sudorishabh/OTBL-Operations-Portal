@@ -32,6 +32,15 @@ export const updateProposalSchema = createProposalSchema.extend({
   proposal_id: positiveIntValidator,
 });
 
+// Manager-only decision schemas (approve / reject a drafted proposal)
+export const approveProposalSchema = z.object({
+  proposal_id: positiveIntValidator,
+});
+
+export const rejectProposalSchema = z.object({
+  proposal_id: positiveIntValidator,
+});
+
 // Query Schemas
 
 export const getProposalsByClientSchema = z.object({

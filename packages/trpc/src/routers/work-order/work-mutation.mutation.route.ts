@@ -9,9 +9,13 @@ import {
   validationError,
   fromDatabaseError,
   alreadyExists,
+  businessRule,
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
-import { assertOfficeMember } from "../../helper/office-permissions";
+import {
+  assertOfficeMember,
+  assertOfficeManager,
+} from "../../helper/office-permissions";
 
 const {
   workOrderTable,
@@ -139,6 +143,84 @@ export const workOrderMutationRouter = router({
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Deleting work order");
+        }
+      }),
+    ),
+
+  // Manager-only: approve a drafted work order, flipping the approval gate so
+  // it goes live. Leaves the pending/completed/cancelled status untouched.
+  approveWorkOrder: protectedProcedure
+    .input(workOrderSchemas.approveWorkOrderSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const [workOrder] = await ctx.db
+          .select()
+          .from(workOrderTable)
+          .where(eq(workOrderTable.id, input.id));
+
+        if (!workOrder) {
+          throw notFound("Work order", input.id);
+        }
+
+        // Only this work order's office manager (or an admin) may approve it.
+        await assertOfficeManager(ctx, workOrder.office_id);
+
+        if (workOrder.status === constants.WORK_ORDER_STATUS.CANCELLED) {
+          throw businessRule("A cancelled work order cannot be approved.");
+        }
+
+        if (workOrder.approved_at) {
+          throw businessRule("This work order is already approved.");
+        }
+
+        try {
+          await ctx.db
+            .update(workOrderTable)
+            .set({
+              approved_at: new Date(),
+              approved_by: parseInt(ctx.user!.sub),
+            })
+            .where(eq(workOrderTable.id, input.id));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Approving work order");
+        }
+      }),
+    ),
+
+  // Manager-only: cancel a work order with a required reason.
+  cancelWorkOrder: protectedProcedure
+    .input(workOrderSchemas.cancelWorkOrderSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const [workOrder] = await ctx.db
+          .select()
+          .from(workOrderTable)
+          .where(eq(workOrderTable.id, input.id));
+
+        if (!workOrder) {
+          throw notFound("Work order", input.id);
+        }
+
+        await assertOfficeManager(ctx, workOrder.office_id);
+
+        if (workOrder.status === constants.WORK_ORDER_STATUS.CANCELLED) {
+          throw businessRule("This work order is already cancelled.");
+        }
+
+        try {
+          await ctx.db
+            .update(workOrderTable)
+            .set({
+              status: constants.WORK_ORDER_STATUS.CANCELLED,
+              cancellation_reason: input.cancellation_reason,
+            })
+            .where(eq(workOrderTable.id, input.id));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Cancelling work order");
         }
       }),
     ),

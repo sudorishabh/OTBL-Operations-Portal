@@ -109,6 +109,21 @@ export const updateWorkOrderSchema = baseWorkOrderSchema
     },
   );
 
+// Manager-only approval gate: marks a drafted work order as live.
+export const approveWorkOrderSchema = z.object({
+  id: positiveIntValidator,
+});
+
+// Manager-only cancellation: requires a reason.
+export const cancelWorkOrderSchema = z.object({
+  id: positiveIntValidator,
+  cancellation_reason: z
+    .string({ message: "A cancellation reason is required" })
+    .trim()
+    .min(1, "A cancellation reason is required")
+    .max(1000, "Cancellation reason cannot exceed 1000 characters"),
+});
+
 // Schema for deleting a work order
 export const deleteWorkOrderSchema = z.object({
   id: positiveIntValidator,
