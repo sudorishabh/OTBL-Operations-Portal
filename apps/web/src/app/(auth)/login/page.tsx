@@ -19,7 +19,7 @@ const LoginPage = () => {
         <div className='text-center space-y-3'>
           <div className='inline-flex items-center'>
             <Image
-              src='/otbl-new-logo.jpg'
+              src='/Otbl-logo_transparent.png'
               alt='OTBL Logo'
               width={112}
               height={64}

@@ -92,7 +92,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <header className='sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-gray-200 bg-cyan-900 px-3 md:hidden'>
             <SidebarTrigger className='text-gray-100 hover:bg-emerald-600/65 hover:text-gray-100' />
             <Image
-              src='/otbl-new-logo.jpg'
+              src='/Otbl-logo_transparent.png'
               alt='OTBL'
               width={64}
               height={32}

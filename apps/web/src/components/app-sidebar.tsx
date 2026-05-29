@@ -142,7 +142,7 @@ function AppSidebar() {
       <SidebarHeader className='p-6 bg-cyan-900'>
         <div className='flex flex-col justify-center items-center gap-2'>
           <Image
-            src='/otbl-new-logo.jpg'
+            src='/Otbl-logo_transparent.png'
             alt='OTBL Logo'
             width={112}
             height={64}
