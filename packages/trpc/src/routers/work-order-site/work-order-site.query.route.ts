@@ -7,9 +7,10 @@ import {
   assertCanAccessWorkOrderSite,
   getAccessScope,
 } from "../../access-scope";
+import { assertOfficeManager } from "../../helper/office-permissions";
 import { handleQuery } from "../../helper/typed-handler";
 import { z } from "zod";
-import { fromDatabaseError } from "../../errors";
+import { fromDatabaseError, notFound } from "../../errors";
 
 // Define schemas locally
 const getWorkOrderSiteDetailsSchema = z.object({
@@ -26,7 +27,9 @@ const getSiteDocumentsSchema = z.object({
 
 const {
   workOrderSiteTable,
+  workOrderSiteUserTable,
   siteTable,
+  siteUserTable,
   workOrderTable,
   userTable,
   siteActivityTable,
@@ -183,6 +186,106 @@ export const workOrderSiteQueryRouter = router({
       }
     }),
   ),
+
+  /**
+   * Operators assignable to a specific WO-site, each flagged whether they are
+   * currently assigned. The candidate pool is the operators on the WO-site's
+   * master site, unioned with anyone already pinned to this WO-site (so legacy
+   * direct assignments stay visible). Manager-only — this drives the manager's
+   * per-WO-site operator assignment UI.
+   */
+  getWorkOrderSiteOperatorAssignments: protectedProcedure
+    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const { work_order_site_id } = input;
+
+        // Resolve master site + owning office for the manager check. Kept
+        // outside the try below so a forbidden/not-found surfaces with the
+        // correct status instead of being wrapped as a generic DB error.
+        const [woSite] = await ctx.db
+          .select({
+            site_id: workOrderSiteTable.site_id,
+            office_id: workOrderTable.office_id,
+          })
+          .from(workOrderSiteTable)
+          .innerJoin(
+            workOrderTable,
+            eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+          )
+          .where(eq(workOrderSiteTable.id, work_order_site_id))
+          .limit(1);
+        if (!woSite) {
+          throw notFound("Work order site", work_order_site_id);
+        }
+        await assertOfficeManager(ctx, woSite.office_id);
+
+        try {
+          // Candidate pool: operators assigned to the master site.
+          const siteOperators = await ctx.db
+            .select({
+              user_id: siteUserTable.user_id,
+              name: userTable.name,
+              email: userTable.email,
+            })
+            .from(siteUserTable)
+            .innerJoin(userTable, eq(siteUserTable.user_id, userTable.id))
+            .where(eq(siteUserTable.site_id, woSite.site_id));
+
+          // Operators currently pinned to this specific WO-site.
+          const assignedRows = await ctx.db
+            .select({
+              user_id: workOrderSiteUserTable.user_id,
+              name: userTable.name,
+              email: userTable.email,
+            })
+            .from(workOrderSiteUserTable)
+            .innerJoin(
+              userTable,
+              eq(workOrderSiteUserTable.user_id, userTable.id),
+            )
+            .where(
+              eq(
+                workOrderSiteUserTable.work_order_site_id,
+                work_order_site_id,
+              ),
+            );
+          const assignedIds = new Set(assignedRows.map((r) => r.user_id));
+
+          // Union so a pinned user who is no longer on the master site stays
+          // visible and is not silently dropped on the next save.
+          const byId = new Map<
+            number,
+            {
+              user_id: number;
+              name: string | null;
+              email: string | null;
+              assigned: boolean;
+            }
+          >();
+          for (const o of siteOperators) {
+            byId.set(o.user_id, {
+              ...o,
+              assigned: assignedIds.has(o.user_id),
+            });
+          }
+          for (const a of assignedRows) {
+            if (!byId.has(a.user_id)) {
+              byId.set(a.user_id, { ...a, assigned: true });
+            }
+          }
+
+          return [...byId.values()].sort((a, b) =>
+            (a.name ?? "").localeCompare(b.name ?? ""),
+          );
+        } catch (error) {
+          throw fromDatabaseError(
+            error,
+            "Fetching work order site operator assignments",
+          );
+        }
+      }),
+    ),
 
   getOperatorUploads: protectedProcedure
     .input(

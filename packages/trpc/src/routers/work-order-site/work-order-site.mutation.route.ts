@@ -1,15 +1,16 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { TRPCError } from "@trpc/server";
 import { router } from "../../trpc";
-import { publicProcedure, protectedProcedure, operatorProcedure } from "../../core";
+import { publicProcedure, protectedProcedure } from "../../core";
 import {
   assertCanAccessWorkOrderSite,
   getAccessScope,
 } from "../../access-scope";
+import { assertOfficeManager } from "../../helper/office-permissions";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
-import { fromDatabaseError } from "../../errors";
+import { fromDatabaseError, notFound, validationError } from "../../errors";
 import { constants } from "@pkg/utils";
 import {
   getSharePointConfig,
@@ -122,8 +123,10 @@ const saveRestorationPhaseSchema = z.object({
 
 const {
   siteActivityTable,
+  workOrderTable,
   workOrderSiteTable,
   workOrderSiteUserTable,
+  siteUserTable,
   workOrderSiteOperatorUploadTable,
   workOrderSiteDocsTable,
   bioremediationContSoilTable,
@@ -141,7 +144,7 @@ export const workOrderSiteMutationRouter = router({
    * Assign operators to a work-order site row. Replaces existing assignments for that row.
    * Managers/Admins can assign; caller must be able to access the work order site (office manager / WO-site operator).
    */
-  setWorkOrderSiteOperators: operatorProcedure
+  setWorkOrderSiteOperators: protectedProcedure
     .input(
       z.object({
         work_order_site_id: z.number().positive(),
@@ -151,12 +154,56 @@ export const workOrderSiteMutationRouter = router({
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { work_order_site_id, user_ids } = input;
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
+
+        // Resolve the WO-site's master site + owning office. Assigning
+        // operators is an office-management action, so only that office's
+        // manager (or an admin) may do it — an operator assigned to the
+        // WO-site must NOT be able to reassign it. (Kept outside the try
+        // below so the permission check surfaces as 403/404, not a generic
+        // DB error.)
+        const [woSite] = await ctx.db
+          .select({
+            site_id: workOrderSiteTable.site_id,
+            office_id: workOrderTable.office_id,
+          })
+          .from(workOrderSiteTable)
+          .innerJoin(
+            workOrderTable,
+            eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+          )
+          .where(eq(workOrderSiteTable.id, work_order_site_id))
+          .limit(1);
+        if (!woSite) {
+          throw notFound("Work order site", work_order_site_id);
+        }
+        await assertOfficeManager(ctx, woSite.office_id);
+
+        // An operator may only be pinned to a WO-site if they are already an
+        // operator on that WO-site's master site. Keeps the two-tier model
+        // coherent and blocks assigning arbitrary users.
+        if (user_ids.length > 0) {
+          const siteOperators = await ctx.db
+            .select({ user_id: siteUserTable.user_id })
+            .from(siteUserTable)
+            .where(
+              and(
+                eq(siteUserTable.site_id, woSite.site_id),
+                inArray(siteUserTable.user_id, user_ids),
+              ),
+            );
+          const allowed = new Set(siteOperators.map((r) => r.user_id));
+          const invalid = user_ids.filter((id) => !allowed.has(id));
+          if (invalid.length > 0) {
+            throw validationError(
+              `Users not assigned to this site cannot be added: ${invalid.join(", ")}`,
+              undefined,
+              {
+                userMessage:
+                  "You can only assign operators who belong to this site.",
+              },
+            );
+          }
+        }
 
         try {
           await ctx.db.transaction(async (tx: any) => {
@@ -171,7 +218,7 @@ export const workOrderSiteMutationRouter = router({
 
             if (user_ids.length > 0) {
               await tx.insert(workOrderSiteUserTable).values(
-                user_ids.map((user_id ) => ({
+                user_ids.map((user_id) => ({
                   work_order_site_id,
                   user_id,
                 })),
