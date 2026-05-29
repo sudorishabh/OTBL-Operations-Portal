@@ -18,6 +18,16 @@ type Props = {
   woSiteId: number;
 };
 
+/** Row shape returned by getWorkOrderSiteOperatorAssignments. Declared locally
+ * because the deep tRPC router inference widens this query's output to `any`
+ * in the built type declarations. */
+type OperatorRow = {
+  user_id: number;
+  name: string | null;
+  email: string | null;
+  assigned: boolean;
+};
+
 /**
  * Manager-only control to pin specific operators to a single work-order site.
  * Only pinned operators can upload documents to this WO-site (enforced server
@@ -42,8 +52,9 @@ const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
   // Reset local selection to the server truth whenever fresh data arrives.
   useEffect(() => {
     if (!data) return;
+    const rows: OperatorRow[] = data;
     setSelected(
-      new Set(data.filter((o) => o.assigned).map((o) => o.user_id)),
+      new Set(rows.filter((o) => o.assigned).map((o) => o.user_id)),
     );
     setDirty(false);
   }, [data]);
@@ -63,7 +74,7 @@ const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
   // office (the query 403s → isError).
   if (!isManager || isError) return null;
 
-  const operators = data ?? [];
+  const operators: OperatorRow[] = data ?? [];
   const query = search.trim().toLowerCase();
   const filtered = query
     ? operators.filter(
