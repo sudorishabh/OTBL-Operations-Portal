@@ -4,6 +4,7 @@ import DialogWindow from "@/components/shared/dialog-window";
 import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter } from "@pkg/utils";
 import { useHandleParams } from "@/hooks/useHandleParams";
+import { useApiError } from "@/hooks/useApiError";
 import { format } from "date-fns";
 import {
   CalendarDays,
@@ -16,12 +17,16 @@ import {
   ExternalLink,
 } from "lucide-react";
 import React from "react";
+import toast from "react-hot-toast";
 
 const ProposalDetailDialog = () => {
   const { getParam, deleteParams, deleteParam, setParam } = useHandleParams();
   const isOpen = getParam("dialog") === "proposal-detail";
   const proposalId = getParam("proposal-id");
   const isFull = getParam("window") === "full";
+
+  const utils = trpc.useUtils();
+  const { handleError } = useApiError();
 
   const { data, isLoading } = trpc.proposalQuery.getProposalById.useQuery(
     { proposal_id: Number(proposalId) },
@@ -30,8 +35,38 @@ const ProposalDetailDialog = () => {
 
   const proposal = data?.proposal;
   const workOrder = data?.workOrder;
+  const canManage = data?.canManage ?? false;
 
-  const isApproved = proposal?.status === "approved";
+  const status = proposal?.status;
+  const isApproved = status === "approved";
+  const isRejected = status === "rejected";
+  const isPending = status === "pending";
+
+  const invalidate = async () => {
+    await utils.proposalQuery.getProposalById.invalidate({
+      proposal_id: Number(proposalId),
+    });
+    await utils.proposalQuery.getProposalsByClient.invalidate();
+    await utils.proposalQuery.getProposalsByClientPaginated.invalidate();
+  };
+
+  const approve = trpc.proposalMutation.approveProposal.useMutation({
+    onSuccess: async () => {
+      toast.success("Proposal approved");
+      await invalidate();
+    },
+    onError: (e: unknown) => handleError(e, { showToast: true }),
+  });
+
+  const reject = trpc.proposalMutation.rejectProposal.useMutation({
+    onSuccess: async () => {
+      toast.success("Proposal rejected");
+      await invalidate();
+    },
+    onError: (e: unknown) => handleError(e, { showToast: true }),
+  });
+
+  const decisionBusy = approve.isPending || reject.isPending;
 
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "—";
@@ -70,12 +105,16 @@ const ProposalDetailDialog = () => {
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                       isApproved
                         ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-                        : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                        : isRejected
+                          ? "bg-red-50 text-red-700 ring-1 ring-red-200"
+                          : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
                     }`}>
                     {isApproved ? (
                       <CheckCircle2 className='w-3.5 h-3.5' />
-                    ) : (
+                    ) : isRejected ? (
                       <XCircle className='w-3.5 h-3.5' />
+                    ) : (
+                      <Clock className='w-3.5 h-3.5' />
                     )}
                     {capitalFirstLetter(proposal.status)}
                   </span>
@@ -85,15 +124,41 @@ const ProposalDetailDialog = () => {
                 </h2>
               </div>
 
-              {proposal.document_key && (
-                <CustomButton
-                  variant='outline'
-                  text='View Proposal Document'
-                  Icon={FileText}
-                  onClick={() => window.open(proposal.document_key, "_blank")}
-                  className='shrink-0'
-                />
-              )}
+              <div className='flex flex-wrap items-center gap-2 shrink-0'>
+                {/* Manager-only decision controls, shown while pending. */}
+                {canManage && isPending && (
+                  <>
+                    <CustomButton
+                      variant='primary'
+                      text='Approve'
+                      Icon={CheckCircle2}
+                      loading={approve.isPending}
+                      disabled={decisionBusy}
+                      onClick={() =>
+                        approve.mutate({ proposal_id: Number(proposalId) })
+                      }
+                    />
+                    <CustomButton
+                      variant='outline'
+                      text='Reject'
+                      Icon={XCircle}
+                      loading={reject.isPending}
+                      disabled={decisionBusy}
+                      onClick={() =>
+                        reject.mutate({ proposal_id: Number(proposalId) })
+                      }
+                    />
+                  </>
+                )}
+                {proposal.document_key && (
+                  <CustomButton
+                    variant='outline'
+                    text='View Proposal Document'
+                    Icon={FileText}
+                    onClick={() => window.open(proposal.document_key, "_blank")}
+                  />
+                )}
+              </div>
             </div>
 
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>

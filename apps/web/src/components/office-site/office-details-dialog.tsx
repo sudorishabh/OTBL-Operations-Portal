@@ -59,6 +59,8 @@ const OfficeDetailsDialog = () => {
   const officeInfo = (officesData as any)?.offices?.find(
     (o: any) => o.id === Number(officeId),
   );
+  // Only an admin or this office's manager may add/remove site operators.
+  const canManageMembers = !!officeInfo?.canManage;
 
   const { data, isLoading, isFetching } =
     trpc.siteQuery.getSitesByOfficeId.useQuery(
@@ -282,21 +284,22 @@ const OfficeDetailsDialog = () => {
                                   </p>
                                 )}
                               </div>
-                              {typeof user.user_id === "number" && (
-                                <button
-                                  type='button'
-                                  disabled={removeFromSite.isPending}
-                                  onClick={() =>
-                                    removeFromSite.mutate({
-                                      site_id: site.id,
-                                      user_id: user.user_id,
-                                    })
-                                  }
-                                  className='shrink-0 inline-flex rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
-                                  aria-label={`Remove ${user.name || "operator"} from site`}>
-                                  <UserMinus className='h-4 w-4' />
-                                </button>
-                              )}
+                              {canManageMembers &&
+                                typeof user.user_id === "number" && (
+                                  <button
+                                    type='button'
+                                    disabled={removeFromSite.isPending}
+                                    onClick={() =>
+                                      removeFromSite.mutate({
+                                        site_id: site.id,
+                                        user_id: user.user_id,
+                                      })
+                                    }
+                                    className='shrink-0 inline-flex rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
+                                    aria-label={`Remove ${user.name || "operator"} from site`}>
+                                    <UserMinus className='h-4 w-4' />
+                                  </button>
+                                )}
                             </div>
                           ))}
                         </div>
@@ -348,7 +351,8 @@ const OfficeDetailsDialog = () => {
                                     {user.contact_number || "N/A"}
                                   </TableCell>
                                   <TableCell className='text-xs py-2 text-right'>
-                                    {typeof user.user_id === "number" ? (
+                                    {canManageMembers &&
+                                    typeof user.user_id === "number" ? (
                                       <button
                                         type='button'
                                         disabled={removeFromSite.isPending}
@@ -375,10 +379,12 @@ const OfficeDetailsDialog = () => {
                         No operators assigned to this site yet.
                       </span>
                     )}
-                    <SiteOperatorsSection
-                      siteId={site.id}
-                      siteUsers={site.users ?? []}
-                    />
+                    {canManageMembers && (
+                      <SiteOperatorsSection
+                        siteId={site.id}
+                        siteUsers={site.users ?? []}
+                      />
+                    )}
                   </CardContent>
                 </Card>
               ))}

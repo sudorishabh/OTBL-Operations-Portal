@@ -56,9 +56,11 @@ export const officeQueryRouter = router({
               : asc(officeTable.created_at);
 
       try {
+        const currentUserId = Number(ctx.user!.sub);
+        const isAdmin = ctx.user!.role === ROLES.ADMIN;
         const scope = await getAccessScope(
           ctx.db,
-          Number(ctx.user!.sub),
+          currentUserId,
           ctx.user!.role,
         );
         let officeWhere = officeQuery;
@@ -110,11 +112,16 @@ export const officeQueryRouter = router({
               (u: any) => u.role === ROLES.OPERATOR,
             );
 
+            // Per-office member-management capability: an admin, or the
+            // manager of this specific office. Used to gate member controls.
+            const canManage = isAdmin || manager?.id === currentUserId;
+
             return {
               ...office,
               manager,
               operators,
               siteCount: siteCount?.count || 0,
+              canManage,
             };
           }),
         );

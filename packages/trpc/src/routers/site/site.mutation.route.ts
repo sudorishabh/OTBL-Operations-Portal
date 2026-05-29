@@ -1,9 +1,10 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
-import { managerProcedure } from "../../middleware";
+import { managerProcedure, protectedProcedure } from "../../middleware";
 import { alreadyExists, notFound, fromDatabaseError } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { assertOfficeManager } from "../../helper/office-permissions";
 import { siteSchemas } from "@pkg/schema";
 
 const { siteTable, userTable, siteUserTable } = schema;
@@ -88,7 +89,7 @@ export const siteMutationRouter = router({
     }),
   ),
 
-  assignUserToSite: managerProcedure
+  assignUserToSite: protectedProcedure
     .input(siteSchemas.assignUserToSiteSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -103,6 +104,10 @@ export const siteMutationRouter = router({
         if (!site) {
           throw notFound("Site", site_id);
         }
+
+        // Only an admin or the manager of the site's office may assign
+        // operators to it.
+        await assertOfficeManager(ctx, site.office_id);
 
         const [user] = await ctx.db
           .select()
@@ -146,11 +151,25 @@ export const siteMutationRouter = router({
       }),
     ),
 
-  removeUserFromSite: managerProcedure
+  removeUserFromSite: protectedProcedure
     .input(siteSchemas.removeUserFromSiteSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { site_id, user_id } = input;
+
+        const [site] = await ctx.db
+          .select({ office_id: siteTable.office_id })
+          .from(siteTable)
+          .where(eq(siteTable.id, site_id))
+          .limit(1);
+
+        if (!site) {
+          throw notFound("Site", site_id);
+        }
+
+        // Only an admin or the manager of the site's office may remove
+        // operators from it.
+        await assertOfficeManager(ctx, site.office_id);
 
         const rows = await ctx.db
           .select({ id: siteUserTable.id })

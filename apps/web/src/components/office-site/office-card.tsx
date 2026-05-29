@@ -49,6 +49,8 @@ type Office = {
     email: string;
     role: string;
   } | null;
+  /** True when the current user (admin or this office's manager) may manage members. */
+  canManage?: boolean;
 };
 
 const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
@@ -171,12 +173,14 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
             variant='arrow'
             onClick={handleOfficeDetailsDialogOpen}
           />
-          <CustomButton
-            text='Members'
-            Icon={Users}
-            variant='outline'
-            onClick={handleManageMembersOpen}
-          />
+          {office.canManage && (
+            <CustomButton
+              text='Members'
+              Icon={Users}
+              variant='outline'
+              onClick={handleManageMembersOpen}
+            />
+          )}
           <CustomButton
             text='Create Site'
             Icon={Plus}

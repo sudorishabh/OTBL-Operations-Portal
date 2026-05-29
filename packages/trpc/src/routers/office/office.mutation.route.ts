@@ -2,10 +2,15 @@ import { and, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
-import { adminProcedure, managerProcedure } from "../../middleware";
+import {
+  adminProcedure,
+  managerProcedure,
+  protectedProcedure,
+} from "../../middleware";
 import { officeSchemas } from "@pkg/schema";
 import { notFound, alreadyExists, fromDatabaseError } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { assertOfficeManager } from "../../helper/office-permissions";
 
 const { officeTable, officeUserTable, userTable } = schema;
 const { ROLES } = constants;
@@ -113,12 +118,17 @@ export const officeMutationRouter = router({
       }),
     ),
 
-  assignUserToOffice: managerProcedure
+  assignUserToOffice: protectedProcedure
     .input(officeSchemas.assignUserToOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { office_id, user_id, role } = input;
         const userId = parseInt(ctx.user!.sub);
+
+        // Only an admin or this office's manager may manage its members.
+        // (Assigning the office's first manager has no office-manager yet, so
+        // that case is admin-only — which matches how offices are set up.)
+        await assertOfficeManager(ctx, office_id);
 
         // Verify office exists
         const [office] = await ctx.db
@@ -198,11 +208,14 @@ export const officeMutationRouter = router({
       }),
     ),
 
-  removeUserFromOffice: managerProcedure
+  removeUserFromOffice: protectedProcedure
     .input(officeSchemas.expelUserFromOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { office_id, user_id } = input;
+
+        // Only an admin or this office's manager may remove its members.
+        await assertOfficeManager(ctx, office_id);
 
         // Check if assignment exists
         const assignments = await ctx.db

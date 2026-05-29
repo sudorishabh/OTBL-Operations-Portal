@@ -13,6 +13,8 @@ import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { proposalSchemas } from "@pkg/schema";
 import { escapeLike } from "../../helper/escape-like";
+import { getOfficeRole } from "../../helper/office-permissions";
+import { USER_ROLES } from "../../authorization";
 
 const { proposalTable, workOrderTable } = schema;
 
@@ -217,7 +219,20 @@ export const proposalQueryRouter = router({
             return null;
           }
 
-          return result[0];
+          const row = result[0]!;
+
+          // Per-office manager capability: only an admin or the manager of the
+          // proposal's office may approve/reject it. The mutations enforce the
+          // same rule; this only drives button visibility.
+          const officeRole = await getOfficeRole(
+            ctx.db,
+            Number(ctx.user!.sub),
+            row.proposal.office_id,
+          );
+          const canManage =
+            ctx.user!.role === USER_ROLES.ADMIN || officeRole === "manager";
+
+          return { ...row, canManage };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching proposal details");
         }
