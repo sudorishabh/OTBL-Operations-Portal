@@ -73,6 +73,9 @@ const CreateSiteDialog = () => {
         page: operatorPage,
         limit: itemsPerPage,
         search: operatorSearch,
+        // Operators already assigned to an office are hidden — only unassigned
+        // operators can be onboarded to this site (and its office).
+        excludeOfficeMembers: true,
       },
       {
         enabled: isCreateMode,
@@ -100,6 +103,8 @@ const CreateSiteDialog = () => {
     onSuccess: () => {
       toast.success("Site added successfully");
       utils.officeQuery.getOffices.invalidate();
+      utils.officeQuery.getOfficeUsers.invalidate();
+      utils.userQuery.getUsersByRole.invalidate();
       utils.siteQuery.getSitesByOfficeId.invalidate();
       utils.siteQuery.get6SitesByOfficeId.invalidate();
       handleClose();

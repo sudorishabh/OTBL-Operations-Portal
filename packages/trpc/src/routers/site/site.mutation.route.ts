@@ -18,6 +18,7 @@ export const siteMutationRouter = router({
   createSite: managerProcedure.input(siteSchemas.createSiteSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       const { operator_ids, ...siteData } = input;
+      const currentUserId = Number(ctx.user!.sub);
 
       let siteId: number | undefined;
 
@@ -46,6 +47,36 @@ export const siteMutationRouter = router({
               throw notFound("Operator", undefined, {
                 userMessage: "One or more selected operators don't exist.",
               });
+            }
+
+            // The picker only offers operators who belong to no office yet, so
+            // onboard them to this site's office before assigning them to the
+            // site. This keeps the invariant that a site's operators are also
+            // members of its office. Skip anyone already a member (the unique
+            // (office_id, user_id) index would otherwise reject the insert).
+            const existingMembers = await tx
+              .select({ user_id: officeUserTable.user_id })
+              .from(officeUserTable)
+              .where(
+                and(
+                  eq(officeUserTable.office_id, input.office_id),
+                  inArray(officeUserTable.user_id, operator_ids),
+                ),
+              );
+            const alreadyMemberIds = new Set(
+              existingMembers.map((m: { user_id: number }) => m.user_id),
+            );
+            const newOfficeMembers = operator_ids
+              .filter((operatorId: number) => !alreadyMemberIds.has(operatorId))
+              .map((operatorId: number) => ({
+                user_id: operatorId,
+                office_id: input.office_id,
+                role: "operator" as const,
+                assigned_by: currentUserId,
+              }));
+
+            if (newOfficeMembers.length > 0) {
+              await tx.insert(officeUserTable).values(newOfficeMembers);
             }
 
             const operatorValues = operator_ids.map((operatorId: number) => ({

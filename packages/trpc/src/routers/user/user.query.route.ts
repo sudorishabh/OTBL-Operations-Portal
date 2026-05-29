@@ -1,4 +1,15 @@
-import { and, asc, count, desc, eq, inArray, like, not, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  like,
+  not,
+  notExists,
+  or,
+} from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
@@ -233,11 +244,15 @@ export const userQueryRouter = router({
         page: z.number().default(1),
         limit: z.number().default(100),
         search: z.string().optional().default(""),
+        // When true, only users who do not yet belong to ANY office are
+        // returned. Used by the create-site picker so already-assigned
+        // operators aren't offered again.
+        excludeOfficeMembers: z.boolean().optional().default(false),
       }),
     )
     .query(
       handleProtectedQuery(async ({ input, ctx }) => {
-        const { page, limit, role, search } = input;
+        const { page, limit, role, search, excludeOfficeMembers } = input;
         const offset = (page - 1) * limit;
 
         let condition = eq(userTable.role, role);
@@ -250,6 +265,21 @@ export const userQueryRouter = router({
                 like(userTable.name, `%${escapeLike(search)}%`),
                 like(userTable.email, `%${escapeLike(search)}%`),
                 like(userTable.contact_number, `%${escapeLike(search)}%`),
+              ),
+            ) ?? condition;
+        }
+
+        // Drop anyone already assigned to an office. Filtered in SQL (not
+        // client-side) so the count and pagination below stay accurate.
+        if (excludeOfficeMembers) {
+          condition =
+            and(
+              condition,
+              notExists(
+                ctx.db
+                  .select({ id: officeUserTable.id })
+                  .from(officeUserTable)
+                  .where(eq(officeUserTable.user_id, userTable.id)),
               ),
             ) ?? condition;
         }
