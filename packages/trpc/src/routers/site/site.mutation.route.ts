@@ -2,12 +2,17 @@ import { and, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { managerProcedure, protectedProcedure } from "../../middleware";
-import { alreadyExists, notFound, fromDatabaseError } from "../../errors";
+import {
+  alreadyExists,
+  notFound,
+  fromDatabaseError,
+  validationError,
+} from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { assertOfficeManager } from "../../helper/office-permissions";
 import { siteSchemas } from "@pkg/schema";
 
-const { siteTable, userTable, siteUserTable } = schema;
+const { siteTable, userTable, siteUserTable, officeUserTable } = schema;
 
 export const siteMutationRouter = router({
   createSite: managerProcedure.input(siteSchemas.createSiteSchema).mutation(
@@ -119,6 +124,31 @@ export const siteMutationRouter = router({
           throw notFound("User", user_id, {
             userMessage: "The selected user doesn't exist.",
           });
+        }
+
+        // The operator must belong to this site's office. The picker only
+        // lists this office's operators; enforce it server-side so an operator
+        // from another office cannot be assigned.
+        const [membership] = await ctx.db
+          .select({ id: officeUserTable.id })
+          .from(officeUserTable)
+          .where(
+            and(
+              eq(officeUserTable.user_id, user_id),
+              eq(officeUserTable.office_id, site.office_id),
+            ),
+          )
+          .limit(1);
+
+        if (!membership) {
+          throw validationError(
+            `User ${user_id} is not a member of office ${site.office_id}`,
+            undefined,
+            {
+              userMessage:
+                "You can only assign operators who belong to this site's office.",
+            },
+          );
         }
 
         const [existing] = await ctx.db
