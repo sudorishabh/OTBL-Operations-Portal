@@ -2,6 +2,11 @@ import { eq, sum, desc, and, ne, count } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
+import {
+  assertCanAccessWorkOrder,
+  assertCanAccessWorkOrderSite,
+  getAccessScope,
+} from "../../access-scope";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { z } from "zod";
@@ -30,6 +35,14 @@ export const expenseQueryRouter = router({
       handleQuery(async ({ input, ctx }) => {
         const { work_order_site_id, page, limit } = input;
         const offset = (page - 1) * limit;
+
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
+
         try {
           const [totalResult] = await ctx.db
             .select({ count: count() })
@@ -91,6 +104,14 @@ export const expenseQueryRouter = router({
     .query(
       handleQuery(async ({ input, ctx }) => {
         const { work_order_site_id } = input;
+
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
+
         try {
           // Expense breakdown by type
           const rows = await ctx.db
@@ -214,6 +235,13 @@ export const expenseQueryRouter = router({
     .input(z.object({ work_order_id: z.number().positive() }))
     .query(
       handleQuery(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrder(ctx.db, scope, input.work_order_id);
+
         try {
           const expenses = await ctx.db
             .select({

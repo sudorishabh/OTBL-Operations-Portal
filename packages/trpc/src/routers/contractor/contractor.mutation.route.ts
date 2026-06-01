@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
+import { assertCanAccessOffice, getAccessScope } from "../../access-scope";
 import { fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
@@ -34,6 +35,13 @@ export const contractorMutationRouter = router({
     .input(createContractorSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessOffice(ctx.db, scope, input.office_id);
+
         try {
           const [created] = await ctx.db
             .insert(contractorTable)
@@ -77,6 +85,13 @@ export const contractorMutationRouter = router({
           throw notFound("Contractor", id);
         }
 
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessOffice(ctx.db, scope, existing[0]!.office_id);
+
         try {
           await ctx.db
             .update(contractorTable)
@@ -105,6 +120,13 @@ export const contractorMutationRouter = router({
         if (existing.length === 0) {
           throw notFound("Contractor", input.id);
         }
+
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessOffice(ctx.db, scope, existing[0]!.office_id);
 
         try {
           await ctx.db

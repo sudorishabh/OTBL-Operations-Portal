@@ -2,6 +2,7 @@ import { eq, desc, like, and } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
+import { assertCanAccessOffice, getAccessScope } from "../../access-scope";
 import { fromDatabaseError, notFound } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { z } from "zod";
@@ -19,6 +20,13 @@ export const contractorQueryRouter = router({
     .query(
       handleQuery(async ({ input, ctx }) => {
         const { office_id, search } = input;
+
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessOffice(ctx.db, scope, office_id);
 
         try {
           const whereClause = search
@@ -54,6 +62,13 @@ export const contractorQueryRouter = router({
           if (!contractor) {
             throw notFound("Contractor", input.id);
           }
+
+          const scope = await getAccessScope(
+            ctx.db,
+            Number(ctx.user!.sub),
+            ctx.user!.role,
+          );
+          await assertCanAccessOffice(ctx.db, scope, contractor.office_id);
 
           return { contractor };
         } catch (error) {
