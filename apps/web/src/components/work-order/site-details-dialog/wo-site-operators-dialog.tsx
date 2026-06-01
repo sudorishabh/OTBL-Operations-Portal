@@ -135,9 +135,6 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
           utils.workOrderSiteQuery.getWorkOrderSiteOperatorsPaginated.invalidate(
             { work_order_site_id: woSiteId },
           ),
-          utils.workOrderSiteQuery.getWorkOrderSiteOperatorAssignments.invalidate(
-            { work_order_site_id: woSiteId },
-          ),
         ]);
         onSaved?.();
         setOpen(false);
