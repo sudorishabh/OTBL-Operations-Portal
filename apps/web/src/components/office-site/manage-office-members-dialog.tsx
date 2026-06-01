@@ -170,7 +170,7 @@ const ManageOfficeMembersDialog = () => {
         user_id: user.id,
         role: "operator",
       });
-      toast.success("Operator assigned");
+      toast.success("Office operator assigned");
       await invalidateOffice();
     } catch (e) {
       handleError(e, { showToast: true });
@@ -198,7 +198,7 @@ const ManageOfficeMembersDialog = () => {
       setOpen={handleClose}
       isLoading={isOpen && office_id > 0 && isLoading}
       title='Manage office members'
-      description={`Assign or remove managers and operators for ${officeName || "this office"}`}
+      description={`Assign or remove managers and office operators for ${officeName || "this office"}`}
       heightMode='full'
       size='xl'>
       {isOpen && office_id > 0 ? (
@@ -237,7 +237,7 @@ const ManageOfficeMembersDialog = () => {
                 </div>
                 <div className='flex flex-wrap gap-2 items-start'>
                   <span className='text-xs text-slate-600 w-20 shrink-0 pt-1.5'>
-                    Operators
+                    Office Operators
                   </span>
                   <div className='flex flex-wrap gap-2 flex-1'>
                     {(data?.operators?.length ?? 0) === 0 ? (
@@ -311,7 +311,7 @@ const ManageOfficeMembersDialog = () => {
                     <TabsTrigger
                       value='operators'
                       className='text-xs cursor-pointer'>
-                      Operators
+                      Office Operators
                     </TabsTrigger>
                   </TabsList>
                 </div>

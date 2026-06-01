@@ -265,7 +265,7 @@ const CreateOfficeDialog = () => {
                       <TabsTrigger
                         value='operators'
                         className='text-xs cursor-pointer'>
-                        Operators
+                        Office Operators
                       </TabsTrigger>
                     </TabsList>
                   </div>

@@ -211,8 +211,8 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                           </span>
                           <span className='text-[11px] text-slate-400'>
                             {office.operators.length === 1
-                              ? "Operator"
-                              : "Operators"}
+                              ? "Office Operator"
+                              : "Office Operators"}
                           </span>
                         </div>
                       </div>
@@ -241,7 +241,7 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                 </span>
               ) : null}
               {office.operators.length > 0 ? (
-                <span>Operators: {office.operators.length}</span>
+                <span>Office Operators: {office.operators.length}</span>
               ) : null}
             </div>
           )}
