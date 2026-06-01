@@ -1,7 +1,13 @@
 export const ROLES = {
   ADMIN: "admin",
   MANAGER: "manager",
+  /** @deprecated Split into OFFICE_OPERATOR / SITE_OPERATOR. Retained only
+   * during the migration window; removed once no references remain. */
   OPERATOR: "operator",
+  /** Office Operator: a member of one or more offices. Assignable to offices only. */
+  OFFICE_OPERATOR: "office_operator",
+  /** Site Operator: a field user assigned to sites. Assignable to sites only. */
+  SITE_OPERATOR: "site_operator",
   VIEWER: "viewer",
 } as const;
 
@@ -11,6 +17,8 @@ export const ROLE_HIERARCHY: Record<Role, number> = {
   admin: 4,
   manager: 3,
   operator: 2,
+  office_operator: 2,
+  site_operator: 2,
   viewer: 1,
 };
 

@@ -4,7 +4,13 @@ import jwt from "jsonwebtoken";
 export const USER_ROLES = {
   ADMIN: "admin",
   MANAGER: "manager",
+  /** @deprecated Split into OFFICE_OPERATOR / SITE_OPERATOR. Retained only
+   * during the migration window; removed once no references remain. */
   OPERATOR: "operator",
+  /** Office Operator: a member of one or more offices. Assignable to offices only. */
+  OFFICE_OPERATOR: "office_operator",
+  /** Site Operator: a field user assigned to sites. Assignable to sites only. */
+  SITE_OPERATOR: "site_operator",
   VIEWER: "viewer",
 } as const;
 
@@ -13,10 +19,13 @@ export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 // Role hierarchy for permission checking. Viewer sits at the bottom: it can
 // read (no query is role-gated) but is denied every mutation by a dedicated
 // middleware, so it never needs to satisfy a write-procedure's minimum role.
+// Office and site operators sit at the same level as the legacy operator.
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   admin: 5,
   manager: 4,
   operator: 2,
+  office_operator: 2,
+  site_operator: 2,
   viewer: 1,
 };
 
