@@ -17,7 +17,9 @@
       "Bash(node -e 'try{const s=require\\('\\\\''./__TRACKED_VAR__/package.json'\\\\''\\).scripts||{};console.log\\(JSON.stringify\\(s,null,2\\)\\)}catch\\(e\\){console.log\\('\\\\''\\(no package.json\\)'\\\\''\\)}')",
       "Bash(pnpm turbo *)",
       "Bash(pnpm --filter web exec tsc --noEmit -p tsconfig.json)",
-      "Bash(echo \"EXIT $?\")"
+      "Bash(echo \"EXIT $?\")",
+      "Bash(echo \"web exit: $?\")",
+      "Bash(echo \"web tsc exit: $?\")"
     ]
   },
   "enableAllProjectMcpServers": true,

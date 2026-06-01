@@ -12,7 +12,6 @@ import {
   workOrderSiteTable,
   workOrderSiteUserTable,
   workOrderSiteOperatorUploadTable,
-  siteUserTable,
   siteActivityTable,
 } from "./schema";
 
@@ -65,9 +64,6 @@ export type WorkOrderSiteOperatorUpload = InferSelectModel<
 export type NewWorkOrderSiteOperatorUpload = InferInsertModel<
   typeof workOrderSiteOperatorUploadTable
 >;
-
-export type SiteUser = InferSelectModel<typeof siteUserTable>;
-export type NewSiteUser = InferInsertModel<typeof siteUserTable>;
 
 export type WorkOrderStatus =
   (typeof WORK_ORDER_STATUS)[keyof typeof WORK_ORDER_STATUS];

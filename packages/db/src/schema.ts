@@ -407,21 +407,6 @@ export const workOrderSiteOperatorUploadTable = mysqlTable(
   ],
 );
 
-export const siteUserTable = mysqlTable("site_users", {
-  id: int("id").autoincrement().primaryKey(),
-  office_id: int("office_id")
-    .notNull()
-    .references(() => officeTable.id, { onDelete: "cascade" }),
-  site_id: int("site_id")
-    .notNull()
-    .references(() => siteTable.id, { onDelete: "cascade" }),
-  user_id: int("user_id")
-    .notNull()
-    .references(() => userTable.id, { onDelete: "cascade" }),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
-});
-
 export const siteActivityTable = mysqlTable("site_activity_items", {
   id: int("id").autoincrement().primaryKey(),
   work_order_site_id: int("work_order_site_id")
