@@ -5,11 +5,13 @@ import { trpc } from "@/lib/trpc";
 import Loading from "@/components/loading/Loading";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
 import {
   Briefcase,
@@ -197,38 +199,48 @@ const OfficeDetailsDialog = () => {
           </div>
         ) : (
           <>
-            <div className='grid gap-4'>
-              {allSites.map((site) => (
-                <Card
-                  key={site.id}
-                  className='py-4 rounded-sm'>
-                  <CardHeader className='px-3 sm:px-4 gap-0'>
-                    <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-                      <div className='min-w-0'>
-                        <CardTitle className='text-base flex flex-wrap items-center gap-2'>
-                          <span className='break-words'>
-                            {capitalizeEachWord(site.name)}
-                          </span>
-                          {site.status === "active" ? (
-                            <span className='bg-green-100 text-green-800 px-2 rounded-full text-xs shrink-0'>
-                              Active
-                            </span>
-                          ) : (
-                            <span className='bg-red-100 text-red-800 px-2 rounded-full text-xs shrink-0'>
-                              Inactive
-                            </span>
-                          )}
-                        </CardTitle>
-                        <CardDescription className='text-xs break-words'>
-                          {capitalFirstLetter(site.address)},{" "}
-                          {capitalizeEachWord(site.city)},{" "}
-                          {capitalizeEachWord(site.state)} - {site.pincode}
-                        </CardDescription>
-                      </div>
-                      <div className='flex flex-col items-end gap-2 shrink-0'>
-                        <div className='text-xs text-muted-foreground'>
-                          {format(new Date(site.created_at), "dd MMM yyyy")}
-                        </div>
+            <div className='border rounded-lg bg-white overflow-x-auto'>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className='text-xs h-8'>Status</TableHead>
+                    <TableHead className='text-xs h-8'>Name</TableHead>
+                    <TableHead className='text-xs h-8'>Address</TableHead>
+                    <TableHead className='text-xs h-8'>Pincode</TableHead>
+                    <TableHead className='text-xs h-8'>Created</TableHead>
+                    <TableHead className='text-xs h-8 text-right'>
+                      Work Orders
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allSites.map((site) => (
+                    <TableRow key={site.id}>
+                      <TableCell className='py-2'>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            site.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}>
+                          {capitalFirstLetter(site.status)}
+                        </span>
+                      </TableCell>
+                      <TableCell className='text-xs font-medium py-2'>
+                        {capitalizeEachWord(site.name)}
+                      </TableCell>
+                      <TableCell className='text-xs py-2 max-w-xs'>
+                        {capitalFirstLetter(site.address)},{" "}
+                        {capitalizeEachWord(site.city)},{" "}
+                        {capitalizeEachWord(site.state)}
+                      </TableCell>
+                      <TableCell className='text-xs font-mono py-2'>
+                        {site.pincode}
+                      </TableCell>
+                      <TableCell className='text-xs text-muted-foreground py-2 whitespace-nowrap'>
+                        {format(new Date(site.created_at), "dd MMM yyyy")}
+                      </TableCell>
+                      <TableCell className='py-2 text-right'>
                         <button
                           type='button'
                           onClick={() =>
@@ -241,11 +253,11 @@ const OfficeDetailsDialog = () => {
                           <Briefcase className='h-3.5 w-3.5' />
                           Work orders &amp; operators
                         </button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                </Card>
-              ))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
 
             {/* Load More Button */}
