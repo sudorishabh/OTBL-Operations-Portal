@@ -22,7 +22,6 @@ const {
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
-import { getOfficeRole } from "../../helper/office-permissions";
 import { USER_ROLES } from "../../authorization";
 import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
@@ -665,16 +664,10 @@ export const workOrderQueryRouter = router({
         // Non-null: the length === 0 check above already throws notFound.
         const workOrder = workOrders[0]!;
 
-        // Per-office manager capability: only an admin or the manager of this
-        // work order's office may approve/cancel it. The client uses this flag
-        // to show the approval controls; the mutations enforce it server-side.
-        const officeRole = await getOfficeRole(
-          ctx.db,
-          Number(ctx.user!.sub),
-          workOrder.office_id,
-        );
-        const canManage =
-          ctx.user!.role === USER_ROLES.ADMIN || officeRole === "manager";
+        // Admin-only capability: only a global admin may approve/cancel a work
+        // order. Managers/operators are read-only. The client uses this flag to
+        // show the approval controls; the mutations enforce it server-side.
+        const canManage = ctx.user!.role === USER_ROLES.ADMIN;
 
         // Resolve the approver's name when the gate is set.
         let approvedByName: string | null = null;
