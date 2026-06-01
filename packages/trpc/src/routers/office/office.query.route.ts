@@ -108,9 +108,10 @@ export const officeQueryRouter = router({
               .where(eq(siteTable.office_id, office.id));
 
             const manager = users.find((u: any) => u.role === ROLES.MANAGER);
-            const operators = users.filter(
-              (u: any) => u.role === ROLES.OPERATOR,
-            );
+            // u.role here is the office-membership role (office_users.role),
+            // whose operator value is the literal "operator" — not the global
+            // user role.
+            const operators = users.filter((u: any) => u.role === "operator");
 
             // Per-office member-management capability: an admin, or the
             // manager of this specific office. Used to gate member controls.

@@ -61,7 +61,6 @@ const UserSearchFilter = () => {
                     role: value as
                       | "all"
                       | "manager"
-                      | "operator"
                       | "office_operator"
                       | "site_operator"
                       | "viewer",

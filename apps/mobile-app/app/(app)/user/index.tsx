@@ -43,7 +43,6 @@ export default function UserManagementScreen() {
         return { bg: "#fee2e2", text: "#991b1b" };
       case "manager":
         return { bg: "#dbeafe", text: "#1e40af" };
-      case "operator":
       case "office_operator":
         return { bg: "#fef3c7", text: "#92400e" };
       case "site_operator":

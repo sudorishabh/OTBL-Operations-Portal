@@ -150,7 +150,9 @@ export const denyViewerWrites = t.middleware(({ ctx, type, path, next }) => {
  */
 export const isAdmin = hasRole(USER_ROLES.ADMIN);
 export const isManager = hasRole(USER_ROLES.MANAGER);
-export const isOperator = hasRole(USER_ROLES.OPERATOR);
+// Operator-or-higher: office_operator and site_operator share the same
+// hierarchy level, so this threshold admits either operator plus manager/admin.
+export const isOperator = hasRole(USER_ROLES.OFFICE_OPERATOR);
 
 /**
  * Admin or Manager middleware

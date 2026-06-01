@@ -76,8 +76,6 @@ export const Colors = {
 export const ROLES = {
   ADMIN: "admin",
   MANAGER: "manager",
-  /** @deprecated Split into OFFICE_OPERATOR / SITE_OPERATOR. Migration-window only. */
-  OPERATOR: "operator",
   OFFICE_OPERATOR: "office_operator",
   SITE_OPERATOR: "site_operator",
 } as const;
@@ -85,7 +83,6 @@ export const ROLES = {
 export const ROLE_HIERARCHY: Record<string, number> = {
   admin: 3,
   manager: 2,
-  operator: 1,
   office_operator: 1,
   site_operator: 1,
 };

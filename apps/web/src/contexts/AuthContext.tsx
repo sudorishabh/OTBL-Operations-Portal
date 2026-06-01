@@ -43,7 +43,6 @@ export const useHasRole = (requiredRole: string): boolean => {
   const roleHierarchy: Record<string, number> = {
     admin: 4,
     manager: 3,
-    operator: 2,
     office_operator: 2,
     site_operator: 2,
     viewer: 1,

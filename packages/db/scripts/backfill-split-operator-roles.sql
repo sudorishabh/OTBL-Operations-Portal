@@ -19,3 +19,8 @@ WHERE u.role = 'operator'
 UPDATE users
 SET role = 'office_operator'
 WHERE role = 'operator';
+
+-- 3) Switch the column default off the now-removed legacy value. Optional (the
+-- app always sets role explicitly on insert) but keeps the DB in sync with the
+-- schema's new default. Run with the cleanup deploy. Idempotent.
+ALTER TABLE users ALTER COLUMN role SET DEFAULT 'office_operator';

@@ -11,7 +11,13 @@
       "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies['@trpc/server']\\)\")",
       "mcp__code-review-graph__get_minimal_context_tool",
       "mcp__ide__getDiagnostics",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.scripts||{},null,2\\)\\); console.log\\('packageManager:', p.packageManager||'n/a'\\)\")",
+      "Bash(pnpm check-types *)",
+      "Bash(node -e 'try{const s=require\\('\\\\''./__TRACKED_VAR__/package.json'\\\\''\\).scripts||{};console.log\\(JSON.stringify\\(s,null,2\\)\\)}catch\\(e\\){console.log\\('\\\\''\\(no package.json\\)'\\\\''\\)}')",
+      "Bash(pnpm turbo *)",
+      "Bash(pnpm --filter web exec tsc --noEmit -p tsconfig.json)",
+      "Bash(echo \"EXIT $?\")"
     ]
   },
   "enableAllProjectMcpServers": true,

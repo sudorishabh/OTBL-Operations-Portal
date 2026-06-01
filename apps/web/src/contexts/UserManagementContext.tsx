@@ -5,11 +5,11 @@ type UserManagementContextType = {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   filters: {
-    role: "all" | "manager" | "operator" | "office_operator" | "site_operator" | "viewer";
+    role: "all" | "manager" | "office_operator" | "site_operator" | "viewer";
     status: "all" | "active" | "inactive";
   };
   setFilters: (filters: {
-    role: "all" | "manager" | "operator" | "office_operator" | "site_operator" | "viewer";
+    role: "all" | "manager" | "office_operator" | "site_operator" | "viewer";
     status: "all" | "active" | "inactive";
   }) => void;
   resetFilters: () => void;
@@ -29,7 +29,7 @@ export const UserManagementProvider = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<{
-    role: "all" | "manager" | "operator" | "office_operator" | "site_operator" | "viewer";
+    role: "all" | "manager" | "office_operator" | "site_operator" | "viewer";
     status: "all" | "active" | "inactive";
   }>({
     role: "all",

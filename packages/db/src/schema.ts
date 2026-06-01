@@ -23,24 +23,18 @@ export const userTable = mysqlTable(
     email: varchar("email", { length: 320 }).notNull().unique(),
     password: varchar("password", { length: 255 }).notNull(),
     contact_number: varchar("contact_number", { length: 15 }),
-    // `operator` is deprecated (split into office_operator / site_operator) but
-    // kept in the enum during the migration window so legacy rows stay valid
-    // until the backfill runs. Column is varchar(50): adding values is no DDL.
     role: varchar("role", {
       length: 50,
       enum: [
         ROLES.ADMIN,
         ROLES.MANAGER,
-        ROLES.OPERATOR,
         ROLES.OFFICE_OPERATOR,
         ROLES.SITE_OPERATOR,
         ROLES.VIEWER,
       ],
     })
       .notNull()
-      // Default left at the legacy value during the migration window to avoid a
-      // DDL default change; switched to OFFICE_OPERATOR in the cleanup step.
-      .default(ROLES.OPERATOR),
+      .default(ROLES.OFFICE_OPERATOR),
     created_by: int("created_by"),
     status: varchar("status", {
       length: 50,

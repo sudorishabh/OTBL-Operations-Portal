@@ -19,9 +19,6 @@ const { ROLES, STATUS } = constants;
 const userRoleEnum = z.enum([
   ROLES.ADMIN,
   ROLES.MANAGER,
-  // `operator` retained during the migration window so editing a not-yet
-  // backfilled legacy operator validates; removed in the cleanup step.
-  ROLES.OPERATOR,
   ROLES.OFFICE_OPERATOR,
   ROLES.SITE_OPERATOR,
   ROLES.VIEWER,
@@ -65,7 +62,6 @@ export const getAllUsersSchema = z.object({
     .enum([
       "all",
       ROLES.MANAGER,
-      ROLES.OPERATOR,
       ROLES.OFFICE_OPERATOR,
       ROLES.SITE_OPERATOR,
       ROLES.VIEWER,

@@ -127,7 +127,6 @@ const CreateUpdateUserDialog = () => {
           contact_number: userQuery.contact_number ?? "",
           role: userQuery.role as
             | "manager"
-            | "operator"
             | "office_operator"
             | "site_operator"
             | "viewer",
