@@ -12,6 +12,7 @@ import {
   businessRule,
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { assertOfficeManager } from "../../helper/office-permissions";
 
 const {
   workOrderTable,
@@ -224,20 +225,27 @@ export const workOrderMutationRouter = router({
         return await ctx.db.transaction(async (tx: any) => {
           let siteId = input.site_id;
 
-          // 1. Handle new site creation if provided
+          // 1. Handle new site creation if provided. Creating a brand-new site
+          // is an office-manager action — office operators cannot create sites
+          // — so gate this branch with assertOfficeManager. This also closes a
+          // backdoor: site creation otherwise bypassed the createSite guard.
+          // Linking an existing site (site_id) is unaffected.
           if (!siteId && input.new_site) {
+            const [woOffice] = await tx
+              .select({ office_id: proposalTable.office_id })
+              .from(workOrderTable)
+              .innerJoin(
+                proposalTable,
+                eq(workOrderTable.proposal_id, proposalTable.id),
+              )
+              .where(eq(workOrderTable.id, input.work_order_id));
+            const officeId = woOffice?.office_id as number;
+
+            await assertOfficeManager(ctx, officeId);
+
             const [siteResult] = await tx.insert(siteTable).values({
               ...input.new_site,
-              office_id: (
-                await tx
-                  .select({ office_id: proposalTable.office_id })
-                  .from(workOrderTable)
-                  .innerJoin(
-                    proposalTable,
-                    eq(workOrderTable.proposal_id, proposalTable.id),
-                  )
-                  .where(eq(workOrderTable.id, input.work_order_id))
-              )[0]?.office_id as number,
+              office_id: officeId,
             });
             siteId = siteResult.insertId;
           }

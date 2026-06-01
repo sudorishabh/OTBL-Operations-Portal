@@ -15,10 +15,16 @@ import { siteSchemas } from "@pkg/schema";
 const { siteTable, userTable, siteUserTable, officeUserTable } = schema;
 
 export const siteMutationRouter = router({
-  createSite: managerProcedure.input(siteSchemas.createSiteSchema).mutation(
+  // Office-manager-scoped: only an admin or the manager of this site's office
+  // may create a site in it. Office operators are read-only and cannot create
+  // sites. (Was a global managerProcedure, which let any global manager create
+  // a site in any office regardless of which office they actually manage.)
+  createSite: protectedProcedure.input(siteSchemas.createSiteSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       const { operator_ids, ...siteData } = input;
       const currentUserId = Number(ctx.user!.sub);
+
+      await assertOfficeManager(ctx, input.office_id);
 
       let siteId: number | undefined;
 

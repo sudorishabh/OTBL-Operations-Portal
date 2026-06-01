@@ -23,6 +23,7 @@ import {
 import useHandleParams from "@/hooks/useHandleParams";
 import { type workOrderTypes } from "@pkg/schema";
 import { trpc } from "@/lib/trpc";
+import { useIsAdmin } from "@/contexts/AuthContext";
 
 interface Props {
   workOrder: workOrderTypes.workOrderType | null;
@@ -112,6 +113,7 @@ const formatDate = (dateString: string | null | undefined) => {
 const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
   const { setParams } = useHandleParams();
   const router = useRouter();
+  const isAdmin = useIsAdmin();
 
   const { data: woDetails } = trpc.workOrderQuery.getWorkOrderDetails.useQuery(
     { id: Number(workOrder?.id) },
@@ -277,22 +279,24 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
               No Work Order
             </p>
             <p className='text-xs text-gray-500 mb-5 max-w-[180px]'>
-              Create a work order to link with this proposal and start tracking
-              progress.
+              {isAdmin
+                ? "Create a work order to link with this proposal and start tracking progress."
+                : "No work order has been linked to this proposal yet."}
             </p>
-            <CustomButton
-              Icon={Plus}
-              text='Create Work Order'
-              onClick={() => {
-                setParams({
-                  dialog: "create-workorder",
-                  "proposal-id": proposalId.toString(),
-                });
-              }}
-              variant='outline'
-              disableForViewer
-              className='hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700'
-            />
+            {isAdmin && (
+              <CustomButton
+                Icon={Plus}
+                text='Create Work Order'
+                onClick={() => {
+                  setParams({
+                    dialog: "create-workorder",
+                    "proposal-id": proposalId.toString(),
+                  });
+                }}
+                variant='outline'
+                className='hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700'
+              />
+            )}
           </div>
         )}
       </div>
