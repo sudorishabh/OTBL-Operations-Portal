@@ -7,18 +7,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter } from "@pkg/utils";
 import SitesSkeleton from "../skeleton/office-site/sites-skeleton";
 import Error from "@/components/shared/error";
-
-interface SiteUser {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-}
 
 type Site = {
   id: number;
@@ -31,7 +23,6 @@ type Site = {
   status: string;
   created_at: string;
   updated_at: string;
-  users: SiteUser[];
 };
 
 interface Props {
@@ -69,7 +60,6 @@ const OfficeSiteTable: React.FC<Props> = ({ officeId }) => {
             <TableHead className='text-xs'>Status</TableHead>
             <TableHead className='pl-4 text-xs'>Name</TableHead>
             <TableHead className='text-xs'>Address</TableHead>
-            <TableHead className='text-xs'>Operators</TableHead>
             <TableHead className='text-xs'>Pincode</TableHead>
             <TableHead className='text-xs'>Created</TableHead>
           </TableRow>
@@ -78,7 +68,7 @@ const OfficeSiteTable: React.FC<Props> = ({ officeId }) => {
           {sitesData?.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={5}
                 className='text-center py-8 text-muted-foreground'>
                 No sites found
               </TableCell>
@@ -111,22 +101,6 @@ const OfficeSiteTable: React.FC<Props> = ({ officeId }) => {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className='text-xs flex gap-1.5 flex-wrap w-[300px]'>
-                    {site.users && site.users.length > 0 ? (
-                      <>
-                        {site.users.map((user: any) => (
-                          <div key={user.email}>
-                            <Badge className='bg-orange-800/10 text-orange-800'>
-                              {capitalFirstLetter(user.name || "N/A")}
-                            </Badge>
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      "No users"
-                    )}
-                  </TableCell>
-
                   <TableCell className='text-xs font-mono'>
                     {site.pincode}
                   </TableCell>

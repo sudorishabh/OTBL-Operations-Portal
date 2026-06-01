@@ -12,7 +12,7 @@ import { handleQuery } from "../../helper/typed-handler";
 import { siteSchemas } from "@pkg/schema";
 import { escapeLike } from "../../helper/escape-like";
 
-const { siteTable, siteUserTable, userTable } = schema;
+const { siteTable } = schema;
 
 export const siteQueryRouter = router({
   get6SitesByOfficeId: protectedProcedure
@@ -35,32 +35,7 @@ export const siteQueryRouter = router({
             .where(eq(siteTable.office_id, office_id))
             .orderBy(desc(siteTable.created_at));
 
-          const siteUsers = await Promise.all(
-            sites.map((site: Site) =>
-              ctx.db
-                .select({
-                  site_id: siteUserTable.id,
-                  user_id: siteUserTable.user_id,
-                  role: userTable.role,
-                  name: userTable.name,
-                  email: userTable.email,
-                  contact_number: userTable.contact_number,
-                  status: userTable.status,
-                })
-                .from(siteUserTable)
-                .where(eq(siteUserTable.site_id, site.id))
-                .leftJoin(userTable, eq(siteUserTable.user_id, userTable.id))
-                .limit(6)
-                .orderBy(desc(siteUserTable.created_at)),
-            ),
-          );
-
-          const sitesWithUsers = sites.map((site, index) => ({
-            ...site,
-            users: siteUsers[index],
-          }));
-
-          return sitesWithUsers;
+          return sites;
         } catch (error) {
           throw fromDatabaseError(error, "Fetching sites by office");
         }
@@ -71,9 +46,7 @@ export const siteQueryRouter = router({
     .input(siteSchemas.getAllSitesByOfficeIdSchema)
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { office_id, page, limit, searchQuery, status, siteUsersLimit } =
-          input;
-        const perSiteUserLimit = siteUsersLimit ?? 6;
+        const { office_id, page, limit, searchQuery, status } = input;
         const offset = (page - 1) * limit;
 
         try {
@@ -115,33 +88,8 @@ export const siteQueryRouter = router({
             .limit(limit)
             .offset(offset);
 
-          const siteUsers = await Promise.all(
-            sites.map((site: Site) =>
-              ctx.db
-                .select({
-                  site_id: siteUserTable.id,
-                  user_id: siteUserTable.user_id,
-                  role: userTable.role,
-                  name: userTable.name,
-                  email: userTable.email,
-                  contact_number: userTable.contact_number,
-                  status: userTable.status,
-                })
-                .from(siteUserTable)
-                .where(eq(siteUserTable.site_id, site.id))
-                .leftJoin(userTable, eq(siteUserTable.user_id, userTable.id))
-                .limit(perSiteUserLimit)
-                .orderBy(desc(siteUserTable.created_at)),
-            ),
-          );
-
-          const sitesWithUsers = sites.map((site, index) => ({
-            ...site,
-            users: siteUsers[index],
-          }));
-
           return {
-            sites: sitesWithUsers,
+            sites,
             totalCount,
             hasMore: offset + sites.length < totalCount,
           };

@@ -50,6 +50,4 @@ export const getAllSitesByOfficeIdSchema = z.object({
   status: z.enum(["all", "active", "inactive"]).optional(),
   page: pageValidator,
   limit: limitValidator,
-  /** Max site-operator rows returned per site (default 6). Use a higher value when managing assignments. */
-  siteUsersLimit: z.number().int().min(1).max(100).optional(),
 });

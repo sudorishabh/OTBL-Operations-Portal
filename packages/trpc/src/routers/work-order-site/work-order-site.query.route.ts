@@ -105,8 +105,7 @@ export const workOrderSiteQueryRouter = router({
     ),
 
   /** Sites assigned to the current operator (used by the operator dashboard list page).
-   * Includes WO-sites from both direct assignment (workOrderSiteUserTable) and
-   * site-level assignment (siteUserTable → all WO-sites at that master site). */
+   * Sourced from direct WO-site assignment (workOrderSiteUserTable). */
   getMyAssignedWorkOrderSites: protectedProcedure.query(
     handleQuery(async ({ ctx }) => {
       try {

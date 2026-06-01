@@ -7,7 +7,6 @@ import { forbidden, notFound } from "./errors";
 
 const {
   officeUserTable,
-  siteUserTable,
   workOrderSiteTable,
   workOrderSiteUserTable,
   workOrderTable,
@@ -86,18 +85,6 @@ export async function getAccessScope(
     )
     .where(eq(workOrderSiteUserTable.user_id, userId));
 
-  // Master-site assignment (siteUserTable) no longer auto-grants upload access
-  // to every WO-site at that site — that over-granted across unrelated work
-  // orders. It now only marks the operator as eligible to be assigned to a
-  // specific WO-site (see setWorkOrderSiteOperators) and acts as the
-  // empty-dashboard fallback below.
-  const siteAssignmentRows = await db
-    .select({ siteId: siteUserTable.site_id })
-    .from(siteUserTable)
-    .where(eq(siteUserTable.user_id, userId));
-
-  const hasSiteAssignment = siteAssignmentRows.length > 0;
-
   const mergedWoSites = new Map<number, number>();
   for (const r of directWoSiteRows) {
     mergedWoSites.set(r.wosId, r.woId);
@@ -122,16 +109,6 @@ export async function getAccessScope(
       kind: "restricted",
       ui: "office",
       officeIds,
-      workOrderIdsFromSiteAssignment: [],
-      workOrderSiteIds: [],
-    };
-  }
-
-  if (hasSiteAssignment) {
-    return {
-      kind: "restricted",
-      ui: "site_only",
-      officeIds: [],
       workOrderIdsFromSiteAssignment: [],
       workOrderSiteIds: [],
     };

@@ -20,8 +20,14 @@ import { handleProtectedQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { userSchemas, userTypes } from "@pkg/schema";
 
-const { userTable, officeTable, officeUserTable, siteTable, siteUserTable } =
-  schema;
+const {
+  userTable,
+  officeTable,
+  officeUserTable,
+  siteTable,
+  workOrderSiteTable,
+  workOrderSiteUserTable,
+} = schema;
 const { ROLES, STATUS } = constants;
 
 export const userQueryRouter = router({
@@ -165,15 +171,25 @@ export const userQueryRouter = router({
             )
             .where(inArray(officeUserTable.user_id, userIds));
 
+          // A user's "sites" are the master sites of the work-order sites they
+          // are assigned to (work_order_site_users) — there is no master-site
+          // roster anymore. De-duplicated per user below.
           allSites = await ctx.db
             .select({
-              userId: siteUserTable.user_id,
+              userId: workOrderSiteUserTable.user_id,
               id: siteTable.id,
               name: siteTable.name,
             })
-            .from(siteUserTable)
-            .innerJoin(siteTable, eq(siteUserTable.site_id, siteTable.id))
-            .where(inArray(siteUserTable.user_id, userIds));
+            .from(workOrderSiteUserTable)
+            .innerJoin(
+              workOrderSiteTable,
+              eq(
+                workOrderSiteUserTable.work_order_site_id,
+                workOrderSiteTable.id,
+              ),
+            )
+            .innerJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+            .where(inArray(workOrderSiteUserTable.user_id, userIds));
         }
 
         const usersWithOfficesAndSites = users.map((user: any) => {
@@ -181,8 +197,14 @@ export const userQueryRouter = router({
             .filter((o) => o.userId === user.id)
             .map(({ userId, ...rest }) => ({ ...rest, type: "office" }));
 
+          const seenSiteIds = new Set<number>();
           const userSites = allSites
             .filter((s) => s.userId === user.id)
+            .filter((s) => {
+              if (seenSiteIds.has(s.id)) return false;
+              seenSiteIds.add(s.id);
+              return true;
+            })
             .map(({ userId, ...rest }) => ({ ...rest, type: "site" }));
 
           return {

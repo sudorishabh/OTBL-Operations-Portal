@@ -33,7 +33,7 @@ const {
   clientTable,
   officeTable,
   siteTable,
-  siteUserTable,
+  workOrderSiteUserTable,
   userTable,
   scheduleOfRatesTable,
   cleaningUpSoilAreaTable,
@@ -440,16 +440,20 @@ export const workOrderQueryRouter = router({
             woSites.map((woSite: any) =>
               ctx.db
                 .select({
-                  site_id: siteUserTable.site_id,
-                  user_id: siteUserTable.user_id,
+                  user_id: workOrderSiteUserTable.user_id,
                   user_name: userTable.name,
                   user_email: userTable.email,
                   user_contact_number: userTable.contact_number,
                   user_role: userTable.role,
                 })
-                .from(siteUserTable)
-                .leftJoin(userTable, eq(siteUserTable.user_id, userTable.id))
-                .where(eq(siteUserTable.site_id, woSite.site_id!)),
+                .from(workOrderSiteUserTable)
+                .leftJoin(
+                  userTable,
+                  eq(workOrderSiteUserTable.user_id, userTable.id),
+                )
+                .where(
+                  eq(workOrderSiteUserTable.work_order_site_id, woSite.id),
+                ),
             ),
           ),
           Promise.all(
@@ -704,16 +708,23 @@ export const workOrderQueryRouter = router({
             woSites.map((woSite: any) =>
               ctx.db
                 .select({
-                  site_id: siteUserTable.site_id,
-                  user_id: siteUserTable.user_id,
+                  user_id: workOrderSiteUserTable.user_id,
                   user_name: userTable.name,
                   user_email: userTable.email,
                   user_contact_number: userTable.contact_number,
                   user_role: userTable.role,
                 })
-                .from(siteUserTable)
-                .leftJoin(userTable, eq(siteUserTable.user_id, userTable.id))
-                .where(eq(siteUserTable.site_id, woSite.site_id)),
+                .from(workOrderSiteUserTable)
+                .leftJoin(
+                  userTable,
+                  eq(workOrderSiteUserTable.user_id, userTable.id),
+                )
+                .where(
+                  eq(
+                    workOrderSiteUserTable.work_order_site_id,
+                    woSite.wo_site_id,
+                  ),
+                ),
             ),
           ),
           Promise.all(
