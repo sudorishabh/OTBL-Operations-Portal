@@ -266,6 +266,7 @@ export const userQueryRouter = router({
     ),
 
   getUsersByRole: protectedProcedure
+    .use(hasAnyRole([ROLES.ADMIN, ROLES.MANAGER]))
     .input(
       z.object({
         role: z.enum([
@@ -351,7 +352,7 @@ export const userQueryRouter = router({
     ),
 
   // Get 8 users from each role category
-  getCategories8User: protectedProcedure.query(
+  getCategories8User: protectedProcedure.use(hasRole(ROLES.ADMIN)).query(
     handleProtectedQuery(async ({ ctx }) => {
       const userInfoNeeded = {
         id: userTable.id,
