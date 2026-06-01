@@ -44,7 +44,10 @@ export default function UserManagementScreen() {
       case "manager":
         return { bg: "#dbeafe", text: "#1e40af" };
       case "operator":
+      case "office_operator":
         return { bg: "#fef3c7", text: "#92400e" };
+      case "site_operator":
+        return { bg: "#cffafe", text: "#155e75" };
       default:
         return { bg: Colors.gray[100], text: Colors.gray[600] };
     }
@@ -77,7 +80,7 @@ export default function UserManagementScreen() {
         </View>
         <View style={styles.cardFooter}>
           <Badge
-            label={item.role}
+            label={item.role?.replace(/_/g, " ")}
             variant={item.role === "admin" ? "error" : "info"}
           />
           <Badge

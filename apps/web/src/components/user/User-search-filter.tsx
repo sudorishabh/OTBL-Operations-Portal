@@ -58,7 +58,13 @@ const UserSearchFilter = () => {
                 onChange={(value) =>
                   setFilters({
                     ...filters,
-                    role: value as "all" | "manager" | "operator" | "viewer",
+                    role: value as
+                      | "all"
+                      | "manager"
+                      | "operator"
+                      | "office_operator"
+                      | "site_operator"
+                      | "viewer",
                   })
                 }
                 isWhiteBg={true}
@@ -66,7 +72,8 @@ const UserSearchFilter = () => {
                 selectOptions={[
                   { label: "All Roles", value: "all" },
                   { label: "Manager", value: "manager" },
-                  { label: "Operator", value: "operator" },
+                  { label: "Office Operator", value: "office_operator" },
+                  { label: "Site Operator", value: "site_operator" },
                   { label: "Viewer", value: "viewer" },
                 ]}
                 className='h-8! w-[140px] text-xs cursor-pointer'

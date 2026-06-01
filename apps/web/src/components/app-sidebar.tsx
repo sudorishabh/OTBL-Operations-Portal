@@ -49,7 +49,12 @@ const sidebarLinks: NavItem[] = [
     title: "User Management",
     link: "/user",
     icon: Users,
-    hideForRoles: [ROLES.MANAGER, ROLES.OPERATOR],
+    hideForRoles: [
+      ROLES.MANAGER,
+      ROLES.OPERATOR,
+      ROLES.OFFICE_OPERATOR,
+      ROLES.SITE_OPERATOR,
+    ],
   },
 
   {

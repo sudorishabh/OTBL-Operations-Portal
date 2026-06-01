@@ -1,6 +1,6 @@
 import React from "react";
 import { trpc } from "@/lib/trpc";
-import { capitalFirstLetter, constants } from "@pkg/utils";
+import { constants } from "@pkg/utils";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useUserManagementContext } from "@/contexts/UserManagementContext";
@@ -36,16 +36,20 @@ const CategorizedUsers = () => {
 
   const {
     managers = [],
-    operators = [],
+    officeOperators = [],
+    siteOperators = [],
     totalManagers,
-    totalOperators,
+    totalOfficeOperators,
+    totalSiteOperators,
   } = categorizedUsers?.data ?? {};
 
   if (categorizedUsers.isLoading) {
     return <UserPageSkeleton />;
   }
 
-  const handleOpenCategoryDialog = (role: "all" | "manager" | "operator") => {
+  const handleOpenCategoryDialog = (
+    role: "all" | "manager" | "office_operator" | "site_operator",
+  ) => {
     setFilters({ role, status: "all" });
     setParams({ dialog: "categorized", role });
   };
@@ -65,16 +69,22 @@ const CategorizedUsers = () => {
       onViewAll: () => handleOpenCategoryDialog(ROLES.MANAGER),
     },
     {
-      title: "Operator Users",
-      users: operators,
-      totalUsers: totalOperators,
-      onViewAll: () => handleOpenCategoryDialog(ROLES.OPERATOR),
+      title: "Office Operator Users",
+      users: officeOperators,
+      totalUsers: totalOfficeOperators,
+      onViewAll: () => handleOpenCategoryDialog(ROLES.OFFICE_OPERATOR),
+    },
+    {
+      title: "Site Operator Users",
+      users: siteOperators,
+      totalUsers: totalSiteOperators,
+      onViewAll: () => handleOpenCategoryDialog(ROLES.SITE_OPERATOR),
     },
   ];
 
   return (
     <>
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6'>
+      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6'>
         {userCategoryData.map((category) => (
           <Card
             key={category.title}
@@ -160,10 +170,15 @@ const CategorizedUsers = () => {
       <DialogWindow
         open={getParam("dialog") === "categorized"}
         setOpen={handleCloseDialog}
-        title={capitalFirstLetter(getParam("role") || "") + " Users"}
+        title={
+          capitalizeEachWord((getParam("role") || "").replace(/_/g, " ")) +
+          " Users"
+        }
         description={
           getParam("role")
-            ? `All users with ${getParam("role")?.toLowerCase()} role`
+            ? `All users with the ${(getParam("role") || "")
+                .replace(/_/g, " ")
+                .toLowerCase()} role`
             : ""
         }
         heightMode='full'

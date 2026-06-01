@@ -72,7 +72,7 @@ export default function ProfilePage() {
       name: "",
       email: "",
       contact_number: "",
-      role: "operator",
+      role: "office_operator",
     },
   });
 
