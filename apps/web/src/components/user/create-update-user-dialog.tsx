@@ -113,7 +113,7 @@ const CreateUpdateUserDialog = () => {
         email: "",
         name: "",
         password: "",
-        role: "operator",
+        role: "office_operator",
       });
     }, 2000);
   }, [deleteParams, form]);
@@ -125,7 +125,12 @@ const CreateUpdateUserDialog = () => {
           name: userQuery.name ?? "",
           email: userQuery.email ?? "",
           contact_number: userQuery.contact_number ?? "",
-          role: userQuery.role as "manager" | "operator" | "viewer",
+          role: userQuery.role as
+            | "manager"
+            | "operator"
+            | "office_operator"
+            | "site_operator"
+            | "viewer",
           password: "",
         });
       } else if (isAddMode) {
@@ -134,7 +139,7 @@ const CreateUpdateUserDialog = () => {
           email: "",
           name: "",
           password: "",
-          role: "operator",
+          role: "office_operator",
         });
         setCreatedCredentials(null);
       }
@@ -226,7 +231,7 @@ const CreateUpdateUserDialog = () => {
                 Role
               </p>
               <p className='font-medium capitalize'>
-                {createdCredentials.role}
+                {createdCredentials.role.replace(/_/g, " ")}
               </p>
             </div>
           </div>
@@ -353,7 +358,8 @@ const CreateUpdateUserDialog = () => {
               isSelect
               selectOptions={[
                 { label: "Manager", value: "manager" },
-                { label: "Operator", value: "operator" },
+                { label: "Office Operator", value: "office_operator" },
+                { label: "Site Operator", value: "site_operator" },
                 { label: "Viewer", value: "viewer" },
               ]}
               placeholder='Select role'
