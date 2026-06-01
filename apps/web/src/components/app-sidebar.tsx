@@ -53,6 +53,7 @@ const sidebarLinks: NavItem[] = [
       ROLES.MANAGER,
       ROLES.OFFICE_OPERATOR,
       ROLES.SITE_OPERATOR,
+      ROLES.VIEWER,
     ],
   },
 
