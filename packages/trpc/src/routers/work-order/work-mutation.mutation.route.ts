@@ -2,7 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
-import { protectedProcedure } from "../../middleware";
+import { protectedProcedure, adminProcedure } from "../../middleware";
 import { workOrderSchemas } from "@pkg/schema";
 import {
   notFound,
@@ -12,10 +12,6 @@ import {
   businessRule,
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
-import {
-  assertOfficeMember,
-  assertOfficeManager,
-} from "../../helper/office-permissions";
 
 const {
   workOrderTable,
@@ -28,7 +24,10 @@ const {
 } = schema;
 
 export const workOrderMutationRouter = router({
-  createWorkOrder: protectedProcedure
+  // Admin-only: only a global admin may create a work order. Office managers
+  // and operators are read-only on work orders — they can view those in their
+  // office but cannot create, approve, or cancel them.
+  createWorkOrder: adminProcedure
     .input(workOrderSchemas.createWorkOrderSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -59,10 +58,6 @@ export const workOrderMutationRouter = router({
         // Get office_id from the proposal
         const proposal = existingProposal[0]!;
         const officeId = proposal.office_id;
-
-        // Drafting a work order is an office-staff action: caller must belong
-        // to the office (manager or operator). Activation is manager-only.
-        await assertOfficeMember(ctx, officeId);
 
         // Build work order data object
         const workOrderData = {
@@ -122,7 +117,9 @@ export const workOrderMutationRouter = router({
       }),
     ),
 
-  deleteWorkOrder: protectedProcedure
+  // Admin-only: deleting a work order is a destructive action reserved for
+  // global admins (previously this had no role gate at all).
+  deleteWorkOrder: adminProcedure
     .input(workOrderSchemas.deleteWorkOrderSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -147,9 +144,9 @@ export const workOrderMutationRouter = router({
       }),
     ),
 
-  // Manager-only: approve a drafted work order, flipping the approval gate so
+  // Admin-only: approve a drafted work order, flipping the approval gate so
   // it goes live. Leaves the pending/completed/cancelled status untouched.
-  approveWorkOrder: protectedProcedure
+  approveWorkOrder: adminProcedure
     .input(workOrderSchemas.approveWorkOrderSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -161,9 +158,6 @@ export const workOrderMutationRouter = router({
         if (!workOrder) {
           throw notFound("Work order", input.id);
         }
-
-        // Only this work order's office manager (or an admin) may approve it.
-        await assertOfficeManager(ctx, workOrder.office_id);
 
         if (workOrder.status === constants.WORK_ORDER_STATUS.CANCELLED) {
           throw businessRule("A cancelled work order cannot be approved.");
@@ -189,8 +183,8 @@ export const workOrderMutationRouter = router({
       }),
     ),
 
-  // Manager-only: cancel a work order with a required reason.
-  cancelWorkOrder: protectedProcedure
+  // Admin-only: cancel a work order with a required reason.
+  cancelWorkOrder: adminProcedure
     .input(workOrderSchemas.cancelWorkOrderSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -202,8 +196,6 @@ export const workOrderMutationRouter = router({
         if (!workOrder) {
           throw notFound("Work order", input.id);
         }
-
-        await assertOfficeManager(ctx, workOrder.office_id);
 
         if (workOrder.status === constants.WORK_ORDER_STATUS.CANCELLED) {
           throw businessRule("This work order is already cancelled.");

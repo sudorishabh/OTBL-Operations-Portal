@@ -13,7 +13,6 @@ import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { proposalSchemas } from "@pkg/schema";
 import { escapeLike } from "../../helper/escape-like";
-import { getOfficeRole } from "../../helper/office-permissions";
 import { USER_ROLES } from "../../authorization";
 
 const { proposalTable, workOrderTable } = schema;
@@ -221,16 +220,10 @@ export const proposalQueryRouter = router({
 
           const row = result[0]!;
 
-          // Per-office manager capability: only an admin or the manager of the
-          // proposal's office may approve/reject it. The mutations enforce the
-          // same rule; this only drives button visibility.
-          const officeRole = await getOfficeRole(
-            ctx.db,
-            Number(ctx.user!.sub),
-            row.proposal.office_id,
-          );
-          const canManage =
-            ctx.user!.role === USER_ROLES.ADMIN || officeRole === "manager";
+          // Admin-only capability: only a global admin may approve/reject a
+          // proposal. Managers/operators are read-only. The mutation enforces
+          // the same rule; this only drives button visibility.
+          const canManage = ctx.user!.role === USER_ROLES.ADMIN;
 
           return { ...row, canManage };
         } catch (error) {
