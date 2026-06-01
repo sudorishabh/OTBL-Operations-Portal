@@ -11,8 +11,10 @@ import {
 import { handleMutation } from "../../helper/typed-handler";
 import { assertOfficeManager } from "../../helper/office-permissions";
 import { siteSchemas } from "@pkg/schema";
+import { constants } from "@pkg/utils";
 
-const { siteTable, userTable, siteUserTable, officeUserTable } = schema;
+const { ROLES } = constants;
+const { siteTable, userTable, siteUserTable } = schema;
 
 export const siteMutationRouter = router({
   // Office-manager-scoped: only an admin or the manager of this site's office
@@ -22,7 +24,6 @@ export const siteMutationRouter = router({
   createSite: protectedProcedure.input(siteSchemas.createSiteSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       const { operator_ids, ...siteData } = input;
-      const currentUserId = Number(ctx.user!.sub);
 
       await assertOfficeManager(ctx, input.office_id);
 
@@ -55,34 +56,25 @@ export const siteMutationRouter = router({
               });
             }
 
-            // The picker only offers operators who belong to no office yet, so
-            // onboard them to this site's office before assigning them to the
-            // site. This keeps the invariant that a site's operators are also
-            // members of its office. Skip anyone already a member (the unique
-            // (office_id, user_id) index would otherwise reject the insert).
-            const existingMembers = await tx
-              .select({ user_id: officeUserTable.user_id })
-              .from(officeUserTable)
-              .where(
-                and(
-                  eq(officeUserTable.office_id, input.office_id),
-                  inArray(officeUserTable.user_id, operator_ids),
-                ),
-              );
-            const alreadyMemberIds = new Set(
-              existingMembers.map((m: { user_id: number }) => m.user_id),
+            // Office/site split: only Site Operators may be assigned to a site,
+            // and they go into site_users ONLY — no office_users row. The old
+            // "a site's operators must also be office members" invariant has
+            // been replaced by the explicit site_operator global role.
+            const notSiteOperators = users.filter(
+              (u: { role: string }) => u.role !== ROLES.SITE_OPERATOR,
             );
-            const newOfficeMembers = operator_ids
-              .filter((operatorId: number) => !alreadyMemberIds.has(operatorId))
-              .map((operatorId: number) => ({
-                user_id: operatorId,
-                office_id: input.office_id,
-                role: "operator" as const,
-                assigned_by: currentUserId,
-              }));
-
-            if (newOfficeMembers.length > 0) {
-              await tx.insert(officeUserTable).values(newOfficeMembers);
+            if (notSiteOperators.length > 0) {
+              throw validationError(
+                "Only Site Operators can be assigned to a site",
+                notSiteOperators.map((u: { name: string }) => ({
+                  field: "operator_ids",
+                  message: `${u.name} is not a Site Operator.`,
+                })),
+                {
+                  userMessage:
+                    "Only Site Operators can be assigned to a site. Office Operators belong to offices.",
+                },
+              );
             }
 
             const operatorValues = operator_ids.map((operatorId: number) => ({
@@ -163,28 +155,15 @@ export const siteMutationRouter = router({
           });
         }
 
-        // A user can only become a Site Operator here if they are already an
-        // Office Operator of this site's office. The picker only lists this
-        // office's operators; enforce it server-side so someone from another
-        // office cannot be assigned.
-        const [membership] = await ctx.db
-          .select({ id: officeUserTable.id })
-          .from(officeUserTable)
-          .where(
-            and(
-              eq(officeUserTable.user_id, user_id),
-              eq(officeUserTable.office_id, site.office_id),
-            ),
-          )
-          .limit(1);
-
-        if (!membership) {
+        // Office/site split: only a Site Operator may be assigned to a site.
+        // (Previously required office membership; the site ⊆ office invariant
+        // has been replaced by the explicit site_operator global role.)
+        if (user.role !== ROLES.SITE_OPERATOR) {
           throw validationError(
-            `User ${user_id} is not a member of office ${site.office_id}`,
+            `User ${user_id} is not a Site Operator`,
             undefined,
             {
-              userMessage:
-                "You can only assign operators who belong to this site's office.",
+              userMessage: "Only Site Operators can be assigned to a site.",
             },
           );
         }
@@ -202,7 +181,7 @@ export const siteMutationRouter = router({
 
         if (existing) {
           throw alreadyExists("Site assignment", undefined, {
-            userMessage: "This operator is already assigned to the site.",
+            userMessage: "This site operator is already assigned to this site.",
           });
         }
 
