@@ -14,12 +14,14 @@ import ProposalWODetailsDialog from "./proposal-wo-details-dialog";
 import ProposalDetailDialog from "./proposal-detail-dialog";
 import ClientWOStatsDialog from "./client-wo-stats-dialog";
 import RightSidePanel from "./right-side-panel";
+import { useIsAdmin } from "@/contexts/AuthContext";
 
 interface Props {
   clientId: string;
 }
 const ProposalWOMain = ({ clientId }: Props) => {
   const { setParam, getParam } = useHandleParams();
+  const isAdmin = useIsAdmin();
 
   const { data, isLoading } = trpc.proposalQuery.getProposalsByClient.useQuery(
     { client_id: Number(clientId), limit: 6 },
@@ -53,13 +55,14 @@ const ProposalWOMain = ({ clientId }: Props) => {
             )}
           </h3>
           <div className='flex items-center gap-3'>
-            <CustomButton
-              text='Create Proposal'
-              variant='outline'
-              Icon={Plus}
-              onClick={() => setParam("dialog", "create-proposal")}
-              disableForViewer
-            />
+            {isAdmin && (
+              <CustomButton
+                text='Create Proposal'
+                variant='outline'
+                Icon={Plus}
+                onClick={() => setParam("dialog", "create-proposal")}
+              />
+            )}
             <CustomButton
               variant='arrow'
               arrowType='upright'
