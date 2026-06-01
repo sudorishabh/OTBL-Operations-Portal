@@ -10,7 +10,8 @@
       "Bash(npx turbo *)",
       "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies['@trpc/server']\\)\")",
       "mcp__code-review-graph__get_minimal_context_tool",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(git *)"
     ]
   },
   "enableAllProjectMcpServers": true,

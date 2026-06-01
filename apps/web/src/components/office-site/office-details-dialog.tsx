@@ -45,7 +45,7 @@ const OfficeDetailsDialog = () => {
 
   const removeFromSite = trpc.siteMutation.removeUserFromSite.useMutation({
     onSuccess: async () => {
-      toast.success("Operator removed from site");
+      toast.success("Site operator removed");
       await utils.siteQuery.getSitesByOfficeId.invalidate();
       await utils.siteQuery.get6SitesByOfficeId.invalidate();
     },
@@ -296,7 +296,7 @@ const OfficeDetailsDialog = () => {
                                       })
                                     }
                                     className='shrink-0 inline-flex rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
-                                    aria-label={`Remove ${user.name || "operator"} from site`}>
+                                    aria-label={`Remove ${user.name || "site operator"} from site`}>
                                     <UserMinus className='h-4 w-4' />
                                   </button>
                                 )}
@@ -363,7 +363,7 @@ const OfficeDetailsDialog = () => {
                                           })
                                         }
                                         className='inline-flex rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
-                                        aria-label={`Remove ${user.name || "operator"} from site`}>
+                                        aria-label={`Remove ${user.name || "site operator"} from site`}>
                                         <UserMinus className='h-4 w-4' />
                                       </button>
                                     ) : null}
@@ -376,7 +376,7 @@ const OfficeDetailsDialog = () => {
                       </>
                     ) : (
                       <span className='inline-block text-xs text-gray-500 py-1 bg-red-50 rounded px-2'>
-                        No operators assigned to this site yet.
+                        No site operators assigned yet.
                       </span>
                     )}
                     {canManageMembers && (
