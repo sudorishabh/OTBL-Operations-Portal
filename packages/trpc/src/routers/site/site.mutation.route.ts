@@ -163,9 +163,10 @@ export const siteMutationRouter = router({
           });
         }
 
-        // The operator must belong to this site's office. The picker only
-        // lists this office's operators; enforce it server-side so an operator
-        // from another office cannot be assigned.
+        // A user can only become a Site Operator here if they are already an
+        // Office Operator of this site's office. The picker only lists this
+        // office's operators; enforce it server-side so someone from another
+        // office cannot be assigned.
         const [membership] = await ctx.db
           .select({ id: officeUserTable.id })
           .from(officeUserTable)

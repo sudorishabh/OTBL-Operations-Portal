@@ -17,6 +17,11 @@ const { officeUserTable } = schema;
  * (`ctx.user.role`). A user can be the manager of one office and merely an
  * operator (or nothing) in another. Office-level authority must therefore be
  * resolved per-office against `office_users`, not from the global role.
+ *
+ * Terminology: the `"operator"` member here is what the UI calls an
+ * **Office Operator**. It is NOT the same as a **Site Operator** — a Site
+ * Operator is a user assigned to a specific site via `site_users` and has no
+ * stored role column; the assignment itself confers the "site operator" status.
  */
 export type OfficeRole = "manager" | "operator";
 

@@ -17,6 +17,8 @@ const { STATUS } = constants;
 
 // Enums
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
+// Office membership role; "operator" here is an Office Operator (distinct from
+// a Site Operator, which is a site_users assignment with no stored role).
 const officeRoleEnum = z.enum(["manager", "operator"]);
 const officeNamesOrderEnum = z.enum(["asc", "desc", "latest", "oldest"]);
 
@@ -36,6 +38,7 @@ const officeBaseSchema = z.object({
 
 export const createOfficeSchema = officeBaseSchema.extend({
   manager_id: optionalPositiveIntValidator,
+  /** User IDs to add as Office Operators (office_users.role = "operator"). */
   operator_ids: z.array(positiveIntValidator).optional(),
   status: statusEnum.optional(),
 });

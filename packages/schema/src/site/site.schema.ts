@@ -30,6 +30,7 @@ export const siteBaseSchema = z.object({
 
 export const createSiteSchema = siteBaseSchema.extend({
   office_id: positiveIntValidator,
+  /** User IDs to assign as Site Operators on the new site (site_users rows). */
   operator_ids: z.array(positiveIntValidator).optional(),
 });
 
