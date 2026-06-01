@@ -32,7 +32,7 @@ type OperatorRow = {
  * Manager-only control to pin specific operators to a single work-order site.
  * Only pinned operators can upload documents to this WO-site (enforced server
  * -side via getAccessScope / assertCanAccessWorkOrderSite). The candidate pool
- * is the operators of the WO-site's master site.
+ * is every Site Operator (global role) — assignment is per-WO-site.
  */
 const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
   const isManager = useIsManager();
@@ -156,10 +156,11 @@ const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
       ) : operators.length === 0 ? (
         <div className='rounded-lg border bg-muted/30 p-4 text-center'>
           <p className='text-xs font-medium text-foreground'>
-            No operators on this site yet
+            No site operators exist yet
           </p>
           <p className='text-[11px] text-muted-foreground mt-1'>
-            Add operators to the master site first, then assign them here.
+            Create users with the Site Operator role first, then assign them
+            here.
           </p>
         </div>
       ) : (

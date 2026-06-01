@@ -1,5 +1,6 @@
 import { eq, desc, and, inArray, count } from "drizzle-orm";
 import { schema } from "@pkg/db";
+import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import {
@@ -29,7 +30,6 @@ const {
   workOrderSiteTable,
   workOrderSiteUserTable,
   siteTable,
-  siteUserTable,
   workOrderTable,
   userTable,
   siteActivityTable,
@@ -189,9 +189,9 @@ export const workOrderSiteQueryRouter = router({
 
   /**
    * Operators assignable to a specific WO-site, each flagged whether they are
-   * currently assigned. The candidate pool is the operators on the WO-site's
-   * master site, unioned with anyone already pinned to this WO-site (so legacy
-   * direct assignments stay visible). Manager-only — this drives the manager's
+   * currently assigned. The candidate pool is every Site Operator (global
+   * role), unioned with anyone already pinned to this WO-site (so prior
+   * assignments stay visible). Manager-only — this drives the manager's
    * per-WO-site operator assignment UI.
    */
   getWorkOrderSiteOperatorAssignments: protectedProcedure
@@ -221,16 +221,16 @@ export const workOrderSiteQueryRouter = router({
         await assertOfficeManager(ctx, woSite.office_id);
 
         try {
-          // Candidate pool: operators assigned to the master site.
+          // Candidate pool: every Site Operator (global role). Site Operators
+          // are assigned directly to a WO-site — there is no master-site roster.
           const siteOperators = await ctx.db
             .select({
-              user_id: siteUserTable.user_id,
+              user_id: userTable.id,
               name: userTable.name,
               email: userTable.email,
             })
-            .from(siteUserTable)
-            .innerJoin(userTable, eq(siteUserTable.user_id, userTable.id))
-            .where(eq(siteUserTable.site_id, woSite.site_id));
+            .from(userTable)
+            .where(eq(userTable.role, constants.ROLES.SITE_OPERATOR));
 
           // Operators currently pinned to this specific WO-site.
           const assignedRows = await ctx.db

@@ -126,7 +126,7 @@ const {
   workOrderTable,
   workOrderSiteTable,
   workOrderSiteUserTable,
-  siteUserTable,
+  userTable,
   workOrderSiteOperatorUploadTable,
   workOrderSiteDocsTable,
   bioremediationContSoilTable,
@@ -178,28 +178,28 @@ export const workOrderSiteMutationRouter = router({
         }
         await assertOfficeManager(ctx, woSite.office_id);
 
-        // An operator may only be pinned to a WO-site if they are already an
-        // operator on that WO-site's master site. Keeps the two-tier model
-        // coherent and blocks assigning arbitrary users.
+        // Only global Site Operators may be pinned to a WO-site. The master
+        // -site roster was removed — assignment is per-WO-site only, gated by
+        // the user's global role rather than site membership.
         if (user_ids.length > 0) {
           const siteOperators = await ctx.db
-            .select({ user_id: siteUserTable.user_id })
-            .from(siteUserTable)
+            .select({ id: userTable.id })
+            .from(userTable)
             .where(
               and(
-                eq(siteUserTable.site_id, woSite.site_id),
-                inArray(siteUserTable.user_id, user_ids),
+                eq(userTable.role, constants.ROLES.SITE_OPERATOR),
+                inArray(userTable.id, user_ids),
               ),
             );
-          const allowed = new Set(siteOperators.map((r) => r.user_id));
+          const allowed = new Set(siteOperators.map((r) => r.id));
           const invalid = user_ids.filter((id) => !allowed.has(id));
           if (invalid.length > 0) {
             throw validationError(
-              `Users not assigned to this site cannot be added: ${invalid.join(", ")}`,
+              `Users that are not Site Operators cannot be assigned: ${invalid.join(", ")}`,
               undefined,
               {
                 userMessage:
-                  "You can only assign operators who belong to this site.",
+                  "You can only assign Site Operators to a work-order site.",
               },
             );
           }
