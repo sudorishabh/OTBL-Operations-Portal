@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
-import { managerProcedure, protectedProcedure } from "../../middleware";
+import { protectedProcedure } from "../../middleware";
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { assertOfficeManager } from "../../helper/office-permissions";
@@ -44,7 +44,7 @@ export const siteMutationRouter = router({
     }),
   ),
 
-  updateSite: managerProcedure.input(siteSchemas.updateSiteSchema).mutation(
+  updateSite: protectedProcedure.input(siteSchemas.updateSiteSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       // Check if site exists
       const existingSite = await ctx.db
@@ -55,6 +55,11 @@ export const siteMutationRouter = router({
       if (existingSite.length === 0) {
         throw notFound("Site", input.siteId);
       }
+
+      // Only an admin or the manager of this site's office may edit it.
+      // (Was a global managerProcedure, which let any global manager update
+      // a site in any office regardless of which office they actually manage.)
+      await assertOfficeManager(ctx, existingSite[0]!.office_id);
 
       try {
         await ctx.db

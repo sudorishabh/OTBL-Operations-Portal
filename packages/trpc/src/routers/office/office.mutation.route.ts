@@ -2,11 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
-import {
-  adminProcedure,
-  managerProcedure,
-  protectedProcedure,
-} from "../../middleware";
+import { adminProcedure, protectedProcedure } from "../../middleware";
 import { officeSchemas } from "@pkg/schema";
 import {
   notFound,
@@ -115,7 +111,7 @@ export const officeMutationRouter = router({
     }),
   ),
 
-  updateOffice: managerProcedure
+  updateOffice: protectedProcedure
     .input(officeSchemas.updateOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -130,6 +126,10 @@ export const officeMutationRouter = router({
         if (existingOffice.length === 0) {
           throw notFound("Office", id);
         }
+
+        // Only an admin or this office's manager may edit it. Previously a
+        // global managerProcedure let any manager update any office.
+        await assertOfficeManager(ctx, id);
 
         try {
           await ctx.db
