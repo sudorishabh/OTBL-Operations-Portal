@@ -240,7 +240,13 @@ export const userQueryRouter = router({
   getUsersByRole: protectedProcedure
     .input(
       z.object({
-        role: z.enum([ROLES.ADMIN, ROLES.MANAGER, ROLES.OPERATOR]),
+        role: z.enum([
+          ROLES.ADMIN,
+          ROLES.MANAGER,
+          ROLES.OPERATOR,
+          ROLES.OFFICE_OPERATOR,
+          ROLES.SITE_OPERATOR,
+        ]),
         page: z.number().default(1),
         limit: z.number().default(100),
         search: z.string().optional().default(""),

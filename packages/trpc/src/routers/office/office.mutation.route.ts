@@ -8,7 +8,13 @@ import {
   protectedProcedure,
 } from "../../middleware";
 import { officeSchemas } from "@pkg/schema";
-import { notFound, alreadyExists, fromDatabaseError } from "../../errors";
+import {
+  notFound,
+  alreadyExists,
+  forbidden,
+  validationError,
+  fromDatabaseError,
+} from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { assertOfficeManager } from "../../helper/office-permissions";
 
@@ -61,6 +67,25 @@ export const officeMutationRouter = router({
               throw notFound("Operator", undefined, {
                 userMessage: "One or more selected operators don't exist.",
               });
+            }
+
+            // Office/site split: only Office Operators may hold office seats.
+            // Site Operators (and any other role) are rejected.
+            const notOfficeOperators = users.filter(
+              (u: { role: string }) => u.role !== ROLES.OFFICE_OPERATOR,
+            );
+            if (notOfficeOperators.length > 0) {
+              throw validationError(
+                "Only Office Operators can be assigned to an office",
+                notOfficeOperators.map((u: { name: string }) => ({
+                  field: "operator_ids",
+                  message: `${u.name} is not an Office Operator.`,
+                })),
+                {
+                  userMessage:
+                    "Only Office Operators can be added to an office. Site Operators belong to sites.",
+                },
+              );
             }
 
             const operatorValues = operator_ids.map((operatorId: number) => ({
@@ -149,6 +174,16 @@ export const officeMutationRouter = router({
         if (!user) {
           throw notFound("User", user_id, {
             userMessage: "The selected user doesn't exist.",
+          });
+        }
+
+        // Office/site split: an office-operator seat may only be filled by a
+        // user whose global role is office_operator. Site Operators belong to
+        // sites, not offices. (Manager seats are gated by the manager pool.)
+        if (role === "operator" && user.role !== ROLES.OFFICE_OPERATOR) {
+          throw forbidden("add this user to the office as an operator", {
+            userMessage:
+              "Only Office Operators can be added to an office. This user isn't an Office Operator.",
           });
         }
 
