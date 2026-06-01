@@ -275,13 +275,14 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
               onClick={handleManageMembersOpen}
             />
           )}
-          <CustomButton
-            text='Create Site'
-            Icon={Plus}
-            variant='outline'
-            onClick={handleAddSiteDialogOpen}
-            disableForViewer
-          />
+          {office.canManage && (
+            <CustomButton
+              text='Create Site'
+              Icon={Plus}
+              variant='outline'
+              onClick={handleAddSiteDialogOpen}
+            />
+          )}
         </div>
       </div>
       <OfficeSiteTable officeId={office.id} />
