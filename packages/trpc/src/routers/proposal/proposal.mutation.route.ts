@@ -2,28 +2,22 @@ import { eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
-import { protectedProcedure } from "../../middleware";
+import { adminProcedure } from "../../middleware";
 import { notFound, fromDatabaseError, businessRule } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
-import {
-  assertOfficeMember,
-  assertOfficeManager,
-} from "../../helper/office-permissions";
 import { proposalSchemas } from "@pkg/schema";
 
 const { proposalTable, clientTable, officeTable } = schema;
 
 export const proposalMutationRouter = router({
-  // Drafting a proposal is an office-staff action: any member (manager or
-  // operator) of the target office may create one. It is forced into the
-  // `pending` state — only the office manager can approve it later.
-  createProposal: protectedProcedure
+  // Admin-only: only a global admin may create a proposal. Office managers and
+  // operators are read-only on proposals — they can view those filed under
+  // their office but cannot draft, approve, or reject. Forced into the
+  // `pending` state; approval is a separate admin-only transition.
+  createProposal: adminProcedure
     .input(proposalSchemas.createProposalSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        // Caller must belong to the office this proposal is filed under
-        await assertOfficeMember(ctx, input.office_id);
-
         // Verify client exists
         const client = await ctx.db
           .select()
@@ -66,8 +60,8 @@ export const proposalMutationRouter = router({
       }),
     ),
 
-  // Manager-only: approve a drafted (pending) proposal.
-  approveProposal: protectedProcedure
+  // Admin-only: approve a drafted (pending) proposal.
+  approveProposal: adminProcedure
     .input(proposalSchemas.approveProposalSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -79,9 +73,6 @@ export const proposalMutationRouter = router({
         if (!proposal) {
           throw notFound("Proposal", input.proposal_id);
         }
-
-        // Only this proposal's office manager (or an admin) may approve it.
-        await assertOfficeManager(ctx, proposal.office_id);
 
         if (proposal.status !== constants.PROPOSAL_STATUS.PENDING) {
           throw businessRule(
@@ -102,8 +93,8 @@ export const proposalMutationRouter = router({
       }),
     ),
 
-  // Manager-only: reject a drafted (pending) proposal.
-  rejectProposal: protectedProcedure
+  // Admin-only: reject a drafted (pending) proposal.
+  rejectProposal: adminProcedure
     .input(proposalSchemas.rejectProposalSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -115,8 +106,6 @@ export const proposalMutationRouter = router({
         if (!proposal) {
           throw notFound("Proposal", input.proposal_id);
         }
-
-        await assertOfficeManager(ctx, proposal.office_id);
 
         if (proposal.status !== constants.PROPOSAL_STATUS.PENDING) {
           throw businessRule(
