@@ -110,19 +110,38 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
 
   return (
     <div className='bg-white rounded-xl hover:border-emerald-400 border border-gray-50 shadow-sm hover:shadow-lg transition-all duration-300 p-3 sm:p-4'>
-      <div className='flex flex-col gap-3 pb-2 mb-2 lg:flex-row lg:items-start lg:justify-between'>
+      {/* ── Header: office identity / quick info + actions ───────────── */}
+      <div className='flex flex-col gap-4 border-b border-gray-100 pb-4 mb-4 lg:flex-row lg:items-start lg:justify-between'>
+        {/* Identity + quick info */}
         <div className='min-w-0'>
-          <div>
-            <div className='flex flex-wrap items-center relative gap-2 sm:gap-3'>
-              <h3 className='text-gray-800 font-medium break-words'>
+          {/* Name + status */}
+            <div className='flex flex-wrap items-center gap-2'>
+              <h3 className='break-words font-semibold leading-tight text-gray-900'>
                 {capitalizeEachWord(office.name)}
               </h3>
+              <span
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  isActive
+                    ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                    : "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
+                }`}>
+                <span
+                  className={`size-1.5 rounded-full ${
+                    isActive ? "bg-emerald-500" : "bg-slate-400"
+                  }`}
+                />
+                {capitalFirstLetter(office.status)}
+              </span>
+            </div>
+
+            {/* Meta row: info trigger + manager + operators */}
+            <div className='mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500'>
               <div className='group relative inline-flex'>
                 <button
                   type='button'
-                  className='flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[11.5px] font-medium text-sky-700 ring-1 ring-inset ring-sky-100 transition-colors hover:bg-sky-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300'>
+                  className='-ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300'>
                   <Info className='size-3.5' />
-                  Information
+                  Info
                 </button>
 
                 {/* Hover / focus information panel */}
@@ -231,36 +250,40 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          {(office.manager?.name || office.operators.length > 0) && (
-            <div className='text-xs text-gray-500 mt-1'>
+
               {office.manager?.name ? (
-                <span className='mr-3'>
-                  Manager: {capitalFirstLetter(office.manager.name)}
+                <span className='inline-flex items-center gap-1'>
+                  <UserCog className='size-3.5 text-gray-400' />
+                  <span className='text-gray-600'>
+                    {capitalFirstLetter(office.manager.name)}
+                  </span>
                 </span>
               ) : null}
-              {office.operators.length > 0 ? (
-                <span>Office Operators: {office.operators.length}</span>
-              ) : null}
+
+              <span className='inline-flex items-center gap-1'>
+                <Users className='size-3.5 text-gray-400' />
+                <span className='font-medium text-gray-600'>
+                  {office.operators.length}
+                </span>
+                {office.operators.length === 1
+                  ? "Office Operator"
+                  : "Office Operators"}
+              </span>
             </div>
-          )}
-          <div className='mt-1'></div>
-        </div>
-        <div className='flex flex-wrap items-center gap-2 lg:gap-4 lg:justify-end lg:text-right'>
-          <div className='rounded-full flex items-center gap-2 border px-1.5 py-1.5 bg-gray-100'>
-            <span className='text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap'>
-              {office.siteCount} {office.siteCount === 1 ? "Site" : "Sites"}
-            </span>
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full border border-green-200 whitespace-nowrap ${
-                office.status === "active"
-                  ? "bg-green-200 text-green-900"
-                  : "bg-gray-200 text-gray-900"
-              }`}>
-              {capitalFirstLetter(office.status)}
-            </span>
           </div>
+        </div>
+
+        {/* Actions */}
+        <div className='flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end'>
+          <span className='inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-gray-500 ring-1 ring-inset ring-gray-200'>
+            <Building2 className='size-3.5 text-emerald-600' />
+            <span className='font-semibold text-gray-700'>
+              {office.siteCount}
+            </span>
+            {office.siteCount === 1 ? "Site" : "Sites"}
+          </span>
+
+          <div className='mx-0.5 hidden h-6 w-px bg-gray-200 lg:block' />
 
           <CustomButton
             arrowType='upright'

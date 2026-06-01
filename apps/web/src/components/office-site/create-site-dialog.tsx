@@ -69,13 +69,10 @@ const CreateSiteDialog = () => {
   const { data: operatorsData, isLoading: isLoadingOperators } =
     trpc.userQuery.getUsersByRole.useQuery(
       {
-        role: ROLES.OPERATOR,
+        role: ROLES.SITE_OPERATOR,
         page: operatorPage,
         limit: itemsPerPage,
         search: operatorSearch,
-        // Operators already assigned to an office are hidden — only unassigned
-        // operators can be onboarded to this site (and its office).
-        excludeOfficeMembers: true,
       },
       {
         enabled: isCreateMode,

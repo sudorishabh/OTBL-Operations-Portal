@@ -68,7 +68,7 @@ const ManageOfficeMembersDialog = () => {
   const { data: operatorsData, isLoading: loadingOperators } =
     trpc.userQuery.getUsersByRole.useQuery(
       {
-        role: ROLES.OPERATOR,
+        role: ROLES.OFFICE_OPERATOR,
         page: operatorPage,
         limit: itemsPerPage,
         search: operatorSearch,

@@ -7,34 +7,31 @@ import CustomButton from "@/components/shared/btn";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Mail, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { capitalizeEachWord } from "@pkg/utils";
+import { capitalizeEachWord, constants } from "@pkg/utils";
 import toast from "react-hot-toast";
 import { useApiError } from "@/hooks/useApiError";
+
+const { ROLES } = constants;
 
 type SiteUserRow = {
   user_id?: number | null;
   email?: string | null;
 };
 
-/** Office operator as returned by getOfficeUsers.operators. Declared locally
- * because the deep tRPC router inference can widen this query's output. */
-type OfficeOperator = {
+/** Site-operator option for the assignment list. Declared locally because the
+ * deep tRPC router inference can widen this query's output. */
+type SiteOperatorOption = {
   id: number;
   name: string | null;
   email: string | null;
 };
 
 type Props = {
-  officeId: number;
   siteId: number;
   siteUsers: SiteUserRow[];
 };
 
-const SiteOperatorsSection: React.FC<Props> = ({
-  officeId,
-  siteId,
-  siteUsers,
-}) => {
+const SiteOperatorsSection: React.FC<Props> = ({ siteId, siteUsers }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -50,15 +47,14 @@ const SiteOperatorsSection: React.FC<Props> = ({
     onError: (e: unknown) => handleError(e, { showToast: true }),
   });
 
-  // Only this site's office operators are assignable — not every operator in
-  // the system.
-  const { data: officeUsers, isLoading } =
-    trpc.officeQuery.getOfficeUsers.useQuery(
-      { office_id: officeId },
-      { enabled: open && officeId > 0 },
-    );
+  // Site Operators are global (they hold no office membership) — list every
+  // Site Operator and let the manager add any of them to this site.
+  const { data, isLoading } = trpc.userQuery.getUsersByRole.useQuery(
+    { role: ROLES.SITE_OPERATOR, limit: 100 },
+    { enabled: open },
+  );
 
-  const allOperators = (officeUsers?.operators ?? []) as OfficeOperator[];
+  const allOperators = (data?.users ?? []) as SiteOperatorOption[];
   const q = search.trim().toLowerCase();
   const operators = q
     ? allOperators.filter(
@@ -92,7 +88,7 @@ const SiteOperatorsSection: React.FC<Props> = ({
         <div className='mt-3 rounded-lg border bg-slate-50/80 p-3 space-y-3'>
           <Input
             mode='standalone'
-            placeholder='Search operators...'
+            placeholder='Search site operators...'
             value={search}
             onChange={(value) => setSearch(value)}
             inputIcon={Search}
@@ -144,14 +140,14 @@ const SiteOperatorsSection: React.FC<Props> = ({
               })}
               {!isLoading && allOperators.length === 0 && (
                 <p className='col-span-full text-center text-xs text-muted-foreground py-6'>
-                  No operators in this office yet
+                  No site operators exist yet
                 </p>
               )}
               {!isLoading &&
                 allOperators.length > 0 &&
                 operators.length === 0 && (
                   <p className='col-span-full text-center text-xs text-muted-foreground py-6'>
-                    No operators match your search
+                    No site operators match your search
                   </p>
                 )}
             </div>
