@@ -1,4 +1,4 @@
-import { eq, desc, and, inArray, count } from "drizzle-orm";
+import { eq, desc, asc, and, or, like, inArray, count } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
@@ -11,6 +11,7 @@ import {
 } from "../../access-scope";
 import { assertOfficeManager } from "../../helper/office-permissions";
 import { handleQuery } from "../../helper/typed-handler";
+import { escapeLike } from "../../helper/escape-like";
 import { z } from "zod";
 import { fromDatabaseError, notFound } from "../../errors";
 
@@ -282,6 +283,175 @@ export const workOrderSiteQueryRouter = router({
           throw fromDatabaseError(
             error,
             "Fetching work order site operator assignments",
+          );
+        }
+      }),
+    ),
+
+  /**
+   * Paginated, server-searched candidate pool of Site Operators for a single
+   * WO-site, each flagged whether currently assigned. Manager-only. Unlike
+   * getWorkOrderSiteOperatorAssignments (which returns the entire pool at
+   * once), this is built for hundreds of operators — the picker UI pages
+   * through it and searches server-side by name/email.
+   */
+  getWorkOrderSiteOperatorsPaginated: protectedProcedure
+    .input(
+      z.object({
+        work_order_site_id: z.number().positive(),
+        page: z.number().int().positive().default(1),
+        limit: z.number().int().positive().max(100).default(20),
+        search: z.string().optional().default(""),
+      }),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const { work_order_site_id, page, limit, search } = input;
+
+        // Resolve owning office for the manager check (outside the try so a
+        // forbidden/not-found surfaces with the correct status).
+        const [woSite] = await ctx.db
+          .select({ office_id: workOrderTable.office_id })
+          .from(workOrderSiteTable)
+          .innerJoin(
+            workOrderTable,
+            eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+          )
+          .where(eq(workOrderSiteTable.id, work_order_site_id))
+          .limit(1);
+        if (!woSite) {
+          throw notFound("Work order site", work_order_site_id);
+        }
+        await assertOfficeManager(ctx, woSite.office_id);
+
+        try {
+          const offset = (page - 1) * limit;
+
+          let condition = eq(userTable.role, constants.ROLES.SITE_OPERATOR);
+          if (search.trim() !== "") {
+            condition =
+              and(
+                condition,
+                or(
+                  like(userTable.name, `%${escapeLike(search)}%`),
+                  like(userTable.email, `%${escapeLike(search)}%`),
+                ),
+              ) ?? condition;
+          }
+
+          const [totalResult] = await ctx.db
+            .select({ count: count() })
+            .from(userTable)
+            .where(condition);
+          const total = totalResult?.count || 0;
+
+          if (total === 0) {
+            return {
+              operators: [],
+              pagination: { page, limit, total, hasMore: false, totalPages: 0 },
+            };
+          }
+
+          // LEFT JOIN the WO-site assignment row so each candidate carries its
+          // assigned flag without a second round-trip.
+          const rows = await ctx.db
+            .select({
+              user_id: userTable.id,
+              name: userTable.name,
+              email: userTable.email,
+              assigned_user_id: workOrderSiteUserTable.user_id,
+            })
+            .from(userTable)
+            .leftJoin(
+              workOrderSiteUserTable,
+              and(
+                eq(workOrderSiteUserTable.user_id, userTable.id),
+                eq(
+                  workOrderSiteUserTable.work_order_site_id,
+                  work_order_site_id,
+                ),
+              ),
+            )
+            .where(condition)
+            .orderBy(asc(userTable.name))
+            .limit(limit)
+            .offset(offset);
+
+          const operators = rows.map((r) => ({
+            user_id: r.user_id,
+            name: r.name,
+            email: r.email,
+            assigned: r.assigned_user_id != null,
+          }));
+
+          return {
+            operators,
+            pagination: {
+              page,
+              limit,
+              total,
+              hasMore: offset + rows.length < total,
+              totalPages: Math.ceil(total / limit),
+            },
+          };
+        } catch (error) {
+          throw fromDatabaseError(
+            error,
+            "Fetching paginated work order site operators",
+          );
+        }
+      }),
+    ),
+
+  /**
+   * The operators currently pinned to a WO-site (small set). Manager-only.
+   * Lets the picker render the live selection and chips regardless of which
+   * page/search the candidate list is currently showing. Includes anyone
+   * pinned even if they no longer hold the Site Operator role, so prior
+   * assignments stay visible and are not silently dropped on save.
+   */
+  getWorkOrderSiteAssignedOperators: protectedProcedure
+    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const { work_order_site_id } = input;
+
+        const [woSite] = await ctx.db
+          .select({ office_id: workOrderTable.office_id })
+          .from(workOrderSiteTable)
+          .innerJoin(
+            workOrderTable,
+            eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+          )
+          .where(eq(workOrderSiteTable.id, work_order_site_id))
+          .limit(1);
+        if (!woSite) {
+          throw notFound("Work order site", work_order_site_id);
+        }
+        await assertOfficeManager(ctx, woSite.office_id);
+
+        try {
+          const assigned = await ctx.db
+            .select({
+              user_id: workOrderSiteUserTable.user_id,
+              name: userTable.name,
+              email: userTable.email,
+            })
+            .from(workOrderSiteUserTable)
+            .innerJoin(
+              userTable,
+              eq(workOrderSiteUserTable.user_id, userTable.id),
+            )
+            .where(
+              eq(workOrderSiteUserTable.work_order_site_id, work_order_site_id),
+            )
+            .orderBy(asc(userTable.name));
+
+          return assigned;
+        } catch (error) {
+          throw fromDatabaseError(
+            error,
+            "Fetching assigned work order site operators",
           );
         }
       }),

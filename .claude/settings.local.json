@@ -19,7 +19,8 @@
       "Bash(pnpm --filter web exec tsc --noEmit -p tsconfig.json)",
       "Bash(echo \"EXIT $?\")",
       "Bash(echo \"web exit: $?\")",
-      "Bash(echo \"web tsc exit: $?\")"
+      "Bash(echo \"web tsc exit: $?\")",
+      "PowerShell(pnpm --filter web exec tsc --noEmit 2>&1 | Select-Object -First 80; \"EXIT: $LASTEXITCODE\")"
     ]
   },
   "enableAllProjectMcpServers": true,
