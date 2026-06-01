@@ -11,14 +11,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
-import { Building2, Mail, MapPin, Search, Shield, Users } from "lucide-react";
+import {
+  Briefcase,
+  Building2,
+  Mail,
+  MapPin,
+  Search,
+  Shield,
+  Users,
+} from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { format } from "date-fns";
+import SiteWorkOrdersDialog from "./site-work-orders-dialog";
 
 const ITEMS_PER_PAGE = 50;
 
 const OfficeDetailsDialog = () => {
-  const { getParam, deleteParams } = useHandleParams();
+  const { getParam, deleteParams, setParams } = useHandleParams();
   const isOpenDialog = getParam("dialog") === "view-office";
   const officeId = getParam("officeId");
   const officeName = getParam("officeName");
@@ -98,7 +107,8 @@ const OfficeDetailsDialog = () => {
   const totalCount = responseData?.totalCount ?? 0;
 
   return (
-    <DialogWindow
+    <>
+      <DialogWindow
       open={isOpenDialog}
       setOpen={handleDialogClose}
       isLoading={false}
@@ -215,10 +225,22 @@ const OfficeDetailsDialog = () => {
                           {capitalizeEachWord(site.state)} - {site.pincode}
                         </CardDescription>
                       </div>
-                      <div className='flex items-center gap-2 shrink-0'>
+                      <div className='flex flex-col items-end gap-2 shrink-0'>
                         <div className='text-xs text-muted-foreground'>
                           {format(new Date(site.created_at), "dd MMM yyyy")}
                         </div>
+                        <button
+                          type='button'
+                          onClick={() =>
+                            setParams({
+                              siteWoId: String(site.id),
+                              siteWoName: site.name,
+                            })
+                          }
+                          className='inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:border-emerald-300 hover:text-emerald-700'>
+                          <Briefcase className='h-3.5 w-3.5' />
+                          Work orders &amp; operators
+                        </button>
                       </div>
                     </div>
                   </CardHeader>
@@ -241,7 +263,9 @@ const OfficeDetailsDialog = () => {
           </>
         )}
       </div>
-    </DialogWindow>
+      </DialogWindow>
+      <SiteWorkOrdersDialog />
+    </>
   );
 };
 

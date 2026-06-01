@@ -4,6 +4,7 @@ import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import {
+  assertCanAccessOffice,
   assertCanAccessWorkOrder,
   assertCanAccessWorkOrderSite,
   getAccessScope,
@@ -282,6 +283,85 @@ export const workOrderSiteQueryRouter = router({
             error,
             "Fetching work order site operator assignments",
           );
+        }
+      }),
+    ),
+
+  /** For a master site, list its work-order-sites with each WO's code/title and
+   * the operators assigned to that WO-site. Read-only — visible to anyone who
+   * can access the site's office. Drives the office-details "work orders &
+   * operators" view. */
+  getWorkOrderSitesBySite: protectedProcedure
+    .input(z.object({ site_id: z.number().positive() }))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const [site] = await ctx.db
+          .select({ office_id: siteTable.office_id })
+          .from(siteTable)
+          .where(eq(siteTable.id, input.site_id))
+          .limit(1);
+        if (!site) {
+          throw notFound("Site", input.site_id);
+        }
+
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessOffice(ctx.db, scope, site.office_id);
+
+        try {
+          const woSites = await ctx.db
+            .select({
+              work_order_site_id: workOrderSiteTable.id,
+              work_order_id: workOrderTable.id,
+              wo_code: workOrderTable.code,
+              wo_title: workOrderTable.title,
+              job_number: workOrderSiteTable.job_number,
+              status: workOrderSiteTable.status,
+            })
+            .from(workOrderSiteTable)
+            .innerJoin(
+              workOrderTable,
+              eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+            )
+            .where(eq(workOrderSiteTable.site_id, input.site_id))
+            .orderBy(desc(workOrderSiteTable.created_at));
+
+          if (woSites.length === 0) return [];
+
+          const ids = woSites.map((w) => w.work_order_site_id);
+          const opRows = await ctx.db
+            .select({
+              work_order_site_id: workOrderSiteUserTable.work_order_site_id,
+              user_id: workOrderSiteUserTable.user_id,
+              name: userTable.name,
+              email: userTable.email,
+            })
+            .from(workOrderSiteUserTable)
+            .innerJoin(
+              userTable,
+              eq(workOrderSiteUserTable.user_id, userTable.id),
+            )
+            .where(inArray(workOrderSiteUserTable.work_order_site_id, ids));
+
+          const byWoSite = new Map<
+            number,
+            { user_id: number; name: string | null; email: string | null }[]
+          >();
+          for (const r of opRows) {
+            const arr = byWoSite.get(r.work_order_site_id) ?? [];
+            arr.push({ user_id: r.user_id, name: r.name, email: r.email });
+            byWoSite.set(r.work_order_site_id, arr);
+          }
+
+          return woSites.map((w) => ({
+            ...w,
+            operators: byWoSite.get(w.work_order_site_id) ?? [],
+          }));
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching work order sites for site");
         }
       }),
     ),
