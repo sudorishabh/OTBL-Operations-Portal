@@ -6,26 +6,13 @@ import Loading from "@/components/loading/Loading";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
-import StatusIndicator from "@/components/shared/status-indicator";
-import { Building2, Mail, MapPin, Search, Shield, UserMinus, Users } from "lucide-react";
+import { Building2, Mail, MapPin, Search, Shield, Users } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
-import SiteOperatorsSection from "./site-operators-section";
-import toast from "react-hot-toast";
-import { useApiError } from "@/hooks/useApiError";
 import { format } from "date-fns";
 
 const ITEMS_PER_PAGE = 50;
@@ -40,18 +27,6 @@ const OfficeDetailsDialog = () => {
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
   const [page, setPage] = useState(1);
 
-  const utils = trpc.useUtils();
-  const { handleError } = useApiError();
-
-  const removeFromSite = trpc.siteMutation.removeUserFromSite.useMutation({
-    onSuccess: async () => {
-      toast.success("Site operator removed");
-      await utils.siteQuery.getSitesByOfficeId.invalidate();
-      await utils.siteQuery.get6SitesByOfficeId.invalidate();
-    },
-    onError: (e: unknown) => handleError(e, { showToast: true }),
-  });
-
   const { data: officesData } = trpc.officeQuery.getOffices.useQuery(
     {},
     { enabled: isOpenDialog && !!officeId },
@@ -59,8 +34,6 @@ const OfficeDetailsDialog = () => {
   const officeInfo = (officesData as any)?.offices?.find(
     (o: any) => o.id === Number(officeId),
   );
-  // Only an admin or this office's manager may add/remove site operators.
-  const canManageMembers = !!officeInfo?.canManage;
 
   const { data, isLoading, isFetching } =
     trpc.siteQuery.getSitesByOfficeId.useQuery(
@@ -70,7 +43,6 @@ const OfficeDetailsDialog = () => {
         status: "all",
         page,
         limit: ITEMS_PER_PAGE,
-        siteUsersLimit: 80,
       },
       {
         enabled: isOpenDialog && !!officeId,
@@ -219,7 +191,7 @@ const OfficeDetailsDialog = () => {
               {allSites.map((site) => (
                 <Card
                   key={site.id}
-                  className='py-4 gap-4 rounded-sm'>
+                  className='py-4 rounded-sm'>
                   <CardHeader className='px-3 sm:px-4 gap-0'>
                     <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
                       <div className='min-w-0'>
@@ -250,142 +222,6 @@ const OfficeDetailsDialog = () => {
                       </div>
                     </div>
                   </CardHeader>
-
-                  <CardContent className='px-3 sm:px-4'>
-                    {site.users && site.users.length > 0 ? (
-                      <>
-                        {/* Mobile: stacked user cards */}
-                        <div className='sm:hidden space-y-2'>
-                          {site.users.map((user: any, idx: number) => (
-                            <div
-                              key={`m-${site.id}-${user.user_id ?? user.email}-${idx}`}
-                              className='flex items-start justify-between gap-2 rounded-md border bg-white p-2.5'>
-                              <div className='min-w-0 flex-1 space-y-0.5'>
-                                <div className='flex items-center gap-2 min-w-0'>
-                                  <StatusIndicator
-                                    status={
-                                      user.status ? "active" : "inactive"
-                                    }
-                                    size='sm'
-                                  />
-                                  <span className='text-xs font-medium truncate'>
-                                    {capitalizeEachWord(user.name || "N/A")}
-                                  </span>
-                                  <span className='text-[10px] text-muted-foreground shrink-0'>
-                                    · {capitalizeEachWord(user.role || "N/A")}
-                                  </span>
-                                </div>
-                                <p className='text-[11px] text-muted-foreground truncate'>
-                                  {user.email || "N/A"}
-                                </p>
-                                {user.contact_number && (
-                                  <p className='text-[11px] text-muted-foreground'>
-                                    {user.contact_number}
-                                  </p>
-                                )}
-                              </div>
-                              {canManageMembers &&
-                                typeof user.user_id === "number" && (
-                                  <button
-                                    type='button'
-                                    disabled={removeFromSite.isPending}
-                                    onClick={() =>
-                                      removeFromSite.mutate({
-                                        site_id: site.id,
-                                        user_id: user.user_id,
-                                      })
-                                    }
-                                    className='shrink-0 inline-flex rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
-                                    aria-label={`Remove ${user.name || "site operator"} from site`}>
-                                    <UserMinus className='h-4 w-4' />
-                                  </button>
-                                )}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* sm and up: table */}
-                        <div className='hidden sm:block border rounded-lg bg-white overflow-x-auto'>
-                          <Table className='bg-gray-100/50'>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className='text-xs h-8'>
-                                  Name
-                                </TableHead>
-                                <TableHead className='text-xs h-8'>
-                                  Role
-                                </TableHead>
-                                <TableHead className='text-xs h-8'>
-                                  Email
-                                </TableHead>
-                                <TableHead className='text-xs h-8'>
-                                  Contact
-                                </TableHead>
-                                <TableHead className='text-xs h-8 text-right w-[72px]'>
-                                  Remove
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {site.users.map((user: any, idx: number) => (
-                                <TableRow
-                                  key={`${site.id}-${user.user_id ?? user.email}-${idx}`}>
-                                  <TableCell className='text-xs py-2'>
-                                    <div className='flex items-center gap-2'>
-                                      <StatusIndicator
-                                        status={
-                                          user.status ? "active" : "inactive"
-                                        }
-                                        size='sm'
-                                      />
-                                      {capitalizeEachWord(user.name || "N/A")}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className='text-xs py-2'>
-                                    {capitalizeEachWord(user.role || "N/A")}
-                                  </TableCell>
-                                  <TableCell className='text-xs py-2'>
-                                    {user.email || "N/A"}
-                                  </TableCell>
-                                  <TableCell className='text-xs py-2'>
-                                    {user.contact_number || "N/A"}
-                                  </TableCell>
-                                  <TableCell className='text-xs py-2 text-right'>
-                                    {canManageMembers &&
-                                    typeof user.user_id === "number" ? (
-                                      <button
-                                        type='button'
-                                        disabled={removeFromSite.isPending}
-                                        onClick={() =>
-                                          removeFromSite.mutate({
-                                            site_id: site.id,
-                                            user_id: user.user_id,
-                                          })
-                                        }
-                                        className='inline-flex rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
-                                        aria-label={`Remove ${user.name || "site operator"} from site`}>
-                                        <UserMinus className='h-4 w-4' />
-                                      </button>
-                                    ) : null}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </>
-                    ) : (
-                      <span className='inline-block text-xs text-gray-500 py-1 bg-red-50 rounded px-2'>
-                        No site operators assigned yet.
-                      </span>
-                    )}
-                    {canManageMembers && (
-                      <SiteOperatorsSection
-                        siteId={site.id}
-                        siteUsers={site.users ?? []}
-                      />
-                    )}
-                  </CardContent>
                 </Card>
               ))}
             </div>
