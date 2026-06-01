@@ -43,7 +43,7 @@ const SiteOperatorsSection: React.FC<Props> = ({
 
   const assignMutation = trpc.siteMutation.assignUserToSite.useMutation({
     onSuccess: async () => {
-      toast.success("Operator assigned to site");
+      toast.success("Site operator assigned");
       await utils.siteQuery.getSitesByOfficeId.invalidate();
       await utils.siteQuery.get6SitesByOfficeId.invalidate();
     },
@@ -85,7 +85,7 @@ const SiteOperatorsSection: React.FC<Props> = ({
         ) : (
           <ChevronDown className='h-4 w-4' />
         )}
-        Assign or add operators
+        Assign or add site operators
       </button>
 
       {open && (

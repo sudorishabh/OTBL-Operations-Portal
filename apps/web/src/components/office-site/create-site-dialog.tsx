@@ -202,7 +202,7 @@ const CreateSiteDialog = () => {
       description={
         isEditMode
           ? "Update site information"
-          : "Create a new site and assign operators"
+          : "Create a new site and assign site operators"
       }
       open={isOpenDialog}
       size={isCreateMode ? "lg" : "sm"}
@@ -263,12 +263,12 @@ const CreateSiteDialog = () => {
               </div>
             </div>
 
-            {/* Operator Assignment Section - Only in Add Mode */}
+            {/* Site Operator Assignment Section - Only in Add Mode */}
             {isCreateMode && (
               <div className='space-y-4'>
                 <div className='border-b pb-2'>
                   <h3 className='text-base font-semibold text-gray-800'>
-                    Assign Operators
+                    Assign Site Operators
                   </h3>
                 </div>
 
@@ -378,7 +378,7 @@ const CreateSiteDialog = () => {
                 {selectedOperators.length > 0 && (
                   <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
                     <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3'>
-                      Selected Operators ({selectedOperators.length})
+                      Selected Site Operators ({selectedOperators.length})
                     </p>
                     <div className='flex flex-wrap gap-2'>
                       {selectedOperators.map((op) => {
