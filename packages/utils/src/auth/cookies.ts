@@ -12,8 +12,6 @@ type CookiePayloadType = {
   node_env: string;
 };
 
-// export const REFRESH_PATH = `${config.BASE_PATH}/auth/refresh`;
-
 const defaults = (node_env: string): CookieOptions => ({
   httpOnly: true,
   secure: node_env === "production" ? true : false,
@@ -33,9 +31,9 @@ export const getRefreshTokenCookieOptions = (
   const expires = calculateExpirationDate(expiresIn);
   return {
     ...defaults(node_env),
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     expires,
-    path: "/", // Changed from REFRESH_PATH to "/" so cookie is available on all routes
+    path: "/", // Available on all routes, not just the refresh endpoint
   };
 };
 
@@ -46,7 +44,7 @@ export const getAccessTokenCookieOptions = (
   const expires = calculateExpirationDate(expiresIn);
   return {
     ...defaults(node_env),
-    maxAge: 30 * 60 * 1000, // 30 minutes in milliseconds
+    maxAge: 30 * 60 * 1000,
     expires,
     path: "/",
   };

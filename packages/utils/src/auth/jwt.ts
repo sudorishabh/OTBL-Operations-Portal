@@ -1,9 +1,8 @@
 import jwt from "jsonwebtoken";
 
-// User roles as a constant for type safety
 export const USER_ROLES = {
   ADMIN: "admin",
-  MANAGER: "manager",
+  MANAGER: "office_manager",
   /** Office Operator: a member of one or more offices. Assignable to offices only. */
   OFFICE_OPERATOR: "office_operator",
   /** Site Operator: a field user assigned to sites. Assignable to sites only. */
@@ -19,7 +18,7 @@ export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 // Office and site operators sit at the same level as the legacy operator.
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   admin: 5,
-  manager: 4,
+  office_manager: 4,
   office_operator: 2,
   site_operator: 2,
   viewer: 1,
