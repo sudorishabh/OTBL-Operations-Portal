@@ -43,11 +43,11 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ============================================================
 INSERT INTO users (id, name, email, password, contact_number, role, created_by, status, created_at, updated_at) VALUES
 (1,  'Rishabh Negi',     'rishabhnegi175@gmail.com',      '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9717310698', 'admin',    NULL, 'active',   '2024-01-01 09:00:00', '2024-01-01 09:00:00'),
-(2,  'Rajesh Kumar',     'rajesh.kumar@otbl.in',          '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9811200001', 'manager',  1, 'active',   '2024-01-05 09:00:00', '2024-01-05 09:00:00'),
-(3,  'Priya Sharma',     'priya.sharma@otbl.in',          '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9822300002', 'manager',  1, 'active',   '2024-01-05 09:30:00', '2024-01-05 09:30:00'),
-(4,  'Amit Verma',       'amit.verma@otbl.in',            '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9833400003', 'manager',  1, 'active',   '2024-01-06 09:00:00', '2024-01-06 09:00:00'),
-(5,  'Sunita Patel',     'sunita.patel@otbl.in',          '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9844500004', 'manager',  1, 'active',   '2024-01-06 09:30:00', '2024-01-06 09:30:00'),
-(6,  'Vikram Singh',     'vikram.singh@otbl.in',          '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9855600005', 'manager',  1, 'active',   '2024-01-07 09:00:00', '2024-01-07 09:00:00'),
+(2,  'Rajesh Kumar',     'rajesh.kumar@otbl.in',          '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9811200001', 'office_manager',  1, 'active',   '2024-01-05 09:00:00', '2024-01-05 09:00:00'),
+(3,  'Priya Sharma',     'priya.sharma@otbl.in',          '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9822300002', 'office_manager',  1, 'active',   '2024-01-05 09:30:00', '2024-01-05 09:30:00'),
+(4,  'Amit Verma',       'amit.verma@otbl.in',            '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9833400003', 'office_manager',  1, 'active',   '2024-01-06 09:00:00', '2024-01-06 09:00:00'),
+(5,  'Sunita Patel',     'sunita.patel@otbl.in',          '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9844500004', 'office_manager',  1, 'active',   '2024-01-06 09:30:00', '2024-01-06 09:30:00'),
+(6,  'Vikram Singh',     'vikram.singh@otbl.in',          '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9855600005', 'office_manager',  1, 'active',   '2024-01-07 09:00:00', '2024-01-07 09:00:00'),
 (7,  'Rahul Gupta',      'rahul.gupta@otbl.in',           '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9866700006', 'operator', 2, 'active',   '2024-01-10 09:00:00', '2024-01-10 09:00:00'),
 (8,  'Deepak Joshi',     'deepak.joshi@otbl.in',          '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9877800007', 'operator', 2, 'active',   '2024-01-10 09:30:00', '2024-01-10 09:30:00'),
 (9,  'Anjali Mishra',    'anjali.mishra@otbl.in',         '$2a$12$nQRUi1WOpjwqAEtF.JiD9uoluSQyZzA0PkzNroRgAcFtQeNmAgH2q', '9888900008', 'operator', 3, 'active',   '2024-01-11 09:00:00', '2024-01-11 09:00:00'),
@@ -113,11 +113,11 @@ INSERT INTO client_contacts (id, client_id, name, designation, contact_number, e
 -- ============================================================
 INSERT INTO office_users (id, user_id, office_id, assigned_by, role, created_at, updated_at) VALUES
 -- Managers (one per office)
-(1,  2,  1, 1, 'manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
-(2,  3,  2, 1, 'manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
-(3,  4,  3, 1, 'manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
-(4,  5,  4, 1, 'manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
-(5,  6,  5, 1, 'manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
+(1,  2,  1, 1, 'office_manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
+(2,  3,  2, 1, 'office_manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
+(3,  4,  3, 1, 'office_manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
+(4,  5,  4, 1, 'office_manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
+(5,  6,  5, 1, 'office_manager', '2024-01-08 09:00:00', '2024-01-08 09:00:00'),
 -- Operators assigned to offices
 (6,  7,  1, 2, 'operator', '2024-01-12 09:00:00', '2024-01-12 09:00:00'),
 (7,  8,  1, 2, 'operator', '2024-01-12 09:00:00', '2024-01-12 09:00:00'),

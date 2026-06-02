@@ -8,6 +8,13 @@
       "when": 1780374515446,
       "tag": "0000_wakeful_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1780377338972,
+      "tag": "0001_rename_manager_role",
+      "breakpoints": true
     }
   ]
 }
