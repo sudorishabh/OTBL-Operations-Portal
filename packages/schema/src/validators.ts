@@ -1,9 +1,5 @@
 import { Schema, z } from "zod";
 
-// =============================================================================
-// STRING VALIDATORS
-// =============================================================================
-
 export const nameValidator = z
   .string({ message: "Name is required" })
   .trim()
@@ -34,10 +30,6 @@ export const requiredDescriptionValidator = z
   .trim()
   .min(10, "Description must be at least 10 characters")
   .max(2000, "Description cannot exceed 2000 characters");
-
-// =============================================================================
-// CONTACT VALIDATORS
-// =============================================================================
 
 export const emailValidator = z
   .string({ message: "Email is required" })
@@ -73,10 +65,6 @@ export const optionalMobileValidator = z
   .optional()
   .or(z.literal(""));
 
-// =============================================================================
-// PASSWORD VALIDATORS
-// =============================================================================
-
 export const passwordValidator = z
   .string({ message: "Password is required" })
   .min(8, "Password must be at least 8 characters")
@@ -93,10 +81,6 @@ export const strongPasswordValidator = passwordValidator.regex(
 export const loginPasswordValidator = z
   .string({ message: "Password is required" })
   .min(1, "Password is required");
-
-// =============================================================================
-// ADDRESS VALIDATORS
-// =============================================================================
 
 export const addressValidator = z
   .string({ message: "Address is required" })
@@ -130,10 +114,6 @@ export const optionalPincodeValidator = z
   .optional()
   .or(z.literal(""));
 
-// =============================================================================
-// BUSINESS VALIDATORS
-// =============================================================================
-
 export const gstNumberValidator = z
   .string({ message: "GST number is required" })
   .trim()
@@ -158,11 +138,6 @@ export const optionalGstNumberValidator = z
   .optional()
   .or(z.literal(""));
 
-/**
- * Code/Reference number validation
- * - Alphanumeric with optional hyphens and underscores
- * - Maximum 50 characters
- */
 export const codeValidator = z
   .string({ message: "Code is required" })
   .trim()
@@ -178,10 +153,6 @@ export const agreementNumberValidator = z
   .trim()
   .min(1, "Agreement number is required")
   .max(100, "Agreement number cannot exceed 100 characters");
-
-// =============================================================================
-// NUMERIC VALIDATORS
-// =============================================================================
 
 export const positiveIntValidator = z
   .number({ message: "This field is required" })
@@ -219,17 +190,6 @@ export const rateValidator = z
   .max(999999.99, "Rate value is too large")
   .optional();
 
-// =============================================================================
-// DATE VALIDATORS
-// =============================================================================
-
-/**
- * Date validator - accepts string or Date
- * - Coerces to Date object
- */
-// export const dateValidator = z.date({
-//   message: "Please enter a valid date",
-// });
 export const dateValidator = z.coerce.date({
   message: "Please enter a valid date",
 });
@@ -265,10 +225,6 @@ export const createDateRangeValidator = (
   );
 };
 
-// =============================================================================
-// URL VALIDATORS
-// =============================================================================
-
 export const urlValidator = z
   .string({ message: "URL is required" })
   .trim()
@@ -288,10 +244,6 @@ export const documentKeyValidator = z
   .trim()
   .min(1, "Document key is required")
   .max(500, "Document key cannot exceed 500 characters");
-
-// =============================================================================
-// PAGINATION VALIDATORS
-// =============================================================================
 
 export const pageValidator = z
   .number({ message: "Page number is required" })
@@ -316,10 +268,6 @@ export const sortOrderValidator = z
   .optional()
   .default("latest");
 
-// =============================================================================
-// COMPOSITE VALIDATORS (Common field groups)
-// =============================================================================
-
 export const addressFieldsValidator = z.object({
   address: addressValidator,
   city: cityValidator,
@@ -337,10 +285,6 @@ export const paginationFieldsValidator = z.object({
   limit: limitValidator,
   searchQuery: searchQueryValidator,
 });
-
-// =============================================================================
-// TYPE EXPORTS
-// =============================================================================
 
 export type AddressFields = z.infer<typeof addressFieldsValidator>;
 export type ContactFields = z.infer<typeof contactFieldsValidator>;

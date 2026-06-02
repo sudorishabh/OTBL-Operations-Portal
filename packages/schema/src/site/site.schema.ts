@@ -16,8 +16,6 @@ const { STATUS } = constants;
 
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
-// Base Schemas
-
 export const siteBaseSchema = z.object({
   name: nameValidator,
   address: addressValidator,
@@ -26,8 +24,6 @@ export const siteBaseSchema = z.object({
   pincode: pincodeValidator,
 });
 
-// Mutation Schemas
-
 export const createSiteSchema = siteBaseSchema.extend({
   office_id: positiveIntValidator,
 });
@@ -35,8 +31,6 @@ export const createSiteSchema = siteBaseSchema.extend({
 export const updateSiteSchema = siteBaseSchema.extend({
   siteId: positiveIntValidator,
 });
-
-// Query Schemas
 
 export const getSiteSchema = z.object({ siteId: positiveIntValidator });
 

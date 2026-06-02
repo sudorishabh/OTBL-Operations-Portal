@@ -18,7 +18,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Colors } from "@/lib/constants";
 import Toast from "react-native-toast-message";
 
-// Login validation schema (mirrors @pkg/schema auth.schema.ts)
 const loginSchema = z.object({
   email: z
     .string({ message: "Email is required" })
@@ -32,9 +31,6 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-/**
- * Login screen — mirrors the web login page
- */
 export default function LoginScreen() {
   const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,7 +73,6 @@ export default function LoginScreen() {
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <View style={styles.inner}>
-          {/* Branding */}
           <View style={styles.branding}>
             <View style={styles.logoContainer}>
               <View style={styles.logoPlaceholder}>
@@ -88,14 +83,12 @@ export default function LoginScreen() {
             <Text style={styles.subtitle}>Management System</Text>
           </View>
 
-          {/* Login Card */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Welcome Back</Text>
             <Text style={styles.cardDescription}>
               Enter your credentials to access your account
             </Text>
 
-            {/* Email Field */}
             <Controller
               control={control}
               name='email'
@@ -113,7 +106,6 @@ export default function LoginScreen() {
               )}
             />
 
-            {/* Password Field */}
             <Controller
               control={control}
               name='password'
@@ -131,12 +123,10 @@ export default function LoginScreen() {
               )}
             />
 
-            {/* Forgot Password */}
             <View style={styles.forgotContainer}>
               <Text style={styles.forgotText}>Forgot password?</Text>
             </View>
 
-            {/* Sign In Button */}
             <Button
               title='Sign In'
               onPress={handleSubmit(onSubmit)}
@@ -146,7 +136,6 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* Footer */}
           <Text style={styles.footer}>
             © {new Date().getFullYear()} OTBL. All rights reserved.{"\n"}
             Protected by industry-leading security.
@@ -160,7 +149,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#eff6ff", // blue-50
+    backgroundColor: "#eff6ff",
   },
   inner: {
     flex: 1,

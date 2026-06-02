@@ -6,9 +6,6 @@ const REFRESH_TOKEN_KEY = "otbl_refresh_token";
 
 const isWeb = Platform.OS === "web";
 
-/**
- * Store the access token securely
- */
 export async function setAccessToken(token: string): Promise<void> {
   if (isWeb) {
     localStorage.setItem(ACCESS_TOKEN_KEY, token);
@@ -17,9 +14,6 @@ export async function setAccessToken(token: string): Promise<void> {
   await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, token);
 }
 
-/**
- * Get the stored access token
- */
 export async function getAccessToken(): Promise<string | null> {
   if (isWeb) {
     return localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -27,9 +21,6 @@ export async function getAccessToken(): Promise<string | null> {
   return await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
 }
 
-/**
- * Store the refresh token securely
- */
 export async function setRefreshToken(token: string): Promise<void> {
   if (isWeb) {
     localStorage.setItem(REFRESH_TOKEN_KEY, token);
@@ -38,9 +29,6 @@ export async function setRefreshToken(token: string): Promise<void> {
   await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
 }
 
-/**
- * Get the stored refresh token
- */
 export async function getRefreshToken(): Promise<string | null> {
   if (isWeb) {
     return localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -48,9 +36,6 @@ export async function getRefreshToken(): Promise<string | null> {
   return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
 }
 
-/**
- * Store both tokens at once (used after login or token refresh)
- */
 export async function setTokens(
   accessToken: string,
   refreshToken: string,
@@ -61,9 +46,6 @@ export async function setTokens(
   ]);
 }
 
-/**
- * Clear all stored tokens (used on logout)
- */
 export async function clearTokens(): Promise<void> {
   if (isWeb) {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
@@ -76,9 +58,6 @@ export async function clearTokens(): Promise<void> {
   ]);
 }
 
-/**
- * Check if tokens exist (quick check without verifying validity)
- */
 export async function hasTokens(): Promise<boolean> {
   const token = await getAccessToken();
   return token !== null;

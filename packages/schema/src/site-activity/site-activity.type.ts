@@ -1,7 +1,3 @@
-/**
- * Site Activity Types
- */
-
 export interface SiteActivity {
   id: number;
   work_order_site_id: number;
@@ -37,7 +33,6 @@ export interface WorkOrderSiteDetails {
   status: "pending" | "completed" | "cancelled";
   created_at: Date;
   updated_at: Date;
-  // Joined data
   site?: {
     id: number;
     name: string;

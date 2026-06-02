@@ -8,9 +8,6 @@ interface StatusIndicatorProps {
   style?: ViewStyle;
 }
 
-/**
- * Status indicator with colored dot + badge
- */
 export default function StatusIndicator({
   status,
   style,

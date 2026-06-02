@@ -31,13 +31,6 @@ const statusClasses = (status: string) => {
   }
 };
 
-/**
- * Read-only view: for a master site, lists every work-order it belongs to
- * (one row per work-order-site) and the operators assigned to that WO-site.
- * Opened from the Office Sites dialog; layered via the `siteWoId` param so the
- * parent dialog stays open. Assignment itself lives in the work-order's
- * site-details dialog.
- */
 const SiteWorkOrdersDialog = () => {
   const { getParam, deleteParams } = useHandleParams();
   const siteWoId = getParam("siteWoId");

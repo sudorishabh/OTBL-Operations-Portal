@@ -153,7 +153,6 @@ export default function ProfilePage() {
       description='View and update your account details'>
       <div className='mt-6 flex max-w-2xl flex-col gap-4'>
 
-        {/* ── Hero card ── */}
         <Card className='shadow-sm border-cyan-900/10'>
           <CardContent className='p-5'>
             <div className='flex items-center gap-4'>
@@ -192,7 +191,6 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* ── Account details card ── */}
         <div>
           <p className='mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5'>
             Account details
@@ -291,7 +289,6 @@ export default function ProfilePage() {
           </Card>
         </div>
 
-        {/* ── Change password card ── */}
         <div>
           <p className='mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5'>
             Security

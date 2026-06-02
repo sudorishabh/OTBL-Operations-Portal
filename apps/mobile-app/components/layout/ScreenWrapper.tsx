@@ -20,9 +20,6 @@ interface ScreenWrapperProps {
   backgroundColor?: string;
 }
 
-/**
- * Screen wrapper — provides safe area + optional scrolling + pull-to-refresh
- */
 export default function ScreenWrapper({
   children,
   scroll = true,

@@ -116,7 +116,6 @@ const ClientDetailsCard = ({ clientId }: Props) => {
     }));
   }, []);
 
-  // Memoized stats object
   const stats = useMemo(
     () => ({
       siteCount: clientData?.siteCount ?? 0,
@@ -135,12 +134,10 @@ const ClientDetailsCard = ({ clientId }: Props) => {
     }).format(amount);
   };
 
-  // Loading state
   if (isLoading) {
     return <ClientInfoSkeleton />;
   }
 
-  // Error state
   if (isError) {
     return (
       <Error
@@ -150,7 +147,6 @@ const ClientDetailsCard = ({ clientId }: Props) => {
     );
   }
 
-  // No client data
   if (!clientData?.client) {
     return (
       <Error
@@ -266,13 +262,11 @@ const ClientDetailsCard = ({ clientId }: Props) => {
         </CardContent>
       </Card>
 
-      {/* Stats Cards */}
       <ClientStats
         stats={stats}
         clientId={clientId}
       />
 
-      {/* Dialogs */}
       <ContactDialog
         open={dialogState.contacts}
         onClose={() => closeDialog("contacts")}

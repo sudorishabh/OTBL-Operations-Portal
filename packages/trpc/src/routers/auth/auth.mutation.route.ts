@@ -25,7 +25,6 @@ export const authMutationRouter = router({
     handleMutation(async ({ input, ctx }) => {
       const { email, password } = input;
 
-      // Fetch user by email
       let users;
       try {
         users = await ctx.db
@@ -45,14 +44,12 @@ export const authMutationRouter = router({
 
       const user = users?.[0];
 
-      // Check if user exists
       if (!user) {
         throw unauthorized("Invalid email or password, please try again.", {
           devMessage: `No user found with email: ${email}`,
         });
       }
 
-      // Check if account is active
       if (user.status !== STATUS.ACTIVE) {
         throw unauthorized(
           "Your account is inactive. Please contact support.",
@@ -62,7 +59,6 @@ export const authMutationRouter = router({
         );
       }
 
-      // Verify password
       const isPasswordValid = await verifyPassword(password, user.password);
       if (!isPasswordValid) {
         throw unauthorized("Invalid email or password, please try again.", {
@@ -70,7 +66,6 @@ export const authMutationRouter = router({
         });
       }
 
-      // Create tokens
       const payload = {
         sub: user.id.toString(),
         email: user.email,
@@ -89,7 +84,6 @@ export const authMutationRouter = router({
         ctx.appEnv.JWT.REFRESH_EXPIRES_IN,
       );
 
-      // Set cookies (for web clients)
       setAuthenticationCookies({
         res: ctx.res,
         accessToken,
@@ -99,7 +93,6 @@ export const authMutationRouter = router({
         node_env: ctx.appEnv.NODE_ENV,
       });
 
-      // Return tokens in response body (for mobile clients that can't read httpOnly cookies)
       return {
         success: true,
         accessToken,
@@ -134,17 +127,12 @@ export const authMutationRouter = router({
     }),
   ),
 
-  /**
-   * Refresh tokens for mobile clients
-   * Accepts a refresh token in the request body and returns new access + refresh tokens
-   */
   refreshToken: publicProcedure
     .input(z.object({ refreshToken: z.string() }))
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { refreshToken: token } = input;
 
-        // Verify the refresh token
         const result = verifyRefreshTokenSafe(
           token,
           ctx.appEnv.JWT.REFRESH_SECRET,
@@ -158,7 +146,6 @@ export const authMutationRouter = router({
 
         const payload = result.payload;
 
-        // Verify user still exists and is active
         let users;
         try {
           users = await ctx.db
@@ -186,7 +173,6 @@ export const authMutationRouter = router({
           );
         }
 
-        // Generate new tokens
         const tokenPayload = {
           sub: user.id.toString(),
           email: user.email,

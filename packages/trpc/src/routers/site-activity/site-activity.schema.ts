@@ -1,6 +1,3 @@
-/**
- * Site Activity Router Schemas
- */
 import { z } from "zod";
 import {
   positiveIntValidator,
@@ -8,7 +5,6 @@ import {
   dateValidator,
 } from "../../validation/validators";
 
-// Enums
 export const workOrderStatusEnum = z.enum([
   "pending",
   "completed",
@@ -16,14 +12,12 @@ export const workOrderStatusEnum = z.enum([
 ]);
 export const yesNoEnum = z.enum(["yes", "no"]);
 
-// Activity Phase enum
 export const activityPhaseEnum = z.enum([
   "work_estimate",
   "order",
   "completion",
 ]);
 
-// Activity item table names — must match MySQL tables in @pkg/db schema
 export const activityItemTableEnum = z.enum([
   "clean_soil_area",
   "lifting_oil_slush",
@@ -35,9 +29,6 @@ export const activityItemTableEnum = z.enum([
   "bio_oil_zapping",
 ]);
 
-/**
- * Site Activity (Main Activity) Schemas
- */
 export const createSiteActivitySchema = z.object({
   client_id: positiveIntValidator,
   work_order_id: positiveIntValidator,
@@ -53,7 +44,6 @@ export const createSiteActivitySchema = z.object({
   start_date: z.string().or(dateValidator),
   end_date: z.string().or(dateValidator),
   remark: z.string().optional(),
-  // Selected item types for this activity
   selected_items: z.array(activityItemTableEnum).optional(),
 });
 
@@ -75,9 +65,6 @@ export const deleteSiteActivitySchema = z.object({
   id: positiveIntValidator,
 });
 
-/**
- * Site Activity Items Schemas
- */
 export const addActivityItemSchema = z.object({
   site_activity_id: positiveIntValidator,
   item_table_name: activityItemTableEnum,
@@ -92,9 +79,6 @@ export const getActivityItemsSchema = z.object({
   site_activity_id: positiveIntValidator,
 });
 
-/**
- * Zero Day Activity schema
- */
 export const createZeroDayActivitySchema = z.object({
   work_order_site_id: positiveIntValidator,
   site_activity_id: positiveIntValidator.optional(),
@@ -113,9 +97,6 @@ export const updateZeroDayActivitySchema = createZeroDayActivitySchema
     id: positiveIntValidator,
   });
 
-/**
- * Zero Day Sample schema
- */
 export const createZeroDaySampleSchema = z.object({
   work_order_site_id: positiveIntValidator,
   site_activity_id: positiveIntValidator.optional(),
@@ -138,9 +119,6 @@ export const updateZeroDaySampleSchema = createZeroDaySampleSchema
     id: positiveIntValidator,
   });
 
-/**
- * TPH Activity schema
- */
 export const createTphActivitySchema = z.object({
   work_order_site_id: positiveIntValidator,
   site_activity_id: positiveIntValidator.optional(),
@@ -164,9 +142,6 @@ export const updateTphActivitySchema = createTphActivitySchema
     id: positiveIntValidator,
   });
 
-/**
- * Oil Zapper Activity schema
- */
 export const createOilZapperActivitySchema = z.object({
   work_order_site_id: positiveIntValidator,
   site_activity_id: positiveIntValidator.optional(),
@@ -185,9 +160,6 @@ export const updateOilZapperActivitySchema = createOilZapperActivitySchema
     id: positiveIntValidator,
   });
 
-/**
- * Oil Zapper Indent schema
- */
 export const createOilZapperIndentSchema = z.object({
   oz_activity_id: positiveIntValidator,
   description: z.string().optional(),
@@ -204,9 +176,6 @@ export const updateOilZapperIndentSchema = z.object({
   proposed_amount: z.number().optional(),
 });
 
-/**
- * Query schemas
- */
 export const getActivitiesSchema = z.object({
   work_order_site_id: positiveIntValidator,
 });
@@ -214,7 +183,6 @@ export const getActivitiesSchema = z.object({
 export const getActivityByIdSchema = z.object({ id: positiveIntValidator });
 export const deleteActivitySchema = z.object({ id: positiveIntValidator });
 
-// Type exports
 export type CreateZeroDayActivityInput = z.infer<
   typeof createZeroDayActivitySchema
 >;

@@ -1,7 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { t } from "./trpc";
 
-// Logging middleware to track procedure calls and errors
 export const loggingMiddleware = t.middleware(async (opts) => {
   const { path, type, next, input } = opts;
   const start = Date.now();

@@ -63,7 +63,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
     defaultValues: {
       work_order_id: workOrder.id,
       client_id: workOrder.client_id,
-      // If work order has bioremediation_restoration, let user select; otherwise use the work order's process type
       process_type:
         workOrder.process_type === WO_PROCESS.BIOREMEDIATION_RESTORATION
           ? ""
@@ -112,14 +111,11 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
   useEffect(() => {
     if (sitesData?.sites && !isFetchingSites) {
       setAllSites((prev) => {
-        // If first page, we intend to replace.
-        // If not first page, we intend to append.
 
         let nextSites: any[] = [];
         if (currentPage === 1) {
           nextSites = sitesData.sites;
         } else {
-          // Filter duplicates for appending
           const existingIds = new Set(prev.map((s: any) => s.id));
           const newUniqueSites = sitesData.sites.filter(
             (s: any) => !existingIds.has(s.id),
@@ -129,8 +125,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
           nextSites = [...prev, ...newUniqueSites];
         }
 
-        // Final safety check: if the result is identical to prev (same logical content),
-        // return prev to abort re-render.
         if (
           prev.length === nextSites.length &&
           prev.every((p: any, i: number) => p.id === nextSites[i].id)
@@ -227,15 +221,12 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
     }
   };
 
-  // Check if work order allows process type selection (only for bioremediation_restoration)
   const canSelectProcessType =
     workOrder.process_type === WO_PROCESS.BIOREMEDIATION_RESTORATION;
 
-  // Watch the selected process type for filtering activities
   const selectedProcessType = watch("process_type");
   const selectedSiteId = watch("site_id");
 
-  // Get available process type options for the site
   const siteProcessTypeOptions = useMemo(() => {
     if (workOrder.process_type === WO_PROCESS.BIOREMEDIATION_RESTORATION) {
       return [
@@ -249,7 +240,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
   const activityMetadataMap = useMemo(() => {
     const map = new Map<string, { unit: string; id: number }>();
     scheduleOfRates?.forEach((sor: any) => {
-      // Handle both string and object (for safety)
       const activityName =
         typeof sor.activity === "object" ? sor.activity.name : sor.activity;
       map.set(activityName, { unit: sor.unit, id: sor.id });
@@ -257,33 +247,23 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
     return map;
   }, [scheduleOfRates]);
 
-  // Filter activities based on schedule of rates AND selected process type
   const activityOptions = useMemo(() => {
     if (!scheduleOfRates) return [];
 
-    // Get activities from schedule of rates
     const sorActivities = scheduleOfRates.map((sor: any) =>
       typeof sor.activity === "object" ? sor.activity.name : sor.activity,
     );
 
-    // Filter allActivityOptions based on:
-    // 1. Activity must be in schedule of rates
-    // 2. If process type is bioremediation, show bioremediation activities
-    // 3. If process type is restoration, show non-bioremediation activities
     return allActivityOptions
       .filter((activity) => {
-        // Must be in schedule of rates
         if (!sorActivities.includes(activity.value)) return false;
 
-        // If no process type selected yet (for bioremediation_restoration WOs), show all SOR activities
         if (!selectedProcessType) return true;
 
-        // If process type is bioremediation, show bioremediation activities
         if (selectedProcessType === WO_PROCESS.BIOREMEDIATION) {
           return activity.isBioremediation === true;
         }
 
-        // If process type is restoration, show non-bioremediation activities
         if (selectedProcessType === WO_PROCESS.RESTORATION) {
           return activity.isBioremediation === false;
         }
@@ -724,7 +704,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                             return (
                               <FormItem
                                 key={activity.id}
-                                // 🛑 1. REMOVED the entire onClick handler from here 🛑
                                 className={`flex flex-row items-stretch space-x-3 space-y-0 p-3 rounded-xl border transition-all duration-200 ${
                                   isChecked
                                     ? selectedProcessType ===
@@ -736,7 +715,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                                         : "bg-white border-primary shadow-sm ring-1 ring-primary/10"
                                     : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/50"
                                 }`}>
-                                {/* Added a container to center the checkbox vertically */}
                                 <div className='flex items-center'>
                                   <FormControl>
                                     <Checkbox

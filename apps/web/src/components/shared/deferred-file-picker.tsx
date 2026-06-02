@@ -8,54 +8,23 @@ import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 interface DeferredFilePickerProps {
-  /** Callback when file is selected */
   onFileSelect: (file: File | null) => void;
-  /** The currently selected file */
   selectedFile: File | null;
-  /** Whether the file has been uploaded */
   isUploaded?: boolean;
-  /** Upload progress (0-100) */
   uploadProgress?: number;
-  /** Whether upload is in progress */
   isUploading?: boolean;
-  /** Whether delete is in progress */
   isDeleting?: boolean;
-  /** Callback to delete the uploaded file */
   onDelete?: () => void;
   isUploadBgWhite?: boolean;
-  /** URL of the uploaded file (for viewing) */
   uploadedUrl?: string;
-  /** Label for the picker */
   label?: string;
-  /** Allowed file extensions (e.g., ['.pdf', '.docx']) */
   allowedExtensions?: string[];
-  /** Maximum file size in MB */
   maxSizeMB?: number;
-  /** Additional className */
   className?: string;
-  /** Helper text to display */
   helperText?: string;
-  /** Whether to allow multiple file selection */
   multiple?: boolean;
 }
 
-/**
- * A file picker component that allows selecting a file without immediate upload.
- * Designed to work with the useSharePointUpload hook for deferred upload on form submission.
- *
- * @example
- * ```tsx
- * const { selectedFile, selectFile, isUploading, progress, uploadedFile } = useSharePointUpload({...});
- *
- * <DeferredFilePicker
- *   selectedFile={selectedFile}
- *   onFileSelect={selectFile}
- *   isUploading={isUploading}
- *   uploadProgress={progress}
- *   isUploaded={!!uploadedFile}
- * />
- * ```
- */
 const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
   onFileSelect,
   selectedFile,
@@ -77,14 +46,12 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
 
   const validateFile = useCallback(
     (file: File): boolean => {
-      // Validate size
       const fileSizeMB = file.size / (1024 * 1024);
       if (fileSizeMB > maxSizeMB) {
         toast.error(`File size must be less than ${maxSizeMB}MB`);
         return false;
       }
 
-      // Validate extension
       const fileExtension = "." + file.name.split(".").pop()?.toLowerCase();
       if (!allowedExtensions.includes(fileExtension)) {
         toast.error(
@@ -169,7 +136,6 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
   return (
     <div className={cn("w-full", className)}>
       {!selectedFile ? (
-        // Empty state - compact inline dropzone
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={handleDragOver}
@@ -196,9 +162,7 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
           </span>
         </div>
       ) : (
-        // File selected state - compact horizontal bar
         <div className='border border-gray-200 rounded-md px-3 py-2 bg-white flex items-center gap-2'>
-          {/* Icon */}
           <div
             className={cn(
               "shrink-0 p-1.5 rounded-md",
@@ -219,7 +183,6 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
             )}
           </div>
 
-          {/* File info */}
           <div className='flex-1 min-w-0'>
             <div className='flex items-center gap-2'>
               <span className='text-sm font-medium text-gray-700 truncate max-w-[180px]'>
@@ -229,7 +192,6 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
                 {formatFileSize(selectedFile.size)}
               </span>
             </div>
-            {/* Status indicators */}
             {isUploading && (
               <div className='flex items-center gap-2 mt-0.5'>
                 <Progress
@@ -251,7 +213,6 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
             )}
           </div>
 
-          {/* Actions */}
           <div className='shrink-0 flex items-center gap-1'>
             {isUploaded && !isDeleting && uploadedUrl && (
               <Button
@@ -287,7 +248,6 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
         </div>
       )}
 
-      {/* Helper text */}
       {helperText && <p className='text-xs text-gray-400 mt-1'>{helperText}</p>}
     </div>
   );

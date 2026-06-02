@@ -65,8 +65,6 @@ export const officeMutationRouter = router({
               });
             }
 
-            // Office/site split: only Office Operators may hold office seats.
-            // Site Operators (and any other role) are rejected.
             const notOfficeOperators = users.filter(
               (u: { role: string }) => u.role !== ROLES.OFFICE_OPERATOR,
             );
@@ -102,7 +100,6 @@ export const officeMutationRouter = router({
           officeId,
         };
       } catch (error) {
-        // Re-throw AppError instances
         if (error && typeof error === "object" && "errorCode" in error) {
           throw error;
         }
@@ -117,7 +114,6 @@ export const officeMutationRouter = router({
       handleMutation(async ({ input, ctx }) => {
         const { id, ...rest } = input;
 
-        // Check if office exists
         const existingOffice = await ctx.db
           .select()
           .from(officeTable)
@@ -127,7 +123,6 @@ export const officeMutationRouter = router({
           throw notFound("Office", id);
         }
 
-        // Only an admin or this office's manager may edit it. Previously a
         // global managerProcedure let any manager update any office.
         await assertOfficeManager(ctx, id);
 
@@ -150,14 +145,8 @@ export const officeMutationRouter = router({
         const { office_id, user_id, role } = input;
         const userId = parseInt(ctx.user!.sub);
 
-        // Only an admin or this office's manager may manage its members.
-        // (Assigning the office's first manager has no office-manager yet, so
-        // that case is admin-only — which matches how offices are set up.)
         await assertOfficeManager(ctx, office_id);
 
-        // The office's manager may only manage office-operator seats. Assigning
-        // a manager is reserved for admins — an office manager cannot appoint
-        // (or replace) the office's manager.
         if (role === ROLES.MANAGER && ctx.user!.role !== ROLES.ADMIN) {
           throw forbidden("assign a manager to this office", {
             userMessage:
@@ -165,7 +154,6 @@ export const officeMutationRouter = router({
           });
         }
 
-        // Verify office exists
         const [office] = await ctx.db
           .select()
           .from(officeTable)
@@ -175,7 +163,6 @@ export const officeMutationRouter = router({
           throw notFound("Office", office_id);
         }
 
-        // Verify user exists
         const [user] = await ctx.db
           .select()
           .from(userTable)
@@ -187,9 +174,6 @@ export const officeMutationRouter = router({
           });
         }
 
-        // Office/site split: an office-operator seat may only be filled by a
-        // user whose global role is office_operator. Site Operators belong to
-        // sites, not offices. (Manager seats are gated by the manager pool.)
         if (role === "operator" && user.role !== ROLES.OFFICE_OPERATOR) {
           throw forbidden("add this user to the office as an operator", {
             userMessage:
@@ -197,7 +181,6 @@ export const officeMutationRouter = router({
           });
         }
 
-        // If assigning as manager, check if office already has a manager
         if (role === ROLES.MANAGER) {
           const existingManagers = await ctx.db
             .select()
@@ -218,7 +201,6 @@ export const officeMutationRouter = router({
         }
 
         try {
-          // Check if user is already assigned to this office
           const [existingAssignments] = await ctx.db
             .select()
             .from(officeUserTable)
@@ -231,13 +213,11 @@ export const officeMutationRouter = router({
             .limit(1);
 
           if (existingAssignments) {
-            // Update the role if already assigned
             await ctx.db
               .update(officeUserTable)
               .set({ role })
               .where(eq(officeUserTable.id, existingAssignments.id));
           } else {
-            // Create new assignment
             await ctx.db.insert(officeUserTable).values({
               user_id,
               office_id,
@@ -259,10 +239,8 @@ export const officeMutationRouter = router({
       handleMutation(async ({ input, ctx }) => {
         const { office_id, user_id } = input;
 
-        // Only an admin or this office's manager may remove its members.
         await assertOfficeManager(ctx, office_id);
 
-        // Check if assignment exists
         const assignments = await ctx.db
           .select()
           .from(officeUserTable)
@@ -279,8 +257,6 @@ export const officeMutationRouter = router({
           });
         }
 
-        // The office's manager may only manage office-operator seats. Revoking
-        // the office's manager is reserved for admins.
         if (assignments[0].role === ROLES.MANAGER && ctx.user!.role !== ROLES.ADMIN) {
           throw forbidden("remove the manager from this office", {
             userMessage:

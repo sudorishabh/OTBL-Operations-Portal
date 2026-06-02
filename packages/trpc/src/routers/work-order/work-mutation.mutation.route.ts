@@ -25,14 +25,10 @@ const {
 } = schema;
 
 export const workOrderMutationRouter = router({
-  // Admin-only: only a global admin may create a work order. Office managers
-  // and operators are read-only on work orders — they can view those in their
-  // office but cannot create, approve, or cancel them.
   createWorkOrder: adminProcedure
     .input(workOrderSchemas.createWorkOrderSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        // Validate client exists
         const existingClient = await ctx.db
           .select()
           .from(clientTable)
@@ -44,7 +40,6 @@ export const workOrderMutationRouter = router({
           });
         }
 
-        // Validate proposal exists
         const existingProposal = await ctx.db
           .select()
           .from(proposalTable)
@@ -56,11 +51,9 @@ export const workOrderMutationRouter = router({
           });
         }
 
-        // Get office_id from the proposal
         const proposal = existingProposal[0]!;
         const officeId = proposal.office_id;
 
-        // Build work order data object
         const workOrderData = {
           code: input.code,
           agreement_number: input.agreement_number,
@@ -75,20 +68,17 @@ export const workOrderMutationRouter = router({
           document_key: input.document_key,
           process_type: input.process_type,
           description: input.description || null,
-          // Force draft state; activation is a separate manager-only step.
           status: constants.WORK_ORDER_STATUS.PENDING,
           created_by: parseInt(ctx.user!.sub),
         };
 
         try {
-          // Create the work order
           const workOrderResult = await ctx.db
             .insert(workOrderTable)
             .values(workOrderData);
 
           const workOrderId = workOrderResult[0].insertId;
 
-          // Create schedule of rates entries
           if (input.schedule_of_rates && input.schedule_of_rates.length > 0) {
             const scheduleOfRatesData = input.schedule_of_rates.map((sor: any) => ({
               work_order_id: workOrderId,
@@ -118,7 +108,6 @@ export const workOrderMutationRouter = router({
       }),
     ),
 
-  // Admin-only: deleting a work order is a destructive action reserved for
   // global admins (previously this had no role gate at all).
   deleteWorkOrder: adminProcedure
     .input(workOrderSchemas.deleteWorkOrderSchema)
@@ -126,7 +115,6 @@ export const workOrderMutationRouter = router({
       handleMutation(async ({ input, ctx }) => {
         const { id } = input;
 
-        // Check if work order exists
         const existingWorkOrder = await ctx.db
           .select()
           .from(workOrderTable)
@@ -145,8 +133,6 @@ export const workOrderMutationRouter = router({
       }),
     ),
 
-  // Admin-only: approve a drafted work order, flipping the approval gate so
-  // it goes live. Leaves the pending/completed/cancelled status untouched.
   approveWorkOrder: adminProcedure
     .input(workOrderSchemas.approveWorkOrderSchema)
     .mutation(
@@ -184,7 +170,6 @@ export const workOrderMutationRouter = router({
       }),
     ),
 
-  // Admin-only: cancel a work order with a required reason.
   cancelWorkOrder: adminProcedure
     .input(workOrderSchemas.cancelWorkOrderSchema)
     .mutation(
@@ -225,11 +210,6 @@ export const workOrderMutationRouter = router({
         return await ctx.db.transaction(async (tx: any) => {
           let siteId = input.site_id;
 
-          // 1. Handle new site creation if provided. Creating a brand-new site
-          // is an office-manager action — office operators cannot create sites
-          // — so gate this branch with assertOfficeManager. This also closes a
-          // backdoor: site creation otherwise bypassed the createSite guard.
-          // Linking an existing site (site_id) is unaffected.
           if (!siteId && input.new_site) {
             const [woOffice] = await tx
               .select({ office_id: proposalTable.office_id })
@@ -256,7 +236,6 @@ export const workOrderMutationRouter = router({
             ]);
           }
 
-          // 2. Check if this site is already assigned to this work order
           const existingAssignment = await tx
             .select()
             .from(workOrderSiteTable)
@@ -273,7 +252,6 @@ export const workOrderMutationRouter = router({
             });
           }
 
-          // 3. Validate schedule of rates
           const existingScheduleOfRate = await tx
             .select()
             .from(scheduleOfRatesTable)
@@ -284,7 +262,6 @@ export const workOrderMutationRouter = router({
           }
 
           try {
-            // 4. Create the work order site
             const [result] = await tx.insert(workOrderSiteTable).values({
               work_order_id: input.work_order_id,
               client_id: input.client_id,
@@ -303,7 +280,6 @@ export const workOrderMutationRouter = router({
 
             const workOrderSiteId = result.insertId;
 
-            // 5. Create associated site activities if selected
             if (
               input.selected_activities &&
               input.selected_activities.length > 0

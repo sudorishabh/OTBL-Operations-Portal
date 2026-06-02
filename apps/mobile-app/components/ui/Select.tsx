@@ -25,9 +25,6 @@ interface SelectProps {
   error?: string;
 }
 
-/**
- * Select / dropdown component — uses a bottom modal with a scrollable list
- */
 export default function Select({
   label,
   placeholder = "Select an option",

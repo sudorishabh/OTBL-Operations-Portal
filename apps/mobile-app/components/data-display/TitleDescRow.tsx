@@ -9,10 +9,6 @@ interface TitleDescRowProps {
   style?: ViewStyle;
 }
 
-/**
- * Label + value row used in detail screens.
- * Optionally shows an icon before the title.
- */
 export default function TitleDescRow({
   icon,
   title,

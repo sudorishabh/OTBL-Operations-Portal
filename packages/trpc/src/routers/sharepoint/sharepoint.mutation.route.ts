@@ -13,11 +13,10 @@ import {
   validationError,
 } from "../../errors";
 
-// Local schemas (avoid leaking @pkg/schema's nested zod types into declarations)
 const uploadFileSchema = z.object({
   folderPath: z.string().min(1, "Folder path is required"),
   fileName: z.string().min(1, "File name is required"),
-  content: z.string().min(1, "File content is required"), // Base64
+  content: z.string().min(1, "File content is required"),
   conflictBehavior: z
     .enum(["fail", "replace", "rename"])
     .optional()
@@ -42,7 +41,6 @@ const createUploadSessionSchema = z.object({
     .default("replace"),
 });
 
-/** Allowed file extensions for SharePoint uploads */
 const ALLOWED_EXTENSIONS = [
   ".pdf",
   ".doc",
@@ -60,7 +58,6 @@ const ALLOWED_EXTENSIONS = [
   ".zip",
 ];
 
-/** Reject paths containing traversal sequences */
 const assertSafePath = (value: string, fieldName: string) => {
   if (value.includes("..") || value.includes("//") || /[<>:|?*]/.test(value)) {
     throw validationError(`Invalid ${fieldName}`, [
@@ -69,7 +66,6 @@ const assertSafePath = (value: string, fieldName: string) => {
   }
 };
 
-/** Return lowercased extension including the dot, e.g. ".pdf" */
 const getExtension = (fileName: string) => {
   const idx = fileName.lastIndexOf(".");
   return idx >= 0 ? fileName.slice(idx).toLowerCase() : "";
@@ -79,7 +75,6 @@ const sharePointMutationRouterRecord = {
   uploadFile: protectedProcedure
     .input(uploadFileSchema)
     .mutation(async ({ input, ctx }) => {
-      // Security: validate file extension and path safety
       const ext = getExtension(input.fileName);
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
         throw validationError("File type not allowed", [
@@ -105,7 +100,6 @@ const sharePointMutationRouterRecord = {
         const config = getSharePointConfig(ctx.appEnv);
         const service = createSharePointService(config);
 
-        // Decode base64 content
         const buffer = Buffer.from(input.content, "base64");
 
         const file = await service.uploadFile(
@@ -163,7 +157,6 @@ const sharePointMutationRouterRecord = {
   createFolder: protectedProcedure
     .input(createFolderSchema)
     .mutation(async ({ input, ctx }) => {
-      // Security: validate path safety
       assertSafePath(input.parentPath, "parentPath");
       assertSafePath(input.folderName, "folderName");
 

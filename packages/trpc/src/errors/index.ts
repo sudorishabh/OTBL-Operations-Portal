@@ -1,47 +1,3 @@
-/**
- * Centralized Error System
- *
- * This module exports all error-related utilities for use throughout the application.
- *
- * ## Quick Start
- *
- * ### In Services (throwing errors):
- * ```typescript
- * import { throwNotFoundError, createValidationError } from './errors';
- *
- * // Simple not found
- * if (!user) throwNotFoundError("User", userId);
- *
- * // Validation error
- * throw createValidationError({
- *   devMessage: "Email format invalid",
- *   fields: [{ field: "email", message: "Invalid email format" }]
- * });
- * ```
- *
- * ### In Routes (automatic transformation):
- * Errors are automatically transformed by the error handling middleware.
- * Just throw AppError or use the factory functions.
- *
- * ### Error Response Structure:
- * Client responses have this structure:
- * ```json
- * {
- *   "error": {
- *     "code": "TRPC_ERROR_CODE",
- *     "data": {
- *       "errorCode": "RESOURCE_NOT_FOUND",
- *       "userMessage": "The user you're looking for doesn't exist",
- *       "validationErrors": [...],
- *       "requestId": "abc-123",
- *       "timestamp": "2024-01-01T00:00:00.000Z"
- *     }
- *   }
- * }
- * ```
- */
-
-// Error codes and types
 export {
   ErrorCode,
   AuthErrorCodes,
@@ -62,7 +18,6 @@ export {
   type ErrorCodeType,
 } from "./error-codes";
 
-// User-facing messages
 export {
   DefaultUserMessages,
   getUserMessage,
@@ -70,7 +25,6 @@ export {
   UNKNOWN_ERROR_MESSAGE,
 } from "./user-messages";
 
-// AppError class and types
 export {
   AppError,
   isAppError,
@@ -80,11 +34,8 @@ export {
   type ValidationFieldError,
 } from "./app-error";
 
-// Error factory functions - New simple API
 export {
-  // Main factory function
   createError,
-  // Simple factory functions (new API)
   notFound,
   alreadyExists,
   validationError,
@@ -101,11 +52,8 @@ export {
   serviceUnavailable,
   timeout,
   rateLimited,
-  // Utility
   isDevelopment,
-  // Types
   type ErrorOptions,
-  // Legacy exports (for backward compatibility)
   createNotFoundError,
   createAlreadyExistsError,
   createResourceError,
@@ -126,7 +74,6 @@ export {
   createDatabaseError,
   createInternalError,
   createUnexpectedError,
-  // Throwing helpers
   throwNotFoundError,
   throwValidationError,
   throwUnauthorizedError,
@@ -135,7 +82,6 @@ export {
   throwConflictError,
 } from "./error-factory";
 
-// tRPC integration
 export {
   transformToTRPCError,
   appErrorToTRPCError,
@@ -145,7 +91,6 @@ export {
   type TRPCErrorCause,
 } from "./trpc-handler";
 
-// Client-side utilities for parsing and handling errors
 export {
   parseApiError,
   getFieldErrors,

@@ -10,9 +10,6 @@ interface FormSelectProps<T extends FieldValues> {
   options: SelectOption[];
 }
 
-/**
- * Form-connected select — integrates react-hook-form Controller with the Select component.
- */
 export default function FormSelect<T extends FieldValues>({
   control,
   name,

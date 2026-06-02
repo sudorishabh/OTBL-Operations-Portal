@@ -10,13 +10,6 @@ import { siteSchemas } from "@pkg/schema";
 const { siteTable } = schema;
 
 export const siteMutationRouter = router({
-  // Office-manager-scoped: only an admin or the manager of this site's office
-  // may create a site in it. Office operators are read-only and cannot create
-  // sites. (Was a global managerProcedure, which let any global manager create
-  // a site in any office regardless of which office they actually manage.)
-  //
-  // Operators are NOT assigned here — Site Operators are pinned per
-  // work-order-site (setWorkOrderSiteOperators), not to the master site.
   createSite: protectedProcedure.input(siteSchemas.createSiteSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       await assertOfficeManager(ctx, input.office_id);
@@ -35,7 +28,6 @@ export const siteMutationRouter = router({
 
         return { success: true, id: createdSite.id };
       } catch (error) {
-        // Re-throw AppError instances
         if (error && typeof error === "object" && "errorCode" in error) {
           throw error;
         }
@@ -46,7 +38,6 @@ export const siteMutationRouter = router({
 
   updateSite: protectedProcedure.input(siteSchemas.updateSiteSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
-      // Check if site exists
       const existingSite = await ctx.db
         .select()
         .from(siteTable)
@@ -56,9 +47,6 @@ export const siteMutationRouter = router({
         throw notFound("Site", input.siteId);
       }
 
-      // Only an admin or the manager of this site's office may edit it.
-      // (Was a global managerProcedure, which let any global manager update
-      // a site in any office regardless of which office they actually manage.)
       await assertOfficeManager(ctx, existingSite[0]!.office_id);
 
       try {

@@ -145,8 +145,6 @@ export const userQueryRouter = router({
           .offset(offset)
           .orderBy(userOrder);
 
-        // Fetch offices for each user with full office details
-        // Fetch offices and sites in batch to avoid N+1 problem
         const userIds = users.map((u: any) => u.id);
         let allOffices: {
           userId: number;
@@ -171,9 +169,6 @@ export const userQueryRouter = router({
             )
             .where(inArray(officeUserTable.user_id, userIds));
 
-          // A user's "sites" are the master sites of the work-order sites they
-          // are assigned to (work_order_site_users) — there is no master-site
-          // roster anymore. De-duplicated per user below.
           allSites = await ctx.db
             .select({
               userId: workOrderSiteUserTable.user_id,
@@ -230,7 +225,6 @@ export const userQueryRouter = router({
       }),
     ),
 
-  // Get user by ID
   getUserById: protectedProcedure
     .use(
       hasAnyRole([
@@ -299,7 +293,6 @@ export const userQueryRouter = router({
             ) ?? condition;
         }
 
-        // Get total count first
         const [totalResult] = await ctx.db
           .select({ count: count() })
           .from(userTable)
@@ -351,7 +344,6 @@ export const userQueryRouter = router({
       }),
     ),
 
-  // Get 8 users from each role category
   getCategories8User: protectedProcedure.use(hasRole(ROLES.ADMIN)).query(
     handleProtectedQuery(async ({ ctx }) => {
       const userInfoNeeded = {

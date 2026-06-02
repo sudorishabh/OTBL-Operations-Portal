@@ -27,9 +27,6 @@ interface ButtonProps {
   fullWidth?: boolean;
 }
 
-/**
- * Styled button component — mirrors the web Button with variants
- */
 export default function Button({
   title,
   onPress,
@@ -91,7 +88,6 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
-  // Variant backgrounds
   primary: {
     backgroundColor: Colors.primary[600],
     shadowColor: Colors.primary[600],
@@ -114,7 +110,6 @@ const styles = StyleSheet.create({
   ghost: {
     backgroundColor: "transparent",
   },
-  // Text styles
   text: {
     fontSize: 15,
     fontWeight: "600",

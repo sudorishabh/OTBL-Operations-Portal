@@ -38,7 +38,6 @@ interface Props {
     updated_at: string;
     office_id: number;
     office_name: string | null;
-    /** Manager approval gate — true once the office manager has approved. */
     is_approved?: boolean;
     approved_by_name?: string | null;
   };
@@ -85,7 +84,6 @@ const Stat = ({
 }) => (
   <div className='min-w-[88px]'>
     <div className='flex items-center gap-1 text-[12px] text-gray-600'>
-      {/* {Icon && <Icon className='size-3' />} */}
       <span>{label}</span>
     </div>
     <div
@@ -118,8 +116,6 @@ const StatGroup = ({
 const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-  // Budget is the income from the client; activity spending is how that
-  // income is consumed across sites; profit = income − expenses.
   const income = Number(stats.totalBudgetAmount) || 0;
   const activitySpending = Number(stats.totalCompletionAmount) || 0;
   const activityUsedPct = income > 0 ? (activitySpending / income) * 100 : 0;
@@ -247,20 +243,6 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
               </div>
             </div>
 
-            {/* <div className='flex items-center gap-3'>
-              <div className='size-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0'>
-                <FileText className='size-4 text-cyan-800' />
-              </div>
-              <div>
-                <div className='text-[11px] uppercase tracking-wide text-gray-500'>
-                  Process Type
-                </div>
-                <div className='text-gray-700 text-xs font-medium'>
-                  {processLabel}
-                </div>
-              </div>
-            </div> */}
-
             <div className='flex items-center gap-3'>
               <div className='size-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0'>
                 <Hash className='size-4 text-cyan-800' />
@@ -290,7 +272,6 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
             </div>
           </div>
 
-          {/* PDF Document Link - Prominent Section */}
           {workOrder.document_key && (
             <div className='mt-5 p-2.5 rounded-xl bg-linear-to-r from-emerald-50 via-teal-50 to-cyan-50 border border-emerald-200/60 shadow-sm'>
               <div className='flex items-center justify-between gap-4 flex-wrap'>

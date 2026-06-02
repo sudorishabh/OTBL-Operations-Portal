@@ -31,13 +31,6 @@ type CandidateRow = OperatorRow & { assigned: boolean };
 
 const PAGE_SIZE = 20;
 
-/**
- * Paginated, server-searched operator picker for a single WO-site. Built for
- * pools of hundreds of Site Operators: candidates page in on demand and search
- * runs server-side, while the current selection (which may include operators on
- * other pages) is rendered from a separate small "assigned" query and a local
- * details map so chips and checkboxes stay accurate across pages/searches.
- */
 const WoSiteOperatorsDialog: React.FC<Props> = ({
   open,
   setOpen,
@@ -53,8 +46,6 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
     { user_id: number; name: string | null; email: string | null; assigned: boolean }[]
   >([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  // Names/emails for selected operators not necessarily on the current page,
-  // so chips render correctly regardless of paging/search.
   const [details, setDetails] = useState<Map<number, OperatorRow>>(new Map());
   const [seeded, setSeeded] = useState(false);
 
@@ -77,7 +68,6 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
       { enabled, retry: false },
     );
 
-  // Seed the live selection from the server truth once per open.
   useEffect(() => {
     if (!assignedData || seeded) return;
     const assigned: OperatorRow[] = assignedData;
@@ -96,13 +86,11 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
     setSeeded(true);
   }, [assignedData, seeded]);
 
-  // Reset paging + accumulated rows whenever the search term changes.
   useEffect(() => {
     setPage(1);
     setResults([]);
   }, [search]);
 
-  // Accumulate paged rows (de-duped) and capture details for any selected rows.
   useEffect(() => {
     if (!pageData?.operators) return;
     const ops: CandidateRow[] = pageData.operators;
@@ -159,7 +147,6 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
 
   const handleClose = useCallback(() => {
     setOpen(false);
-    // Reset transient picker state so the next open re-seeds from the server.
     setSearch("");
     setPage(1);
     setResults([]);
@@ -194,7 +181,6 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
       size='lg'
       heightMode='full'>
       <div className='flex h-full flex-col gap-4 py-2'>
-        {/* Selected summary + chips */}
         <div className='rounded-lg border bg-slate-50/80 p-3'>
           <div className='mb-2 flex items-center gap-2'>
             <Users className='h-3.5 w-3.5 text-emerald-600' />
@@ -231,7 +217,6 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Search */}
         <Input
           mode='standalone'
           placeholder='Search operators by name or email...'
@@ -241,7 +226,6 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
           className='max-w-md'
         />
 
-        {/* Candidate list */}
         <ScrollArea className='flex-1 min-h-0 -mr-3 pr-3'>
           {loadingPage && results.length === 0 ? (
             <div className='space-y-2'>
@@ -315,7 +299,6 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
           )}
         </ScrollArea>
 
-        {/* Footer */}
         <div className='flex items-center justify-between border-t pt-3'>
           <span className='text-[11px] text-muted-foreground'>
             {total > 0

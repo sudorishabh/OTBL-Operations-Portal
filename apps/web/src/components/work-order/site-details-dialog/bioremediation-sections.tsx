@@ -37,8 +37,6 @@ import DeferredFilePicker from "@/components/shared/deferred-file-picker";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import { format } from "date-fns";
 
-// --- Bio Samples Components ---
-
 const BioSampleForm = ({
   woSiteId,
   onSuccess,
@@ -76,7 +74,6 @@ const BioSampleForm = ({
       onSuccess: () => {
         toast.success("Bio sample added successfully");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
-        // Reset form
         setTphValue("");
         setApplicationMonth("");
         setFile(null);
@@ -113,7 +110,6 @@ const BioSampleForm = ({
         createMutation.mutate({
           work_order_site_id: woSiteId,
           tph_document_url: result.webUrl,
-          // Normalize locale decimal separator ("," -> ".") but keep user's precision.
           tph_value: tphValue.replace(",", "."),
           application_month: applicationMonth,
         });
@@ -148,7 +144,6 @@ const BioSampleForm = ({
               value={tphValue}
               onChange={(e) => {
                 const next = e.target.value;
-                // Let user type freely (incl. decimals) while preventing non-numeric junk.
                 if (next === "" || /^[0-9]*[.,]?[0-9]*$/.test(next)) {
                   setTphValue(next);
                 }
@@ -196,8 +191,6 @@ const BioSampleForm = ({
     </div>
   );
 };
-
-// --- Oil Zapping Components ---
 
 const OilZappingForm = ({
   woSiteId,
@@ -365,18 +358,14 @@ const OilZappingForm = ({
   );
 };
 
-// --- Combined List Component ---
-
 interface CombinedItem {
   id: number;
   type: "bio" | "oil";
   estimated_quantity?: string;
   application_month?: string;
   created_at: string;
-  // Bio specific
   tph_value?: string;
   tph_document_url?: string;
-  // Oil specific
   original: any;
 }
 
@@ -508,8 +497,6 @@ const CombinedList = ({
   );
 };
 
-// --- Main Component ---
-
 export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
   const utils = trpc.useUtils();
   const [bioDialogOpen, setBioDialogOpen] = useState(false);
@@ -575,7 +562,6 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
   const bioSamples = bioremediationDataQuery.data?.bioSamples || [];
   const oilZapping = bioremediationDataQuery.data?.oilZapping || [];
 
-  // Combine and sort items
   const combinedItems: CombinedItem[] = [
     ...bioSamples.map((item: any) => ({
       id: item.id,
@@ -615,7 +601,6 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
           </p>
         </div>
         <div className='flex items-center gap-3 w-full sm:w-auto overflow-x-auto'>
-          {/* Filter Select */}
           <Select
             value={filterType}
             onValueChange={(val: "all" | "bio" | "oil") => setFilterType(val)}>
@@ -629,7 +614,6 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
             </SelectContent>
           </Select>
 
-          {/* Bio Sample Dialog */}
           <Dialog
             open={bioDialogOpen}
             onOpenChange={setBioDialogOpen}>
@@ -656,7 +640,6 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
             </DialogContent>
           </Dialog>
 
-          {/* Oil Zapping Dialog */}
           <Dialog
             open={oilDialogOpen}
             onOpenChange={setOilDialogOpen}>

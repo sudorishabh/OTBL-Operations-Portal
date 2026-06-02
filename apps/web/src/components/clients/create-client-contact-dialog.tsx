@@ -72,13 +72,6 @@ const CreateClientContactDialog = () => {
     },
   });
 
-  // Update client_id when preselectedClientId changes
-  // React.useEffect(() => {
-  //   if (preselectedClientId) {
-  //     form.setValue("client_id", preselectedClientId);
-  //   }
-  // }, [preselectedClientId, form]);
-
   async function onSubmit(values: clientTypes.createClientContactInput) {
     try {
       await addClientContact.mutateAsync({
@@ -86,7 +79,6 @@ const CreateClientContactDialog = () => {
         designation: values.designation,
         contact_type: values.contact_type,
       });
-      // setOpen(false);
       form.reset();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -126,7 +118,6 @@ const CreateClientContactDialog = () => {
                   <Select
                     onValueChange={(value) => field.onChange(parseInt(value))}
                     value={field.value ? field.value.toString() : ""}
-                    // disabled={!!preselectedClientId}
                   >
                     <FormControl>
                       <SelectTrigger>

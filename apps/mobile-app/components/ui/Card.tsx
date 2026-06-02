@@ -9,9 +9,6 @@ interface CardProps {
   subtitle?: string;
 }
 
-/**
- * Styled card component — mirrors the web Card component
- */
 export default function Card({ children, style, title, subtitle }: CardProps) {
   return (
     <View style={[styles.card, style]}>

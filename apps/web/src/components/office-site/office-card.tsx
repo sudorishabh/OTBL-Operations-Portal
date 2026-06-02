@@ -59,11 +59,9 @@ type Office = {
     email: string;
     role: string;
   } | null;
-  /** True when the current user (admin or this office's manager) may manage members. */
   canManage?: boolean;
 };
 
-/** A single labelled row inside the office information hover panel. */
 const InfoRow: React.FC<{
   icon: React.ElementType;
   label: string;
@@ -110,11 +108,8 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
 
   return (
     <div className='bg-white rounded-xl hover:border-emerald-400 border border-gray-50 shadow-sm hover:shadow-lg transition-all duration-300 p-3 sm:p-4'>
-      {/* ── Header: office identity / quick info + actions ───────────── */}
       <div className='flex flex-col gap-4 border-b border-gray-100 pb-4 mb-4 lg:flex-row lg:items-start lg:justify-between'>
-        {/* Identity + quick info */}
         <div className='min-w-0'>
-          {/* Name + status */}
           <div className='flex flex-wrap items-center gap-2'>
             <h3 className='break-words font-semibold leading-tight text-gray-900'>
               {capitalizeEachWord(office.name)}
@@ -134,7 +129,6 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
             </span>
           </div>
 
-          {/* Meta row: info trigger + manager + operators */}
           <div className='mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500'>
             <div className='group relative inline-flex'>
               <button
@@ -144,10 +138,8 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                 Info
               </button>
 
-              {/* Hover / focus information panel */}
               <div className='pointer-events-none absolute left-0 top-full z-30 w-80 max-w-[calc(100vw-2rem)] origin-top-left scale-95 pt-2 opacity-0 transition-all duration-200 ease-out group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:scale-100 group-focus-within:opacity-100 sm:w-96'>
                 <div className='overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ring-1 ring-black/5'>
-                  {/* Header */}
                   <div className='flex items-start justify-between gap-3 border-b border-slate-100 bg-linear-to-br from-slate-50 to-white px-4 py-3'>
                     <div className='flex min-w-0 items-start gap-2.5'>
                       <span className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-100'>
@@ -177,7 +169,6 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                     </span>
                   </div>
 
-                  {/* Details */}
                   <div className='space-y-3 px-4 py-3'>
                     <InfoRow
                       icon={MapPin}
@@ -208,7 +199,6 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                       />
                     ) : null}
 
-                    {/* Stats */}
                     <div className='flex items-center gap-2 pt-0.5'>
                       <div className='flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 ring-1 ring-inset ring-slate-100'>
                         <Building2 className='size-3.5 text-emerald-600' />
@@ -233,7 +223,6 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                     </div>
                   </div>
 
-                  {/* Footer */}
                   <div className='flex items-center gap-1.5 border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-[11px] text-slate-500'>
                     <Calendar className='size-3.5 text-slate-400' />
                     Created{" "}
@@ -268,7 +257,6 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
           </div>
         </div>
 
-        {/* Actions */}
         <div className='flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end'>
           <span className='inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-gray-500 ring-1 ring-inset ring-gray-200'>
             <Building2 className='size-3.5 text-emerald-600' />

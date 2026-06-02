@@ -84,8 +84,6 @@ type Props<TFieldValues extends FieldValues = FieldValues> = CommonProps &
 const Input = <TFieldValues extends FieldValues = FieldValues>(
   props: Props<TFieldValues>,
 ) => {
-  // Must be at the top level — React Hooks cannot be called conditionally.
-  // Used only in "standalone" mode; in "form" mode the value comes from the form field.
   const standaloneDefault =
     props.mode === "standalone"
       ? (props as StandaloneModeProps).defaultValue ?? ""

@@ -1,11 +1,9 @@
 import { z } from "zod";
 
-// Mutation Schemas
-
 export const uploadFileSchema = z.object({
   folderPath: z.string().min(1, "Folder path is required"),
   fileName: z.string().min(1, "File name is required"),
-  content: z.string().min(1, "File content is required"), // Base64 encoded content
+  content: z.string().min(1, "File content is required"),
   conflictBehavior: z
     .enum(["fail", "replace", "rename"])
     .optional()
@@ -29,8 +27,6 @@ export const createUploadSessionSchema = z.object({
     .optional()
     .default("replace"),
 });
-
-// Query Schemas
 
 export const getFilesSchema = z.object({
   folderPath: z.string().optional().default("/"),

@@ -1,9 +1,3 @@
-/**
- * Schedule-of-rates (SOR) completion rules shared with the work order detail UI.
- * When every SOR line has enough completion quantity recorded, the work order
- * is treated as completed (unless cancelled in the database).
- */
-
 export type EffectiveWorkOrderStatus = "pending" | "completed" | "cancelled";
 
 export const SOR_ACTIVITY_TO_COMPLETION_ACTIVITY: Record<string, string> = {
@@ -43,7 +37,6 @@ export interface SiteWithCompletions {
   }>;
 }
 
-/** True when every SOR line has completion quantity meeting or exceeding the SOR estimate. */
 export function computeSorFullyConsumed(
   scheduleOfRates: ScheduleOfRateRow[] | null | undefined,
   sites: SiteWithCompletions[] | null | undefined,
@@ -72,10 +65,6 @@ export function computeSorFullyConsumed(
   });
 }
 
-/**
- * Display status: explicit DB cancellation/completion wins; otherwise SOR consumption
- * vs estimates decides pending vs completed.
- */
 export function getEffectiveWorkOrderStatus(
   dbStatus: string,
   scheduleOfRates: ScheduleOfRateRow[] | null | undefined,
@@ -87,7 +76,6 @@ export function getEffectiveWorkOrderStatus(
   return computeSorFullyConsumed(scheduleOfRates, sites) ? "completed" : "pending";
 }
 
-/** Fallback when SOR/site data is not loaded (should be rare). */
 export function effectiveWorkOrderStatusFromDbOnly(
   dbStatus: string,
 ): EffectiveWorkOrderStatus {

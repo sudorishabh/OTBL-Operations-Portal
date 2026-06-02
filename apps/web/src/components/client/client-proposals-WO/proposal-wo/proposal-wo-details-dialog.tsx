@@ -31,8 +31,6 @@ interface Props {
   clientId: number;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 const SOR_ACTIVITY_TO_COMPLETION_ACTIVITY: Record<string, string> = {
   clean_soil_area: "clean_soil_area",
   lifting_oily_slush_or_recovery_of_oil: "lifting_oil_slush",
@@ -185,7 +183,6 @@ const ResolvedWorkOrderSide = ({
       title={workOrder ? "Go to work order page" : undefined}>
       {workOrder ? (
         <>
-          {/* Header badges */}
           <div className='flex items-center gap-2 mb-2.5'>
             <span className='inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-mono font-medium ring-1 ring-emerald-200'>
               <Briefcase className='w-3 h-3 mr-1 opacity-60' />
@@ -200,7 +197,6 @@ const ResolvedWorkOrderSide = ({
             )}
           </div>
 
-          {/* Title */}
           <h4 className='text-sm font-semibold text-gray-900 leading-snug line-clamp-2 mb-2'>
             {workOrder.title
               ? capitalFirstLetter(workOrder.title)
@@ -213,7 +209,6 @@ const ResolvedWorkOrderSide = ({
             </span>
           ) : null}
 
-          {/* Date chips */}
           <div className='grid grid-cols-3 gap-1.5 mb-2.5'>
             <div className='flex items-center gap-1 rounded-md bg-white border border-gray-200/70 px-2 py-1.5'>
               <div className='min-w-0'>
@@ -247,7 +242,6 @@ const ResolvedWorkOrderSide = ({
             </div>
           </div>
 
-          {/* Meta row */}
           <div className='flex items-center gap-3'>
             {workOrder.agreement_number && (
               <div className='flex items-center gap-1 text-[11px] text-gray-400'>
@@ -285,12 +279,9 @@ const ResolvedWorkOrderSide = ({
   );
 };
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
 const ProposalCardSkeleton = () => (
   <div className='rounded-xl border border-gray-100 bg-white p-3 sm:p-5 animate-pulse'>
     <div className='flex flex-col md:flex-row items-stretch gap-4'>
-      {/* Proposal side */}
       <div className='flex-1 space-y-3'>
         <div className='flex items-center gap-2'>
           <div className='h-5 w-20 bg-gray-200 rounded' />
@@ -304,12 +295,10 @@ const ProposalCardSkeleton = () => (
         <div className='h-3 w-1/2 bg-gray-200 rounded' />
       </div>
 
-      {/* Link indicator */}
       <div className='flex items-center justify-center md:w-10'>
         <div className='h-8 w-8 bg-gray-200 rounded-full' />
       </div>
 
-      {/* Work order side */}
       <div className='flex-1 space-y-3'>
         <div className='flex items-center gap-2'>
           <div className='h-5 w-16 bg-gray-200 rounded' />
@@ -326,8 +315,6 @@ const ProposalCardSkeleton = () => (
   </div>
 );
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 const ProposalWODetailsDialog = ({ clientId }: Props) => {
   const { getParam, setParam, setParams, deleteParam, deleteParams } =
     useHandleParams();
@@ -340,7 +327,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [allProposals, setAllProposals] = useState<any[]>([]);
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -348,13 +334,11 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Reset list when search term changes
   useEffect(() => {
     setPage(1);
     setAllProposals([]);
   }, [debouncedSearch]);
 
-  // Reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
       setPage(1);
@@ -381,7 +365,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
   const totalPages = pagination?.totalPages ?? 0;
   const total = pagination?.total ?? 0;
 
-  // Accumulate proposals as pages load
   useEffect(() => {
     if (!data?.proposals) return;
     if (page === 1) {
@@ -409,7 +392,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
         isFull ? deleteParam("window") : setParam("window", "full")
       }>
       <div className='flex flex-col h-full'>
-        {/* ─── Search Bar ──────────────────────────────────────────── */}
         <div className='shrink-0 mb-5'>
           <div className='relative'>
             <Search className='absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400' />
@@ -432,7 +414,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
           </div>
         </div>
 
-        {/* ─── Results ─────────────────────────────────────────────── */}
         <div className='flex-1 min-h-0 overflow-y-auto space-y-4 pr-1'>
           {isLoading ? (
             <div className='space-y-4'>
@@ -484,12 +465,10 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
                           {proposal.code}
                         </span>
 
-                        {/* Title */}
                         <h4 className='text-sm font-semibold text-gray-900 leading-snug line-clamp-2 mb-2'>
                           {capitalFirstLetter(proposal.title)}
                         </h4>
 
-                        {/* Info chips */}
                         <div className='grid grid-cols-2 gap-2 mb-3'>
                           <div className='flex items-center gap-2 rounded-lg border bg-white border-gray-200/70 px-2.5 py-2'>
                             <div className='min-w-0'>
@@ -513,7 +492,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
                           </div>
                         </div>
 
-                        {/* Meta row */}
                         <div className='flex items-center gap-3'>
                           {proposal.document_key && (
                             <button
@@ -529,7 +507,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
                         </div>
                       </div>
 
-                      {/* ─── Link Indicator ──────────────────────── */}
                       <div className='relative flex items-center justify-center py-3 md:py-0'>
                         <div className='absolute inset-0 flex items-center justify-center'>
                           <div className='w-full h-px md:h-full md:w-px border-t md:border-t-0 md:border-l border-dashed border-gray-300' />
@@ -553,7 +530,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
                         </div>
                       </div>
 
-                      {/* ─── Work Order Side ─────────────────────── */}
                       <ResolvedWorkOrderSide workOrder={workOrder} />
                     </div>
                   </div>
@@ -563,7 +539,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
           )}
         </div>
 
-        {/* ─── Pagination ──────────────────────────────────────────── */}
         {total > 0 && (
           <div className='shrink-0 pt-4 mt-4 border-t border-gray-100'>
             <div className='flex items-center justify-between text-xs text-gray-500 mb-2'>
@@ -595,7 +570,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
         )}
       </div>
 
-      {/* Keyframe animation for cards */}
       <style
         dangerouslySetInnerHTML={{
           __html: `

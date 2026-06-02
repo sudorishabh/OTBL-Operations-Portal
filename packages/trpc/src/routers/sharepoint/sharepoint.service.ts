@@ -40,7 +40,6 @@ export class SharePointService {
   }
 
   private async getAccessToken(): Promise<string> {
-    // Check cache first
     if (tokenCache && tokenCache.expiresAt > Date.now() + 60000) {
       console.log("[SharePoint] Using cached access token");
       return tokenCache.accessToken;
@@ -82,7 +81,6 @@ export class SharePointService {
     const data = await response.json();
     console.log("[SharePoint] Access token acquired successfully");
 
-    // Cache the token
     tokenCache = {
       accessToken: data.access_token,
       expiresAt: Date.now() + data.expires_in * 1000,
@@ -125,7 +123,6 @@ export class SharePointService {
       );
     }
 
-    // Handle 204 No Content
     if (response.status === 204) {
       return {} as T;
     }
@@ -151,7 +148,6 @@ export class SharePointService {
     const steps: { step: string; success: boolean; message: string }[] = [];
 
     try {
-      // Step 1: Test token acquisition
       console.log("[SharePoint] Step 1: Testing token acquisition...");
       let token: string;
       try {
@@ -185,7 +181,6 @@ export class SharePointService {
         };
       }
 
-      // Step 2: Test basic Graph API access
       console.log("[SharePoint] Step 2: Testing basic Graph API access...");
       try {
         const rootSiteResponse = await this.graphRequest<any>("/sites/root");
@@ -213,7 +208,6 @@ export class SharePointService {
         };
       }
 
-      // Step 3: Test specific site access
       console.log("[SharePoint] Step 3: Testing specific site access...");
       try {
         const siteId = await this.getSiteId();
@@ -298,7 +292,7 @@ export class SharePointService {
     const response = await this.graphRequest<{ value: any[] }>(endpoint);
 
     return response.value
-      .filter((item) => item.file) // Only return files, not folders
+      .filter((item) => item.file)
       .map((item) => ({
         id: item.id,
         name: item.name,
@@ -323,7 +317,7 @@ export class SharePointService {
     const response = await this.graphRequest<{ value: any[] }>(endpoint);
 
     return response.value
-      .filter((item) => item.folder) // Only return folders
+      .filter((item) => item.folder)
       .map((item) => ({
         id: item.id,
         name: item.name,
@@ -334,16 +328,9 @@ export class SharePointService {
       }));
   }
 
-  // 4MB threshold for using upload sessions (Microsoft Graph API limit)
   private static readonly SIMPLE_UPLOAD_MAX_SIZE = 4 * 1024 * 1024;
-  // 10MB chunk size for large file uploads (Microsoft recommends 5-10MB)
   private static readonly UPLOAD_CHUNK_SIZE = 10 * 1024 * 1024;
 
-  /**
-   * Upload a file to SharePoint
-   * Automatically uses resumable upload sessions for files larger than 4MB
-   * Supports files up to 250GB (Microsoft Graph limit)
-   */
   async uploadFile(
     folderPath: string,
     fileName: string,
@@ -353,7 +340,6 @@ export class SharePointService {
       onProgress?: (uploaded: number, total: number) => void;
     },
   ): Promise<SharePointFile> {
-    // Convert content to Buffer for consistent handling
     let fileBuffer: Buffer;
     if (Buffer.isBuffer(content)) {
       fileBuffer = content;
@@ -368,7 +354,6 @@ export class SharePointService {
       `[SharePoint] Uploading file: ${fileName}, size: ${(fileSize / 1024 / 1024).toFixed(2)} MB`,
     );
 
-    // Use simple upload for small files, upload session for large files
     if (fileSize <= SharePointService.SIMPLE_UPLOAD_MAX_SIZE) {
       return this.uploadSmallFile(folderPath, fileName, fileBuffer, options);
     } else {
@@ -382,9 +367,6 @@ export class SharePointService {
     }
   }
 
-  /**
-   * Simple upload for files up to 4MB
-   */
   private async uploadSmallFile(
     folderPath: string,
     fileName: string,
@@ -401,7 +383,6 @@ export class SharePointService {
       "/",
     );
 
-    // Convert Buffer to Uint8Array for fetch compatibility
     const bodyContent = new Uint8Array(content).buffer;
 
     const response = await this.graphRequest<any>(
@@ -427,10 +408,6 @@ export class SharePointService {
     };
   }
 
-  /**
-   * Create an upload session for a file
-   * This allows the client to upload the file directly to SharePoint
-   */
   async createUploadSession(
     folderPath: string,
     fileName: string,
@@ -461,9 +438,6 @@ export class SharePointService {
     return sessionResponse;
   }
 
-  /**
-   * Create a sharing link for a file
-   */
   async createSharingLink(
     fileId: string,
     type: "view" | "edit" | "embed" = "view",
@@ -477,7 +451,7 @@ export class SharePointService {
           method: "POST",
           body: JSON.stringify({
             type,
-            scope: "anonymous", // Tries to create an anonymous (public) link
+            scope: "anonymous",
           }),
         },
       );
@@ -487,7 +461,6 @@ export class SharePointService {
         "[SharePoint] Failed to create anonymous link, falling back to organization link",
         error,
       );
-      // Fallback to organization link if anonymous is disabled
       const response = await this.graphRequest<any>(
         `/drives/${driveId}/items/${fileId}/createLink`,
         {
@@ -502,10 +475,6 @@ export class SharePointService {
     }
   }
 
-  /**
-   * Resumable upload session for files larger than 4MB
-   * Uploads file in chunks to support files up to 250GB
-   */
   private async uploadLargeFile(
     folderPath: string,
     fileName: string,
@@ -519,7 +488,6 @@ export class SharePointService {
     const conflictBehavior = options?.conflictBehavior || "replace";
     const token = await this.getAccessToken();
 
-    // Step 1: Create upload session
     const sessionResponse = await this.createUploadSession(
       folderPath,
       fileName,
@@ -531,7 +499,6 @@ export class SharePointService {
       `[SharePoint] Upload session created, expires: ${sessionResponse.expirationDateTime}`,
     );
 
-    // Step 2: Upload file in chunks
     const chunkSize = SharePointService.UPLOAD_CHUNK_SIZE;
     let uploadedBytes = 0;
     let response: any;
@@ -547,7 +514,6 @@ export class SharePointService {
           `[SharePoint] Uploading chunk: bytes ${chunkStart}-${chunkEnd - 1}/${fileSize} (${((chunkEnd / fileSize) * 100).toFixed(1)}%)`,
         );
 
-        // Upload chunk
         const chunkResponse = await fetch(uploadUrl, {
           method: "PUT",
           headers: {
@@ -565,7 +531,6 @@ export class SharePointService {
             errorText,
           );
 
-          // Cancel the upload session on failure
           await this.cancelUploadSession(uploadUrl, token);
 
           throw new Error(
@@ -575,12 +540,10 @@ export class SharePointService {
 
         uploadedBytes = chunkEnd;
 
-        // Call progress callback if provided
         if (options?.onProgress) {
           options.onProgress(uploadedBytes, fileSize);
         }
 
-        // Parse response - final chunk returns the completed file metadata
         if (chunkResponse.status === 200 || chunkResponse.status === 201) {
           response = await chunkResponse.json();
         }
@@ -599,7 +562,6 @@ export class SharePointService {
         downloadUrl: response["@microsoft.graph.downloadUrl"],
       };
     } catch (error) {
-      // Attempt to cancel the upload session on any error
       try {
         await this.cancelUploadSession(uploadUrl, token);
       } catch (cancelError) {
@@ -612,9 +574,6 @@ export class SharePointService {
     }
   }
 
-  /**
-   * Cancel an upload session
-   */
   private async cancelUploadSession(
     uploadUrl: string,
     token: string,
@@ -633,10 +592,6 @@ export class SharePointService {
     }
   }
 
-  /**
-   * Download a file from SharePoint
-   * For large files (50MB+), consider using getFileDownloadUrl() and streaming directly
-   */
   async downloadFile(
     fileId: string,
     options?: {
@@ -651,7 +606,6 @@ export class SharePointService {
     const driveId = await this.getDriveId();
     const token = await this.getAccessToken();
 
-    // First, get file metadata
     const metadata = await this.graphRequest<any>(
       `/drives/${driveId}/items/${fileId}`,
     );
@@ -661,7 +615,6 @@ export class SharePointService {
       `[SharePoint] Downloading file: ${metadata.name}, size: ${(fileSize / 1024 / 1024).toFixed(2)} MB`,
     );
 
-    // Download the content
     const response = await fetch(
       `${GRAPH_API_BASE_URL}/drives/${driveId}/items/${fileId}/content`,
       {
@@ -675,7 +628,6 @@ export class SharePointService {
       throw new Error(`Failed to download file: ${response.status}`);
     }
 
-    // For large files with progress tracking, use streaming
     if (options?.onProgress && response.body) {
       const reader = response.body.getReader();
       const chunks: Uint8Array[] = [];
@@ -693,7 +645,6 @@ export class SharePointService {
         }
       }
 
-      // Combine all chunks into a single ArrayBuffer
       const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
       const result = new Uint8Array(totalLength);
       let offset = 0;
@@ -712,7 +663,6 @@ export class SharePointService {
       };
     }
 
-    // Simple download without progress tracking
     const content = await response.arrayBuffer();
     console.log(`[SharePoint] Download completed: ${metadata.name}`);
 
@@ -724,12 +674,6 @@ export class SharePointService {
     };
   }
 
-  /**
-   * Get a temporary download URL for a file
-   * This URL can be used to stream the file directly to clients without loading into server memory
-   * Useful for very large files (50MB+) to avoid memory issues
-   * Note: The download URL is temporary and expires after a short time
-   */
   async getFileDownloadUrl(fileId: string): Promise<{
     downloadUrl: string;
     fileName: string;
@@ -738,7 +682,6 @@ export class SharePointService {
   }> {
     const driveId = await this.getDriveId();
 
-    // Get file metadata which includes the temporary download URL
     const metadata = await this.graphRequest<any>(
       `/drives/${driveId}/items/${fileId}`,
     );
@@ -759,10 +702,6 @@ export class SharePointService {
     };
   }
 
-  /**
-   * Download a large file in chunks using Range requests
-   * This is useful for resumable downloads and can handle files of any size
-   */
   async downloadLargeFile(
     fileId: string,
     options?: {
@@ -778,13 +717,12 @@ export class SharePointService {
     const driveId = await this.getDriveId();
     const token = await this.getAccessToken();
 
-    // Get file metadata
     const metadata = await this.graphRequest<any>(
       `/drives/${driveId}/items/${fileId}`,
     );
 
     const fileSize = metadata.size;
-    const chunkSize = options?.chunkSize || 10 * 1024 * 1024; // Default 10MB chunks
+    const chunkSize = options?.chunkSize || 10 * 1024 * 1024;
     const chunks: Buffer[] = [];
     let downloadedBytes = 0;
 
@@ -834,9 +772,6 @@ export class SharePointService {
     };
   }
 
-  /**
-   * Delete a file from SharePoint
-   */
   async deleteFile(fileId: string): Promise<void> {
     const driveId = await this.getDriveId();
     await this.graphRequest(`/drives/${driveId}/items/${fileId}`, {
@@ -844,9 +779,6 @@ export class SharePointService {
     });
   }
 
-  /**
-   * Create a folder in the document library
-   */
   async createFolder(
     parentPath: string,
     folderName: string,
@@ -879,9 +811,6 @@ export class SharePointService {
   }
 }
 
-/**
- * Create a SharePoint service instance
- */
 export function createSharePointService(
   config: SharePointConfig,
 ): SharePointService {

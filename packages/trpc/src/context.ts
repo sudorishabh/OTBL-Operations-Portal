@@ -1,19 +1,12 @@
 import type { UserRole } from "@pkg/utils/auth";
 import type { Database } from "@pkg/db";
 
-/**
- * Authenticated user from JWT payload
- * This is the user object available in the tRPC context after authentication
- */
 export type TrpcUser = {
-  sub: string; // User ID as string
+  sub: string;
   email: string;
   role: UserRole;
 };
 
-/**
- * Environment configuration available in context
- */
 export type TrpcAppEnv = {
   JWT: {
     SECRET: string;
@@ -36,9 +29,6 @@ export type TrpcAppEnv = {
   PORT?: string;
 };
 
-/**
- * Base tRPC context - always available
- */
 export type TrpcContextBase = {
   req?: { cookies?: Record<string, string> } | undefined;
   res?: any;
@@ -46,17 +36,10 @@ export type TrpcContextBase = {
   appEnv: TrpcAppEnv;
 };
 
-/**
- * Public context - user may or may not be present
- */
 export type TrpcContext = TrpcContextBase & {
   user?: TrpcUser | null;
 };
 
-/**
- * Authenticated context - user is guaranteed to be present
- * Used in protected procedures after authentication middleware
- */
 export type TrpcAuthenticatedContext = TrpcContextBase & {
   user: TrpcUser;
 };

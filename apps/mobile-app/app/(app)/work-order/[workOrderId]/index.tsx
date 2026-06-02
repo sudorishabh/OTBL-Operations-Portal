@@ -9,9 +9,6 @@ import { Colors } from "@/lib/constants";
 import { trpc } from "@/lib/trpc";
 import { capitalize, formatDate } from "@/lib/utils";
 
-/**
- * Work Order Details screen — mirrors /work-order/[workOrderId] page
- */
 export default function WorkOrderDetailScreen() {
   const { workOrderId } = useLocalSearchParams<{ workOrderId: string }>();
 
@@ -62,7 +59,6 @@ export default function WorkOrderDetailScreen() {
     <ScreenWrapper
       refreshing={isRefetching}
       onRefresh={refetch}>
-      {/* Work Order Header Card */}
       <Card style={styles.headerCard}>
         <View style={styles.woHeader}>
           <View style={styles.woIconContainer}>
@@ -82,7 +78,6 @@ export default function WorkOrderDetailScreen() {
         <Text style={styles.woTitle}>{workOrder.title}</Text>
       </Card>
 
-      {/* Details Card */}
       <Card
         title='Details'
         style={styles.section}>
@@ -111,7 +106,6 @@ export default function WorkOrderDetailScreen() {
         )}
       </Card>
 
-      {/* Associated Info */}
       <Card
         title='Associations'
         style={styles.section}>

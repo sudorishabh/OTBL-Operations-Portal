@@ -35,7 +35,6 @@ type NavItem = {
   title: string;
   link: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  /** Global roles that must not see this item */
   hideForRoles?: readonly string[];
 };
 

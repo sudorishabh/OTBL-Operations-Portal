@@ -11,9 +11,6 @@ interface FormTextAreaProps<T extends FieldValues> {
   numberOfLines?: number;
 }
 
-/**
- * Form-connected textarea — multi-line text input for descriptions, notes, etc.
- */
 export default function FormTextArea<T extends FieldValues>({
   control,
   name,

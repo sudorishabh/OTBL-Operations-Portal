@@ -13,9 +13,6 @@ import { Colors } from "@/lib/constants";
 import { trpc } from "@/lib/trpc";
 import { capitalize } from "@/lib/utils";
 
-/**
- * Offices & Sites screen — mirrors /office-site page
- */
 export default function OfficeSiteScreen() {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -81,7 +78,6 @@ export default function OfficeSiteScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Search
           size={18}
@@ -96,7 +92,6 @@ export default function OfficeSiteScreen() {
         />
       </View>
 
-      {/* Stats */}
       <View style={styles.statsRow}>
         <Text style={styles.statsText}>
           {filteredOffices.length} office
@@ -104,7 +99,6 @@ export default function OfficeSiteScreen() {
         </Text>
       </View>
 
-      {/* List */}
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator

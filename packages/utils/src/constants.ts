@@ -1,9 +1,7 @@
 export const ROLES = {
   ADMIN: "admin",
   MANAGER: "office_manager",
-  /** Office Operator: a member of one or more offices. Assignable to offices only. */
   OFFICE_OPERATOR: "office_operator",
-  /** Site Operator: a field user assigned to sites. Assignable to sites only. */
   SITE_OPERATOR: "site_operator",
   VIEWER: "viewer",
 } as const;

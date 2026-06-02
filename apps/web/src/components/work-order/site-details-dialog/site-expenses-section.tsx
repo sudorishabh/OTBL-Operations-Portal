@@ -252,7 +252,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
     return qty != null ? Number(qty) : null;
   };
 
-  // Activity options for dialog
   const activityOptions: ActivityOption[] = useMemo(() => {
     if (!siteActivitiesQuery.data) return [];
     return siteActivitiesQuery.data.map((a: any) => ({
@@ -270,7 +269,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
     );
   }, [summaryQuery.data?.byActivity]);
 
-  // Group expenses by activity_key (activity-wise data)
   const { groupedExpenses, activityGroups } = useMemo(() => {
     const groups: Record<string, Expense[]> = {};
     for (const exp of expenses) {
@@ -324,7 +322,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         ? (activityLabelByKey[activityKey] ?? { label: formatActivityLabel(activityKey), unit: null })
         : { label: "Other / Unlinked Expenses", unit: null };
 
-      // Heuristic grouping: in multi-add, these shared fields are identical across rows.
       const recordKey = getExpenseRecordKey(exp);
 
       if (!recordMap[recordKey]) {
@@ -363,7 +360,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
       byActivity[k]!.push(group);
     }
 
-    // sort records newest first
     for (const k of Object.keys(byActivity)) {
       byActivity[k]!.sort((a, b) => {
         const da = new Date(a.expenseDate).getTime();
@@ -380,7 +376,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
     for (const k of activityGroups) {
       groups.push(...(groupedRecordsByActivity[k] ?? []));
     }
-    // newest first
     groups.sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
     if (activityFilter === "__all__") return groups;
     const filterKey = activityFilter === "__none__" ? null : activityFilter;
@@ -580,7 +575,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         </DialogContent>
       </Dialog>
 
-      {/* Summary Cards */}
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
         <div className='rounded-lg border bg-emerald-50/60 border-emerald-100 p-2.5'>
           <div className='flex items-center gap-1 mb-0.5'>
@@ -635,7 +629,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         </div>
       </div>
 
-      {/* Estimate activities + qty spending */}
       <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>
         <div className='px-3 py-2 border-b bg-white flex items-center justify-between gap-3'>
           <div className='min-w-0'>
@@ -718,7 +711,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         )}
       </div>
 
-      {/* Header + Add button */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
         <div className='flex items-center gap-2'>
           <ReceiptIndianRupee className='w-4 h-4 text-gray-400' />
@@ -761,7 +753,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         </div>
       </div>
 
-      {/* Expenses Table — consolidated rows */}
       {expensesQuery.isLoading && expensePage === 1 ? (
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
       ) : recordGroupsFlat.length === 0 ? (
@@ -792,7 +783,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
             <TableBody>{recordGroupsFlat.map((g) => renderRecordRow(g))}</TableBody>
           </Table>
 
-          {/* Footer total */}
           <div className='flex items-center justify-between px-4 py-2.5 bg-gray-50 border-t text-xs'>
             <span className='text-gray-500'>
               {recordGroupsFlat.length} record{recordGroupsFlat.length !== 1 ? "s" : ""}

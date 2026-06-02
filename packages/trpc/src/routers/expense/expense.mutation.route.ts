@@ -16,9 +16,6 @@ const {
   bioremediationContSoilTable,
 } = schema;
 
-// Maps an activity key (as stored on siteActivityTable.activity) to the
-// table holding its per-phase quantity rows. Keep in sync with
-// work-order-site.query.route.ts → entriesByTable mapping.
 const activityTableByKey: Record<string, any> = {
   clean_soil_area: cleaningUpSoilAreaTable,
   lifting_oily_slush_or_recovery_of_oil: liftingRecoveryOilSlushTable,
@@ -49,10 +46,6 @@ async function getEstimateQtyForSite(
   return parseFloat(rows[0].estimated_quantity || "0");
 }
 
-// Auto-decide whether a new/updated expense pushes cumulative used quantity
-// for the activity past the estimate-phase allocation for that site.
-// Returns null when we can't determine a budget (no activity link, no qty,
-// or no estimate yet) — caller should keep the client-supplied flag.
 async function computeIsExceeded(
   ctx: any,
   siteId: number,

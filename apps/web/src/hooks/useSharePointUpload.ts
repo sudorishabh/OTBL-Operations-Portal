@@ -17,45 +17,14 @@ interface UseSharePointUploadOptions {
 }
 
 interface UseSharePointUploadReturn {
-  /** Whether an upload is in progress */
   isUploading: boolean;
-  /** Whether a delete is in progress */
   isDeleting: boolean;
-  /** Upload progress (0-100) */
   progress: number;
-  /** Upload a file to SharePoint */
   uploadFile: (file: File) => Promise<UploadedFileInfo | null>;
-  /** Delete a file from SharePoint by ID */
   deleteFile: (fileId: string) => Promise<void>;
-  /** Reset upload state */
   reset: () => void;
 }
 
-/**
- * Hook for managing SharePoint file uploads.
- * This hook ONLY handles SharePoint operations - file selection should be managed separately.
- *
- * @example
- * ```tsx
- * const { uploadFile, deleteFile, isUploading, progress } = useSharePointUpload({
- *   folderPath: "/WorkOrders",
- * });
- *
- * // Upload a file
- * const handleUpload = async (file: File) => {
- *   const result = await uploadFile(file);
- *   if (result) {
- *     form.setValue("document_key", result.webUrl);
- *   }
- * };
- *
- * // Delete a file
- * const handleDelete = async (fileId: string) => {
- *   await deleteFile(fileId);
- *   form.setValue("document_key", "");
- * };
- * ```
- */
 export const useSharePointUpload = ({
   folderPath,
   conflictBehavior = "replace",
@@ -67,7 +36,6 @@ export const useSharePointUpload = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // TRPC mutations
   const createSessionMutation =
     trpc.sharePointMutation.createUploadSession.useMutation();
   const createPublicLinkMutation =
@@ -87,11 +55,6 @@ export const useSharePointUpload = ({
     },
   });
 
-  /**
-   * Upload a file to SharePoint
-   * @param file The file to upload
-   * @returns The uploaded file info, or null if upload failed
-   */
   const uploadFile = useCallback(
     async (file: File): Promise<UploadedFileInfo | null> => {
       if (!file) {
@@ -103,7 +66,6 @@ export const useSharePointUpload = ({
       setProgress(5);
 
       try {
-        // Step 1: Create upload session
         const sessionData = await createSessionMutation.mutateAsync({
           folderPath,
           fileName: file.name,
@@ -112,7 +74,6 @@ export const useSharePointUpload = ({
 
         setProgress(10);
 
-        // Step 2: Upload file using XHR for progress tracking
         const uploadResult = await new Promise<UploadedFileInfo>(
           (resolve, reject) => {
             const xhr = new XMLHttpRequest();
@@ -123,7 +84,6 @@ export const useSharePointUpload = ({
 
             xhr.upload.onprogress = (e) => {
               if (e.lengthComputable) {
-                // Progress from 10% to 80% during upload
                 const percent = 10 + Math.round((e.loaded / e.total) * 70);
                 setProgress(percent);
               }
@@ -158,7 +118,6 @@ export const useSharePointUpload = ({
 
         setProgress(85);
 
-        // Step 3: Create public link
         const linkResult = await createPublicLinkMutation.mutateAsync({
           fileId: uploadResult.id,
         });
@@ -203,10 +162,6 @@ export const useSharePointUpload = ({
     ],
   );
 
-  /**
-   * Delete a file from SharePoint by its ID
-   * @param fileId The SharePoint file ID to delete
-   */
   const deleteFile = useCallback(
     async (fileId: string) => {
       if (!fileId) {
@@ -224,9 +179,6 @@ export const useSharePointUpload = ({
     [deleteFileMutation],
   );
 
-  /**
-   * Reset upload state
-   */
   const reset = useCallback(() => {
     setProgress(0);
     setIsUploading(false);

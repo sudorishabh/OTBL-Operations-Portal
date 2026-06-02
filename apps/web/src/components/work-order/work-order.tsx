@@ -106,7 +106,6 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
       fetchedSites &&
       fetchedPagination?.page === currentPage
     ) {
-      // Map fetched sites to component format
       const mappedSites = fetchedSites.map((s: any) => ({
         id: s.site_id,
         wo_site_id: s.id,
@@ -146,8 +145,6 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
     }
   }, [sitesDataUpdatedAt, currentPage]);
 
-  // IMPORTANT: hooks must run on every render (even while loading),
-  // so keep derived calculations above any early returns.
   const workOrder = workOrderData?.workOrder;
   const sites = workOrderData?.sites ?? [];
   const stats = workOrderData?.stats ?? ({} as any);

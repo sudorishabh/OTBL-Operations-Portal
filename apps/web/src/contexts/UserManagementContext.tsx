@@ -15,8 +15,6 @@ type UserManagementContextType = {
   resetFilters: () => void;
   userNamesOrder: "asc" | "desc" | "latest" | "oldest";
   setUserNamesOrder: (order: "asc" | "desc" | "latest" | "oldest") => void;
-  // isUserTab: string;
-  // setIsUserTab: (tab: string) => void;
 };
 
 const UserManagementContext = createContext<
@@ -38,7 +36,6 @@ export const UserManagementProvider = ({
   const [userNamesOrder, setUserNamesOrder] = useState<
     "asc" | "desc" | "latest" | "oldest"
   >("latest");
-  // const [isUserTab, setIsUserTab] = useState("all");
 
   const resetFilters = () => {
     setSearchQuery("");
@@ -58,8 +55,6 @@ export const UserManagementProvider = ({
         resetFilters,
         userNamesOrder,
         setUserNamesOrder,
-        // isUserTab,
-        // setIsUserTab,
       }}>
       {children}
     </UserManagementContext.Provider>

@@ -55,7 +55,6 @@ async function applyProposalScopeForClient(
 }
 
 export const proposalQueryRouter = router({
-  // Get proposals for a specific client (with optional limit)
   getProposalsByClient: protectedProcedure
     .input(proposalSchemas.getProposalsByClientSchema)
     .query(
@@ -102,7 +101,6 @@ export const proposalQueryRouter = router({
       }),
     ),
 
-  // Get proposals for a specific client with pagination
   getProposalsByClientPaginated: protectedProcedure
     .input(proposalSchemas.getProposalsByClientPaginatedSchema)
     .query(
@@ -185,7 +183,6 @@ export const proposalQueryRouter = router({
       }),
     ),
 
-  // Get single proposal by ID with optional work order
   getProposalById: protectedProcedure
     .input(proposalSchemas.getProposalByIdSchema)
     .query(
@@ -220,9 +217,6 @@ export const proposalQueryRouter = router({
 
           const row = result[0]!;
 
-          // Admin-only capability: only a global admin may approve/reject a
-          // proposal. Managers/operators are read-only. The mutation enforces
-          // the same rule; this only drives button visibility.
           const canManage = ctx.user!.role === USER_ROLES.ADMIN;
 
           return { ...row, canManage };

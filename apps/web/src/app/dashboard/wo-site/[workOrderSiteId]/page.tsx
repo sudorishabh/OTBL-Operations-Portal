@@ -255,7 +255,6 @@ export default function WoSiteOperatorUploadPage() {
               />
             </div>
 
-            {/* Hidden camera input */}
             <input
               ref={cameraInputRef}
               type='file'
@@ -265,7 +264,6 @@ export default function WoSiteOperatorUploadPage() {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFileSelect(file);
-                // reset so the same photo can be re-captured if needed
                 e.target.value = "";
               }}
             />

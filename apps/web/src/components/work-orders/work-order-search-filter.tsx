@@ -16,7 +16,6 @@ const WorkOrderSearchNFilter = () => {
   const { searchQuery, setSearchQuery, filters, setFilters, resetFilters } =
     useWorkOrderManagementContext();
 
-  // Fetch all offices for the filter dropdown
   const { data: officeData } = trpc.officeQuery.getOffices.useQuery({});
 
   const hasActiveFilters =
@@ -37,7 +36,6 @@ const WorkOrderSearchNFilter = () => {
         />
       </div>
       <div className='flex flex-wrap items-center gap-2 sm:gap-3 text-xs'>
-        {/* Status Filter */}
         <Select
           value={filters.status}
           onValueChange={(value) => setFilters({ ...filters, status: value })}>
@@ -52,7 +50,6 @@ const WorkOrderSearchNFilter = () => {
           </SelectContent>
         </Select>
 
-        {/* Office Filter */}
         <Select
           value={filters.office_id?.toString() || "all"}
           onValueChange={(value) =>
@@ -76,7 +73,6 @@ const WorkOrderSearchNFilter = () => {
           </SelectContent>
         </Select>
 
-        {/* Reset Button */}
         {hasActiveFilters && (
           <CustomButton
             text='Reset'

@@ -20,7 +20,7 @@ const defaults = (node_env: string): CookieOptions => ({
 
 const sessionDefaults: CookieOptions = {
   httpOnly: true,
-  secure: true, // set true only with HTTPS
+  secure: true,
   sameSite: "lax",
 };
 
@@ -33,7 +33,7 @@ export const getRefreshTokenCookieOptions = (
     ...defaults(node_env),
     maxAge: 7 * 24 * 60 * 60 * 1000,
     expires,
-    path: "/", // Available on all routes, not just the refresh endpoint
+    path: "/",
   };
 };
 
@@ -59,7 +59,6 @@ export const setAuthenticationCookies = ({
   node_env,
 }: CookiePayloadType): Response =>
   res
-    // Prefer a single "session" cookie for auth (back-compat with accessToken).
     .cookie("session", accessToken, {
       ...sessionDefaults,
       path: "/",

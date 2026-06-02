@@ -14,9 +14,6 @@ import {
 } from "@/lib/secure-store";
 import { TRPC_URL } from "@/lib/constants";
 
-/**
- * User type matching the server response
- */
 export type User = {
   id: number;
   name: string;
@@ -25,9 +22,6 @@ export type User = {
   status: string;
 };
 
-/**
- * Auth context state
- */
 type AuthContextType = {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -40,21 +34,10 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * Auth provider — manages authentication state for the mobile app
- *
- * Key differences from web:
- * - Uses expo-secure-store instead of httpOnly cookies
- * - Sends tokens via Authorization header
- * - Login mutation extracts tokens from response body
- */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  /**
-   * Refresh the user session using stored tokens
-   */
   const refreshSession = useCallback(async (): Promise<boolean> => {
     try {
       console.log("[Auth] Starting session refresh check...");
@@ -73,7 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         if (!accessToken) {
           console.log("[Auth] Access token missing, trying refresh token...");
-          // Use the refreshToken mutation endpoint
           const response = await fetch(
             `${TRPC_URL}/authMutation.refreshToken`,
             {
@@ -103,7 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         console.log("[Auth] Access token found, checking validity...");
-        // We have an access token — fetch user info
         const response = await fetch(`${TRPC_URL}/authQuery.me`, {
           method: "GET",
           headers: {
@@ -124,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         console.log("[Auth] Access token invalid, trying refresh...");
-        // Access token invalid — try refresh
         if (!refreshToken) {
           await clearTokens();
           setUser(null);
@@ -175,9 +155,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  /**
-   * Login with email and password
-   */
   const login = useCallback(async (email: string, password: string) => {
     const response = await fetch(`${TRPC_URL}/authMutation.login`, {
       method: "POST",
@@ -187,7 +164,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const result = await response.json();
 
-    // Check for tRPC error shape
     if (result?.error) {
       const message =
         result.error.message ||
@@ -202,18 +178,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const data = result.result.data;
 
-    // Store tokens securely
     await setTokens(data.accessToken, data.refreshToken);
     setUser(data.user);
   }, []);
 
-  /**
-   * Logout — clear tokens and reset state
-   */
   const logout = useCallback(async () => {
     try {
       const accessToken = await getAccessToken();
-      // Try to call logout on server (best effort)
       await fetch(`${TRPC_URL}/authMutation.logout`, {
         method: "POST",
         headers: {
@@ -229,7 +200,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // On mount, check for existing session
   useEffect(() => {
     const checkAuth = async () => {
       setIsLoading(true);
@@ -255,9 +225,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Hook to access auth context
- */
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -266,9 +233,6 @@ export function useAuth(): AuthContextType {
   return context;
 }
 
-/**
- * Hook to check if user has a specific role
- */
 export function useHasRole(requiredRole: string): boolean {
   const { user } = useAuth();
   if (!user) return false;
@@ -284,16 +248,10 @@ export function useHasRole(requiredRole: string): boolean {
   return userLevel >= requiredLevel;
 }
 
-/**
- * Hook to check if user is admin
- */
 export function useIsAdmin(): boolean {
   return useHasRole("admin");
 }
 
-/**
- * Hook to check if user is manager or higher
- */
 export function useIsManager(): boolean {
   return useHasRole("office_manager");
 }

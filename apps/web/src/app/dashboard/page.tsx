@@ -194,7 +194,6 @@ export default function DashboardPage() {
         </Button>
       }>
       <div className='mt-4 space-y-4'>
-        {/* Context bar */}
         <Card className='shadow-sm border-cyan-900/10'>
           <CardContent className='px-4 py-2.5'>
             <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm'>
@@ -220,7 +219,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Stats grid */}
         <div>
           <p className='mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground'>
             At a glance
@@ -280,7 +278,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent work orders + quick nav */}
         <div className='grid gap-4 lg:grid-cols-3'>
           <Card className='lg:col-span-2 shadow-sm'>
             <CardHeader className='flex flex-row items-center justify-between space-y-0 px-4 pt-3 pb-2'>

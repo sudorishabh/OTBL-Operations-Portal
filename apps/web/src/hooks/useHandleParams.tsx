@@ -8,7 +8,6 @@ export const useHandleParams = () => {
 
   const setParam = useCallback(
     (key: string, value: string) => {
-      // Avoid redundant navigations that can cause render loops in dev.
       if (searchParams.get(key) === value) return;
       const params = new URLSearchParams(searchParams.toString());
       params.set(key, value);
@@ -19,7 +18,6 @@ export const useHandleParams = () => {
 
   const deleteParam = useCallback(
     (key: string) => {
-      // If the param doesn't exist, don't trigger a navigation.
       if (!searchParams.has(key)) return;
       const params = new URLSearchParams(searchParams.toString());
       params.delete(key);
@@ -54,12 +52,10 @@ export const useHandleParams = () => {
     (set?: Record<string, string>, del?: string[]) => {
       const params = new URLSearchParams(searchParams.toString());
 
-      // Delete specified params first
       if (del) {
         del.forEach((key) => params.delete(key));
       }
 
-      // Then set new params
       if (set) {
         Object.entries(set).forEach(([key, value]) => {
           params.set(key, value);

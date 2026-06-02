@@ -1,25 +1,6 @@
-/**
- * User-Friendly Error Messages
- *
- * This file contains human-readable error messages that are safe to display
- * to end users. These messages are intentionally vague about technical details
- * to avoid exposing sensitive information.
- *
- * IMPORTANT: These messages should NEVER contain:
- * - Technical details (stack traces, SQL errors, etc.)
- * - Internal system information
- * - Specific implementation details
- * - Information that could help attackers
- */
-
 import { ErrorCode, type ErrorCodeType } from "./error-codes";
 
-/**
- * Default user-friendly messages for each error code
- * These are used when a specific user message is not provided
- */
 export const DefaultUserMessages: Record<ErrorCodeType, string> = {
-  // Auth errors
   [ErrorCode.INVALID_CREDENTIALS]:
     "The email or password you entered is incorrect. Please try again.",
   [ErrorCode.TOKEN_EXPIRED]:
@@ -54,7 +35,6 @@ export const DefaultUserMessages: Record<ErrorCodeType, string> = {
   [ErrorCode.ROLE_NOT_ALLOWED]:
     "Your current role doesn't allow this action. Contact your administrator if you need access.",
 
-  // Validation errors
   [ErrorCode.INVALID_INPUT]:
     "The information you provided is invalid. Please check your entries and try again.",
   [ErrorCode.REQUIRED_FIELD_MISSING]: "Please fill in all required fields.",
@@ -89,7 +69,6 @@ export const DefaultUserMessages: Record<ErrorCodeType, string> = {
   [ErrorCode.FILE_UPLOAD_FAILED]:
     "The file could not be uploaded. Please try again.",
 
-  // Resource errors
   [ErrorCode.NOT_FOUND]:
     "The requested item could not be found. It may have been deleted or moved.",
   [ErrorCode.ALREADY_EXISTS]:
@@ -108,7 +87,6 @@ export const DefaultUserMessages: Record<ErrorCodeType, string> = {
   [ErrorCode.FETCH_FAILED]:
     "We couldn't load the data. Please refresh and try again.",
 
-  // Business errors
   [ErrorCode.RULE_VIOLATION]:
     "This action violates business rules. Please review and try again.",
   [ErrorCode.PRECONDITION_FAILED]:
@@ -133,7 +111,6 @@ export const DefaultUserMessages: Record<ErrorCodeType, string> = {
   [ErrorCode.ASSIGNMENT_CONFLICT]:
     "This assignment conflicts with existing assignments.",
 
-  // External errors
   [ErrorCode.SERVICE_UNAVAILABLE]:
     "The service is temporarily unavailable. Please try again in a few minutes.",
   [ErrorCode.TIMEOUT]:
@@ -156,7 +133,6 @@ export const DefaultUserMessages: Record<ErrorCodeType, string> = {
     "We're having trouble connecting to our servers. Please try again later.",
   [ErrorCode.DATABASE_TIMEOUT]: "The request took too long. Please try again.",
 
-  // System errors
   [ErrorCode.INTERNAL_ERROR]:
     "Something went wrong on our end. Please try again later.",
   [ErrorCode.UNEXPECTED_ERROR]:
@@ -173,9 +149,6 @@ export const DefaultUserMessages: Record<ErrorCodeType, string> = {
     "The system is currently experiencing high traffic. Please try again later.",
 };
 
-/**
- * Get a user-friendly message for an error code
- */
 export function getUserMessage(
   code: ErrorCodeType,
   customMessage?: string
@@ -187,14 +160,8 @@ export function getUserMessage(
   );
 }
 
-/**
- * Generic fallback message for unknown errors
- */
 export const GENERIC_ERROR_MESSAGE =
   "Something went wrong. Please try again later.";
 
-/**
- * Message to show when we're not sure what went wrong
- */
 export const UNKNOWN_ERROR_MESSAGE =
   "An unexpected error occurred. Our team has been notified.";

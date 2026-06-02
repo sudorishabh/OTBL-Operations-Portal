@@ -39,19 +39,6 @@ export default function RootLayout({
           <main className='w-full'>
             {children}
 
-            {/* <iframe
-              src='http://localhost:8000'
-              style={{
-                position: "fixed",
-                bottom: "0px",
-                right: "0px",
-                width: "450px",
-                height: "700px",
-                border: "none",
-                background: "transparent",
-                zIndex: "9999",
-              }}
-              allow='microphone'></iframe> */}
           </main>
         </Provider>
         <Toaster />

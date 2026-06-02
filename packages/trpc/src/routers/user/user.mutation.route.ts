@@ -20,7 +20,6 @@ export const userMutationRouter = router({
     .input(userSchemas.createUserSchema)
     .mutation(
       handleProtectedMutation(async ({ input, ctx }) => {
-        // Check if user already exists
         const existingUser = await ctx.db
           .select()
           .from(userTable)
@@ -61,7 +60,6 @@ export const userMutationRouter = router({
       handleProtectedMutation(async ({ input, ctx }) => {
         const { id, password, ...rest } = input;
 
-        // Check if user exists
         const existingUser = await ctx.db
           .select()
           .from(userTable)
@@ -71,7 +69,6 @@ export const userMutationRouter = router({
           throw notFound("User", id);
         }
 
-        // Check permissions
         const isAdmin = ctx.user.role === USER_ROLES.ADMIN;
         const isOwnProfile = ctx.user.sub === id.toString();
 
@@ -81,16 +78,13 @@ export const userMutationRouter = router({
           });
         }
 
-        // Prepare update data
         const updateData: Record<string, any> = { ...rest };
 
-        // Non-admins cannot change privileged fields — prevents self role escalation
         if (!isAdmin) {
           delete updateData.role;
           delete updateData.status;
         }
 
-        // Hash password if provided
         if (password) {
           updateData.password = await hashPassword(password);
         }
@@ -117,7 +111,6 @@ export const userMutationRouter = router({
       handleProtectedMutation(async ({ input, ctx }) => {
         const userId = parseInt(ctx.user.sub);
 
-        // Get user with password
         const users = await ctx.db
           .select({
             id: userTable.id,
@@ -132,7 +125,6 @@ export const userMutationRouter = router({
 
         const userData = users[0];
 
-        // Verify current password
         const isCurrentPasswordValid = await verifyPassword(
           input.currentPassword,
           userData.password,
@@ -153,7 +145,6 @@ export const userMutationRouter = router({
           );
         }
 
-        // Hash and update new password
         const hashedNewPassword = await hashPassword(input.newPassword);
 
         try {

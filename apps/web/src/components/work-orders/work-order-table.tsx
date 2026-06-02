@@ -28,7 +28,6 @@ import { useWorkOrderManagementContext } from "@/contexts/WorkOrderManagementCon
 import { useIsViewer } from "@/contexts/AuthContext";
 import { IWorkOrder, IWorkOrderPagination } from "@/types/work-order.types";
 import { capitalFirstLetter } from "@pkg/utils";
-// import { IWorkOrder,IWorkOrderPagination } from "@pkg/schema";
 
 interface Props {
   workOrders: IWorkOrder[];

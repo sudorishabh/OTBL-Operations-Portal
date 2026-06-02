@@ -25,7 +25,6 @@ const NoFetchData = ({ Icon, title, description }: Props) => {
 
         <p className='text-sm text-gray-600 leading-relaxed'>{description}</p>
 
-        {/* Status indicator */}
         <div className='inline-flex items-center px-3 py-1 mt-5 rounded-full bg-gray-100 border border-gray-200'>
           <div className='w-2 h-2 bg-gray-400 rounded-full mr-2'></div>
           <span className='text-xs font-medium text-gray-700'>

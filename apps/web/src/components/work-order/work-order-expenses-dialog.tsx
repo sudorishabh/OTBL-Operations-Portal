@@ -131,7 +131,6 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
       onToggleFullScreen={() => setIsFullScreen((v) => !v)}
       isLoading={query.isLoading}>
       <div className='space-y-4 py-3'>
-        {/* Summary cards */}
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
           <div className='rounded-xl border bg-white px-4 py-3'>
             <div className='flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1'>
@@ -168,7 +167,6 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
           </div>
         </div>
 
-        {/* Filters */}
         <div className='flex flex-wrap items-center gap-2'>
           <div className='relative flex-1 min-w-[200px]'>
             <Search className='absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400' />
@@ -221,7 +219,6 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
           </button>
         </div>
 
-        {/* Table */}
         <div className='rounded-xl border overflow-hidden bg-white'>
           <Table className='w-full text-xs'>
             <TableHeader>

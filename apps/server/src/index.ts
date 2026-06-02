@@ -16,7 +16,6 @@ dotenv.config({
 
 const app = express();
 
-// Security headers (X-Frame-Options, X-XSS-Protection, HSTS, etc.)
 app.use(helmet());
 
 app.use(cors);
@@ -24,18 +23,16 @@ app.use(json({ limit: "10mb" }));
 app.use(urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
-// Strict rate limit on auth endpoints to prevent brute-force attacks
 const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,                   // max 10 requests per window per IP (prevents brute-force)
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later." },
 });
 
-// General rate limit for all other tRPC routes
 const generalRateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
+  windowMs: 60 * 1000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,

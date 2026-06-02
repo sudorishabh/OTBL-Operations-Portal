@@ -80,9 +80,6 @@ export const sharePointQueryRouter = router({
       }
     }),
 
-  /**
-   * Get folders from a path in document library
-   */
   getFolders: protectedProcedure
     .input(sharepointSchemas.getFoldersSchema)
     .query(async ({ input, ctx }) => {
@@ -128,7 +125,6 @@ export const sharePointQueryRouter = router({
         const service = createSharePointService(config);
         const result = await service.downloadFile(input.fileId);
 
-        // Convert ArrayBuffer to base64 for transfer
         const base64Content = Buffer.from(result.content).toString("base64");
 
         return {
@@ -137,7 +133,6 @@ export const sharePointQueryRouter = router({
           content: base64Content,
         };
       } catch (error) {
-        // Check if it's a not found error
         const errorMessage =
           error instanceof Error ? error.message : "File not found";
         if (
@@ -158,14 +153,6 @@ export const sharePointQueryRouter = router({
       }
     }),
 
-  /**
-   * Resolve temporary, pre-authenticated direct download URLs for a set of
-   * drive-item ids. Used to render image thumbnails — the stored document_url
-   * is a SharePoint sharing/viewer page, which cannot be used as an <img>
-   * source. Best-effort: failed/missing items are omitted, and an unconfigured
-   * tenant yields an empty list, so callers degrade gracefully (no thumbnails)
-   * instead of erroring.
-   */
   getDownloadUrls: protectedProcedure
     .input(z.object({ fileIds: z.array(z.string().min(1)).max(100) }))
     .query(async ({ input, ctx }) => {

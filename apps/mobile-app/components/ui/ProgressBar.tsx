@@ -3,16 +3,13 @@ import { View, StyleSheet, ViewStyle } from "react-native";
 import { Colors } from "@/lib/constants";
 
 interface ProgressBarProps {
-  progress: number; // 0 to 1
+  progress: number;
   color?: string;
   trackColor?: string;
   height?: number;
   style?: ViewStyle;
 }
 
-/**
- * Simple progress bar for uploads, wizard steps, etc.
- */
 export default function ProgressBar({
   progress,
   color = Colors.primary[600],

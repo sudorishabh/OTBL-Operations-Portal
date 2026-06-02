@@ -14,9 +14,6 @@ interface InputProps extends TextInputProps {
   containerStyle?: object;
 }
 
-/**
- * Styled text input — mirrors the web custom-form-input/Input.tsx
- */
 export default function Input({
   label,
   error,

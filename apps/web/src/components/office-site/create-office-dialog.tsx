@@ -213,7 +213,6 @@ const CreateOfficeDialog = () => {
             </div>
           </div>
 
-          {/* Member Assignment Section */}
           <div className='mt-8 space-y-6'>
             <div className='flex items-center justify-between border-b pb-4'>
               <div className='border-b pb-2'>
@@ -441,7 +440,6 @@ const CreateOfficeDialog = () => {
               </Tabs>
             </div>
 
-            {/* Selected Member Summary - Cleaner version */}
             {(selectedManager || selectedOperatorUsers.length > 0) && (
               <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
                 <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3'>

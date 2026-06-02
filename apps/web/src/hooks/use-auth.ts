@@ -3,9 +3,6 @@ import { useEffect, useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "next/navigation";
 
-/**
- * User type matching the server response
- */
 export type User = {
   id: number;
   name: string;
@@ -14,9 +11,6 @@ export type User = {
   status: string;
 };
 
-/**
- * Auth hook return type
- */
 export type UseAuthReturn = {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -26,32 +20,24 @@ export type UseAuthReturn = {
   refetchUser: () => void;
 };
 
-/**
- * Custom hook for authentication state management
- * Fetches user on mount and provides logout functionality
- * Session is automatically refreshed via server-side token refresh
- */
 export const useAuth = (): UseAuthReturn => {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isUserLoading, setUserIsLoading] = useState(true);
 
-  // Query for current user - uses cookies for auth
-  // Server automatically refreshes tokens if access token is expired but refresh token is valid
   const {
     data,
     isLoading: isQueryLoading,
     refetch,
   } = trpc.authQuery.me.useQuery(undefined, {
-    retry: 1, // Retry once in case of network issues
-    refetchOnWindowFocus: true, // Refetch on window focus to refresh session
-    refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes to keep session alive
-    staleTime: 1000 * 60 * 10, // Consider data stale after 10 minutes
+    retry: 1,
+    refetchOnWindowFocus: true,
+    refetchInterval: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 10,
   });
 
   const logoutMutation = trpc.authMutation.logout.useMutation();
 
-  // Sync user state with query data
   useEffect(() => {
     if (!isQueryLoading) {
       if (data?.success && data.user) {
@@ -63,9 +49,6 @@ export const useAuth = (): UseAuthReturn => {
     }
   }, [data, isQueryLoading]);
 
-  /**
-   * Logout the user - clears cookies on server and redirects to login
-   */
   const logout = useCallback(async () => {
     try {
       await logoutMutation.mutateAsync();
@@ -77,10 +60,6 @@ export const useAuth = (): UseAuthReturn => {
     }
   }, [logoutMutation, router]);
 
-  /**
-   * Manually refetch user data
-   * This also triggers token refresh on the server if needed
-   */
   const refetchUser = useCallback(() => {
     refetch();
   }, [refetch]);

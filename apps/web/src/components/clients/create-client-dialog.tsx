@@ -128,31 +128,6 @@ const CreateClientDialog = () => {
         .filter((c: Contact) => !c.id.toString().startsWith("temp-"))
         .map((c) => Number(c.id));
 
-      // Note: createClientWithContacts mutation might need updates if it doesn't support linking existing contacts directly yet.
-      // Assuming 'contacts' prop handles new contacts. If API doesn't support linking existing contacts, this logic needs backend changes.
-      // Based on current file, there was no logic to link existing contacts in onSubmit (it only filtered temp-),
-      // which means the previous implementation of "Select Existing" might have been incomplete or I missed how it handled existing ones.
-      // Looking at line 118 in original file:
-      // const newContacts = selectedContacts.filter(...).map(...)
-      // await addClientWithContacts.mutateAsync({ client: values, contacts: newContacts ... })
-      // It seems the original code ONLY sent new contacts. Linking existing contacts might be missing or treated as new?
-      // Wait, if I select an existing contact, it has an ID. If I send it as "new contact", it creates a duplicate?
-      // The type `createClientContactInput` usually doesn't have an ID.
-      // If the user's intention with "Choose Existing" is to COPY an existing contact to this client, then sending it as a payload is fine (it creates a new record for this client).
-      // If the intention is to LINK, the backend needs to support it.
-      // Given the original code:
-      // const newContacts = selectedContacts.filter((c: Contact) => c.id.toString().startsWith("temp-"))
-      // It EXPLICITLY filtered only "temp-". This implies existing contacts selected via dropdown were IGNORED in submission?
-      // That would be a bug in the original code.
-      // OR, maybe the original code intended to copy them?
-      // Let's look at `handleSelectExistingContact` in original code (line 151). It adds to `selectedContacts`.
-      // But `onSubmit` (line 116) filters `c.id.toString().startsWith("temp-")`.
-      // So existing contacts (with numeric IDs) were NOT being sent.
-      // I will fix this behavior: I should probably send ALL selected contacts as "new contacts" (copies) OR link them.
-      // Since I don't know the backend, but `createClientWithContacts` expects `contacts` array of inputs (no ID).
-      // I should map ALL selected contacts to the input format, effectively copying existing contacts to this new client.
-      // This seems the safest assumption given the "create client" context (contacts are usually specific to a client, but copying details saves typing).
-
       const allContactsPayload = selectedContacts.map(
         ({ id, designation, contact_type, ...contact }) => ({
           ...contact,
@@ -188,7 +163,6 @@ const CreateClientDialog = () => {
   };
 
   const toggleContact = (contact: Contact) => {
-    // Check if already selected
     if (selectedContacts.find((c) => c.id == contact.id)) {
       setSelectedContacts(selectedContacts.filter((c) => c.id != contact.id));
     } else {
@@ -206,7 +180,6 @@ const CreateClientDialog = () => {
       <Form {...form}>
         <CustomForm onSubmit={form.handleSubmit(onSubmit)}>
           <div className='space-y-6 max-h-[60vh] overflow-y-auto pr-2'>
-            {/* Client Information */}
             <div>
               <div className='border-b pb-2 mb-4'>
                 <h3 className='text-base font-semibold text-gray-800'>
@@ -280,7 +253,6 @@ const CreateClientDialog = () => {
               </div>
             </div>
 
-            {/* Contact Management */}
             <div className='border-t pt-6'>
               <div className='flex items-center justify-between mb-4'>
                 <div className='flex items-center gap-2'>
@@ -330,7 +302,6 @@ const CreateClientDialog = () => {
                 </div>
               </div>
 
-              {/* Existing Contacts Picker (Search + Grid) */}
               {contactMode === "existing" && (
                 <div className='space-y-4 mb-4'>
                   <div className='rounded-xl border bg-gray-100 shadow-xs overflow-hidden'>
@@ -426,7 +397,6 @@ const CreateClientDialog = () => {
                 </div>
               )}
 
-              {/* New Contact Form */}
               {isAddingNewContact && contactMode === "new" && (
                 <Form {...contactForm}>
                   <div className='bg-gray-100 p-4 rounded-lg mb-4 space-y-3'>
@@ -497,7 +467,6 @@ const CreateClientDialog = () => {
                 </Form>
               )}
 
-              {/* Selected Contacts List (Chips/Cards for summary) */}
               {selectedContacts.length > 0 && (
                 <div className='bg-gray-50 rounded-lg p-4 border border-gray-200 mt-4'>
                   <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3'>
@@ -531,7 +500,6 @@ const CreateClientDialog = () => {
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className='flex justify-end gap-3 pt-4 border-t'>
               <CustomButton
                 text='Cancel'

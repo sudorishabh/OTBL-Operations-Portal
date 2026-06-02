@@ -93,7 +93,6 @@ const ProposalDetailDialog = () => {
         </div>
       ) : proposal ? (
         <div className='space-y-8 p-1'>
-          {/* Proposal Header */}
           <div className='bg-white rounded-xl border border-gray-100 shadow-sm p-6'>
             <div className='flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6'>
               <div>
@@ -125,7 +124,6 @@ const ProposalDetailDialog = () => {
               </div>
 
               <div className='flex flex-wrap items-center gap-2 shrink-0'>
-                {/* Manager-only decision controls, shown while pending. */}
                 {canManage && isPending && (
                   <>
                     <CustomButton
@@ -197,7 +195,6 @@ const ProposalDetailDialog = () => {
             </div>
           </div>
 
-          {/* Work Order Section */}
           <div className='bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden'>
             <div className='px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between'>
               <h3 className='font-semibold text-gray-900 flex items-center gap-2'>

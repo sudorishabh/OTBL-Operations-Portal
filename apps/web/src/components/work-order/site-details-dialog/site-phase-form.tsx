@@ -15,7 +15,6 @@ import CustomInput from "@/components/shared/input";
 import CustomButton from "@/components/shared/btn";
 import toast from "react-hot-toast";
 
-// Schemas mirroring the backend
 const activityDataSchema = z.object({
   estimated_quantity: z.string().min(1, "Required"),
   amount: z.string().optional(),
@@ -33,14 +32,12 @@ const oilZappingSchema = z.object({
   estimated_quantity: z.string().min(1, "Required"),
 });
 
-// Bioremediation Form Schema
 const bioremediationFormSchema = z.object({
   contaminated_soil: activityDataSchema.optional(),
   bio_samples: z.array(bioSampleSchema).optional(),
   oil_zapping: z.array(oilZappingSchema).optional(),
 });
 
-// Restoration Form Schema
 const restorationFormSchema = z.object({
   clean_soil_area: activityDataSchema.optional(),
   lifting_oil_slush: activityDataSchema.optional(),
@@ -87,7 +84,6 @@ export const SitePhaseForm = ({
       onError: (err: any) => toast.error(err.message),
     });
 
-  // Setup Form
   const form = useForm({
     resolver: zodResolver(
       isBio ? bioremediationFormSchema : restorationFormSchema,
@@ -95,7 +91,6 @@ export const SitePhaseForm = ({
     defaultValues: initialData || {},
   });
 
-  // Reset form when initialData changes
   useEffect(() => {
     if (initialData) {
       form.reset(initialData);
@@ -108,7 +103,6 @@ export const SitePhaseForm = ({
     formState: { isSubmitting },
   } = form;
 
-  // Field Arrays for Bioremediation
   const {
     fields: sampleFields,
     append: appendSample,
@@ -147,8 +141,6 @@ export const SitePhaseForm = ({
 
   const isLoading = bioMutation.isPending || restorationMutation.isPending;
 
-  // Reusable Activity Fields Component
-  // Using 'control' prop on CustomInput as discovered
   const ActivityFields = ({
     prefix,
     label,
@@ -190,13 +182,11 @@ export const SitePhaseForm = ({
         <form
           onSubmit={handleSubmit(onSubmit)}
           className='space-y-6'>
-          {/* Contaminated Soil */}
           <ActivityFields
             prefix='contaminated_soil'
             label='Contaminated Soil Data'
           />
 
-          {/* Bio Samples */}
           <div className='bg-gray-50/50 p-4 rounded-lg border border-gray-100'>
             <div className='flex items-center justify-between mb-3'>
               <h4 className='text-sm font-medium text-gray-700'>Bio Samples</h4>
@@ -264,7 +254,6 @@ export const SitePhaseForm = ({
             </div>
           </div>
 
-          {/* Oil Zapping */}
           <div className='bg-gray-50/50 p-4 rounded-lg border border-gray-100'>
             <div className='flex items-center justify-between mb-3'>
               <h4 className='text-sm font-medium text-gray-700'>Oil Zapping</h4>
@@ -338,7 +327,6 @@ export const SitePhaseForm = ({
     );
   }
 
-  // Restoration Form
   return (
     <Form {...form}>
       <form

@@ -1,14 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 
-// Transform various error types to TRPCError
 export const transformError = (error: unknown): TRPCError => {
-  // If it's already a TRPCError, return as-is
   if (error instanceof TRPCError) {
     return error;
   }
 
-  // Handle Zod validation errors
   if (error instanceof ZodError) {
     const formattedErrors = error.issues.map((issue) => ({
       field: issue.path.join("."),
@@ -25,7 +22,6 @@ export const transformError = (error: unknown): TRPCError => {
     });
   }
 
-  // Database constraint errors
   if (error instanceof Error) {
     if (error.message.includes("duplicate key")) {
       return new TRPCError({
@@ -41,7 +37,6 @@ export const transformError = (error: unknown): TRPCError => {
       });
     }
 
-    // Default: unexpected internal error
     return new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: error.message,
@@ -49,14 +44,12 @@ export const transformError = (error: unknown): TRPCError => {
     });
   }
 
-  // Unknown error object (rare)
   return new TRPCError({
     code: "INTERNAL_SERVER_ERROR",
     message: "Unexpected error",
   });
 };
 
-// Error formatter for client responses
 export const errorFormatter = ({
   shape,
   error,
@@ -70,7 +63,6 @@ export const errorFormatter = ({
     ...shape,
     data: {
       ...shape.data,
-      // Include additional error details if available
       errorCode: cause?.errorCode,
       validationErrors: cause?.errors,
       stack: true ? error.stack : undefined,

@@ -2,14 +2,6 @@
 
 import React, { useState } from "react";
 import toast from "react-hot-toast";
-// import { trpc } from "@/lib/trpc"; // Uncomment when ready to use
-
-/**
- * Example: 0 Day Activity Form Component
- *
- * This component demonstrates how to create a form for collecting
- * 0 Day Activity data (measurements and volume calculations)
- */
 
 interface ZeroDayActivityFormProps {
   siteActivityId: number;
@@ -32,7 +24,6 @@ const ZeroDayActivityForm: React.FC<ZeroDayActivityFormProps> = ({
 
   const [isLoading, setIsLoading] = useState(false);
 
-  // Calculate volume automatically
   const calculateVolume = () => {
     const length = parseFloat(formData.length_metric);
     const width = parseFloat(formData.width_metric);
@@ -47,28 +38,17 @@ const ZeroDayActivityForm: React.FC<ZeroDayActivityFormProps> = ({
     }
   };
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Uncomment and use when TRPC is set up
-      // await trpc.activity.addZeroDayActivityData.mutate({
-      //   site_activity_id: siteActivityId,
-      //   length_metric: parseFloat(formData.length_metric),
-      //   width_metric: parseFloat(formData.width_metric),
-      //   depth_metric: parseFloat(formData.depth_metric),
-      //   volume_informed: parseFloat(formData.volume_informed),
-      //   document_url: formData.document_url || undefined,
-      // });
 
       console.log("Submitting 0 Day Activity data:", {
         site_activity_id: siteActivityId,
         ...formData,
       });
 
-      // Call success callback
       onSuccess?.();
     } catch (error) {
       console.error("Error submitting 0 Day Activity data:", error);
@@ -88,7 +68,6 @@ const ZeroDayActivityForm: React.FC<ZeroDayActivityFormProps> = ({
       <form
         onSubmit={handleSubmit}
         className='space-y-4'>
-        {/* Length */}
         <div>
           <label className='block text-sm font-medium text-gray-700 mb-1'>
             Length (metric)
@@ -106,7 +85,6 @@ const ZeroDayActivityForm: React.FC<ZeroDayActivityFormProps> = ({
           />
         </div>
 
-        {/* Width */}
         <div>
           <label className='block text-sm font-medium text-gray-700 mb-1'>
             Width (metric)
@@ -124,7 +102,6 @@ const ZeroDayActivityForm: React.FC<ZeroDayActivityFormProps> = ({
           />
         </div>
 
-        {/* Depth */}
         <div>
           <label className='block text-sm font-medium text-gray-700 mb-1'>
             Depth (metric)
@@ -142,7 +119,6 @@ const ZeroDayActivityForm: React.FC<ZeroDayActivityFormProps> = ({
           />
         </div>
 
-        {/* Volume */}
         <div>
           <label className='block text-sm font-medium text-gray-700 mb-1'>
             Volume Informed (m³)
@@ -163,7 +139,6 @@ const ZeroDayActivityForm: React.FC<ZeroDayActivityFormProps> = ({
           </p>
         </div>
 
-        {/* Document Upload */}
         <div>
           <label className='block text-sm font-medium text-gray-700 mb-1'>
             Supporting Document URL
@@ -182,7 +157,6 @@ const ZeroDayActivityForm: React.FC<ZeroDayActivityFormProps> = ({
           </p>
         </div>
 
-        {/* Buttons */}
         <div className='flex gap-3 pt-4'>
           <button
             type='submit'
@@ -203,29 +177,3 @@ const ZeroDayActivityForm: React.FC<ZeroDayActivityFormProps> = ({
 };
 
 export default ZeroDayActivityForm;
-
-/**
- * USAGE EXAMPLE:
- *
- * import ZeroDayActivityForm from "@/components/activities/ZeroDayActivityForm";
- *
- * function SiteActivityPage({ siteActivityId }: { siteActivityId: number }) {
- *   return (
- *     <ZeroDayActivityForm
- *       siteActivityId={siteActivityId}
- *       onSuccess={() => {
- *         console.log("Data submitted successfully");
- *         // Refresh data, close modal, etc.
- *       }}
- *       onCancel={() => {
- *         // Close form
- *       }}
- *     />
- *   );
- * }
- *
- * SIMILAR COMPONENTS TO CREATE:
- * - ZeroDaySampleForm (with density calculations)
- * - TphActivityForm (lab info and dates)
- * - OilZapperActivityForm (intimation and completion tracking)
- */

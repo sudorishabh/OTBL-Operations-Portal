@@ -60,7 +60,6 @@ export const clientMutationRouter = router({
     handleMutation(async ({ input, ctx }) => {
       const { id, ...rest } = input;
 
-      // Check if client exists
       const existingClient = await ctx.db
         .select()
         .from(clientTable)
@@ -85,7 +84,6 @@ export const clientMutationRouter = router({
 
   deleteClient: adminProcedure.input(clientSchemas.deleteClientSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
-      // Check if client exists
       const existingClient = await ctx.db
         .select()
         .from(clientTable)
@@ -111,7 +109,6 @@ export const clientMutationRouter = router({
     .input(clientSchemas.createClientContactSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        // Verify client exists
         const client = await ctx.db
           .select()
           .from(clientTable)
@@ -142,7 +139,6 @@ export const clientMutationRouter = router({
       handleMutation(async ({ input, ctx }) => {
         const { id, ...rest } = input;
 
-        // Check if contact exists
         const existingContact = await ctx.db
           .select()
           .from(clientContactTable)
@@ -169,7 +165,6 @@ export const clientMutationRouter = router({
     .input(clientSchemas.deleteClientContactSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        // Check if contact exists
         const existingContact = await ctx.db
           .select()
           .from(clientContactTable)
@@ -197,7 +192,6 @@ export const clientMutationRouter = router({
       handleMutation(async ({ input, ctx }) => {
         const { clientId, client, contactsToAdd, contactsToRemove } = input;
 
-        // Check if client exists
         const existingClient = await ctx.db
           .select()
           .from(clientTable)
@@ -208,7 +202,6 @@ export const clientMutationRouter = router({
         }
 
         try {
-          // Update client if there are changes
           if (Object.keys(client).length > 0) {
             await ctx.db
               .update(clientTable)
@@ -216,7 +209,6 @@ export const clientMutationRouter = router({
               .where(eq(clientTable.id, clientId));
           }
 
-          // Remove contacts if specified
           if (contactsToRemove && contactsToRemove.length > 0) {
             for (const contactId of contactsToRemove) {
               await ctx.db
@@ -225,7 +217,6 @@ export const clientMutationRouter = router({
             }
           }
 
-          // Add new contacts if specified
           if (contactsToAdd && contactsToAdd.length > 0) {
             const contactsWithClientId = contactsToAdd.map((contact) => ({
               ...contact,

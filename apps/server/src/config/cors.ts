@@ -11,9 +11,6 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Block requests with no Origin header in production — no-origin requests
-    // (curl, server-side scripts) must use Bearer token auth, not cookies.
-    // In development allow no-origin so local tools still work.
     if (!origin) {
       const isDev = process.env.NODE_ENV !== "production";
       return callback(null, isDev);

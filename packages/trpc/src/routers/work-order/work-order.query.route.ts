@@ -46,7 +46,6 @@ const {
 } = schema;
 
 export const workOrderQueryRouter = router({
-  // Get all work orders with pagination, search, and filters
   getAll: protectedProcedure.input(getAllWorkOrdersPaginatedSchema).query(
     handleQuery(async ({ input, ctx }) => {
       const { page, limit, searchQuery, status, office_id, workOrderOrder } =
@@ -262,7 +261,6 @@ export const workOrderQueryRouter = router({
     }),
   ),
 
-  // Get all work orders (no pagination)
   getWorkOrders: protectedProcedure.query(
     handleQuery(async ({ ctx }) => {
       try {
@@ -301,7 +299,6 @@ export const workOrderQueryRouter = router({
     }),
   ),
 
-  // Get a single work order by ID with full details
   getWorkOrder: protectedProcedure.input(getWorkOrderSchema).query(
     handleQuery(async ({ input, ctx }) => {
       const { id } = input;
@@ -348,7 +345,6 @@ export const workOrderQueryRouter = router({
         }
         return workOrders[0];
       } catch (error) {
-        // Re-throw AppError instances
         if (error && typeof error === "object" && "errorCode" in error) {
           throw error;
         }
@@ -390,7 +386,6 @@ export const workOrderQueryRouter = router({
           ? and(eq(workOrderSiteTable.work_order_id, id), siteRowFilter)
           : eq(workOrderSiteTable.work_order_id, id);
 
-        // Calculate total count
         const [totalResult] = await ctx.db
           .select({ count: count() })
           .from(workOrderSiteTable)
@@ -434,7 +429,6 @@ export const workOrderQueryRouter = router({
           .offset(offset)
           .orderBy(desc(workOrderSiteTable.created_at));
 
-        // Fetch users and measurement sheets for the fetched sites
         const [sitesUsers, sitesSheets] = await Promise.all([
           Promise.all(
             woSites.map((woSite: any) =>
@@ -491,7 +485,6 @@ export const workOrderQueryRouter = router({
           },
         };
       } catch (error) {
-        // Re-throw AppError instances
         if (error && typeof error === "object" && "errorCode" in error) {
           throw error;
         }
@@ -500,7 +493,6 @@ export const workOrderQueryRouter = router({
     }),
   ),
 
-  // Get work orders by office ID
   getWorkOrdersByOffice: protectedProcedure
     .input(getWorkOrdersByOfficeSchema)
     .query(
@@ -544,7 +536,6 @@ export const workOrderQueryRouter = router({
       }),
     ),
 
-  // Get work orders by client ID
   getWorkOrdersByClient: protectedProcedure
     .input(getWorkOrdersByClientSchema)
     .query(
@@ -587,7 +578,6 @@ export const workOrderQueryRouter = router({
       }),
     ),
 
-  // Get work order with full details including sites
   getWorkOrderDetails: protectedProcedure.input(getWorkOrderSchema).query(
     handleQuery(async ({ input, ctx }) => {
       const { id } = input;
@@ -665,15 +655,10 @@ export const workOrderQueryRouter = router({
           });
         }
 
-        // Non-null: the length === 0 check above already throws notFound.
         const workOrder = workOrders[0]!;
 
-        // Admin-only capability: only a global admin may approve/cancel a work
-        // order. Managers/operators are read-only. The client uses this flag to
-        // show the approval controls; the mutations enforce it server-side.
         const canManage = ctx.user!.role === USER_ROLES.ADMIN;
 
-        // Resolve the approver's name when the gate is set.
         let approvedByName: string | null = null;
         if (workOrder.approved_by) {
           const [approver] = await ctx.db
@@ -987,7 +972,6 @@ export const workOrderQueryRouter = router({
           },
         };
       } catch (error) {
-        // Re-throw AppError instances
         if (error && typeof error === "object" && "errorCode" in error) {
           throw error;
         }

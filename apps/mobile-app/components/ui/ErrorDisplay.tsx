@@ -10,9 +10,6 @@ interface ErrorDisplayProps {
   onRetry?: () => void;
 }
 
-/**
- * Error display with retry button — shown when API calls fail
- */
 export default function ErrorDisplay({
   title = "Something went wrong",
   message = "An error occurred. Please try again.",

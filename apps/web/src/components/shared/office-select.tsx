@@ -39,11 +39,6 @@ const formatLocation = (office: OfficeOption) => {
   return parts.map((part) => capitalizeEachWord(part)).join(", ");
 };
 
-/**
- * Searchable office picker. Renders a rich trigger (name + location) and a
- * filterable list so users can find an office by name, city, state, or address
- * instead of scanning a flat dropdown.
- */
 const OfficeSelect = ({
   offices,
   value,

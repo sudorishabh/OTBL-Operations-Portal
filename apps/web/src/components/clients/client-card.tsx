@@ -55,7 +55,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
       onClick={handleCardClick}>
       <div className='flex flex-col px-5 py-5'>
         <div className='flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6'>
-          {/* Client name / date / status */}
           <div className='w-full sm:w-72 sm:shrink-0'>
             <h3 className='text-base font-bold text-gray-800 line-clamp-1'>
               {capitalFirstLetter(client.name)}
@@ -88,12 +87,9 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
             </div>
           </div>
 
-          {/* Divider */}
           <div className='hidden sm:block h-16 w-px bg-gray-100 shrink-0' />
 
-          {/* Location & Contact */}
           <div className='flex-1 grid grid-cols-2 gap-4 sm:gap-6'>
-            {/* Location */}
             <div>
               <div className='flex items-center gap-1.5 mb-2'>
                 <MapPin className='h-3.5 w-3.5 text-emerald-500' />
@@ -112,7 +108,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
               </p>
             </div>
 
-            {/* Contact */}
             <div>
               <div className='flex items-center gap-1.5 mb-2'>
                 <PhoneIcon className='h-3.5 w-3.5 text-emerald-500' />
@@ -136,7 +131,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
             </div>
           </div>
 
-          {/* Arrow */}
           <div className='hidden sm:block shrink-0'>
             <Btn
               variant='arrow'
@@ -146,7 +140,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
           </div>
         </div>
 
-        {/* Bottom Stats */}
         <div className='mt-4 pt-4 border-t border-gray-100'>
           <div className='grid grid-cols-3 gap-2'>
             <div className='px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-100'>

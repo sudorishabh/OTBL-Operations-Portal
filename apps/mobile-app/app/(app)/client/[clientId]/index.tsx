@@ -9,9 +9,6 @@ import { Colors } from "@/lib/constants";
 import { trpc } from "@/lib/trpc";
 import { capitalize } from "@/lib/utils";
 
-/**
- * Client Details screen — mirrors /client/[clientId] page
- */
 export default function ClientDetailScreen() {
   const { clientId } = useLocalSearchParams<{ clientId: string }>();
 
@@ -49,7 +46,6 @@ export default function ClientDetailScreen() {
     <ScreenWrapper
       refreshing={isRefetching}
       onRefresh={refetch}>
-      {/* Client Info Card */}
       <Card style={styles.headerCard}>
         <View style={styles.clientHeader}>
           <View style={styles.clientAvatar}>
@@ -68,7 +64,6 @@ export default function ClientDetailScreen() {
         </View>
       </Card>
 
-      {/* Contact Details */}
       <Card
         title='Contact Details'
         style={styles.section}>
@@ -99,7 +94,6 @@ export default function ClientDetailScreen() {
         </View>
       </Card>
 
-      {/* Business Details */}
       <Card
         title='Business Details'
         style={styles.section}>

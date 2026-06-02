@@ -60,13 +60,10 @@ const OfficeDetailsDialog = () => {
       },
     );
 
-  // Accumulate sites across pages
   const [allSites, setAllSites] = useState<any[]>([]);
 
-  // Type assertion for the new response structure
   const responseData = data as any;
 
-  // Update accumulated sites when new data arrives
   useEffect(() => {
     if (responseData?.sites && !isFetching) {
       setAllSites((prev) => {
@@ -86,7 +83,6 @@ const OfficeDetailsDialog = () => {
     setPage(1);
   }, [debouncedSearchTerm]);
 
-  // Reset page when dialog closes
   useEffect(() => {
     if (!isOpenDialog) {
       setPage(1);
@@ -119,7 +115,6 @@ const OfficeDetailsDialog = () => {
       size='xl'
       heightMode='full'>
       <div className='space-y-4'>
-        {/* Office Info Card */}
         {officeInfo && (
           <div className='rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4 flex flex-col gap-3'>
             <div className='flex flex-wrap items-start justify-between gap-2'>
@@ -168,7 +163,6 @@ const OfficeDetailsDialog = () => {
           </div>
         )}
 
-        {/* Search Bar */}
         <div className='relative pt-1'>
           <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400' />
           <input
@@ -180,7 +174,6 @@ const OfficeDetailsDialog = () => {
           />
         </div>
 
-        {/* Summary Card */}
         <div className='flex items-center justify-between px-1'>
           <p className='text-xs font-semibold text-slate-500 uppercase tracking-wider'>
             Site Locations
@@ -190,7 +183,6 @@ const OfficeDetailsDialog = () => {
           </p>
         </div>
 
-        {/* Sites List */}
         {isLoading && page === 1 ? (
           <Loading />
         ) : allSites.length === 0 ? (
@@ -260,7 +252,6 @@ const OfficeDetailsDialog = () => {
               </Table>
             </div>
 
-            {/* Load More Button */}
             {hasMore && (
               <LoadMoreBtn
                 onClick={handleLoadMore}
@@ -268,7 +259,6 @@ const OfficeDetailsDialog = () => {
               />
             )}
 
-            {/* Showing count */}
             <div className='text-center text-sm text-muted-foreground pb-4'>
               Showing {allSites.length} of {totalCount} sites
             </div>

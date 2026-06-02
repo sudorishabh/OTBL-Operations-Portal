@@ -1,29 +1,3 @@
-/**
- * Error Factory - Comprehensive Error Handling System
- *
- * This module provides a simple, unified error handling system that:
- * - Handles all error types (validation, auth, database, business logic, etc.)
- * - Supports separate user-facing and developer-facing messages
- * - Shows developer messages only in development mode
- * - Automatically handles MySQL/database errors
- *
- * Usage:
- * ```typescript
- * // Simple error with just user message
- * throw createError("NOT_FOUND", "User not found");
- *
- * // With custom user and dev messages
- * throw createError("DATABASE_ERROR", {
- *   userMessage: "Unable to save data. Please try again.",
- *   devMessage: "MySQL connection timeout after 30s on users table"
- * });
- *
- * // Using specific factory functions
- * throw notFound("User", userId);
- * throw validationError("Email is invalid", [{ field: "email", message: "Invalid format" }]);
- * ```
- */
-
 import { ErrorCode, type ErrorCodeType } from "./error-codes";
 import {
   AppError,
@@ -31,95 +5,43 @@ import {
   type ValidationFieldError,
 } from "./app-error";
 
-// ============================================================================
-// Types
-// ============================================================================
-
-/**
- * Error options for creating errors with custom messages
- */
 export interface ErrorOptions {
-  /** User-friendly message (shown to end users) */
   userMessage?: string;
-  /** Developer message (shown only in development) */
   devMessage?: string;
-  /** Additional metadata for debugging */
   metadata?: ErrorMetadata;
-  /** Original error that caused this error */
   cause?: unknown;
-  /** Validation field errors */
   validationErrors?: ValidationFieldError[];
 }
 
-/**
- * MySQL Error Codes and their meanings
- */
 const MYSQL_ERROR_CODES = {
-  // Duplicate entry
   ER_DUP_ENTRY: 1062,
   ER_DUP_KEY: 1022,
-  // Foreign key violations
   ER_NO_REFERENCED_ROW: 1216,
   ER_NO_REFERENCED_ROW_2: 1452,
   ER_ROW_IS_REFERENCED: 1217,
   ER_ROW_IS_REFERENCED_2: 1451,
-  // Data integrity
   ER_TRUNCATED_WRONG_VALUE: 1292,
   ER_DATA_TOO_LONG: 1406,
   ER_BAD_NULL_ERROR: 1048,
   ER_WRONG_VALUE_COUNT: 1136,
-  // Connection errors
   ER_CON_COUNT_ERROR: 1040,
   ER_HOST_IS_BLOCKED: 1129,
   ER_HOST_NOT_PRIVILEGED: 1130,
-  // Access errors
   ER_ACCESS_DENIED_ERROR: 1045,
   ER_DBACCESS_DENIED_ERROR: 1044,
-  // Syntax & query errors
   ER_PARSE_ERROR: 1064,
   ER_WRONG_VALUE_FOR_TYPE: 1411,
-  // Table errors
   ER_NO_SUCH_TABLE: 1146,
   ER_TABLE_EXISTS_ERROR: 1050,
-  // Deadlock/lock errors
   ER_LOCK_WAIT_TIMEOUT: 1205,
   ER_LOCK_DEADLOCK: 1213,
-  // Not found
   ER_KEY_NOT_FOUND: 1032,
 } as const;
 
-// ============================================================================
-// Environment Helper
-// ============================================================================
-
-/**
- * Check if we're in development mode
- */
 export function isDevelopment(): boolean {
   return process.env.NODE_ENV !== "production";
 }
 
-// ============================================================================
-// Main Error Factory
-// ============================================================================
-
-/**
- * Create an AppError with the specified error code
- *
- * @param code - The error code (e.g., "NOT_FOUND", "DATABASE_ERROR")
- * @param messageOrOptions - Either a simple message string or an options object
- *
- * @example
- * // Simple usage with message
- * throw createError("NOT_FOUND", "User not found");
- *
- * // With full options
- * throw createError("DATABASE_ERROR", {
- *   userMessage: "Unable to save data",
- *   devMessage: "MySQL error: Connection timeout",
- *   cause: originalError
- * });
- */
 export function createError(
   code: ErrorCodeType,
   messageOrOptions?: string | ErrorOptions,
@@ -140,13 +62,6 @@ export function createError(
   });
 }
 
-// ============================================================================
-// MySQL/Database Error Handler
-// ============================================================================
-
-/**
- * MySQL Error structure
- */
 interface MySQLError extends Error {
   code?: string;
   errno?: number;
@@ -155,35 +70,19 @@ interface MySQLError extends Error {
   sql?: string;
 }
 
-/**
- * Parse and create an appropriate error from a MySQL/database error
- *
- * @param error - The original MySQL/database error
- * @param context - Optional context for the error (e.g., "Creating user")
- *
- * @example
- * try {
- *   await db.insert(users).values(userData);
- * } catch (e) {
- *   throw fromDatabaseError(e, "Creating user");
- * }
- */
 export function fromDatabaseError(error: unknown, context?: string): AppError {
   const mysqlError = error as MySQLError;
   const contextPrefix = context ? `${context}: ` : "";
 
-  // Handle MySQL error codes
   if (mysqlError.errno || mysqlError.code) {
     const errno = mysqlError.errno;
     const code = mysqlError.code;
 
-    // Duplicate entry error
     if (
       errno === MYSQL_ERROR_CODES.ER_DUP_ENTRY ||
       errno === MYSQL_ERROR_CODES.ER_DUP_KEY ||
       code === "ER_DUP_ENTRY"
     ) {
-      // Try to extract the duplicate value and key name
       const match = mysqlError.message?.match(
         /Duplicate entry '([^']+)' for key '([^']+)'/,
       );
@@ -203,7 +102,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Foreign key constraint - referenced row doesn't exist
     if (
       errno === MYSQL_ERROR_CODES.ER_NO_REFERENCED_ROW ||
       errno === MYSQL_ERROR_CODES.ER_NO_REFERENCED_ROW_2
@@ -217,7 +115,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Foreign key constraint - row is referenced
     if (
       errno === MYSQL_ERROR_CODES.ER_ROW_IS_REFERENCED ||
       errno === MYSQL_ERROR_CODES.ER_ROW_IS_REFERENCED_2
@@ -231,7 +128,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Data too long
     if (errno === MYSQL_ERROR_CODES.ER_DATA_TOO_LONG) {
       const match = mysqlError.message?.match(/column '([^']+)'/);
       const field = match?.[1];
@@ -249,7 +145,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Null constraint
     if (errno === MYSQL_ERROR_CODES.ER_BAD_NULL_ERROR) {
       const match = mysqlError.message?.match(/Column '([^']+)'/);
       const field = match?.[1];
@@ -267,7 +162,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Truncated/invalid value
     if (
       errno === MYSQL_ERROR_CODES.ER_TRUNCATED_WRONG_VALUE ||
       errno === MYSQL_ERROR_CODES.ER_WRONG_VALUE_FOR_TYPE
@@ -281,7 +175,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Deadlock
     if (errno === MYSQL_ERROR_CODES.ER_LOCK_DEADLOCK) {
       return new AppError({
         code: ErrorCode.DATABASE_ERROR,
@@ -291,7 +184,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Lock timeout
     if (errno === MYSQL_ERROR_CODES.ER_LOCK_WAIT_TIMEOUT) {
       return new AppError({
         code: ErrorCode.DATABASE_TIMEOUT,
@@ -301,7 +193,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Connection errors
     if (
       errno === MYSQL_ERROR_CODES.ER_CON_COUNT_ERROR ||
       errno === MYSQL_ERROR_CODES.ER_HOST_IS_BLOCKED
@@ -315,7 +206,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Access denied
     if (
       errno === MYSQL_ERROR_CODES.ER_ACCESS_DENIED_ERROR ||
       errno === MYSQL_ERROR_CODES.ER_DBACCESS_DENIED_ERROR
@@ -328,7 +218,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
       });
     }
 
-    // Table not found
     if (errno === MYSQL_ERROR_CODES.ER_NO_SUCH_TABLE) {
       return new AppError({
         code: ErrorCode.DATABASE_ERROR,
@@ -339,7 +228,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
     }
   }
 
-  // Handle generic database error patterns from error message
   const errorMessage = mysqlError.message || String(error);
 
   if (
@@ -395,7 +283,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
     });
   }
 
-  // Default database error
   return new AppError({
     code: ErrorCode.DATABASE_ERROR,
     devMessage: `${contextPrefix}${errorMessage}`,
@@ -405,18 +292,6 @@ export function fromDatabaseError(error: unknown, context?: string): AppError {
   });
 }
 
-// ============================================================================
-// Convenient Factory Functions
-// ============================================================================
-
-/**
- * Create a "not found" error
- *
- * @example
- * throw notFound("User");
- * throw notFound("Work Order", workOrderId);
- * throw notFound("User", userId, { devMessage: "User deleted from system" });
- */
 export function notFound(
   resource: string,
   resourceId?: string | number,
@@ -439,13 +314,6 @@ export function notFound(
   });
 }
 
-/**
- * Create an "already exists" / conflict error
- *
- * @example
- * throw alreadyExists("User", "user@example.com");
- * throw alreadyExists("Work Order", workOrderCode);
- */
 export function alreadyExists(
   resource: string,
   identifier?: string,
@@ -468,16 +336,6 @@ export function alreadyExists(
   });
 }
 
-/**
- * Create a validation error
- *
- * @example
- * throw validationError("Invalid input");
- * throw validationError("Form validation failed", [
- *   { field: "email", message: "Invalid email format" },
- *   { field: "phone", message: "Phone is required" }
- * ]);
- */
 export function validationError(
   message: string,
   fields?: ValidationFieldError[],
@@ -494,13 +352,6 @@ export function validationError(
   });
 }
 
-/**
- * Create an unauthorized error (not logged in)
- *
- * @example
- * throw unauthorized();
- * throw unauthorized("Your session has expired");
- */
 export function unauthorized(
   message?: string,
   options?: ErrorOptions,
@@ -515,13 +366,6 @@ export function unauthorized(
   });
 }
 
-/**
- * Create a forbidden error (logged in but no permission)
- *
- * @example
- * throw forbidden();
- * throw forbidden("delete this resource");
- */
 export function forbidden(action?: string, options?: ErrorOptions): AppError {
   return new AppError({
     code: ErrorCode.FORBIDDEN,
@@ -538,13 +382,6 @@ export function forbidden(action?: string, options?: ErrorOptions): AppError {
   });
 }
 
-/**
- * Create an insufficient permissions error
- *
- * @example
- * throw insufficientPermissions("admin");
- * throw insufficientPermissions("manager", { userMessage: "Contact your admin" });
- */
 export function insufficientPermissions(
   requiredRole?: string,
   options?: ErrorOptions,
@@ -567,15 +404,6 @@ export function insufficientPermissions(
   });
 }
 
-/**
- * Create a business rule violation error
- *
- * @example
- * throw businessRule("Cannot delete work order with active sites");
- * throw businessRule("Order amount exceeds limit", {
- *   userMessage: "The order amount is too high. Please contact sales."
- * });
- */
 export function businessRule(
   message: string,
   options?: ErrorOptions,
@@ -591,12 +419,6 @@ export function businessRule(
   });
 }
 
-/**
- * Create an operation not allowed error
- *
- * @example
- * throw operationNotAllowed("Cannot edit closed work order");
- */
 export function operationNotAllowed(
   message: string,
   options?: ErrorOptions,
@@ -612,15 +434,6 @@ export function operationNotAllowed(
   });
 }
 
-/**
- * Create a state transition error
- *
- * @example
- * throw invalidStateTransition("draft", "completed");
- * throw invalidStateTransition("pending", "approved", {
- *   userMessage: "Cannot approve, please review first"
- * });
- */
 export function invalidStateTransition(
   fromState: string,
   toState: string,
@@ -643,13 +456,6 @@ export function invalidStateTransition(
   });
 }
 
-/**
- * Create an internal server error
- *
- * @example
- * throw internal("Unexpected null in work order service");
- * throw internal("Cache failure", { userMessage: "Please try again" });
- */
 export function internal(
   devMessage?: string,
   options?: ErrorOptions,
@@ -665,23 +471,11 @@ export function internal(
   });
 }
 
-/**
- * Create an error from an unknown caught error
- *
- * @example
- * try {
- *   // some code
- * } catch (error) {
- *   throw fromUnknown(error, "Processing work order");
- * }
- */
 export function fromUnknown(error: unknown, context?: string): AppError {
-  // Already an AppError
   if (error instanceof AppError) {
     return error;
   }
 
-  // Standard Error
   if (error instanceof Error) {
     const message = context ? `${context}: ${error.message}` : error.message;
     return new AppError({
@@ -692,7 +486,6 @@ export function fromUnknown(error: unknown, context?: string): AppError {
     });
   }
 
-  // String error
   if (typeof error === "string") {
     const message = context ? `${context}: ${error}` : error;
     return new AppError({
@@ -702,7 +495,6 @@ export function fromUnknown(error: unknown, context?: string): AppError {
     });
   }
 
-  // Unknown error type
   return new AppError({
     code: ErrorCode.UNEXPECTED_ERROR,
     devMessage: context || "Unknown error occurred",
@@ -711,13 +503,6 @@ export function fromUnknown(error: unknown, context?: string): AppError {
   });
 }
 
-/**
- * Create a file-related error
- *
- * @example
- * throw fileError("too_large", "document.pdf", 15);
- * throw fileError("invalid_type", "script.exe");
- */
 export function fileError(
   type: "too_large" | "invalid_type" | "upload_failed",
   fileName?: string,
@@ -758,15 +543,6 @@ export function fileError(
   });
 }
 
-/**
- * Create a service unavailable error
- *
- * @example
- * throw serviceUnavailable("SharePoint");
- * throw serviceUnavailable("Email service", {
- *   userMessage: "Email sending is temporarily unavailable"
- * });
- */
 export function serviceUnavailable(
   serviceName: string,
   options?: ErrorOptions,
@@ -786,13 +562,6 @@ export function serviceUnavailable(
   });
 }
 
-/**
- * Create a timeout error
- *
- * @example
- * throw timeout("Database query");
- * throw timeout("API call", { userMessage: "The server took too long" });
- */
 export function timeout(operation?: string, options?: ErrorOptions): AppError {
   return new AppError({
     code: ErrorCode.TIMEOUT,
@@ -809,13 +578,6 @@ export function timeout(operation?: string, options?: ErrorOptions): AppError {
   });
 }
 
-/**
- * Create a rate limit error
- *
- * @example
- * throw rateLimited();
- * throw rateLimited(60); // retry after 60 seconds
- */
 export function rateLimited(
   retryAfterSeconds?: number,
   options?: ErrorOptions,
@@ -836,24 +598,10 @@ export function rateLimited(
   });
 }
 
-// ============================================================================
-// Legacy Exports (for backward compatibility)
-// ============================================================================
-
-// Re-export with old names - these need to support legacy signatures
-
-/**
- * Legacy createUnauthorizedError - supports:
- * - createUnauthorizedError("message")
- * - createUnauthorizedError({ userMessage: "...", devMessage: "..." })
- * - createUnauthorizedError("message", { devMessage: "..." })
- * - createUnauthorizedError(undefined, { userMessage: "...", devMessage: "..." })
- */
 export function createUnauthorizedError(
   messageOrOptions?: string | ErrorOptions,
   options?: ErrorOptions,
 ): AppError {
-  // Handle case where first arg is options object
   if (
     typeof messageOrOptions === "object" &&
     messageOrOptions !== null &&
@@ -861,7 +609,6 @@ export function createUnauthorizedError(
   ) {
     return unauthorized(messageOrOptions.userMessage, messageOrOptions);
   }
-  // Handle (message, options) or (undefined, options) pattern
   return unauthorized(
     typeof messageOrOptions === "string"
       ? messageOrOptions
@@ -870,18 +617,10 @@ export function createUnauthorizedError(
   );
 }
 
-/**
- * Legacy createInternalError - supports:
- * - createInternalError("message")
- * - createInternalError({ userMessage: "...", devMessage: "..." })
- * - createInternalError("message", { devMessage: "..." })
- * - createInternalError(undefined, { userMessage: "...", devMessage: "..." })
- */
 export function createInternalError(
   messageOrOptions?: string | ErrorOptions,
   options?: ErrorOptions,
 ): AppError {
-  // Handle case where first arg is options object
   if (
     typeof messageOrOptions === "object" &&
     messageOrOptions !== null &&
@@ -889,7 +628,6 @@ export function createInternalError(
   ) {
     return internal(messageOrOptions.devMessage, messageOrOptions);
   }
-  // Handle (message, options) or (undefined, options) pattern
   return internal(
     typeof messageOrOptions === "string"
       ? messageOrOptions
@@ -898,9 +636,6 @@ export function createInternalError(
   );
 }
 
-/**
- * Legacy createForbiddenError - supports same patterns
- */
 export function createForbiddenError(
   messageOrOptions?: string | ErrorOptions,
   options?: ErrorOptions,
@@ -918,9 +653,6 @@ export function createForbiddenError(
   );
 }
 
-/**
- * Legacy createInsufficientPermissionsError - supports same patterns
- */
 export function createInsufficientPermissionsError(
   roleOrOptions?: string | ErrorOptions,
   options?: ErrorOptions,
@@ -938,7 +670,6 @@ export function createInsufficientPermissionsError(
   );
 }
 
-// Simple re-exports for functions that don't need signature changes
 export const createNotFoundError = notFound;
 export const createAlreadyExistsError = alreadyExists;
 export const createBusinessRuleError = businessRule;
@@ -948,12 +679,6 @@ export const createUnexpectedError = fromUnknown;
 export const createDatabaseError = fromDatabaseError;
 export const createServiceUnavailableError = serviceUnavailable;
 
-/**
- * Legacy createValidationError - supports:
- * - createValidationError("message")
- * - createValidationError("message", [fields])
- * - createValidationError({ devMessage: "...", userMessage: "...", fields: [...] })
- */
 export function createValidationError(
   messageOrOptions:
     | string
@@ -970,7 +695,6 @@ export function createValidationError(
   return validationError(messageOrOptions, fields);
 }
 
-// Legacy functions kept for compatibility
 export function createRequiredFieldError(
   fieldName: string,
   options?: ErrorOptions,
@@ -1093,10 +817,6 @@ export function createResourceError(
     cause: options?.cause,
   });
 }
-
-// ============================================================================
-// Throw Helpers
-// ============================================================================
 
 export function throwNotFoundError(
   resource: string,

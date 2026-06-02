@@ -9,9 +9,6 @@ interface EmptyStateProps {
   icon?: React.ReactNode;
 }
 
-/**
- * Empty state component — shown when lists have no data
- */
 export default function EmptyState({
   title = "No data found",
   subtitle = "There's nothing to show here yet.",

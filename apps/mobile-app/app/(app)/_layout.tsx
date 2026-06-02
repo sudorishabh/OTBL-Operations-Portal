@@ -1,8 +1,5 @@
 import { Stack } from "expo-router";
 
-/**
- * Authenticated app group layout
- */
 export default function AppLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>

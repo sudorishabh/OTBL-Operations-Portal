@@ -74,8 +74,6 @@ const EXPENSE_TYPE_LABELS_SOR: Record<string, string> = {
 };
 
 const SOR_ACTIVITY_TO_COMPLETION_ACTIVITY: Record<string, string> = {
-  // SOR uses "WO_ACTIVITIES" (long names) while completions are tagged with
-  // underlying activity table keys (short names).
   clean_soil_area: "clean_soil_area",
   lifting_oily_slush_or_recovery_of_oil: "lifting_oil_slush",
   excavation_oil_contaminated_soil: "excav_cont_soil",
@@ -102,7 +100,6 @@ const formatActivityName = (name: string) => {
 
 const activityKey = (name: string) => {
   const v = (name || "").trim().toLowerCase();
-  // Normalize to snake_case-ish for stable matching between SOR and completions
   return v
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
@@ -147,7 +144,6 @@ const SiteSpendingCard = ({
           ? "border-slate-200 bg-white hover:border-slate-300 shadow-sm"
           : "border-slate-100 bg-slate-50/50"
       }`}>
-      {/* Site Header */}
       <button
         onClick={() => hasCompletions && setIsExpanded(!isExpanded)}
         disabled={!hasCompletions}
@@ -222,7 +218,6 @@ const SiteSpendingCard = ({
         </div>
       </button>
 
-      {/* Expanded Activity Table */}
       {isExpanded && hasCompletions && (
         <div className='border-t border-slate-100'>
           <Table>
@@ -282,7 +277,6 @@ const SiteSpendingCard = ({
         </div>
       )}
 
-      {/* Site expenses (recorded costs) */}
       {hasExpenses && (
         <div className='border-t border-rose-100/80 bg-rose-50/20'>
           <button
@@ -407,7 +401,6 @@ const ScheduleOfRatesTable = ({
       ? Math.min(100, (totalSiteCompletions / grandTotal) * 100)
       : 0;
 
-  // Sort sites: those with completions or expenses first
   const sortedSites = [...(sites || [])].sort((a, b) => {
     const aHas =
       (a.completions || []).length > 0 ||
@@ -439,7 +432,6 @@ const ScheduleOfRatesTable = ({
       open={isDialogOpen}
       setOpen={handleClose}>
       <div className='space-y-10 pb-10'>
-        {/* --- SOR Table Section (unchanged) --- */}
         <section>
           <div className='flex items-center gap-2 mb-4 px-1'>
             <div className='p-2 bg-blue-50 rounded-lg'>
@@ -558,7 +550,6 @@ const ScheduleOfRatesTable = ({
           </div>
         </section>
 
-        {/* --- Work order expenses & P&L --- */}
         {expenseSummary && (
           <section>
             <div className='flex items-center gap-2 mb-4 px-1'>
@@ -645,7 +636,6 @@ const ScheduleOfRatesTable = ({
           </section>
         )}
 
-        {/* --- Site-wise Spending Breakdown Section --- */}
         <section>
           <div className='flex items-center gap-2 mb-4 px-1'>
             <div className='p-2 bg-emerald-50 rounded-lg'>
@@ -661,7 +651,6 @@ const ScheduleOfRatesTable = ({
             </div>
           </div>
 
-          {/* Spending Summary Bar */}
           <div className='mb-5 rounded-lg border border-slate-200 bg-linear-to-r from-slate-50 to-emerald-50/30 p-4'>
             <div className='flex items-center justify-between mb-2'>
               <div className='flex items-center gap-4'>
@@ -722,7 +711,6 @@ const ScheduleOfRatesTable = ({
             </div>
           </div>
 
-          {/* Site Cards */}
           {sortedSites.length > 0 ? (
             <div className='space-y-2'>
               {sortedSites.map((site, index) => (
@@ -739,7 +727,6 @@ const ScheduleOfRatesTable = ({
             </div>
           )}
 
-          {/* Grand Total Footer */}
           {totalSiteCompletions > 0 && (
             <div className='mt-4 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between'>
               <span className='text-sm font-bold text-emerald-900'>

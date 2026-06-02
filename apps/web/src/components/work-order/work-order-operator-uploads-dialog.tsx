@@ -81,8 +81,6 @@ export function WorkOrderOperatorUploadsDialog({
                         loading='lazy'
                         className='h-12 w-12 rounded-md object-cover border border-gray-200 bg-white'
                         onError={(e) => {
-                          // If the URL can't be rendered as an <img> (auth/CORS/etc),
-                          // fall back to the generic file icon.
                           (e.currentTarget as HTMLImageElement).style.display =
                             "none";
                         }}

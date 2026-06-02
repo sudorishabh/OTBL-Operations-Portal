@@ -13,10 +13,8 @@ const {
   proposalTable,
 } = schema;
 
-/** Unrestricted data access (no office filter). Managers/operators must be in `office_users` to see office-scoped data; they are not listed here so unassigned managers do not see all offices. Viewer is read-only but sees everything (writes are blocked separately by middleware). */
 const FULL_ACCESS_ROLES: UserRole[] = [USER_ROLES.ADMIN, USER_ROLES.VIEWER];
 
-/** How the dashboard should present: full nav, office-scoped nav, WO-site upload only, or no nav. */
 export type DashboardUi =
   | { mode: "full" }
   | { mode: "office" }
@@ -65,11 +63,6 @@ export async function getAccessScope(
 
   const officeIds = [...new Set(officeRows.map((r) => r.office_id))];
 
-  // Upload access is granted per work-order-site via workOrderSiteUserTable.
-  // A WO-site row belongs to exactly one work order, so this scopes the
-  // operator to the specific work-order-site(s) they were assigned to — not to
-  // every WO-site that happens to reuse the same master site across unrelated
-  // work orders.
   const directWoSiteRows = await db
     .select({
       wosId: workOrderSiteTable.id,
@@ -127,7 +120,6 @@ export async function getAccessScope(
   };
 }
 
-/** Offices visible: office assignment, or offices of work orders tied to WO-site rows. */
 export async function resolveVisibleOfficeIds(
   db: Database,
   scope: AccessScope,
@@ -380,7 +372,6 @@ export async function assertCanAccessProposal(
   throw forbidden("access this proposal");
 }
 
-/** Merge scope filter with existing WHERE fragments (AND). */
 export function andScope(
   base: SQL | undefined,
   scopeSql: SQL | undefined,

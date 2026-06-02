@@ -44,10 +44,8 @@ const DialogWindow = ({
   isFullScreen,
   onToggleFullScreen,
 }: Props) => {
-  // Handle legacy heightFull prop
   const effectiveHeightMode: HeightMode = heightFull ? "full" : heightMode;
 
-  // Width classes based on size
   const widthClasses: Record<typeof size, string> = {
     sm: "w-[100vw] sm:max-w-[525px]",
     md: "w-[100vw] sm:max-w-[700px]",
@@ -57,7 +55,6 @@ const DialogWindow = ({
     full: "w-[calc(100vw-4rem)] max-w-none sm:max-w-none",
   };
 
-  // Fixed height classes based on size (used when heightMode is 'fixed')
   const fixedHeightClasses: Record<typeof size, string> = {
     sm: "h-[400px]",
     md: "h-[500px]",
@@ -67,7 +64,6 @@ const DialogWindow = ({
     full: "h-[calc(100vh-4rem)]",
   };
 
-  // Height classes based on heightMode
   const getHeightClasses = (): string => {
     switch (effectiveHeightMode) {
       case "full":

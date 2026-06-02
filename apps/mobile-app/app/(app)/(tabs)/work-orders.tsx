@@ -16,9 +16,6 @@ import { Colors } from "@/lib/constants";
 import { trpc } from "@/lib/trpc";
 import { formatDate } from "@/lib/utils";
 
-/**
- * Work Orders list screen — mirrors /work-order page
- */
 export default function WorkOrdersScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,12 +91,10 @@ export default function WorkOrdersScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Work Orders</Text>
       </View>
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Search
           size={18}
@@ -114,7 +109,6 @@ export default function WorkOrdersScreen() {
         />
       </View>
 
-      {/* List */}
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator

@@ -10,25 +10,8 @@ import {
 
 const { officeUserTable } = schema;
 
-/**
- * Office-scoped role of a user within a single office.
- *
- * NOTE: this is distinct from the *global* `users.role` carried on the JWT
- * (`ctx.user.role`). A user can be the manager of one office and merely an
- * operator (or nothing) in another. Office-level authority must therefore be
- * resolved per-office against `office_users`, not from the global role.
- *
- * Terminology: the `"operator"` member here is what the UI calls an
- * **Office Operator**. It is NOT the same as a **Site Operator** — a Site
- * Operator is a user assigned to a specific site via `site_users` and has no
- * stored role column; the assignment itself confers the "site operator" status.
- */
 export type OfficeRole = "office_manager" | "operator";
 
-/**
- * Resolve a user's role within a specific office.
- * Returns `null` when the user is not a member of that office.
- */
 export async function getOfficeRole(
   db: Database,
   userId: number,
@@ -48,7 +31,6 @@ export async function getOfficeRole(
   return (rows[0]?.role as OfficeRole | undefined) ?? null;
 }
 
-/** True when the user belongs to the office in any office-level role. */
 export async function isOfficeMember(
   db: Database,
   userId: number,
@@ -57,7 +39,6 @@ export async function isOfficeMember(
   return (await getOfficeRole(db, userId, officeId)) !== null;
 }
 
-/** True when the user is the manager of the given office. */
 export async function isOfficeManager(
   db: Database,
   userId: number,
@@ -68,13 +49,9 @@ export async function isOfficeManager(
 
 type PermissionCtx = {
   db: Database;
-  // `user` is typed as nullable on the mutation handler context even inside
-  // protected procedures, so resolve and assert it here rather than relying
-  // on a non-null assertion at every call site.
   user?: { sub: string; role: string } | null;
 };
 
-/** Narrow the possibly-null context user, throwing UNAUTHORIZED if absent. */
 function requireUser(ctx: PermissionCtx): { sub: string; role: string } {
   if (!ctx.user?.sub) {
     throw appErrorToTRPCError(
@@ -86,11 +63,6 @@ function requireUser(ctx: PermissionCtx): { sub: string; role: string } {
   return ctx.user;
 }
 
-/**
- * Guard: caller must be a global admin OR a member (manager/operator) of the
- * given office. Use for actions any office staff may perform — e.g. drafting
- * proposals and work orders. Throws a tRPC permission error otherwise.
- */
 export async function assertOfficeMember(
   ctx: PermissionCtx,
   officeId: number,
@@ -110,12 +82,6 @@ export async function assertOfficeMember(
   return role;
 }
 
-/**
- * Guard: caller must be a global admin OR the manager of the given office.
- * Use for authority actions — approving / rejecting / cancelling. Office
- * operators are intentionally rejected here so the draft/approve split is
- * enforced server-side, not just in the UI. Throws otherwise.
- */
 export async function assertOfficeManager(
   ctx: PermissionCtx,
   officeId: number,

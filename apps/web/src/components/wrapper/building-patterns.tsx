@@ -15,7 +15,6 @@ export const BuildingPatterns = () => {
         viewBox='0 0 1400 300'
         preserveAspectRatio='xMidYMin slice'>
         <defs>
-          {/* Window pattern for modern glass buildings */}
           <pattern
             id='windows'
             x='0'
@@ -39,7 +38,6 @@ export const BuildingPatterns = () => {
             />
           </pattern>
 
-          {/* Vertical window strips */}
           <pattern
             id='vertical-windows'
             x='0'
@@ -63,7 +61,6 @@ export const BuildingPatterns = () => {
             />
           </pattern>
 
-          {/* Grid pattern for detailed facades */}
           <pattern
             id='window-grid'
             x='0'
@@ -101,7 +98,6 @@ export const BuildingPatterns = () => {
             />
           </pattern>
 
-          {/* Accent lighting */}
           <linearGradient
             id='building-gradient'
             x1='0%'
@@ -118,7 +114,6 @@ export const BuildingPatterns = () => {
             />
           </linearGradient>
 
-          {/* Side gradient for 3D effect */}
           <linearGradient
             id='building-side'
             x1='0%'
@@ -136,7 +131,6 @@ export const BuildingPatterns = () => {
           </linearGradient>
         </defs>
 
-        {/* Background layer - distant buildings */}
         <g opacity='0.15'>
           <rect
             x='0'
@@ -231,9 +225,7 @@ export const BuildingPatterns = () => {
           />
         </g>
 
-        {/* Mid layer - detailed skyscrapers */}
         <g opacity='0.75'>
-          {/* Building 1 - Modern tower with setback */}
           <g>
             <rect
               x='20'
@@ -256,7 +248,6 @@ export const BuildingPatterns = () => {
               height='210'
               fill='url(#window-grid)'
             />
-            {/* Vertical edges */}
             <line
               x1='20'
               y1='90'
@@ -273,7 +264,6 @@ export const BuildingPatterns = () => {
               stroke='rgba(15,23,42,0.04)'
               strokeWidth='1'
             />
-            {/* Antenna */}
             <line
               x1='55'
               y1='60'
@@ -290,7 +280,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 2 - Classic Art Deco */}
           <g>
             <rect
               x='110'
@@ -320,7 +309,6 @@ export const BuildingPatterns = () => {
               height='240'
               fill='url(#vertical-windows)'
             />
-            {/* Decorative Art Deco lines */}
             <line
               x1='110'
               y1='100'
@@ -345,7 +333,6 @@ export const BuildingPatterns = () => {
               stroke='rgba(15,23,42,0.04)'
               strokeWidth='0.5'
             />
-            {/* Crown details */}
             <rect
               x='125'
               y='40'
@@ -353,7 +340,6 @@ export const BuildingPatterns = () => {
               height='20'
               fill='url(#building-side)'
             />
-            {/* Spire */}
             <polygon
               points='152,25 147,10 157,10'
               fill='rgba(15,23,42,0.06)'
@@ -368,7 +354,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 3 - Short wide building */}
           <g>
             <rect
               x='215'
@@ -384,7 +369,6 @@ export const BuildingPatterns = () => {
               height='170'
               fill='url(#window-grid)'
             />
-            {/* Vertical sections */}
             <line
               x1='247'
               y1='130'
@@ -401,7 +385,6 @@ export const BuildingPatterns = () => {
               stroke='rgba(15,23,42,0.04)'
               strokeWidth='1.5'
             />
-            {/* Rooftop detail */}
             <rect
               x='220'
               y='130'
@@ -411,7 +394,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 4 - Tall narrow tower */}
           <g>
             <rect
               x='330'
@@ -427,7 +409,6 @@ export const BuildingPatterns = () => {
               height='265'
               fill='url(#vertical-windows)'
             />
-            {/* Corner pillars */}
             <rect
               x='330'
               y='35'
@@ -442,7 +423,6 @@ export const BuildingPatterns = () => {
               height='265'
               fill='rgba(15,23,42,0.05)'
             />
-            {/* Crown */}
             <rect
               x='340'
               y='20'
@@ -454,7 +434,6 @@ export const BuildingPatterns = () => {
               points='357,20 350,30 364,30'
               fill='rgba(15,23,42,0.04)'
             />
-            {/* Antenna system */}
             <line
               x1='357'
               y1='10'
@@ -473,7 +452,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 5 - Modern glass tower */}
           <g>
             <rect
               x='405'
@@ -490,7 +468,6 @@ export const BuildingPatterns = () => {
               fill='url(#window-grid)'
               opacity='1.2'
             />
-            {/* Glass facade reflections */}
             <rect
               x='410'
               y='85'
@@ -505,7 +482,6 @@ export const BuildingPatterns = () => {
               height='210'
               fill='rgba(100,200,255,0.015)'
             />
-            {/* Helipad */}
             <circle
               cx='442'
               cy='90'
@@ -532,9 +508,7 @@ export const BuildingPatterns = () => {
             </text>
           </g>
 
-          {/* Building 6 - Twin towers effect */}
           <g>
-            {/* Tower 1 */}
             <rect
               x='500'
               y='70'
@@ -549,7 +523,6 @@ export const BuildingPatterns = () => {
               height='230'
               fill='url(#vertical-windows)'
             />
-            {/* Balconies/setbacks */}
             <rect
               x='497'
               y='120'
@@ -572,7 +545,6 @@ export const BuildingPatterns = () => {
               fill='rgba(15,23,42,0.05)'
             />
 
-            {/* Tower 2 */}
             <rect
               x='565'
               y='75'
@@ -587,7 +559,6 @@ export const BuildingPatterns = () => {
               height='225'
               fill='url(#vertical-windows)'
             />
-            {/* Balconies/setbacks */}
             <rect
               x='562'
               y='125'
@@ -611,9 +582,7 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 7 - Stepped skyscraper */}
           <g>
-            {/* Base level */}
             <rect
               x='635'
               y='90'
@@ -628,7 +597,6 @@ export const BuildingPatterns = () => {
               height='210'
               fill='url(#window-grid)'
             />
-            {/* Second tier */}
             <rect
               x='645'
               y='70'
@@ -643,7 +611,6 @@ export const BuildingPatterns = () => {
               height='20'
               fill='url(#windows)'
             />
-            {/* Top tier */}
             <rect
               x='655'
               y='50'
@@ -658,7 +625,6 @@ export const BuildingPatterns = () => {
               height='20'
               fill='url(#windows)'
             />
-            {/* Architectural edges */}
             <line
               x1='635'
               y1='90'
@@ -675,7 +641,6 @@ export const BuildingPatterns = () => {
               stroke='rgba(15,23,42,0.05)'
               strokeWidth='1'
             />
-            {/* Crown lighting */}
             <circle
               cx='670'
               cy='55'
@@ -684,7 +649,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 8 - Ultra modern */}
           <g>
             <rect
               x='725'
@@ -700,7 +664,6 @@ export const BuildingPatterns = () => {
               height='255'
               fill='url(#vertical-windows)'
             />
-            {/* Diagonal support beams */}
             <line
               x1='735'
               y1='100'
@@ -733,7 +696,6 @@ export const BuildingPatterns = () => {
               stroke='rgba(15,23,42,0.04)'
               strokeWidth='1.5'
             />
-            {/* Crown */}
             <rect
               x='740'
               y='30'
@@ -745,7 +707,6 @@ export const BuildingPatterns = () => {
               points='765,30 760,15 770,15'
               fill='rgba(15,23,42,0.06)'
             />
-            {/* Spire with light */}
             <circle
               cx='765'
               cy='15'
@@ -754,7 +715,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 9 - Medium office */}
           <g>
             <rect
               x='825'
@@ -770,7 +730,6 @@ export const BuildingPatterns = () => {
               height='190'
               fill='url(#window-grid)'
             />
-            {/* Central column */}
             <rect
               x='855'
               y='110'
@@ -778,7 +737,6 @@ export const BuildingPatterns = () => {
               height='190'
               fill='rgba(15,23,42,0.05)'
             />
-            {/* Floor markers */}
             <line
               x1='825'
               y1='140'
@@ -821,7 +779,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 10 - Iconic tower */}
           <g>
             <rect
               x='910'
@@ -837,7 +794,6 @@ export const BuildingPatterns = () => {
               height='270'
               fill='url(#vertical-windows)'
             />
-            {/* Tapered edges */}
             <polygon
               points='910,30 915,45 915,300 910,300'
               fill='rgba(15,23,42,0.03)'
@@ -846,7 +802,6 @@ export const BuildingPatterns = () => {
               points='985,30 980,45 980,300 985,300'
               fill='rgba(15,23,42,0.03)'
             />
-            {/* Crown */}
             <rect
               x='922'
               y='15'
@@ -858,7 +813,6 @@ export const BuildingPatterns = () => {
               points='947,15 937,25 957,25'
               fill='rgba(15,23,42,0.045)'
             />
-            {/* Communication array */}
             <line
               x1='947'
               y1='5'
@@ -883,7 +837,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 11 - Wide base */}
           <g>
             <rect
               x='1005'
@@ -899,7 +852,6 @@ export const BuildingPatterns = () => {
               height='180'
               fill='url(#window-grid)'
             />
-            {/* Vertical sections */}
             <line
               x1='1035'
               y1='120'
@@ -916,7 +868,6 @@ export const BuildingPatterns = () => {
               stroke='rgba(15,23,42,0.045)'
               strokeWidth='2'
             />
-            {/* Cantilever detail */}
             <rect
               x='1000'
               y='160'
@@ -926,7 +877,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 12 - Slender modern */}
           <g>
             <rect
               x='1115'
@@ -942,7 +892,6 @@ export const BuildingPatterns = () => {
               height='235'
               fill='url(#vertical-windows)'
             />
-            {/* Twisted facade effect */}
             <rect
               x='1120'
               y='70'
@@ -957,7 +906,6 @@ export const BuildingPatterns = () => {
               height='225'
               fill='rgba(100,200,255,0.02)'
             />
-            {/* Corner accents */}
             <line
               x1='1115'
               y1='65'
@@ -976,7 +924,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 13 - Corner building */}
           <g>
             <rect
               x='1195'
@@ -992,7 +939,6 @@ export const BuildingPatterns = () => {
               height='215'
               fill='url(#window-grid)'
             />
-            {/* Setback crown */}
             <rect
               x='1205'
               y='70'
@@ -1007,7 +953,6 @@ export const BuildingPatterns = () => {
               height='15'
               fill='url(#windows)'
             />
-            {/* Rooftop features */}
             <rect
               x='1225'
               y='65'
@@ -1015,7 +960,6 @@ export const BuildingPatterns = () => {
               height='5'
               fill='rgba(15,23,42,0.055)'
             />
-            {/* Corner highlights */}
             <line
               x1='1195'
               y1='85'
@@ -1034,7 +978,6 @@ export const BuildingPatterns = () => {
             />
           </g>
 
-          {/* Building 14 - End tower */}
           <g>
             <rect
               x='1285'
@@ -1050,7 +993,6 @@ export const BuildingPatterns = () => {
               height='205'
               fill='url(#vertical-windows)'
             />
-            {/* Glass curtain wall effect */}
             <rect
               x='1290'
               y='100'
@@ -1058,7 +1000,6 @@ export const BuildingPatterns = () => {
               height='195'
               fill='rgba(100,200,255,0.02)'
             />
-            {/* Structural grid */}
             <line
               x1='1285'
               y1='140'
@@ -1086,7 +1027,6 @@ export const BuildingPatterns = () => {
           </g>
         </g>
 
-        {/* Foreground layer - closest buildings for depth */}
         <g opacity='0.28'>
           <rect
             x='0'

@@ -10,7 +10,6 @@ import CustomInput from "@/components/shared/input";
 import CustomButton from "@/components/shared/btn";
 import toast from "react-hot-toast";
 
-// Schemas
 const activityDataSchema = z.object({
   estimated_quantity: z.string().min(1, "Required"),
   amount: z.string().optional(),
@@ -28,7 +27,6 @@ const oilZappingSchema = z.object({
   estimated_quantity: z.string().min(1, "Required"),
 });
 
-// Form Schemas
 const contaminatedSoilFormSchema = z.object({
   data: activityDataSchema,
 });

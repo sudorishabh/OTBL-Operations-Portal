@@ -14,7 +14,6 @@ import { constants } from "@pkg/utils";
 
 const { ROLES, STATUS, PROPOSAL_STATUS, WORK_ORDER_STATUS } = constants;
 
-// User table
 export const userTable = mysqlTable(
   "users",
   {
@@ -51,7 +50,6 @@ export const userTable = mysqlTable(
   ],
 );
 
-// Client table
 export const clientTable = mysqlTable("clients", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
@@ -206,9 +204,6 @@ export const workOrderTable = mysqlTable(
       .notNull()
       .default(WORK_ORDER_STATUS.PENDING),
     cancellation_reason: text("cancellation_reason"),
-    // Manager approval gate. A work order is a draft while approved_at IS NULL
-    // and goes live once the office manager approves it. Kept separate from
-    // `status` so the pending/completed/cancelled lifecycle is untouched.
     approved_at: timestamp("approved_at"),
     approved_by: int("approved_by").references(() => userTable.id, {
       onDelete: "set null",
@@ -303,7 +298,6 @@ export const officeUserTable = mysqlTable(
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
   (table) => [
-    // Unique constraint: a user can only be assigned once per office
     uniqueIndex("office_user_unique_idx").on(table.office_id, table.user_id),
     index("office_user_office_idx").on(table.office_id),
     index("office_user_user_idx").on(table.user_id),
@@ -352,7 +346,6 @@ export const workOrderSiteTable = mysqlTable(
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
   (table) => [
-    // Composite index for work order and site lookups
     uniqueIndex("wo_site_unique_idx").on(table.work_order_id, table.site_id),
     index("wo_site_work_order_idx").on(table.work_order_id),
     index("wo_site_site_idx").on(table.site_id),
@@ -360,7 +353,6 @@ export const workOrderSiteTable = mysqlTable(
   ],
 );
 
-/** Operators assigned to a specific work-order–site row (field / WO-site scope). */
 export const workOrderSiteUserTable = mysqlTable(
   "work_order_site_users",
   {
@@ -383,7 +375,6 @@ export const workOrderSiteUserTable = mysqlTable(
   ],
 );
 
-/** Operator-uploaded site documents: metadata in DB, binary in SharePoint. */
 export const workOrderSiteOperatorUploadTable = mysqlTable(
   "wo_site_oprtr_docs",
   {
@@ -643,7 +634,6 @@ export const bioOilZappingTable = mysqlTable("bio_oil_zapping", {
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
-// Contractor master table — scoped to an office
 export const contractorTable = mysqlTable(
   "contractors",
   {
@@ -672,7 +662,6 @@ export const contractorTable = mysqlTable(
   ],
 );
 
-// Expense records per work-order site
 export const workOrderSiteExpenseTable = mysqlTable(
   "wo_site_expenses",
   {

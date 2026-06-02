@@ -10,15 +10,10 @@ import { proposalSchemas } from "@pkg/schema";
 const { proposalTable, clientTable, officeTable } = schema;
 
 export const proposalMutationRouter = router({
-  // Admin-only: only a global admin may create a proposal. Office managers and
-  // operators are read-only on proposals — they can view those filed under
-  // their office but cannot draft, approve, or reject. Forced into the
-  // `pending` state; approval is a separate admin-only transition.
   createProposal: adminProcedure
     .input(proposalSchemas.createProposalSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        // Verify client exists
         const client = await ctx.db
           .select()
           .from(clientTable)
@@ -30,7 +25,6 @@ export const proposalMutationRouter = router({
           });
         }
 
-        // Verify office exists
         const office = await ctx.db
           .select()
           .from(officeTable)
@@ -45,8 +39,6 @@ export const proposalMutationRouter = router({
         try {
           const result = await ctx.db.insert(proposalTable).values({
             ...input,
-            // Force draft state regardless of payload; approval is a
-            // separate, manager-only transition.
             status: constants.PROPOSAL_STATUS.PENDING,
           });
 
@@ -60,7 +52,6 @@ export const proposalMutationRouter = router({
       }),
     ),
 
-  // Admin-only: approve a drafted (pending) proposal.
   approveProposal: adminProcedure
     .input(proposalSchemas.approveProposalSchema)
     .mutation(
@@ -93,7 +84,6 @@ export const proposalMutationRouter = router({
       }),
     ),
 
-  // Admin-only: reject a drafted (pending) proposal.
   rejectProposal: adminProcedure
     .input(proposalSchemas.rejectProposalSchema)
     .mutation(

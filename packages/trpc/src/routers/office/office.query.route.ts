@@ -24,7 +24,6 @@ const {
 const { ROLES } = constants;
 
 export const officeQueryRouter = router({
-  // Get all offices with users
   getOffices: protectedProcedure.input(officeSchemas.getOfficesSchema).query(
     handleQuery(async ({ input, ctx }) => {
       const { searchQuery, status, officeNamesOrder } = input;
@@ -88,7 +87,6 @@ export const officeQueryRouter = router({
           .where(officeWhere)
           .orderBy(officeOrder);
 
-        // Get users for each office
         const officesWithUsersAndSitesCount = await Promise.all(
           offices.map(async (office: any) => {
             const users = await ctx.db
@@ -108,13 +106,8 @@ export const officeQueryRouter = router({
               .where(eq(siteTable.office_id, office.id));
 
             const manager = users.find((u: any) => u.role === ROLES.MANAGER);
-            // u.role here is the office-membership role (office_users.role),
-            // whose operator value is the literal "operator" — not the global
-            // user role.
             const operators = users.filter((u: any) => u.role === "operator");
 
-            // Per-office member-management capability: an admin, or the
-            // manager of this specific office. Used to gate member controls.
             const canManage = isAdmin || manager?.id === currentUserId;
 
             return {
@@ -134,7 +127,6 @@ export const officeQueryRouter = router({
     }),
   ),
 
-  // Get work orders for an office
   getOfficeWorkOrders: protectedProcedure
     .input(officeSchemas.getOfficeWorkOrderSchema)
     .query(
@@ -162,7 +154,6 @@ export const officeQueryRouter = router({
       }),
     ),
 
-  // Get office statistics
   getOfficeStats: protectedProcedure
     .input(officeSchemas.getOfficeStatsSchema)
     .query(
@@ -229,7 +220,6 @@ export const officeQueryRouter = router({
       }),
     ),
 
-  // Get users assigned to an office
   getOfficeUsers: protectedProcedure
     .input(officeSchemas.getOfficeUsersSchema)
     .query(

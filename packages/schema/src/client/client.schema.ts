@@ -17,7 +17,6 @@ const { STATUS } = constants;
 
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
-// Mutations Schema
 export const createClientSchema = z.object({
   name: nameValidator,
   address: addressValidator,
@@ -76,7 +75,6 @@ export const deleteClientContactSchema = z.object({
 });
 export const deleteClientSchema = z.object({ clientId: positiveIntValidator });
 
-// Queries Schema
 export const getAllClientsSchema = z.object({
   searchQuery: searchQueryValidator,
   status: z.enum(["all", "active", "inactive"]).optional(),

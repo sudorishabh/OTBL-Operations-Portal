@@ -11,15 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
   workOrderId: number;
-  /** Effective work order status (pending / completed / cancelled). */
   status: "pending" | "completed" | "cancelled";
-  /** Whether the manager approval gate has been set. */
   isApproved: boolean;
-  /**
-   * Whether the current user may approve/cancel this work order. This comes
-   * from the server (admin or the office's manager); the mutations enforce
-   * the same rule, so this only governs visibility.
-   */
   canManage: boolean;
 }
 
@@ -55,8 +48,6 @@ const WorkOrderApprovalActions = ({
     onError: (e: unknown) => handleError(e, { showToast: true }),
   });
 
-  // Only the office manager / admin sees these controls. A cancelled work
-  // order is terminal, so no actions remain.
   if (!canManage || status === "cancelled") return null;
 
   const busy = approve.isPending || cancel.isPending;

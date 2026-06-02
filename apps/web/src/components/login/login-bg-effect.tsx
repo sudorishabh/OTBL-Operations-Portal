@@ -9,7 +9,6 @@ const LoginBgEffect = () => {
         className='w-full opacity-60 dark:opacity-25'
         preserveAspectRatio='xMidYMax slice'
         fill='rgba(15,23,42,0.06)'>
-        {/* Stepped / tiered tower — left */}
         <rect
           x='20'
           y='200'
@@ -35,7 +34,6 @@ const LoginBgEffect = () => {
           height='20'
         />
 
-        {/* Flat-top wide office block */}
         <rect
           x='100'
           y='220'
@@ -49,7 +47,6 @@ const LoginBgEffect = () => {
           height='15'
         />
 
-        {/* Pyramid-top building */}
         <polygon points='220,165 260,210 180,210' />
         <rect
           x='180'
@@ -58,7 +55,6 @@ const LoginBgEffect = () => {
           height='210'
         />
 
-        {/* Slim tower with spire */}
         <rect
           x='285'
           y='170'
@@ -73,7 +69,6 @@ const LoginBgEffect = () => {
           height='15'
         />
 
-        {/* Stepped skyscraper center-left */}
         <rect
           x='345'
           y='150'
@@ -105,10 +100,8 @@ const LoginBgEffect = () => {
           height='16'
         />
 
-        {/* Arched-top building */}
         <path d='M460 420 L460 220 Q490 190 520 220 L520 420 Z' />
 
-        {/* Blocky industrial with chimney */}
         <rect
           x='540'
           y='230'
@@ -134,7 +127,6 @@ const LoginBgEffect = () => {
           height='20'
         />
 
-        {/* Tall slim glass tower */}
         <rect
           x='640'
           y='140'
@@ -154,7 +146,6 @@ const LoginBgEffect = () => {
           height='15'
         />
 
-        {/* Wide setback tower (Empire State style) */}
         <rect
           x='710'
           y='180'
@@ -186,7 +177,6 @@ const LoginBgEffect = () => {
           height='20'
         />
 
-        {/* Flat warehouse */}
         <rect
           x='840'
           y='250'
@@ -200,7 +190,6 @@ const LoginBgEffect = () => {
           height='15'
         />
 
-        {/* Circular-top (dome) building */}
         <path d='M960 420 L960 240 Q995 200 1030 240 L1030 420 Z' />
         <rect
           x='970'
@@ -209,7 +198,6 @@ const LoginBgEffect = () => {
           height='5'
         />
 
-        {/* Twin towers */}
         <rect
           x='1050'
           y='175'
@@ -247,7 +235,6 @@ const LoginBgEffect = () => {
           height='18'
         />
 
-        {/* Stepped mid-rise */}
         <rect
           x='1155'
           y='205'
@@ -267,7 +254,6 @@ const LoginBgEffect = () => {
           height='17'
         />
 
-        {/* Tapered top tower */}
         <polygon points='1265,160 1285,210 1245,210' />
         <rect
           x='1245'
@@ -282,7 +268,6 @@ const LoginBgEffect = () => {
           height='15'
         />
 
-        {/* Far-right simple high-rise */}
         <rect
           x='1345'
           y='190'
@@ -302,7 +287,6 @@ const LoginBgEffect = () => {
           height='15'
         />
 
-        {/* Ground */}
         <rect
           x='0'
           y='418'

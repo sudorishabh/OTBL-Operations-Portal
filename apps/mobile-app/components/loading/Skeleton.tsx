@@ -9,9 +9,6 @@ interface SkeletonProps {
   style?: ViewStyle;
 }
 
-/**
- * Skeleton loading placeholder with shimmer animation
- */
 export default function Skeleton({
   width = "100%",
   height = 16,
@@ -55,9 +52,6 @@ export default function Skeleton({
   );
 }
 
-/**
- * Card skeleton — placeholder for a data card
- */
 export function CardSkeleton({ style }: { style?: ViewStyle }) {
   return (
     <View style={[skeletonStyles.card, style]}>
@@ -79,9 +73,6 @@ export function CardSkeleton({ style }: { style?: ViewStyle }) {
   );
 }
 
-/**
- * List skeleton — placeholder for a list of items
- */
 export function ListSkeleton({ count = 5 }: { count?: number }) {
   return (
     <View style={skeletonStyles.list}>
@@ -95,9 +86,6 @@ export function ListSkeleton({ count = 5 }: { count?: number }) {
   );
 }
 
-/**
- * Screen skeleton — full screen placeholder
- */
 export function ScreenSkeleton() {
   return (
     <View style={skeletonStyles.screen}>

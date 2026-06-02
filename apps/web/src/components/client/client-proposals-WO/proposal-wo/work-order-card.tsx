@@ -123,7 +123,6 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
   const resolvedStatus = useMemo(() => {
     if (!workOrder) return undefined;
 
-    // Prefer derived status from full WO details when available.
     if (woDetails?.workOrder) {
       if (woDetails.workOrder.status === "cancelled") return "cancelled";
 
@@ -157,7 +156,6 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
       return isSORFullyUsed ? "completed" : "pending";
     }
 
-    // Fallback to the status from the proposals query.
     return workOrder.status;
   }, [workOrder, woDetails]);
 
@@ -177,13 +175,11 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
             onClick={() =>
               router.push(`/dashboard/client/workorder/${workOrder.id}`)
             }>
-            {/* Header Section */}
             <div className='flex items-start justify-between mb-1.5 sm:mb-2'>
               <div className='flex flex-wrap items-center gap-1.5 sm:gap-2'>
                 <div className='inline-flex items-center px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-700 text-[11px] font-mono ring-1 ring-emerald-200'>
                   {workOrder.code}
                 </div>
-                {/* Status Badge */}
                 {statusConfig && StatusIcon && (
                   <div
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${statusConfig.bgColor} ${statusConfig.textColor} ring-1 ${statusConfig.ringColor}`}>
@@ -214,14 +210,12 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
               </div>
             </div>
 
-            {/* Title */}
             <h3 className='text-xs sm:text-sm font-semibold leading-snug text-gray-600 line-clamp-2 break-all min-w-0 mb-1.5 sm:mb-2'>
               {workOrder.title
                 ? capitalFirstLetter(workOrder.title)
                 : "Untitled Work Order"}
             </h3>
 
-            {/* Process Type Badge */}
             {processConfig && (
               <div className='flex items-center gap-1.5 mb-1.5 sm:mb-2'>
                 <span className={`text-[11px] sm:text-xs font-medium ${processConfig.color}`}>
@@ -230,7 +224,6 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
               </div>
             )}
 
-            {/* Dates Grid */}
             <div className='grid grid-cols-3 gap-1.5 sm:gap-2 mb-1.5 sm:mb-2'>
               <div className='flex items-center rounded-md bg-white border border-gray-200/70 px-1.5 sm:px-2 py-1 sm:py-1.5'>
                 <div className='min-w-0'>
@@ -264,7 +257,6 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
               </div>
             </div>
 
-            {/* Description */}
             <p className='text-[11px] sm:text-xs text-gray-600 leading-relaxed line-clamp-2 mb-1.5 sm:mb-2 flex-1'>
               {capitalFirstLetter(workOrder?.description || "") ||
                 "No description provided."}

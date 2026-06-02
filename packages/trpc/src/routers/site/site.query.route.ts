@@ -71,7 +71,6 @@ export const siteQueryRouter = router({
               : undefined,
           );
 
-          // Get total count of sites for this office
           const [countResult] = await ctx.db
             .select({ count: count(siteTable.id) })
             .from(siteTable)
@@ -79,7 +78,6 @@ export const siteQueryRouter = router({
 
           const totalCount = countResult?.count ?? 0;
 
-          // Get paginated sites
           const sites: Site[] = await ctx.db
             .select()
             .from(siteTable)
@@ -99,7 +97,6 @@ export const siteQueryRouter = router({
       }),
     ),
 
-  // Get a single site by ID
   getSite: protectedProcedure.input(siteSchemas.getSiteSchema).query(
     handleQuery(async ({ input, ctx }) => {
       try {

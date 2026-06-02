@@ -11,11 +11,6 @@ import {
   Loader,
 } from "lucide-react";
 
-// const enum variantEnum {
-//   "primary" = "primary",
-//   "secondary" = "secondary",
-// }
-
 interface Props {
   Icon?: React.ElementType;
   text?: string;
@@ -26,11 +21,6 @@ interface Props {
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
   loading?: boolean;
-  /**
-   * Disable this button for the read-only viewer role. Use on any
-   * create/edit/delete/save action so viewers see it greyed out with a
-   * "read-only" tooltip. The backend independently rejects the write.
-   */
   disableForViewer?: boolean;
 }
 

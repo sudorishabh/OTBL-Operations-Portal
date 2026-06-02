@@ -78,7 +78,6 @@ export const clientQueryRouter = router({
     }),
   ),
 
-  // Get all clients with pagination, search, and filters
   getClients: protectedProcedure.input(clientSchemas.getAllClientsSchema).query(
     handleQuery(async ({ input, ctx }) => {
       const { searchQuery, status } = input;
@@ -266,7 +265,7 @@ export const clientQueryRouter = router({
             .select({ total_cost: scheduleOfRatesTable.total_cost })
             .from(scheduleOfRatesTable)
             .where(inArray(scheduleOfRatesTable.work_order_id, workOrderIds));
-            
+
           totalBudgetAmount = sors.reduce((acc, curr) => acc + Number(curr.total_cost || 0), 0);
 
           if (woSites.length > 0) {
@@ -357,7 +356,6 @@ export const clientQueryRouter = router({
           totalExpenseAmount,
         };
       } catch (error) {
-        // Re-throw AppError instances (like notFound)
         if (error && typeof error === "object" && "errorCode" in error) {
           throw error;
         }
@@ -366,7 +364,6 @@ export const clientQueryRouter = router({
     }),
   ),
 
-  // Get all client contacts with pagination, search, and filters
   getAllClientContacts: protectedProcedure
     .input(clientSchemas.getAllClientContactsSchema)
     .query(
@@ -424,7 +421,6 @@ export const clientQueryRouter = router({
       }),
     ),
 
-  // Get contacts for a specific client
   getClientContacts: protectedProcedure
     .input(clientSchemas.getClientContactsSchema)
     .query(
@@ -450,7 +446,6 @@ export const clientQueryRouter = router({
       }),
     ),
 
-  // Get a single contact by ID
   getClientContact: protectedProcedure
     .input(clientSchemas.getClientContactSchema)
     .query(
@@ -474,7 +469,6 @@ export const clientQueryRouter = router({
 
           return contact[0];
         } catch (error) {
-          // Re-throw AppError instances
           if (error && typeof error === "object" && "errorCode" in error) {
             throw error;
           }
@@ -483,7 +477,6 @@ export const clientQueryRouter = router({
       }),
     ),
 
-  // Get client with all their contacts
   getClientWithContacts: protectedProcedure
     .input(clientSchemas.getClientSchema)
     .query(
@@ -516,7 +509,6 @@ export const clientQueryRouter = router({
             contacts,
           };
         } catch (error) {
-          // Re-throw AppError instances
           if (error && typeof error === "object" && "errorCode" in error) {
             throw error;
           }
@@ -525,7 +517,6 @@ export const clientQueryRouter = router({
       }),
     ),
 
-  // Get all clients with their contacts
   getClientsWithContacts: protectedProcedure.query(
     handleQuery(async ({ ctx }) => {
       try {

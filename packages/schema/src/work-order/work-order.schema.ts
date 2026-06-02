@@ -11,7 +11,6 @@ import {
 } from "../validators";
 import { createSiteSchema } from "../site/site.schema";
 
-// Enums
 export const activityTypeEnum = z.enum(["insitu", "exsitu"]);
 
 export const workOrderStatusEnum = z.enum([
@@ -25,8 +24,6 @@ export const processTypeEnum = z.enum([
   "restoration",
   "bioremediation_restoration",
 ]);
-
-// Activity types for schedule of rates
 
 export const woActivityNameEnum = z.enum([
   "clean_soil_area",
@@ -46,7 +43,6 @@ export const woActivitySchemaWithId = woActivitySchema.extend({
   schedule_of_rate_id: positiveIntValidator,
 });
 
-// Schedule of Rates schema
 export const scheduleOfRateSchema = z.object({
   activity: woActivitySchema,
   unit: z
@@ -109,12 +105,10 @@ export const updateWorkOrderSchema = baseWorkOrderSchema
     },
   );
 
-// Manager-only approval gate: marks a drafted work order as live.
 export const approveWorkOrderSchema = z.object({
   id: positiveIntValidator,
 });
 
-// Manager-only cancellation: requires a reason.
 export const cancelWorkOrderSchema = z.object({
   id: positiveIntValidator,
   cancellation_reason: z
@@ -124,22 +118,18 @@ export const cancelWorkOrderSchema = z.object({
     .max(1000, "Cancellation reason cannot exceed 1000 characters"),
 });
 
-// Schema for deleting a work order
 export const deleteWorkOrderSchema = z.object({
   id: positiveIntValidator,
 });
 
-// Schema for getting work orders by client
 export const getWorkOrdersByClientSchema = z.object({
   client_id: positiveIntValidator,
 });
 
-// Schema for getting work orders by office
 export const getWorkOrdersByOfficeSchema = z.object({
   office_id: positiveIntValidator,
 });
 
-// Schema for getting work order by id
 export const getWorkOrderSchema = z.object({
   id: positiveIntValidator,
   limit: z.number().min(1).max(100).default(10),
@@ -161,7 +151,7 @@ export const getAllWorkOrdersPaginatedSchema = z.object({
 export const createWorkOrderSiteSchema = z.object({
   work_order_id: positiveIntValidator,
   client_id: positiveIntValidator,
-  site_id: positiveIntValidator.optional(), // Optional if creating new site
+  site_id: positiveIntValidator.optional(),
   date: dateValidator,
   end_date: dateValidator,
   process_type: z.string().min(1, "Process type is required"),
@@ -172,6 +162,5 @@ export const createWorkOrderSiteSchema = z.object({
   land_owner_name: z.string().min(1, "Land owner name is required"),
   remarks: z.string().optional(),
   selected_activities: z.array(woActivitySchemaWithId).optional(),
-  // New Site Fields - conditional validation would be better but simple optional here for payload
   new_site: createSiteSchema.optional(),
 });

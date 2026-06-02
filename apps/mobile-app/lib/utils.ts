@@ -1,17 +1,7 @@
-/**
- * Utility functions for the mobile app
- */
-
-/**
- * Conditionally join class names (simplified cn utility for React Native)
- */
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(" ");
 }
 
-/**
- * Format a date for display
- */
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return "N/A";
   try {
@@ -27,17 +17,11 @@ export function formatDate(date: string | Date | null | undefined): string {
   }
 }
 
-/**
- * Capitalize the first letter of a string
- */
 export function capitalize(str: string): string {
   if (!str) return "";
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-/**
- * Get user initials from name
- */
 export function getInitials(name: string): string {
   if (!name) return "?";
   return name
@@ -48,9 +32,6 @@ export function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-/**
- * Format currency (INR)
- */
 export function formatCurrency(
   amount: number | string | null | undefined,
 ): string {
@@ -63,9 +44,6 @@ export function formatCurrency(
   }).format(num);
 }
 
-/**
- * Truncate text with ellipsis
- */
 export function truncate(text: string, maxLength: number): string {
   if (!text || text.length <= maxLength) return text || "";
   return text.slice(0, maxLength) + "...";

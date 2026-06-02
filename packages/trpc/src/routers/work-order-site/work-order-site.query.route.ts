@@ -15,7 +15,6 @@ import { escapeLike } from "../../helper/escape-like";
 import { z } from "zod";
 import { fromDatabaseError, notFound } from "../../errors";
 
-// Define schemas locally
 const getWorkOrderSiteDetailsSchema = z.object({
   work_order_site_id: z.number().positive(),
 });
@@ -49,7 +48,6 @@ const {
 } = schema;
 
 export const workOrderSiteQueryRouter = router({
-  /** All operator uploads across every site row for this work order (for office WO view). */
   getOperatorUploadsByWorkOrder: protectedProcedure
     .input(z.object({ work_order_id: z.number().positive() }))
     .query(
@@ -106,8 +104,6 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
-  /** Sites assigned to the current operator (used by the operator dashboard list page).
-   * Sourced from direct WO-site assignment (workOrderSiteUserTable). */
   getMyAssignedWorkOrderSites: protectedProcedure.query(
     handleQuery(async ({ ctx }) => {
       try {
@@ -188,22 +184,12 @@ export const workOrderSiteQueryRouter = router({
     }),
   ),
 
-  /**
-   * Operators assignable to a specific WO-site, each flagged whether they are
-   * currently assigned. The candidate pool is every Site Operator (global
-   * role), unioned with anyone already pinned to this WO-site (so prior
-   * assignments stay visible). Manager-only — this drives the manager's
-   * per-WO-site operator assignment UI.
-   */
   getWorkOrderSiteOperatorAssignments: protectedProcedure
     .input(z.object({ work_order_site_id: z.number().positive() }))
     .query(
       handleQuery(async ({ input, ctx }) => {
         const { work_order_site_id } = input;
 
-        // Resolve master site + owning office for the manager check. Kept
-        // outside the try below so a forbidden/not-found surfaces with the
-        // correct status instead of being wrapped as a generic DB error.
         const [woSite] = await ctx.db
           .select({
             site_id: workOrderSiteTable.site_id,
@@ -222,8 +208,6 @@ export const workOrderSiteQueryRouter = router({
         await assertOfficeManager(ctx, woSite.office_id);
 
         try {
-          // Candidate pool: every Site Operator (global role). Site Operators
-          // are assigned directly to a WO-site — there is no master-site roster.
           const siteOperators = await ctx.db
             .select({
               user_id: userTable.id,
@@ -233,7 +217,6 @@ export const workOrderSiteQueryRouter = router({
             .from(userTable)
             .where(eq(userTable.role, constants.ROLES.SITE_OPERATOR));
 
-          // Operators currently pinned to this specific WO-site.
           const assignedRows = await ctx.db
             .select({
               user_id: workOrderSiteUserTable.user_id,
@@ -253,8 +236,6 @@ export const workOrderSiteQueryRouter = router({
             );
           const assignedIds = new Set(assignedRows.map((r) => r.user_id));
 
-          // Union so a pinned user who is no longer on the master site stays
-          // visible and is not silently dropped on the next save.
           const byId = new Map<
             number,
             {
@@ -288,13 +269,6 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
-  /**
-   * Paginated, server-searched candidate pool of Site Operators for a single
-   * WO-site, each flagged whether currently assigned. Manager-only. Unlike
-   * getWorkOrderSiteOperatorAssignments (which returns the entire pool at
-   * once), this is built for hundreds of operators — the picker UI pages
-   * through it and searches server-side by name/email.
-   */
   getWorkOrderSiteOperatorsPaginated: protectedProcedure
     .input(
       z.object({
@@ -308,8 +282,6 @@ export const workOrderSiteQueryRouter = router({
       handleQuery(async ({ input, ctx }) => {
         const { work_order_site_id, page, limit, search } = input;
 
-        // Resolve owning office for the manager check (outside the try so a
-        // forbidden/not-found surfaces with the correct status).
         const [woSite] = await ctx.db
           .select({ office_id: workOrderTable.office_id })
           .from(workOrderSiteTable)
@@ -352,8 +324,6 @@ export const workOrderSiteQueryRouter = router({
             };
           }
 
-          // LEFT JOIN the WO-site assignment row so each candidate carries its
-          // assigned flag without a second round-trip.
           const rows = await ctx.db
             .select({
               user_id: userTable.id,
@@ -403,13 +373,6 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
-  /**
-   * The operators currently pinned to a WO-site (small set). Manager-only.
-   * Lets the picker render the live selection and chips regardless of which
-   * page/search the candidate list is currently showing. Includes anyone
-   * pinned even if they no longer hold the Site Operator role, so prior
-   * assignments stay visible and are not silently dropped on save.
-   */
   getWorkOrderSiteAssignedOperators: protectedProcedure
     .input(z.object({ work_order_site_id: z.number().positive() }))
     .query(
@@ -457,10 +420,6 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
-  /** For a master site, list its work-order-sites with each WO's code/title and
-   * the operators assigned to that WO-site. Read-only — visible to anyone who
-   * can access the site's office. Drives the office-details "work orders &
-   * operators" view. */
   getWorkOrderSitesBySite: protectedProcedure
     .input(z.object({ site_id: z.number().positive() }))
     .query(
@@ -593,7 +552,6 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
-  // Get measurement sheets for a work order site
   getMeasurementSheets: protectedProcedure
     .input(
       z.object({
@@ -632,7 +590,6 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
-  // Get work order site details with all information
   getWorkOrderSiteDetails: protectedProcedure
     .input(getWorkOrderSiteDetailsSchema)
     .query(
@@ -647,7 +604,6 @@ export const workOrderSiteQueryRouter = router({
           );
           await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
 
-          // Get work order site with joined data
           const woSites = await ctx.db
             .select({
               id: workOrderSiteTable.id,
@@ -666,13 +622,11 @@ export const workOrderSiteQueryRouter = router({
               status: workOrderSiteTable.status,
               created_at: workOrderSiteTable.created_at,
               updated_at: workOrderSiteTable.updated_at,
-              // Site info
               site_name: siteTable.name,
               site_address: siteTable.address,
               site_city: siteTable.city,
               site_state: siteTable.state,
               site_pincode: siteTable.pincode,
-              // Work order info
               wo_code: workOrderTable.code,
               wo_title: workOrderTable.title,
               wo_process_type: workOrderTable.process_type,
@@ -692,7 +646,6 @@ export const workOrderSiteQueryRouter = router({
 
           const woSite = woSites[0]!;
 
-          // Get activities for this site
           const activities = await ctx.db
             .select()
             .from(siteActivityTable)
@@ -740,7 +693,6 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
-  // Get site activities for a work order site
   getSiteActivities: protectedProcedure.input(getSiteActivitiesSchema).query(
     handleQuery(async ({ input, ctx }) => {
       const { work_order_site_id } = input;
@@ -778,7 +730,6 @@ export const workOrderSiteQueryRouter = router({
           .map((a: any) => a.schedule_of_rates_id)
           .filter(Boolean) as number[];
 
-        // Get all site activity IDs for these SOR IDs
         const allSiteActivities = await ctx.db
           .select({
             id: siteActivityTable.id,
@@ -790,7 +741,6 @@ export const workOrderSiteQueryRouter = router({
         const saIds = allSiteActivities.map((sa: any) => sa.id);
 
         if (saIds.length > 0) {
-          // Fetch all possible work order sites related to the same work order
           const relatedSites = await ctx.db
             .select({
               id: workOrderSiteTable.id,
@@ -816,7 +766,6 @@ export const workOrderSiteQueryRouter = router({
 
           const siteIds = relatedSites.map((s: any) => s.id);
 
-          // Fetch quantities from all child tables using site IDs
           const [q1, q2, q3, q4, q5, q6] = await Promise.all([
             ctx.db
               .select()
@@ -895,13 +844,11 @@ export const workOrderSiteQueryRouter = router({
             },
           ];
 
-          // Also fetch oil zapping entries for all sites (source of truth for bioremediation qty)
           const allOilZappingEntries = await ctx.db
             .select()
             .from(bioOilZappingTable)
             .where(inArray(bioOilZappingTable.work_order_site_id, siteIds));
 
-          // Build map: work_order_site_id -> total oil zapping qty for that site
           const oilZappingBySite = new Map<number, number>();
           for (const entry of allOilZappingEntries) {
             const current = oilZappingBySite.get(entry.work_order_site_id) || 0;
@@ -911,7 +858,6 @@ export const workOrderSiteQueryRouter = router({
             );
           }
 
-          // For each SOR, sum up best quantity from each of its site_activity_items
           const utilizationMap = new Map<number, number>();
           const completionUtilizationMap = new Map<number, number>();
 
@@ -928,12 +874,10 @@ export const workOrderSiteQueryRouter = router({
                 sa.activity === "bioremediation_oil_contaminated_soil";
 
               if (isBioremActivity) {
-                // For bioremediation totalUsed, use oil zapping totals as the best estimate
                 const siteOilZappingQty =
                   oilZappingBySite.get(sa.work_order_site_id) || 0;
                 totalUsed += siteOilZappingQty;
 
-                // For totalCompletion, use actual completion phase entries from bioremediationContSoilTable
                 const bioremEntries = entriesByTable
                   .find((t) => t.name === "bioremediation_oil_contaminated_soil")
                   ?.entries.filter(
@@ -950,7 +894,6 @@ export const workOrderSiteQueryRouter = router({
                 continue;
               }
 
-              // Find entries for this specific site activity record by sa.id OR (site + name)
               const saEntries: any[] = [];
               for (const table of entriesByTable) {
                 const matched = table.entries.filter(
@@ -1005,7 +948,6 @@ export const workOrderSiteQueryRouter = router({
     }),
   ),
 
-  // Get site documents for a work order site
   getSiteDocuments: protectedProcedure.input(getSiteDocumentsSchema).query(
     handleQuery(async ({ input, ctx }) => {
       const { work_order_site_id } = input;
@@ -1032,7 +974,6 @@ export const workOrderSiteQueryRouter = router({
     }),
   ),
 
-  // Get bioremediation data for a work order site
   getBioremediationData: protectedProcedure
     .input(
       z.object({
@@ -1051,7 +992,6 @@ export const workOrderSiteQueryRouter = router({
           );
           await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
 
-          // Get contaminated soil entries
           const contaminatedSoil = await ctx.db
             .select()
             .from(bioremediationContSoilTable)
@@ -1062,14 +1002,12 @@ export const workOrderSiteQueryRouter = router({
               ),
             );
 
-          // Get bio samples
           const bioSamples = await ctx.db
             .select()
             .from(bioSampleTable)
             .where(eq(bioSampleTable.work_order_site_id, work_order_site_id))
             .orderBy(desc(bioSampleTable.id));
 
-          // Get oil zapping entries
           const oilZapping = await ctx.db
             .select()
             .from(bioOilZappingTable)
@@ -1089,7 +1027,6 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
-  // Get restoration data for a work order site
   getRestorationData: protectedProcedure
     .input(
       z.object({

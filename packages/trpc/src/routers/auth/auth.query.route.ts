@@ -43,7 +43,6 @@ export const authQueryRouter = router({
           }
         }
 
-        // No valid access token, try refresh token
         const refreshToken = ctx.req?.cookies?.refreshToken;
 
         if (!refreshToken) {
@@ -53,7 +52,6 @@ export const authQueryRouter = router({
           };
         }
 
-        // Verify refresh token using the REFRESH secret
         const verificationResult = verifyRefreshTokenSafe(
           refreshToken,
           ctx.appEnv.JWT.REFRESH_SECRET,
@@ -68,7 +66,6 @@ export const authQueryRouter = router({
 
         const payload = verificationResult.payload;
 
-        // Fetch user from database to ensure they still exist and are active
         const existingUser = await ctx.db
           .select({
             id: userTable.id,
@@ -89,7 +86,6 @@ export const authQueryRouter = router({
           };
         }
 
-        // Generate new tokens (token rotation for security)
         const tokenPayload = {
           sub: user.id.toString(),
           email: user.email,
@@ -108,7 +104,6 @@ export const authQueryRouter = router({
           ctx.appEnv.JWT.REFRESH_EXPIRES_IN,
         );
 
-        // Set new cookies with rotated tokens
         setAuthenticationCookies({
           res: ctx.res,
           accessToken: newAccessToken,
@@ -123,8 +118,6 @@ export const authQueryRouter = router({
           user,
         };
       } catch (error) {
-        // For auth queries, we return a failed state rather than throwing
-        // This allows the UI to handle unauthenticated state gracefully
         console.error("[Auth] Get current user error:", error);
         return {
           success: false,
@@ -141,7 +134,6 @@ export const authQueryRouter = router({
     };
   }),
 
-  /** Dashboard navigation mode and WO-site upload target for field operators. */
   dashboardLayout: protectedProcedure.query(
     handleQuery(async ({ ctx }) => {
       const scope = await getAccessScope(

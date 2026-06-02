@@ -15,16 +15,10 @@ import { WorkOrderManagementProvider } from "@/contexts/WorkOrderManagementConte
 import { OfficeManagementProvider } from "@/contexts/OfficeManagementContext";
 
 const Provider = ({ children }: { children: React.ReactNode }) => {
-  // Flag to prevent multiple simultaneous refresh attempts
   const isRefreshing = useRef(false);
   const refreshPromise = useRef<Promise<boolean> | null>(null);
 
-  /**
-   * Attempt to refresh the auth session by calling the 'me' endpoint
-   * This triggers server-side token refresh via the refresh token
-   */
   const attemptTokenRefresh = useCallback(async (): Promise<boolean> => {
-    // If already refreshing, wait for the existing refresh to complete
     if (isRefreshing.current && refreshPromise.current) {
       return refreshPromise.current;
     }
@@ -32,8 +26,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
     isRefreshing.current = true;
     refreshPromise.current = (async () => {
       try {
-        // Call the me endpoint directly via fetch to trigger token refresh
-        // The server will set new cookies if refresh token is valid
         const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || "";
         const response = await fetch(
           `${serverUrl}/trpc/authQuery.me`,
@@ -45,7 +37,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
         const result = await response.json();
 
-        // Check if the refresh was successful
         if (result?.result?.data?.success) {
           return true;
         }
@@ -68,14 +59,11 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         defaultOptions: {
           queries: {
             retry: (failureCount, error) => {
-              // Don't retry UNAUTHORIZED errors more than once
-              // The first retry is handled by our custom logic
               if (error instanceof TRPCClientError) {
                 if (error.data?.code === "UNAUTHORIZED") {
                   return false;
                 }
               }
-              // For other errors, use default retry logic (3 retries)
               return failureCount < 3;
             },
             refetchOnWindowFocus: false,
@@ -88,7 +76,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       })
   );
 
-  // Custom fetch wrapper for auth handling
   const customFetch = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const response = await fetch(input, {
@@ -96,11 +83,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         credentials: "include",
       });
 
-      // If we get an UNAUTHORIZED response, try to refresh tokens
       if (response.status === 401) {
         const refreshed = await attemptTokenRefresh();
         if (refreshed) {
-          // Retry the original request with new tokens
           return fetch(input, {
             ...init,
             credentials: "include",
@@ -118,14 +103,11 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
     return trpc.createClient({
       links: [
         splitLink({
-          // Route based on operation type
           condition: (op) => op.type === "mutation",
-          // Mutations use httpLink (POST requests)
           true: httpLink({
             url: `${serverUrl}/trpc`,
             fetch: customFetch,
           }),
-          // Queries use httpBatchLink (GET requests with batching)
           false: httpBatchLink({
             url: `${serverUrl}/trpc`,
             fetch: customFetch,

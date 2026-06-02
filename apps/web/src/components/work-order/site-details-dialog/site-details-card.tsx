@@ -407,9 +407,6 @@ const SiteDetailsCard = ({
                   <div
                     key={doc.id}
                     className='relative group flex items-center gap-2.5 p-2 bg-white rounded-lg border border-gray-100 hover:border-emerald-200 hover:shadow-xs transition-all duration-200 overflow-hidden'>
-                    {/* <div className='shrink-0 size-7 flex items-center justify-center bg-emerald-50 rounded-md group-hover:bg-emerald-100 transition-colors'>
-                      <File className='size-3.5 text-emerald-600' />
-                    </div> */}
 
                     <div className='min-w-0 flex-1 py-0.5'>
                       <a

@@ -18,7 +18,6 @@ export const createContext = ({
   let user: TrpcUser | null = null;
   let tokensRefreshed = false;
 
-  // First, try to get token from Authorization header (Bearer token)
   const auth = req.headers.authorization;
   if (auth?.startsWith("Bearer ")) {
     const token = auth.slice(7);
@@ -32,7 +31,6 @@ export const createContext = ({
     }
   }
 
-  // If not in header, try to get from cookies (httpOnly cookie auth)
   const cookieAccessToken = req.cookies?.session || req.cookies?.accessToken;
   if (!user && cookieAccessToken) {
     const result = verifyTokenSafe(
@@ -48,7 +46,6 @@ export const createContext = ({
     }
   }
 
-  // If still no user but we have a refresh token, try to refresh
   if (!user && req.cookies?.refreshToken) {
     const refreshResult = verifyRefreshTokenSafe(
       req.cookies.refreshToken,
@@ -63,7 +60,6 @@ export const createContext = ({
         role: payload.role as UserRole,
       };
 
-      // Generate new tokens
       const tokenPayload = {
         sub: payload.sub,
         email: payload.email,
@@ -82,7 +78,6 @@ export const createContext = ({
         appEnv.JWT.REFRESH_EXPIRES_IN
       );
 
-      // Set new cookies with rotated tokens
       setAuthenticationCookies({
         res,
         accessToken: newAccessToken,
@@ -96,7 +91,6 @@ export const createContext = ({
     }
   }
 
-  // Runtime sanity checks
   if (!appEnv) {
     throw new Error(
       "appEnv is not configured. Ensure app environment is loaded before creating context."

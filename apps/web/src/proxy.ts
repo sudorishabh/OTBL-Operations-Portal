@@ -20,7 +20,6 @@ export default async function middleware(req: NextRequest) {
   const accessToken = req.cookies.get("accessToken")?.value;
   const refreshToken = req.cookies.get("refreshToken")?.value;
 
-  // Handle root path "/"
   if (path === "/") {
     if (accessToken || refreshToken) {
       return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
@@ -29,11 +28,9 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  // Redirect unauthenticated users from protected routes
   if (isProtectedRoute && !accessToken && !refreshToken) {
     const loginUrl = new URL("/login", req.nextUrl);
 
-    // Only allow relative paths as return-url to prevent open redirect attacks
     const rawReturnUrl = req.nextUrl.pathname + req.nextUrl.search;
     const isSafeRelative =
       rawReturnUrl.startsWith("/") && !rawReturnUrl.startsWith("//");
@@ -44,7 +41,6 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect authenticated users from public routes
   if (isPublicRoute && (accessToken || refreshToken)) {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
   }

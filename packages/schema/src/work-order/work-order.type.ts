@@ -43,11 +43,9 @@ export type ScheduleOfRateType = {
   updated_at: string;
 };
 
-// Input types for forms (before validation/coercion)
 export type BaseWorkOrderInput = z.input<typeof baseWorkOrderSchema>;
 export type ScheduleOfRateInput = z.input<typeof scheduleOfRateSchema>;
 
-// Output types (after validation/coercion)
 export type BaseWorkOrderOutput = z.output<typeof baseWorkOrderSchema>;
 export type CreateWorkOrderType = z.infer<typeof createWorkOrderSchema>;
 export type UpdateWorkOrderType = z.output<typeof updateWorkOrderSchema>;

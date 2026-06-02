@@ -129,21 +129,16 @@ const CreateProposalDialog = ({ clientId }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAddMode]);
 
-  // Handle file selection - set a placeholder document_key
   const handleFileSelect = useCallback(
     (file: File | null) => {
       setSelectedFile(file);
-      // If a new file is selected, clear any previous upload URL
       if (file) {
         setUploadedUrl("");
         setUploadedFileId("");
-        // Set a placeholder value to pass validation
-        // This will be replaced with the actual URL after upload
         form.setValue("document_key", `pending:${file.name}`, {
           shouldValidate: true,
         });
       } else {
-        // Only clear if we don't have an uploaded URL
         if (!uploadedUrl) {
           form.setValue("document_key", "", { shouldValidate: true });
         }
@@ -152,14 +147,12 @@ const CreateProposalDialog = ({ clientId }: Props) => {
     [form, uploadedUrl],
   );
 
-  // Wrapper for delete to update local state and delete from SharePoint
   const handleDeleteFile = useCallback(async () => {
     if (uploadedFileId) {
       try {
         await deleteFile(uploadedFileId);
       } catch (error) {
         console.error("Failed to delete file from SharePoint", error);
-        // We continue to clear local state even if server delete fails
       }
     }
 
@@ -174,11 +167,9 @@ const CreateProposalDialog = ({ clientId }: Props) => {
     try {
       let documentPath = values.document_key;
 
-      // Upload file to SharePoint if a file was selected but not yet uploaded (still pending)
       if (selectedFile && !uploadedUrl && documentPath.startsWith("pending:")) {
         const uploadResult = await uploadFile(selectedFile);
         if (!uploadResult) {
-          // Upload failed, error already shown by hook
           return;
         }
         documentPath = uploadResult.webUrl;
@@ -188,20 +179,17 @@ const CreateProposalDialog = ({ clientId }: Props) => {
         documentPath = uploadedUrl;
       }
 
-      // If document_key still starts with "pending:", it means something went wrong
       if (documentPath.startsWith("pending:")) {
         toast.error("Please upload a document");
         return;
       }
 
-      // Create the proposal with the document path
       addProposal.mutate({
         ...values,
         client_id: clientId,
         document_key: documentPath,
       });
     } catch (error) {
-      // If failure happens after upload, we could try to cleanup
       if (uploadedFileId) {
         await deleteFile(uploadedFileId);
       }

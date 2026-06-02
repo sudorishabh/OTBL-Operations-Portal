@@ -22,7 +22,6 @@ const {
 
 type WoRow = { id: number; office_id: number | null; status: string };
 
-/** Coerce DB/driver values so scope checks work (e.g. office_id "5" vs officeIds [5]). */
 function nId(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : NaN;
@@ -183,10 +182,6 @@ async function fetchCompletionsByWoSiteId(
   return result;
 }
 
-/**
- * Effective status aligned with work order detail (SOR completion), respecting
- * the same WO-site scope as getWorkOrderDetails for restricted users.
- */
 export async function batchEffectiveWorkOrderStatuses(
   db: Database,
   scope: AccessScope,

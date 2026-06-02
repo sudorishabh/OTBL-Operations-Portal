@@ -29,9 +29,6 @@ type PickedUser = { id: number; name: string; email: string };
 
 const ManageOfficeMembersDialog = () => {
   const isViewer = useIsViewer();
-  // Only admins may appoint/revoke the office manager. Office managers can
-  // manage office operators only, so the manager-seat controls are hidden
-  // for non-admins (the server enforces this too).
   const isAdmin = useIsAdmin();
   const { getParam, deleteParams } = useHandleParams();
   const isOpen = getParam("dialog") === "manage-office-members";

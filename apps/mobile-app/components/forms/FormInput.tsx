@@ -12,10 +12,6 @@ interface FormInputProps<T extends FieldValues>
   secureTextEntry?: boolean;
 }
 
-/**
- * Form-connected input — integrates react-hook-form Controller with the Input component.
- * Mirrors the web's custom-form-input pattern.
- */
 export default function FormInput<T extends FieldValues>({
   control,
   name,

@@ -15,9 +15,6 @@ import { Colors } from "@/lib/constants";
 import { trpc } from "@/lib/trpc";
 import { capitalize } from "@/lib/utils";
 
-/**
- * Clients list screen — mirrors /client page
- */
 export default function ClientsScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,12 +82,10 @@ export default function ClientsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Clients</Text>
       </View>
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Search
           size={18}
@@ -105,7 +100,6 @@ export default function ClientsScreen() {
         />
       </View>
 
-      {/* List */}
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator

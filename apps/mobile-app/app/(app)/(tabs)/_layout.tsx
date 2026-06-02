@@ -3,9 +3,6 @@ import { Platform, StyleSheet } from "react-native";
 import { LayoutDashboard, FileText, Users2, Menu } from "lucide-react-native";
 import { Colors } from "@/lib/constants";
 
-/**
- * Bottom tab navigator — mirrors the web sidebar navigation
- */
 export default function TabLayout() {
   return (
     <Tabs

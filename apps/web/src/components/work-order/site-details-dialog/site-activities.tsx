@@ -105,7 +105,6 @@ const PhaseForm = ({
   const utils = trpc.useUtils();
   const isBioremediation = processType === "bioremediation";
 
-  // Compute total oil zapping quantity for bioremediation completion auto-fill
   const totalOilZappingQty = React.useMemo(() => {
     if (!isBioremediation || !oilZappingData) return 0;
     return oilZappingData.reduce((sum, entry) => {
@@ -125,7 +124,6 @@ const PhaseForm = ({
 
   const isReadOnly = hasExistingData && !isEditMode;
 
-  // Per-activity expense aggregation for the Completion tab (spent + exceeded).
   const expenseSummaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery(
     { work_order_site_id: woSiteId },
     { enabled: phase === "completion" && woSiteId > 0 },
@@ -179,7 +177,6 @@ const PhaseForm = ({
         activity.activity ===
           constants.WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL;
 
-      // For bioremediation completion phase, auto-fill from oil zapping total
       if (
         isBioremediation &&
         phase === "completion" &&
@@ -196,8 +193,6 @@ const PhaseForm = ({
         return;
       }
 
-      // For non-bioremediation completion phase, qty is derived from the
-      // sum of expense quantities for that activity; amount uses the SOR rate.
       const expenseTotal =
         phase === "completion"
           ? (expensesByActivity[activity.activity]?.totalQuantity ?? 0)
@@ -249,20 +244,16 @@ const PhaseForm = ({
     value: string,
   ) => {
     setFormData((prev) => {
-      // Cast is safe: all fields come from an existing ActivityData plus one string
-      // override. TypeScript widens computed-key spreads to optional, so we assert.
       const updatedActivity = {
         ...prev[activityKey],
         [field]: value,
       } as ActivityData;
 
-      // Automatic Calculation of amount if quantity is entered
       if (field === "estimated_quantity") {
         const activity = activities.find((a) => a.activity === activityKey);
         const rate = parseFloat(activity?.rate || "0");
         const qty = parseFloat(value) || 0;
 
-        // Update amount even if rate is 0 to clear it if needed
         updatedActivity.amount = (qty * rate).toFixed(2);
       }
 
@@ -338,7 +329,6 @@ const PhaseForm = ({
     });
 
   const handleSaveAll = async () => {
-    // --- Validation: Check all activity fields are filled ---
     const missingFieldActivities: string[] = [];
     activities.forEach((activity) => {
       const data = formData[activity.activity];
@@ -354,7 +344,6 @@ const PhaseForm = ({
       return;
     }
 
-    // --- Validation: Check quantity against SOR (based on completion quantities) ---
     const exceedingQuantityActivities: string[] = [];
     activities.forEach((activity) => {
       const data = formData[activity.activity];
@@ -373,7 +362,6 @@ const PhaseForm = ({
         );
         const availableForThisSite = sorQty - (totalCompletionUsed - prevSaved);
 
-        // Only enforce SOR limit on completion phase
         if (
           phase === "completion" &&
           enteringQty > availableForThisSite + 0.001
@@ -392,7 +380,6 @@ const PhaseForm = ({
       return;
     }
 
-    // --- Validation: Check documents ---
     let subWoDocUrl = siteDocuments?.find(
       (d) => d.type === "sub_wo",
     )?.document_url;
@@ -421,7 +408,6 @@ const PhaseForm = ({
       }
     }
 
-    // --- Upload files ---
     if (phase === "estimate_sub-wo") {
       if (subWoFile) {
         const result = await uploadFile(subWoFile);
@@ -439,7 +425,6 @@ const PhaseForm = ({
         if (result) completionCertUrl = result.webUrl;
         else return;
       }
-      // Upload bills
       for (const billFile of billFiles) {
         const result = await uploadFile(billFile);
         if (result) {
@@ -464,7 +449,6 @@ const PhaseForm = ({
       });
     }
 
-    // --- Prepare Payload ---
     const commonData = {
       work_order_site_id: woSiteId,
       phase,
@@ -473,7 +457,6 @@ const PhaseForm = ({
       estimate_document_url: estimateDocUrl,
     };
 
-    // --- Save data ---
     if (isBioremediation) {
       const bioremActivity = activities.find(
         (a) =>
@@ -603,7 +586,6 @@ const PhaseForm = ({
 
   return (
     <div className='space-y-5'>
-      {/* === Documents Section === */}
       <div className='rounded-xl border border-slate-200 bg-gray-100/50 p-4'>
         <div className='mb-3'>
           <h4 className='text-[11px] font-semibold text-slate-600 uppercase tracking-wider'>
@@ -639,7 +621,6 @@ const PhaseForm = ({
               )}
             </div>
 
-            {/* Bills Sub-section */}
             <div className='rounded-xl border border-slate-200/80 bg-slate-50/50 p-3'>
               <div className='flex items-center justify-between mb-2.5'>
                 <div className='flex items-center gap-2'>
@@ -656,7 +637,6 @@ const PhaseForm = ({
                 </div>
               </div>
 
-              {/* Existing Bills */}
               {(siteDocuments?.filter((d) => d.type === "bills").length || 0) >
                 0 && (
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3'>
@@ -692,7 +672,6 @@ const PhaseForm = ({
                 </div>
               )}
 
-              {/* Upload New Bill */}
               <DeferredFilePicker
                 label='Add New Bill'
                 onFileSelect={(f) => f && setBillFiles((prev) => [...prev, f])}
@@ -702,7 +681,6 @@ const PhaseForm = ({
                 className='bg-white h-9 rounded-lg'
               />
 
-              {/* Pending Bill Files */}
               {billFiles.length > 0 && (
                 <div className='mt-2 space-y-1.5'>
                   <span className='text-[9px] font-semibold text-amber-600 uppercase tracking-wider'>
@@ -740,7 +718,6 @@ const PhaseForm = ({
         )}
       </div>
 
-      {/* === Activity Data Table === */}
       {(() => {
         const hasTransportActivity = activities.some(
           (a) => a.activity === "trans_cont_soil",
@@ -792,7 +769,6 @@ const PhaseForm = ({
                         constants.WO_ACTIVITIES
                           .BIOREMEDIATION_OIL_CONTAMINATED_SOIL);
 
-                  // Auto-fill from oil zapping on completion phase
                   const isAutoFilledFromZapping =
                     isBioremActivity &&
                     phase === "completion" &&
@@ -803,14 +779,12 @@ const PhaseForm = ({
                       ? expensesByActivity[activity.activity]
                       : undefined;
 
-                  // Auto-fill from expenses on completion phase (non-bio activities)
                   const isAutoFilledFromExpenses =
                     !isBioremediation &&
                     phase === "completion" &&
                     !!expenseSummary &&
                     expenseSummary.totalQuantity > 0;
 
-                  // Estimate-phase qty (used for the in-row breakdown).
                   const estimatePhaseData =
                     isBioremActivity || isAutoFilledFromExpenses
                       ? getActivityData(
@@ -1013,7 +987,6 @@ const PhaseForm = ({
         );
       })()}
 
-      {/* === Save / Edit Button === */}
       <div className='flex justify-end gap-2 pt-1'>
         {isReadOnly ? (
           <CustomButton
@@ -1145,7 +1118,6 @@ const SiteActivities = ({
 
   return (
     <div className='space-y-5'>
-      {/* === SOR Availability (above process section) === */}
       {siteActivitiesQuery.data?.some((a: any) => a.sor_estimated_quantity) && (
         <div className='rounded-lg border bg-gray-100/50 overflow-hidden'>
           <div className='px-3 py-1.5 border-b flex items-center gap-1.5 bg-slate-50/80'>
@@ -1192,9 +1164,6 @@ const SiteActivities = ({
                     const sorQty = parseFloat(
                       activity.sor_estimated_quantity || "0",
                     );
-                    // total_used_quantity = sum across sites of
-                    // max(completion_qty, estimate_qty). Completion takes
-                    // precedence; estimate is a proxy until completion lands.
                     const usedTotal = parseFloat(
                       activity.total_used_quantity || "0",
                     );
@@ -1256,24 +1225,10 @@ const SiteActivities = ({
         </div>
       )}
 
-      {/* Main Phase Card */}
       <div className='rounded-xl bg-white overflow-hidden'>
-        {/* Header */}
         <div className='py-4 border-b border-slate-200'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
-              {/* <div
-                className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                  processType === "bioremediation"
-                    ? "bg-violet-100 text-violet-600"
-                    : "bg-blue-100 text-blue-600"
-                }`}>
-                {processType === "bioremediation" ? (
-                  <FlaskConical className='w-4.5 h-4.5' />
-                ) : (
-                  <Building2 className='w-4.5 h-4.5' />
-                )}
-              </div> */}
               <div>
                 <h3 className='text-sm font-bold text-gray-800'>
                   {processType === "bioremediation"
@@ -1291,7 +1246,6 @@ const SiteActivities = ({
         </div>
 
         {showPhaseTabs ? (
-          /* Tabs inside card */
           <Tabs
             defaultValue='estimate_sub-wo'
             className='w-full'>

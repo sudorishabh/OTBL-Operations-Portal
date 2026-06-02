@@ -63,9 +63,8 @@ export default function DocumentUploadPage() {
 
   const handleUpload = () => {
     if (files.length === 0) return;
-    
+
     setUploading(true);
-    // Mock upload progress
     let progress = 0;
     const interval = setInterval(() => {
       progress += 10;
@@ -105,7 +104,7 @@ export default function DocumentUploadPage() {
       </div>
 
       <Card className={`border-dashed border-2 transition-colors ${dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 bg-muted/30'}`}>
-        <CardContent 
+        <CardContent
           className="p-10 flex flex-col items-center justify-center text-center min-h-[300px]"
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -115,20 +114,20 @@ export default function DocumentUploadPage() {
           <div className={`p-4 rounded-full mb-4 transition-colors ${dragActive ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
             <UploadCloud className="h-10 w-10" />
           </div>
-          
+
           <h3 className="text-lg font-semibold mb-2">
             {dragActive ? "Drop files here" : "Drag & drop files here"}
           </h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm">
             Supported formats: PDF, Word, Excel, Images (JPEG, PNG). Maximum file size 50MB.
           </p>
-          
-          <Input 
-            ref={inputRef} 
-            type="file" 
-            multiple 
-            className="hidden" 
-            onChange={handleChange} 
+
+          <Input
+            ref={inputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleChange}
             accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
           />
           <Button onClick={onButtonClick} variant={dragActive ? "secondary" : "default"}>
@@ -142,7 +141,7 @@ export default function DocumentUploadPage() {
           <h3 className="font-semibold text-lg flex items-center gap-2">
             Selected Files <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full">{files.length}</span>
           </h3>
-          
+
           <div className="grid gap-3">
             {files.map((file, index) => (
               <Card key={index} className="overflow-hidden">
@@ -150,16 +149,16 @@ export default function DocumentUploadPage() {
                   <div className="bg-muted p-2 rounded-lg">
                     {getFileIcon(file.type)}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{file.name}</p>
                     <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
                   </div>
-                  
+
                   {!uploading && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => removeFile(index)}
                       className="text-muted-foreground hover:text-destructive shrink-0"
                     >
@@ -185,9 +184,9 @@ export default function DocumentUploadPage() {
           )}
 
           <div className="flex justify-end mt-6">
-            <Button 
-              size="lg" 
-              onClick={handleUpload} 
+            <Button
+              size="lg"
+              onClick={handleUpload}
               disabled={uploading}
               className="w-full sm:w-auto"
             >
@@ -197,7 +196,6 @@ export default function DocumentUploadPage() {
         </div>
       )}
 
-      {/* Previous Uploads Section */}
       <div className="mt-12 space-y-6">
         <div>
           <h2 className="text-xl font-bold tracking-tight">Previous Uploads</h2>
@@ -212,7 +210,7 @@ export default function DocumentUploadPage() {
                   <div className="bg-muted p-3 rounded-xl hidden sm:block">
                     {getFileIcon(upload.type)}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0 w-full">
                     <div className="flex items-center gap-3 mb-1">
                       <div className="sm:hidden bg-muted p-1.5 rounded-lg">
@@ -231,15 +229,15 @@ export default function DocumentUploadPage() {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-border">
                     <Button variant="outline" size="sm" className="gap-2">
                       <Download className="h-4 w-4" />
                       <span className="hidden sm:inline">Download</span>
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => removePreviousUpload(upload.id)}
                       className="text-muted-foreground hover:text-destructive gap-2"
                     >

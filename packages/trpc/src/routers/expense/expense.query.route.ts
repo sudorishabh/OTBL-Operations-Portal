@@ -113,7 +113,6 @@ export const expenseQueryRouter = router({
         await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
 
         try {
-          // Expense breakdown by type
           const rows = await ctx.db
             .select({
               expense_type: workOrderSiteExpenseTable.expense_type,
@@ -131,7 +130,6 @@ export const expenseQueryRouter = router({
             grandTotal += t;
           }
 
-          // Exceeded expenses total
           const exceededRows = await ctx.db
             .select({ total: sum(workOrderSiteExpenseTable.amount) })
             .from(workOrderSiteExpenseTable)
@@ -144,7 +142,6 @@ export const expenseQueryRouter = router({
           const exceededTotal = Number(exceededRows[0]?.total ?? 0);
           const regularTotal = grandTotal - exceededTotal;
 
-          // Income total = sum of completion-type amounts across all 6 activity tables
           const completionTables = [
             cleaningUpSoilAreaTable,
             liftingRecoveryOilSlushTable,
@@ -173,7 +170,6 @@ export const expenseQueryRouter = router({
             incomeTotal += Number(result[0]?.total ?? 0);
           }
 
-          // Per-activity aggregation (deduplicates qty for multi-type records)
           const activityRows = await ctx.db
             .select({
               activity_key: workOrderSiteExpenseTable.activity_key,
@@ -229,8 +225,6 @@ export const expenseQueryRouter = router({
       }),
     ),
 
-  // All expense rows across every site of a work order, with site + contractor labels.
-  // Used by the work-order-level "View All Expenses" dialog.
   getExpensesByWorkOrder: protectedProcedure
     .input(z.object({ work_order_id: z.number().positive() }))
     .query(

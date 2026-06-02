@@ -22,7 +22,6 @@ const ProposalCard = ({ proposal }: Props) => {
         })
       }
       className='w-full min-w-0 rounded-lg border hover:shadow-sm transition-shadow p-3 sm:p-4 flex flex-col min-h-36 sm:min-h-52 bg-gray-100/50 cursor-pointer hover:border-green-400 group'>
-      {/* Header Section */}
       <div className='flex items-start justify-between mb-1.5 sm:mb-2'>
         <div className='flex items-center gap-2'>
           <div className='inline-flex items-center px-2 py-0.5 rounded-sm bg-sky-50 text-sky-700 text-[11px] font-mono ring-1 ring-sky-200'>
@@ -51,14 +50,11 @@ const ProposalCard = ({ proposal }: Props) => {
         </div>
       </div>
 
-      {/* Title */}
       <h3 className='text-xs sm:text-sm font-semibold leading-snug text-gray-600 line-clamp-2 break-all min-w-0 mb-1.5 sm:mb-2'>
         {capitalFirstLetter(proposal?.title)}
       </h3>
 
-      {/* Info Grid */}
       <div className='grid grid-cols-2 gap-1.5 sm:gap-2 mb-2 sm:mb-3'>
-        {/* Submission Date */}
         <div className='flex items-center gap-2 rounded-md bg-white border border-gray-200/70 px-2 sm:px-2.5 py-1.5 sm:py-2'>
           <div className='min-w-0'>
             <div className='text-[9px] sm:text-[10px] uppercase tracking-wider text-gray-500'>
@@ -75,7 +71,6 @@ const ProposalCard = ({ proposal }: Props) => {
           </div>
         </div>
 
-        {/* Created Date */}
         <div className='flex items-center gap-2 rounded-md bg-white border border-gray-200/70 px-2 sm:px-2.5 py-1.5 sm:py-2'>
           <div className='min-w-0'>
             <div className='text-[9px] sm:text-[10px] uppercase tracking-wider text-gray-500'>
@@ -90,7 +85,6 @@ const ProposalCard = ({ proposal }: Props) => {
         </div>
       </div>
 
-      {/* Description */}
       <p className='text-[11px] sm:text-xs text-gray-600 leading-relaxed line-clamp-2 mb-2 sm:mb-3 flex-1'>
         {proposal?.description || "No description provided."}
       </p>

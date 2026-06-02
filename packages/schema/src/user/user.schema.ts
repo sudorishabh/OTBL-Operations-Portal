@@ -14,8 +14,6 @@ import {
 
 const { ROLES, STATUS } = constants;
 
-// Enums
-
 const userRoleEnum = z.enum([
   ROLES.ADMIN,
   ROLES.MANAGER,
@@ -26,7 +24,6 @@ const userRoleEnum = z.enum([
 
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
-// Mutation Schemas
 export const createUserSchema = z.object({
   name: nameValidator,
   email: emailValidator,
@@ -35,7 +32,6 @@ export const createUserSchema = z.object({
   role: userRoleEnum,
 });
 
-/** Password omitted on update means “leave unchanged”. */
 export const updateUserSchema = createUserSchema.extend({
   id: positiveIntValidator,
   password: z.union([passwordValidator, z.literal("")]).optional(),
@@ -51,8 +47,6 @@ export const updateUserPasswordSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
-
-// Query Schemas
 
 export const getAllUsersSchema = z.object({
   page: pageValidator,

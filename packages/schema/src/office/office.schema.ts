@@ -15,14 +15,9 @@ import {
 
 const { STATUS } = constants;
 
-// Enums
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
-// Office membership role; "operator" here is an Office Operator (distinct from
-// a Site Operator, which is a site_users assignment with no stored role).
 const officeRoleEnum = z.enum(["office_manager", "operator"]);
 const officeNamesOrderEnum = z.enum(["asc", "desc", "latest", "oldest"]);
-
-// Base Schemas
 
 const officeBaseSchema = z.object({
   name: nameValidator,
@@ -34,11 +29,8 @@ const officeBaseSchema = z.object({
   email: emailValidator,
 });
 
-// Mutation Schemas
-
 export const createOfficeSchema = officeBaseSchema.extend({
   manager_id: optionalPositiveIntValidator,
-  /** User IDs to add as Office Operators (office_users.role = "operator"). */
   operator_ids: z.array(positiveIntValidator).optional(),
   status: statusEnum.optional(),
 });
@@ -58,8 +50,6 @@ export const expelUserFromOfficeSchema = z.object({
   office_id: positiveIntValidator,
   user_id: positiveIntValidator,
 });
-
-// Query Schemas
 
 export const getOfficesSchema = z.object({
   searchQuery: searchQueryValidator,

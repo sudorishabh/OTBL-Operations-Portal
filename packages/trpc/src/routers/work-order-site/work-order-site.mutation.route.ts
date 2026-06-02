@@ -18,7 +18,6 @@ import {
 } from "../sharepoint/sharepoint.config";
 import { createSharePointService } from "../sharepoint/sharepoint.service";
 
-// Define schemas locally
 const createSiteActivitySchema = z.object({
   work_order_site_id: z.number().positive(),
   activity: z.string().min(1).max(255),
@@ -33,7 +32,6 @@ const deleteSiteActivitySchema = z.object({
   id: z.number().positive(),
 });
 
-// Schema for site documents
 const createSiteDocumentSchema = z.object({
   work_order_site_id: z.number().positive(),
   document_url: z.string().min(1).max(255),
@@ -52,7 +50,6 @@ const deleteSiteDocumentSchema = z.object({
   id: z.number().positive(),
 });
 
-// Phase Schemas
 const saveActivityDataSchema = z.object({
   estimated_quantity: z.string(),
   amount: z.string().optional(),
@@ -87,8 +84,6 @@ const saveBioremediationPhaseSchema = z.object({
   work_order_site_id: z.number().positive(),
   phase: z.enum(["estimate_sub-wo", "completion"]),
   contaminated_soil: saveActivityDataSchema.optional(),
-  // Keeping these optional arrays for backward compatibility or bulk updates if needed,
-  // though we are moving to granular mutations for these.
   bio_samples: z
     .array(
       z.object({
@@ -140,10 +135,6 @@ const {
 } = schema;
 
 export const workOrderSiteMutationRouter = router({
-  /**
-   * Assign operators to a work-order site row. Replaces existing assignments for that row.
-   * Managers/Admins can assign; caller must be able to access the work order site (office manager / WO-site operator).
-   */
   setWorkOrderSiteOperators: protectedProcedure
     .input(
       z.object({
@@ -155,12 +146,6 @@ export const workOrderSiteMutationRouter = router({
       handleMutation(async ({ input, ctx }) => {
         const { work_order_site_id, user_ids } = input;
 
-        // Resolve the WO-site's master site + owning office. Assigning
-        // operators is an office-management action, so only that office's
-        // manager (or an admin) may do it — an operator assigned to the
-        // WO-site must NOT be able to reassign it. (Kept outside the try
-        // below so the permission check surfaces as 403/404, not a generic
-        // DB error.)
         const [woSite] = await ctx.db
           .select({
             site_id: workOrderSiteTable.site_id,
@@ -178,9 +163,6 @@ export const workOrderSiteMutationRouter = router({
         }
         await assertOfficeManager(ctx, woSite.office_id);
 
-        // Only global Site Operators may be pinned to a WO-site. The master
-        // -site roster was removed — assignment is per-WO-site only, gated by
-        // the user's global role rather than site membership.
         if (user_ids.length > 0) {
           const siteOperators = await ctx.db
             .select({ id: userTable.id })
@@ -233,7 +215,6 @@ export const workOrderSiteMutationRouter = router({
       }),
     ),
 
-  /** Operator uploads: description + SharePoint URL/id; file bytes live in SharePoint. */
   createOperatorUpload: protectedProcedure
     .input(
       z.object({
@@ -333,7 +314,6 @@ export const workOrderSiteMutationRouter = router({
       }),
     ),
 
-  // Create a measurement sheet
   createMeasurementSheet: publicProcedure
     .input(
       z.object({
@@ -365,7 +345,6 @@ export const workOrderSiteMutationRouter = router({
       }),
     ),
 
-  // Delete a measurement sheet
   deleteMeasurementSheet: publicProcedure
     .input(
       z.object({
@@ -375,7 +354,6 @@ export const workOrderSiteMutationRouter = router({
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         try {
-          // 1. Get the document to find the document_id
           const docs = await ctx.db
             .select()
             .from(workOrderSiteDocsTable)
@@ -391,7 +369,6 @@ export const workOrderSiteMutationRouter = router({
               await service.deleteFile(doc.document_id);
             } catch (spError) {
               console.error("Failed to delete from SharePoint:", spError);
-              // We continue with DB deletion even if SP deletion fails
             }
           }
 
@@ -409,30 +386,6 @@ export const workOrderSiteMutationRouter = router({
       }),
     ),
 
-  // Create a site activity
-  // createSiteActivity  : publicProcedure.input(createSiteActivitySchema).mutation(
-  //     handleMutation(async ({ input, ctx }) => {
-  //       const { work_order_site_id, activity } = input;
-
-  //       try {
-  //         const [result] = await ctx.db.insert(siteActivityTable).values({
-  //           work_order_site_id,
-  //           activity,
-  //           unit,
-  //         });
-
-  //         return {
-  //           success: true,
-  //           id: Number(result.insertId),
-  //           message: "Activity created successfully",
-  //         };
-  //       } catch (error) {
-  //         throw fromDatabaseError(error, "Creating site activity");
-  //       }
-  //     }),
-  //   ),
-
-  // Update a site activity
   updateSiteActivity: publicProcedure.input(updateSiteActivitySchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       const { id, ...updateData } = input;
@@ -453,7 +406,6 @@ export const workOrderSiteMutationRouter = router({
     }),
   ),
 
-  // Delete a site activity
   deleteSiteActivity: publicProcedure.input(deleteSiteActivitySchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       try {
@@ -471,7 +423,6 @@ export const workOrderSiteMutationRouter = router({
     }),
   ),
 
-  // Create a site document
   createSiteDocument: publicProcedure.input(createSiteDocumentSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       const { work_order_site_id, document_url, document_id, type } = input;
@@ -495,11 +446,9 @@ export const workOrderSiteMutationRouter = router({
     }),
   ),
 
-  // Delete a site document
   deleteSiteDocument: publicProcedure.input(deleteSiteDocumentSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       try {
-        // 1. Get the document to find the document_id
         const docs = await ctx.db
           .select()
           .from(workOrderSiteDocsTable)
@@ -515,7 +464,6 @@ export const workOrderSiteMutationRouter = router({
             await service.deleteFile(doc.document_id);
           } catch (spError) {
             console.error("Failed to delete from SharePoint:", spError);
-            // We continue with DB deletion even if SP deletion fails
           }
         }
 
@@ -532,10 +480,6 @@ export const workOrderSiteMutationRouter = router({
       }
     }),
   ),
-
-  // =====================================
-  // NEW PHASE BASED MUTATIONS
-  // =====================================
 
   saveContaminatedSoil: publicProcedure
     .input(
@@ -600,7 +544,6 @@ export const workOrderSiteMutationRouter = router({
           const activityType =
             phase === "completion" ? "completion" : "estimate_sub-wo";
 
-          // Fetch site activity ID for bioremediation
           const siteActivities = await ctx.db
             .select()
             .from(siteActivityTable)
@@ -693,7 +636,6 @@ export const workOrderSiteMutationRouter = router({
   createOilZapping: publicProcedure.input(createOilZappingSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       try {
-        // Enforce: total oil zapping qty for a site cannot exceed contaminated-soil estimate qty.
         const estimateRows = await ctx.db
           .select({ estimated_quantity: bioremediationContSoilTable.estimated_quantity })
           .from(bioremediationContSoilTable)
@@ -759,8 +701,6 @@ export const workOrderSiteMutationRouter = router({
     }),
   ),
 
-  // Keeping the bulk save for backward compatibility or if needed later,
-  // but the UI will switch to granular mutations.
   saveBioSamples: publicProcedure
     .input(
       z.object({
@@ -1019,7 +959,6 @@ export const workOrderSiteMutationRouter = router({
         ) => {
           if (!data) return;
 
-          // Find the site_activity_id for this activity
           const sa = await tx
             .select()
             .from(siteActivityTable)

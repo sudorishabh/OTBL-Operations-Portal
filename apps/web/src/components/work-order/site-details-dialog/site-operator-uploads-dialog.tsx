@@ -41,9 +41,6 @@ export function SiteOperatorUploadsDialog({
     }));
   }, [uploads]);
 
-  // The stored document_url is a SharePoint viewer page and won't load in an
-  // <img>. Resolve a direct, pre-authenticated content URL per image by its
-  // drive-item id (document_id) instead.
   const imageFileIds = useMemo(
     () =>
       rows

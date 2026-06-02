@@ -13,9 +13,6 @@ import { Colors } from "@/lib/constants";
 import { trpc } from "@/lib/trpc";
 import { capitalize, getInitials } from "@/lib/utils";
 
-/**
- * User Management screen — mirrors /user page
- */
 export default function UserManagementScreen() {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -93,7 +90,6 @@ export default function UserManagementScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Search
           size={18}
@@ -108,14 +104,12 @@ export default function UserManagementScreen() {
         />
       </View>
 
-      {/* Stats */}
       <View style={styles.statsRow}>
         <Text style={styles.statsText}>
           {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
         </Text>
       </View>
 
-      {/* List */}
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator

@@ -13,22 +13,12 @@ type Props = {
   woSiteId: number;
 };
 
-/** Row shape returned by getWorkOrderSiteAssignedOperators. Declared locally
- * because the deep tRPC router inference widens this query's output to `any`
- * in the built type declarations. */
 type AssignedOperator = {
   user_id: number;
   name: string | null;
   email: string | null;
 };
 
-/**
- * Manager-only summary of the operators pinned to a single work-order site,
- * with a button to open the paginated assignment picker. Only pinned operators
- * can upload documents to this WO-site (enforced server-side via
- * getAccessScope / assertCanAccessWorkOrderSite). The candidate pool is every
- * Site Operator (global role) — assignment is per-WO-site.
- */
 const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
   const isManager = useIsManager();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -39,8 +29,6 @@ const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
       { enabled: isManager && woSiteId > 0, retry: false },
     );
 
-  // Hidden for non-managers, and for managers who lack authority on this
-  // office (the query 403s → isError).
   if (!isManager || isError) return null;
 
   const operators: AssignedOperator[] = data ?? [];

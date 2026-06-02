@@ -45,8 +45,6 @@ interface Props {
 
 type TabKey = "ongoing" | "completed";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 const SOR_ACTIVITY_TO_COMPLETION_ACTIVITY: Record<string, string> = {
   clean_soil_area: "clean_soil_area",
   lifting_oily_slush_or_recovery_of_oil: "lifting_oil_slush",
@@ -125,8 +123,6 @@ const formatDate = (dateString: string | null | undefined) => {
   });
 };
 
-// ─── Mini WO Card ─────────────────────────────────────────────────────────────
-
 const MiniWOCard = ({ wo }: { wo: WorkOrder }) => {
   const router = useRouter();
   const statusConfig = getStatusConfig(wo.status);
@@ -145,9 +141,8 @@ const MiniWOCard = ({ wo }: { wo: WorkOrder }) => {
         }
       }}
       className='group relative cursor-pointer border hover:shadow-sm  bg-gray-100/50 hover:border-green-400 overflow-hidden rounded-lg p-3.5 transition-all duration-200
-        hover:-translate-y-px 
+        hover:-translate-y-px
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2'>
-      {/* Header: code + status */}
       <div className='flex items-start justify-between gap-2 mb-2.5'>
         <div className='min-w-0'>
           <span className='inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-mono font-semibold text-emerald-700 ring-1 ring-emerald-200'>
@@ -161,12 +156,10 @@ const MiniWOCard = ({ wo }: { wo: WorkOrder }) => {
         </span>
       </div>
 
-      {/* Title */}
       <h4 className='text-[13px] font-semibold text-gray-900 leading-snug line-clamp-2 mb-2 group-hover:text-emerald-700 transition-colors'>
         {wo.title ? capitalFirstLetter(wo.title) : "Untitled Work Order"}
       </h4>
 
-      {/* Meta row */}
       <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]'>
         <div className='inline-flex items-center gap-1.5 rounded-md bg-gray-50 py-1 ring-1 ring-gray-100'>
           <span className={`font-medium ${processConfig.color}`}>
@@ -190,7 +183,6 @@ const MiniWOCard = ({ wo }: { wo: WorkOrder }) => {
         </div>
       </div>
 
-      {/* Hover arrow */}
       <div className='absolute right-2.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity'>
         <div className='flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-100'>
           <ArrowRight className='w-3.5 h-3.5 text-emerald-700' />
@@ -252,8 +244,6 @@ const ResolvedMiniWOCard = ({
   return <MiniWOCard wo={{ ...wo, status: resolvedStatus }} />;
 };
 
-// ─── Main Panel ───────────────────────────────────────────────────────────────
-
 const RightSidePanel = ({ proposals }: Props) => {
   const { setParam } = useHandleParams();
   const [activeTab, setActiveTab] = useState<TabKey>("ongoing");
@@ -261,7 +251,6 @@ const RightSidePanel = ({ proposals }: Props) => {
     Record<number, string>
   >({});
 
-  // Derive work orders from proposals
   const allWorkOrders = proposals
     .filter((p) => p.workOrder !== null)
     .map((p) => p.workOrder as WorkOrder);
@@ -303,7 +292,6 @@ const RightSidePanel = ({ proposals }: Props) => {
 
   return (
     <div className='w-full lg:w-4/12 bg-linear-to-br from-white to-gray-50 shadow-sm px-0.5 rounded-xl border flex flex-col'>
-      {/* ─── Header ─────────────────────────────────────────────── */}
       <div className='px-4 py-2'>
         <div className='flex items-center justify-between mb-2'>
           <div className='flex ml-2 items-center gap-2'>
@@ -315,16 +303,8 @@ const RightSidePanel = ({ proposals }: Props) => {
             arrowType='upright'
             onClick={() => setParam("dialog", "client-wo-stats")}
           />
-          {/* <button 
-            title="View spending stats"
-            onClick={() => setParam("dialog", "client-wo-stats")}
-            className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-          >
-            <AlignEndHorizontal className="w-4 h-4" />
-          </button> */}
         </div>
 
-        {/* ─── Tab Toggle ───────────────────────────────────────── */}
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as TabKey)}
@@ -355,7 +335,6 @@ const RightSidePanel = ({ proposals }: Props) => {
         </Tabs>
       </div>
 
-      {/* ─── Content ────────────────────────────────────────────── */}
       <div className='flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-2'>
         {activeWOs.length > 0 ? (
           <div className='space-y-3'>
@@ -390,7 +369,6 @@ const RightSidePanel = ({ proposals }: Props) => {
         )}
       </div>
 
-      {/* ─── Summary Footer ─────────────────────────────────────── */}
       {allWorkOrders.length > 0 && (
         <div className='shrink-0 mx-4 mb-3 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100'>
           <div className='flex items-center justify-between text-[10px] text-gray-500'>

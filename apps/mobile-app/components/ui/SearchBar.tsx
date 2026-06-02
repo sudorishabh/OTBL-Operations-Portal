@@ -9,9 +9,6 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
-/**
- * Reusable search bar with icon and clear button
- */
 export default function SearchBar({
   value,
   onChangeText,

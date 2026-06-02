@@ -17,13 +17,6 @@ import {
 import { AuthProvider } from "@/contexts/AuthContext";
 import Toast from "react-native-toast-message";
 
-/**
- * AppProvider — wraps the entire app with:
- * 1. tRPC client (with mobile auth headers)
- * 2. TanStack Query
- * 3. Auth context
- * 4. Toast notifications
- */
 export default function AppProvider({
   children,
 }: {
@@ -32,9 +25,6 @@ export default function AppProvider({
   const isRefreshing = useRef(false);
   const refreshPromise = useRef<Promise<boolean> | null>(null);
 
-  /**
-   * Attempt to refresh tokens using the refresh token mutation
-   */
   const attemptTokenRefresh = useCallback(async (): Promise<boolean> => {
     if (isRefreshing.current && refreshPromise.current) {
       return refreshPromise.current;
@@ -104,12 +94,8 @@ export default function AppProvider({
       }),
   );
 
-  /**
-   * Custom fetch wrapper — injects Authorization header and handles token refresh
-   */
   const customFetch = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit) => {
-      // Get current access token
       const accessToken = await getAccessToken();
 
       const headers: Record<string, string> = {
@@ -125,7 +111,6 @@ export default function AppProvider({
         headers,
       });
 
-      // If 401, try to refresh tokens and retry
       if (response.status === 401) {
         const refreshed = await attemptTokenRefresh();
         if (refreshed) {

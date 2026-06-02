@@ -16,9 +16,6 @@ import { Colors } from "@/lib/constants";
 import { capitalize, getInitials } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 
-/**
- * Dashboard / Home screen — mirrors /dashboard page
- */
 export default function HomeScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -60,7 +57,6 @@ export default function HomeScreen() {
 
   return (
     <ScreenWrapper>
-      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Welcome back,</Text>
@@ -77,7 +73,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* User Info Card */}
       <Card style={styles.userCard}>
         <View style={styles.userInfo}>
           <View style={styles.userAvatar}>
@@ -104,7 +99,6 @@ export default function HomeScreen() {
         </View>
       </Card>
 
-      {/* Quick Actions */}
       <Text style={styles.sectionTitle}>Quick Actions</Text>
       <View style={styles.actionsGrid}>
         {quickActions.map((action) => (

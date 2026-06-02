@@ -18,17 +18,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     error,
   } = trpc.authQuery.dashboardLayout.useQuery(undefined, { retry: false });
 
-  // Secondary auth check — if the tRPC backend rejects the session (expired
-  // token, invalid JWT, or middleware bypass), kick the user back to login.
-  // This is the defence-in-depth layer that protects even if Next.js middleware
-  // is bypassed (e.g. CVE-2025-29927).
   useEffect(() => {
     if (!isError) return;
     const code = (error as { data?: { code?: string } })?.data?.code;
     if (code === "UNAUTHORIZED" || code === "FORBIDDEN") {
       let cancelled = false;
 
-      // Defer navigation to avoid dev Fast Refresh/router init races.
       queueMicrotask(() => {
         if (cancelled) return;
         const loginUrl = new URL("/login", window.location.origin);

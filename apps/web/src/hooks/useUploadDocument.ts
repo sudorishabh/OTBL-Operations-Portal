@@ -64,14 +64,12 @@ export const useUploadDocument = ({
     });
 
   const validateFile = (selectedFile: File): boolean => {
-    // Validate size
     const fileSizeMB = selectedFile.size / (1024 * 1024);
     if (fileSizeMB > maxSizeMB) {
       toast.error(`File size must be less than ${maxSizeMB}MB`);
       return false;
     }
 
-    // Validate extension
     const fileExtension =
       "." + selectedFile.name.split(".").pop()?.toLowerCase();
     if (!allowedExtensions.includes(fileExtension)) {
@@ -109,7 +107,6 @@ export const useUploadDocument = ({
     }
   };
 
-  /* New mutation for public link */
   const createPublicLinkMutation =
     trpc.sharePointMutation.createPublicLink.useMutation();
 
@@ -117,7 +114,7 @@ export const useUploadDocument = ({
     if (!file) return;
 
     setUploading(true);
-    setProgress(1); // Start progress
+    setProgress(1);
 
     createSessionMutation.mutate(
       {
@@ -129,20 +126,17 @@ export const useUploadDocument = ({
         onSuccess: (sessionData: any) => {
           const uploadUrl = sessionData.uploadUrl;
 
-          // Use XHR for upload progress
           const xhr = new XMLHttpRequest();
           xhr.open("PUT", uploadUrl, true);
 
           const rangeHeader = `bytes 0-${file.size - 1}/${file.size}`;
           console.log("Upload Content-Range:", rangeHeader);
 
-          // Add required headers for upload session
           xhr.setRequestHeader("Content-Range", rangeHeader);
-          // Do NOT set Content-Length manually, browser does it
 
           xhr.upload.onprogress = (e: any) => {
             if (e.lengthComputable) {
-              const percent = Math.round((e.loaded / e.total) * 90); // Go to 90%, last 10% for public link
+              const percent = Math.round((e.loaded / e.total) * 90);
               setProgress(percent);
             }
           };
@@ -152,7 +146,6 @@ export const useUploadDocument = ({
               try {
                 const data = JSON.parse(e.target.response);
 
-                // Now create public link
                 try {
                   const linkResult = await createPublicLinkMutation.mutateAsync(
                     {
@@ -163,7 +156,7 @@ export const useUploadDocument = ({
                   const fileData: UploadedFile = {
                     id: data.id,
                     name: data.name,
-                    webUrl: linkResult.webUrl, // Use public link
+                    webUrl: linkResult.webUrl,
                   };
 
                   setUploadedFile(fileData);
@@ -180,7 +173,6 @@ export const useUploadDocument = ({
                 } catch (linkError) {
                   console.error("Failed to create public link", linkError);
                   toast.error("File uploaded but failed to create public link");
-                  // Fallback to internal link
                   const fileData: UploadedFile = {
                     id: data.id,
                     name: data.name,

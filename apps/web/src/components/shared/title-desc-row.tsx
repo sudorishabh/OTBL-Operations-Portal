@@ -75,7 +75,6 @@ const TitleDescRow = ({
       }}>
       <div className='p-6'>
         <div className='flex items-start justify-between'>
-          {/* Main Content */}
           <div className='flex-1 min-w-0 pr-4'>
             <div className='flex items-center gap-3 mb-2'>
               <div className='w-2 h-2 bg-[#035864] rounded-full flex-shrink-0 mt-1.5' />
@@ -90,7 +89,6 @@ const TitleDescRow = ({
               </p>
             )}
 
-            {/* Metadata */}
             <div className='flex flex-wrap items-center gap-4 text-xs text-gray-500'>
               {rowDetails.activity_type && (
                 <div className='flex items-center gap-1'>
@@ -133,7 +131,6 @@ const TitleDescRow = ({
             </div>
           </div>
 
-          {/* Actions */}
           <div className='flex items-center gap-2 flex-shrink-0'>
             <button
               className={cn(

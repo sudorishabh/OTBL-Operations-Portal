@@ -79,7 +79,6 @@ const WOSitesCard = ({ sites, handleSiteDetails }: Props) => {
 
             <div className='grid grid-cols-2 gap-3'>
               <div className='flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200/70'>
-                {/* <Calendar className='w-4 h-4 text-orange-500 shrink-0' /> */}
                 <div className='flex flex-col'>
                   <span className='text-[10px] text-gray-400 uppercase font-semibold'>
                     Start

@@ -19,7 +19,7 @@ interface UploadDocProps {
   onUploadingChange?: (isUploading: boolean) => void;
   folderPath: string;
   label?: string;
-  allowedExtensions?: string[]; // e.g. ['.pdf', '.docx']
+  allowedExtensions?: string[];
   maxSizeMB?: number;
   className?: string;
 }
@@ -69,7 +69,7 @@ const UploadDoc: React.FC<UploadDocProps> = ({
   };
 
   const handleManualDelete = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent bubbling
+    e.preventDefault();
     e.stopPropagation();
     removeFile();
     if (fileInputRef.current) {

@@ -70,7 +70,6 @@ const ClientSearchFilter = ({
         />
       </div>
       <div className='flex flex-wrap items-center gap-2 sm:gap-3 text-xs'>
-        {/* Filter - Status for Clients, Client for Contacts */}
         {isClientsTab ? (
           <Input
             mode='standalone'
@@ -113,7 +112,6 @@ const ClientSearchFilter = ({
           />
         )}
 
-        {/* Reset Button */}
         {hasActiveFilters && (
           <Btn
             text='Reset'
@@ -124,7 +122,6 @@ const ClientSearchFilter = ({
           />
         )}
 
-        {/* Add Contact Button - Only for Contacts Tab */}
         {!isClientsTab && (
           <Btn
             text='Add Contact'

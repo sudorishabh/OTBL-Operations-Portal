@@ -24,9 +24,6 @@ const variantColors: Record<BadgeVariant, { bg: string; text: string }> = {
   outline: { bg: "transparent", text: Colors.gray[600] },
 };
 
-/**
- * Badge / tag component for status indicators
- */
 export default function Badge({ label, variant = "default" }: BadgeProps) {
   const colors = variantColors[variant];
 

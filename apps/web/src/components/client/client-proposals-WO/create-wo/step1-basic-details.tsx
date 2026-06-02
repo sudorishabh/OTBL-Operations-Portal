@@ -44,7 +44,6 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
   return (
     <div className='flex-1 flex flex-col justify-between h-full'>
       <div className='space-y-4'>
-        {/* Row 1: Code and Title */}
         <Input
           control={form.control}
           fieldName='title'
@@ -58,7 +57,6 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
             Label='Work Order Code'
             placeholder='Enter work order code'
           />
-          {/* Row 3: Process Type */}
           <Input
             control={form.control}
             fieldName='process_type'
@@ -69,7 +67,6 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
           />
         </div>
 
-        {/* Row 2: Agreement Number and Rate Contract Number */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <Input
             control={form.control}
@@ -86,7 +83,6 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
           />
         </div>
 
-        {/* Row 4: Dates */}
         <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
           <Input
             control={form.control}
@@ -110,7 +106,6 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
           />
         </div>
 
-        {/* Row 5: Description */}
         <Input
           control={form.control}
           fieldName='description'
@@ -120,7 +115,6 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
           placeholder='Enter description'
         />
 
-        {/* Row 6: Document Upload */}
         <FormField
           control={form.control}
           name='document_key'
@@ -145,7 +139,6 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
         />
       </div>
 
-      {/* Action Buttons */}
       <div className='flex items-center justify-end gap-3 pt-4'>
         <CustomButton
           type='button'

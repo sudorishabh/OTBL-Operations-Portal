@@ -60,7 +60,6 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
     const rcRate = values.rc_unit_rate || 0;
     const quantity = values.estimated_quantity || 0;
 
-    // Fixed 18% GST
     const unitRateInclusiveGst = Number(rcRate) * (1 + GST_PERCENTAGE / 100);
     const totalCost = Number(unitRateInclusiveGst) * Number(quantity);
 
@@ -78,13 +77,10 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
 
   const getFilteredActivityOptions = () => {
     if (selectedProcessType === WO_PROCESS.BIOREMEDIATION) {
-      // Only show bioremediation activity
       return allActivityOptions.filter((option) => option.isBioremediation);
     } else if (selectedProcessType === WO_PROCESS.RESTORATION) {
-      // Show all except bioremediation
       return allActivityOptions.filter((option) => !option.isBioremediation);
     } else {
-      // Show all activities for "both" or undefined
       return allActivityOptions;
     }
   };
@@ -285,7 +281,6 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
           </p>
         )}
 
-        {/* Action Buttons */}
       </div>
       <div className='flex justify-end gap-3 pt-4'>
         <CustomButton

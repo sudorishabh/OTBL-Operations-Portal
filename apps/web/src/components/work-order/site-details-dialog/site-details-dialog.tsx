@@ -41,7 +41,6 @@ const CompletionExpenseSummary = ({ woSiteId }: { woSiteId: number }) => {
         <p className='text-[10px] text-slate-400'>Finalised totals for this site</p>
       </div>
       <div className='grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100'>
-        {/* Income */}
         <div className='px-4 py-3 bg-white'>
           <div className='flex items-center gap-1.5 mb-1'>
             <TrendingUp className='w-3 h-3 text-emerald-500' />
@@ -51,7 +50,6 @@ const CompletionExpenseSummary = ({ woSiteId }: { woSiteId: number }) => {
           <p className='text-[9px] text-emerald-500 mt-0.5'>From completion activities</p>
         </div>
 
-        {/* Expenses */}
         <div className='px-4 py-3 bg-white'>
           <div className='flex items-center gap-1.5 mb-1'>
             <TrendingDown className='w-3 h-3 text-gray-500' />
@@ -71,7 +69,6 @@ const CompletionExpenseSummary = ({ woSiteId }: { woSiteId: number }) => {
           )}
         </div>
 
-        {/* Net P&L */}
         <div className={`px-4 py-3 ${netPL >= 0 ? "bg-emerald-50/60" : "bg-orange-50/60"}`}>
           <div className='flex items-center gap-1.5 mb-1'>
             <Minus className={`w-3 h-3 ${netPL >= 0 ? "text-emerald-500" : "text-orange-500"}`} />
@@ -237,5 +234,5 @@ const SiteDetailDialog = () => {
     </DialogWindow>
   );
 };
-  
+
 export default SiteDetailDialog;

@@ -173,7 +173,6 @@ const UpdateClientDialog = ({ clientId }: Props) => {
           contactsToRemove.length > 0 ? contactsToRemove : undefined,
       });
     } catch {
-      // errors handled by onError
     }
   }
 
@@ -194,7 +193,6 @@ const UpdateClientDialog = ({ clientId }: Props) => {
         <Form {...form}>
           <CustomForm onSubmit={form.handleSubmit(onSubmit)}>
             <div className='space-y-6 max-h-[60vh] overflow-y-auto pr-2'>
-              {/* Client Information */}
               <div>
                 <div className='border-b pb-2 mb-4'>
                   <h3 className='text-base font-semibold text-gray-800'>
@@ -279,7 +277,6 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                 </div>
               </div>
 
-              {/* Contact Management */}
               <div className='border-t pt-6'>
                 <div className='flex items-center justify-between mb-4'>
                   <div className='flex items-center gap-2'>
@@ -307,7 +304,6 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                   )}
                 </div>
 
-                {/* New Contact Form */}
                 {isAddingNewContact && (
                   <Form {...contactForm}>
                     <div className='bg-gray-100 p-4 rounded-lg mb-4 space-y-3'>
@@ -376,7 +372,6 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                   </Form>
                 )}
 
-                {/* Existing contacts */}
                 {existingContacts.length > 0 && (
                   <div className='space-y-2 mb-4'>
                     <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
@@ -440,7 +435,6 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                   </div>
                 )}
 
-                {/* New contacts to be added */}
                 {newContacts.length > 0 && (
                   <div className='space-y-2'>
                     <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
@@ -472,7 +466,6 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                 )}
               </div>
 
-              {/* Action Buttons */}
               <div className='flex justify-end gap-3 pt-4 border-t'>
                 <CustomButton
                   text='Cancel'

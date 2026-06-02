@@ -32,9 +32,6 @@ type MenuItem = {
   roles?: string[];
 };
 
-/**
- * More / Settings screen — handles navigation to User Mgmt, Offices & Sites, Profile, etc.
- */
 export default function MoreScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -93,7 +90,6 @@ export default function MoreScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>More</Text>
       </View>
@@ -102,7 +98,6 @@ export default function MoreScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        {/* User Info Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileAvatar}>
             <Text style={styles.profileAvatarText}>
@@ -123,7 +118,6 @@ export default function MoreScreen() {
           </View>
         </View>
 
-        {/* Menu Items */}
         <View style={styles.section}>
           {visibleMenuItems.map((item, index) => (
             <TouchableOpacity
@@ -156,7 +150,6 @@ export default function MoreScreen() {
           ))}
         </View>
 
-        {/* Logout */}
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
@@ -168,7 +161,6 @@ export default function MoreScreen() {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
 
-        {/* App Version */}
         <Text style={styles.version}>OTBL Management v1.0.0</Text>
       </ScrollView>
     </View>

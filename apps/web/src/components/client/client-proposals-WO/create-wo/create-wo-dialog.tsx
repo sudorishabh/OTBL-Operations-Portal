@@ -17,8 +17,6 @@ import Step2ScheduleOfRates from "./step2-schedule-of-rates";
 import StepperCreateWO from "./stepper-create-wo";
 import { ZodError } from "zod";
 
-// Type alias for form values
-
 interface Props {
   proposalTitle: string;
 }
@@ -72,7 +70,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
 
   const createWorkOrder = trpc.workOrderMutation.createWorkOrder.useMutation({
     onSuccess: () => {
-      // utils.clientQuery.getClientStats.invalidate({ clientId });
       utils.proposalQuery.getProposalsByClient.invalidate({
         client_id: clientId,
       });
@@ -116,17 +113,13 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
   const handleFileSelect = useCallback(
     (file: File | null) => {
       setSelectedFile(file);
-      // If a new file is selected, clear any previous upload URL
       if (file) {
         setUploadedUrl("");
         setUploadedFileId("");
-        // Set a placeholder value to pass validation
-        // This will be replaced with the actual URL after upload
         form.setValue("document_key", `pending:${file.name}`, {
           shouldValidate: true,
         });
       } else {
-        // Only clear if we don't have an uploaded URL
         if (!uploadedUrl) {
           form.setValue("document_key", "", { shouldValidate: true });
         }
@@ -135,14 +128,12 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
     [form, uploadedUrl],
   );
 
-  // Wrapper for delete to update local state and delete from SharePoint
   const handleDeleteFile = useCallback(async () => {
     if (uploadedFileId) {
       try {
         await deleteFile(uploadedFileId);
       } catch (error) {
         console.error("Failed to delete file from SharePoint", error);
-        // We continue to clear local state even if server delete fails
       }
     }
 
@@ -153,7 +144,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
     resetUpload();
   }, [form, resetUpload, deleteFile, uploadedFileId]);
 
-  // Validate Step 1 before moving to Step 2
   const handleNextStep = async () => {
     const isValid = await form.trigger([
       "code",
@@ -177,11 +167,9 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
     try {
       let documentPath = values.document_key;
 
-      // Upload file to SharePoint if a file was selected but not yet uploaded (still pending)
       if (selectedFile && !uploadedUrl && documentPath.startsWith("pending:")) {
         const uploadResult = await uploadFile(selectedFile);
         if (!uploadResult) {
-          // Upload failed, error already shown by hook
           return;
         }
         documentPath = uploadResult.webUrl;
@@ -191,7 +179,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
         documentPath = uploadedUrl;
       }
 
-      // If document_key still starts with "pending:", it means something went wrong
       if (documentPath.startsWith("pending:")) {
         toast.error("Please upload a document");
         return;
@@ -206,7 +193,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
       });
       handleCloseDialog();
     } catch (error) {
-      // If failure happens after upload, we could try to cleanup
       if (uploadedFileId) {
         await deleteFile(uploadedFileId);
       }
@@ -214,7 +200,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
     }
   });
 
-  // Step indicators
   const steps = [
     {
       number: 1,

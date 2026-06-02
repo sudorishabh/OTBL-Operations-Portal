@@ -28,7 +28,6 @@ export function useApiError(defaultOptions?: UseApiErrorOptions) {
       const opts = { ...defaultOptions, ...options };
       const parsed = parseApiError(error);
 
-      // Handle authentication errors
       if (requiresReauthentication(parsed)) {
         if (opts.onAuthError) {
           opts.onAuthError();
@@ -39,7 +38,6 @@ export function useApiError(defaultOptions?: UseApiErrorOptions) {
         return parsed;
       }
 
-      // Handle network errors
       if (parsed.isNetworkError) {
         if (opts.onNetworkError) {
           opts.onNetworkError();
@@ -52,18 +50,15 @@ export function useApiError(defaultOptions?: UseApiErrorOptions) {
         return parsed;
       }
 
-      // Handle validation errors
       if (hasValidationErrors(parsed) && opts.onValidationError) {
         const fieldErrors = getFieldErrors(parsed.validationErrors);
         opts.onValidationError(fieldErrors);
       }
 
-      // Call generic error handler
       if (opts.onError) {
         opts.onError(parsed);
       }
 
-      // Show toast notification
       if (opts.showToast !== false) {
         toast.error(opts.customMessage || parsed.message);
       }
@@ -78,7 +73,6 @@ export function useApiError(defaultOptions?: UseApiErrorOptions) {
       optionsOrError?: UseApiErrorOptions | unknown,
       maybeOptions?: UseApiErrorOptions
     ): ((error: unknown) => void) | void => {
-      // If first argument looks like an error (has message property), handle it directly
       if (
         optionsOrError &&
         typeof optionsOrError === "object" &&
@@ -88,7 +82,6 @@ export function useApiError(defaultOptions?: UseApiErrorOptions) {
         return;
       }
 
-      // Otherwise, return a handler function configured with options
       return (error: unknown) => {
         handleError(error, optionsOrError as UseApiErrorOptions);
       };
@@ -96,9 +89,6 @@ export function useApiError(defaultOptions?: UseApiErrorOptions) {
     [handleError]
   );
 
-  /**
-   * Create a simple error handler that just shows a toast
-   */
   const createToastHandler = useCallback(
     (customMessage?: string) => {
       return (error: unknown) => {
@@ -112,7 +102,6 @@ export function useApiError(defaultOptions?: UseApiErrorOptions) {
     handleError,
     handleMutationError,
     createToastHandler,
-    // Re-export utilities for convenience
     parseApiError,
     getFieldErrors,
     hasValidationErrors,
@@ -120,7 +109,4 @@ export function useApiError(defaultOptions?: UseApiErrorOptions) {
   };
 }
 
-/**
- * Default export for convenience
- */
 export default useApiError;
