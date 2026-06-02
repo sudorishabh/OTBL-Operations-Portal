@@ -155,6 +155,16 @@ export const officeMutationRouter = router({
         // that case is admin-only — which matches how offices are set up.)
         await assertOfficeManager(ctx, office_id);
 
+        // The office's manager may only manage office-operator seats. Assigning
+        // a manager is reserved for admins — an office manager cannot appoint
+        // (or replace) the office's manager.
+        if (role === ROLES.MANAGER && ctx.user!.role !== ROLES.ADMIN) {
+          throw forbidden("assign a manager to this office", {
+            userMessage:
+              "Only an admin can assign an office's manager. Office managers can only add or remove office operators.",
+          });
+        }
+
         // Verify office exists
         const [office] = await ctx.db
           .select()
@@ -266,6 +276,15 @@ export const officeMutationRouter = router({
         if (!assignments[0]) {
           throw notFound("User assignment", undefined, {
             userMessage: "This user is not assigned to this office.",
+          });
+        }
+
+        // The office's manager may only manage office-operator seats. Revoking
+        // the office's manager is reserved for admins.
+        if (assignments[0].role === ROLES.MANAGER && ctx.user!.role !== ROLES.ADMIN) {
+          throw forbidden("remove the manager from this office", {
+            userMessage:
+              "Only an admin can remove an office's manager. Office managers can only add or remove office operators.",
           });
         }
 
