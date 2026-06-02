@@ -63,7 +63,7 @@ const CategorizedUsers = () => {
 
   const userCategoryData = [
     {
-      title: "Manager Users",
+      title: "Office Manager Users",
       users: managers,
       totalUsers: totalManagers,
       onViewAll: () => handleOpenCategoryDialog(ROLES.MANAGER),

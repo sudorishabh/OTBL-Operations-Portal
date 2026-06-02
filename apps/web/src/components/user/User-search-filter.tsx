@@ -70,7 +70,7 @@ const UserSearchFilter = () => {
                 isSelect
                 selectOptions={[
                   { label: "All Roles", value: "all" },
-                  { label: "Manager", value: "office_manager" },
+                  { label: "Office Manager", value: "office_manager" },
                   { label: "Office Operator", value: "office_operator" },
                   { label: "Site Operator", value: "site_operator" },
                   { label: "Viewer", value: "viewer" },

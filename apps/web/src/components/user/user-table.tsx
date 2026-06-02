@@ -261,7 +261,7 @@ const UserTable = () => {
                 <Badge
                   variant={getRoleBadgeVariant(user.role)}
                   className={`${user.role === "office_manager" ? "bg-cyan-800" : ""}`}>
-                  {capitalFirstLetter(user.role)}
+                  {capitalizeEachWord(user.role.replace(/_/g, " "))}
                 </Badge>
               </TableCell>
               <TableCell className='text-xs overflow-hidden max-w-[450px] flex flex-wrap gap-1.5'>
