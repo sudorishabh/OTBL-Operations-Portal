@@ -68,7 +68,21 @@ type ExpenseType =
   | "equipment"
   | "miscellaneous";
 
-type ExpenseItem = { id: string; expense_type: ExpenseType; amount: string };
+// Sentinel for rows where the user hasn't picked a category. Saved to the
+// backend as "miscellaneous" (the catch-all type) so an expense can be
+// recorded with just an amount, without forcing a type choice.
+const NO_TYPE = "__none__" as const;
+
+type ExpenseTypeSelection = ExpenseType | typeof NO_TYPE;
+
+const resolveExpenseType = (t: ExpenseTypeSelection): ExpenseType =>
+  t === NO_TYPE ? "miscellaneous" : t;
+
+type ExpenseItem = {
+  id: string;
+  expense_type: ExpenseTypeSelection;
+  amount: string;
+};
 
 export interface ActivityOption {
   key: string;
@@ -107,7 +121,7 @@ interface Props {
 
 const newItem = (): ExpenseItem => ({
   id: Math.random().toString(36).slice(2),
-  expense_type: "miscellaneous",
+  expense_type: NO_TYPE,
   amount: "",
 });
 
@@ -301,7 +315,11 @@ const AddExpenseDialog = ({
     // Validate items
     for (const item of items) {
       if (!item.amount || isNaN(parseFloat(item.amount)) || parseFloat(item.amount) <= 0) {
-        toast.error(`Enter a valid amount for ${EXPENSE_TYPE_LABELS[item.expense_type]}`);
+        const typeLabel =
+          item.expense_type === NO_TYPE
+            ? "this expense"
+            : EXPENSE_TYPE_LABELS[item.expense_type];
+        toast.error(`Enter a valid amount for ${typeLabel}`);
         return;
       }
     }
@@ -342,7 +360,7 @@ const AddExpenseDialog = ({
       const item = items[0]!;
       updateExpenseMutation.mutate({
         id: editingExpense.id,
-        expense_type: item.expense_type,
+        expense_type: resolveExpenseType(item.expense_type),
         contractor_id:
           item.expense_type === "contractor_payment" && contractorId
             ? Number(contractorId)
@@ -360,7 +378,7 @@ const AddExpenseDialog = ({
         items.map((item) =>
           createExpenseMutation.mutateAsync({
             work_order_site_id: workOrderSiteId,
-            expense_type: item.expense_type,
+            expense_type: resolveExpenseType(item.expense_type),
             contractor_id:
               item.expense_type === "contractor_payment" && contractorId
                 ? Number(contractorId)
@@ -415,7 +433,7 @@ const AddExpenseDialog = ({
               ? "This activity's estimated quantity is fully used. Will be recorded as exceeded."
               : isEditing
                 ? "Update the expense details below."
-                : "Fill in the details and add one or more expense types below."}
+                : "Enter an amount and save — choosing an expense type is optional."}
           </DialogDescription>
         </DialogHeader>
 
@@ -486,7 +504,8 @@ const AddExpenseDialog = ({
           <div className='space-y-2'>
             <div className='flex items-center justify-between'>
               <Label className='text-xs font-medium text-gray-700'>
-                Expense Types &amp; Amounts <span className='text-red-500'>*</span>
+                Amount <span className='text-red-500'>*</span>
+                <span className='text-gray-400 font-normal'> · type optional</span>
               </Label>
               {totalAmount > 0 && (
                 <span className='text-xs font-semibold text-gray-700'>
@@ -518,6 +537,9 @@ const AddExpenseDialog = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={NO_TYPE} className='text-sm text-gray-500'>
+                          No specific type
+                        </SelectItem>
                         {Object.entries(EXPENSE_TYPE_LABELS).map(([val, label]) => (
                           <SelectItem key={val} value={val} className='text-sm'>{label}</SelectItem>
                         ))}
@@ -557,7 +579,7 @@ const AddExpenseDialog = ({
                 onClick={() => setItems((prev) => [...prev, newItem()])}
                 className='flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 px-1 py-1 rounded hover:bg-blue-50 transition-colors'>
                 <Plus className='w-3.5 h-3.5' />
-                Add another expense type
+                Add another expense
               </button>
             )}
 
