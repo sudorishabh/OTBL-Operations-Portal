@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "ea672242-8807-4037-aacc-e3858e67378b",
+  "id": "888d9cf1-86cb-48fc-8ad0-eb8ce4b8b49b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "bio_oil_zapping": {
@@ -1890,108 +1890,6 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "site_users": {
-      "name": "site_users",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "office_id": {
-          "name": "office_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "site_id": {
-          "name": "site_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "onUpdate": true,
-          "default": "(now())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "site_users_office_id_offices_id_fk": {
-          "name": "site_users_office_id_offices_id_fk",
-          "tableFrom": "site_users",
-          "tableTo": "offices",
-          "columnsFrom": [
-            "office_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "site_users_site_id_sites_id_fk": {
-          "name": "site_users_site_id_sites_id_fk",
-          "tableFrom": "site_users",
-          "tableTo": "sites",
-          "columnsFrom": [
-            "site_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "site_users_user_id_users_id_fk": {
-          "name": "site_users_user_id_users_id_fk",
-          "tableFrom": "site_users",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "site_users_id": {
-          "name": "site_users_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
     "trans_cont_soil": {
       "name": "trans_cont_soil",
       "columns": {
@@ -2146,7 +2044,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'operator'"
+          "default": "'office_operator'"
         },
         "created_by": {
           "name": "created_by",
@@ -3058,6 +2956,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "int",
@@ -3112,6 +3024,13 @@
             "end_date"
           ],
           "isUnique": false
+        },
+        "wo_approved_at_idx": {
+          "name": "wo_approved_at_idx",
+          "columns": [
+            "approved_at"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -3152,6 +3071,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "work_orders_approved_by_users_id_fk": {
+          "name": "work_orders_approved_by_users_id_fk",
+          "tableFrom": "work_orders",
+          "tableTo": "users",
+          "columnsFrom": [
+            "approved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "work_orders_created_by_users_id_fk": {

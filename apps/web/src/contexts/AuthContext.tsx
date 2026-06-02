@@ -42,7 +42,7 @@ export const useHasRole = (requiredRole: string): boolean => {
 
   const roleHierarchy: Record<string, number> = {
     admin: 4,
-    manager: 3,
+    office_manager: 3,
     office_operator: 2,
     site_operator: 2,
     viewer: 1,
@@ -71,7 +71,7 @@ export const useIsAdmin = (): boolean => useHasRole("admin");
 /**
  * Hook to check if user is manager or higher
  */
-export const useIsManager = (): boolean => useHasRole("manager");
+export const useIsManager = (): boolean => useHasRole("office_manager");
 
 /**
  * Hook to check if the current user is a viewer (read-only role).

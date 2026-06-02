@@ -48,7 +48,7 @@ const CategorizedUsers = () => {
   }
 
   const handleOpenCategoryDialog = (
-    role: "all" | "manager" | "office_operator" | "site_operator",
+    role: "all" | "office_manager" | "office_operator" | "site_operator",
   ) => {
     setFilters({ role, status: "all" });
     setParams({ dialog: "categorized", role });

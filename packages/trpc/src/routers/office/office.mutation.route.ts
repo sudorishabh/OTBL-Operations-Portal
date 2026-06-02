@@ -48,7 +48,7 @@ export const officeMutationRouter = router({
             await tx.insert(officeUserTable).values({
               user_id: manager_id,
               office_id: officeId,
-              role: ROLES.MANAGER as "manager",
+              role: ROLES.MANAGER as "office_manager",
               assigned_by: userId,
             });
           }

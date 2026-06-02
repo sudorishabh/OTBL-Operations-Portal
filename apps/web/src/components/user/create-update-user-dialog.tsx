@@ -126,7 +126,7 @@ const CreateUpdateUserDialog = () => {
           email: userQuery.email ?? "",
           contact_number: userQuery.contact_number ?? "",
           role: userQuery.role as
-            | "manager"
+            | "office_manager"
             | "office_operator"
             | "site_operator"
             | "viewer",
@@ -356,7 +356,7 @@ const CreateUpdateUserDialog = () => {
               LabelIcon={Shield}
               isSelect
               selectOptions={[
-                { label: "Manager", value: "manager" },
+                { label: "Manager", value: "office_manager" },
                 { label: "Office Operator", value: "office_operator" },
                 { label: "Site Operator", value: "site_operator" },
                 { label: "Viewer", value: "viewer" },

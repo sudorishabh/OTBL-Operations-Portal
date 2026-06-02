@@ -167,7 +167,7 @@ export const ManagerRoute = ({
   ...props
 }: Omit<RoleProtectedRouteProps, "requiredRole">) => (
   <RoleProtectedRoute
-    requiredRole='manager'
+    requiredRole='office_manager'
     {...props}>
     {children}
   </RoleProtectedRoute>

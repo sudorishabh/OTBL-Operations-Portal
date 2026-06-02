@@ -19,7 +19,7 @@ const { STATUS } = constants;
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 // Office membership role; "operator" here is an Office Operator (distinct from
 // a Site Operator, which is a site_users assignment with no stored role).
-const officeRoleEnum = z.enum(["manager", "operator"]);
+const officeRoleEnum = z.enum(["office_manager", "operator"]);
 const officeNamesOrderEnum = z.enum(["asc", "desc", "latest", "oldest"]);
 
 // Base Schemas

@@ -20,7 +20,9 @@
       "Bash(echo \"EXIT $?\")",
       "Bash(echo \"web exit: $?\")",
       "Bash(echo \"web tsc exit: $?\")",
-      "PowerShell(pnpm --filter web exec tsc --noEmit 2>&1 | Select-Object -First 80; \"EXIT: $LASTEXITCODE\")"
+      "PowerShell(pnpm --filter web exec tsc --noEmit 2>&1 | Select-Object -First 80; \"EXIT: $LASTEXITCODE\")",
+      "Bash(pnpm run *)",
+      "Bash(node -e 'const p=require\\('\\\\''./__TRACKED_VAR__/package.json'\\\\''\\); console.log\\(Object.keys\\(p.scripts||{}\\).join\\('\\\\'', '\\\\''\\)\\)')"
     ]
   },
   "enableAllProjectMcpServers": true,

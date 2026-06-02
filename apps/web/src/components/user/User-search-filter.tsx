@@ -60,7 +60,7 @@ const UserSearchFilter = () => {
                     ...filters,
                     role: value as
                       | "all"
-                      | "manager"
+                      | "office_manager"
                       | "office_operator"
                       | "site_operator"
                       | "viewer",
@@ -70,7 +70,7 @@ const UserSearchFilter = () => {
                 isSelect
                 selectOptions={[
                   { label: "All Roles", value: "all" },
-                  { label: "Manager", value: "manager" },
+                  { label: "Manager", value: "office_manager" },
                   { label: "Office Operator", value: "office_operator" },
                   { label: "Site Operator", value: "site_operator" },
                   { label: "Viewer", value: "viewer" },

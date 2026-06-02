@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1779774663005,
-      "tag": "0000_aromatic_taskmaster",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1780037561755,
-      "tag": "0001_mighty_the_twelve",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1780044747864,
-      "tag": "0002_backfill_wo_site_operators",
+      "when": 1780374515446,
+      "tag": "0000_wakeful_calypso",
       "breakpoints": true
     }
   ]

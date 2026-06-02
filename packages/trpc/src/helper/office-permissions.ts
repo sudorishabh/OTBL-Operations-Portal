@@ -23,7 +23,7 @@ const { officeUserTable } = schema;
  * Operator is a user assigned to a specific site via `site_users` and has no
  * stored role column; the assignment itself confers the "site operator" status.
  */
-export type OfficeRole = "manager" | "operator";
+export type OfficeRole = "office_manager" | "operator";
 
 /**
  * Resolve a user's role within a specific office.
@@ -63,7 +63,7 @@ export async function isOfficeManager(
   userId: number,
   officeId: number,
 ): Promise<boolean> {
-  return (await getOfficeRole(db, userId, officeId)) === "manager";
+  return (await getOfficeRole(db, userId, officeId)) === "office_manager";
 }
 
 type PermissionCtx = {
@@ -124,7 +124,7 @@ export async function assertOfficeManager(
   if (user.role === USER_ROLES.ADMIN) return;
 
   const role = await getOfficeRole(ctx.db, parseInt(user.sub), officeId);
-  if (role !== "manager") {
+  if (role !== "office_manager") {
     throw appErrorToTRPCError(
       createInsufficientPermissionsError("the manager of this office", {
         userMessage:

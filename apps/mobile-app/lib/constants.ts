@@ -75,14 +75,14 @@ export const Colors = {
  */
 export const ROLES = {
   ADMIN: "admin",
-  MANAGER: "manager",
+  MANAGER: "office_manager",
   OFFICE_OPERATOR: "office_operator",
   SITE_OPERATOR: "site_operator",
 } as const;
 
 export const ROLE_HIERARCHY: Record<string, number> = {
   admin: 3,
-  manager: 2,
+  office_manager: 2,
   office_operator: 1,
   site_operator: 1,
 };

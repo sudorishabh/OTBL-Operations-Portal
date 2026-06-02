@@ -41,7 +41,7 @@ export default function UserManagementScreen() {
     switch (role) {
       case "admin":
         return { bg: "#fee2e2", text: "#991b1b" };
-      case "manager":
+      case "office_manager":
         return { bg: "#dbeafe", text: "#1e40af" };
       case "office_operator":
         return { bg: "#fef3c7", text: "#92400e" };

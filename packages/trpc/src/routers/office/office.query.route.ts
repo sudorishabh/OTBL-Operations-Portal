@@ -255,7 +255,7 @@ export const officeQueryRouter = router({
             .innerJoin(userTable, eq(officeUserTable.user_id, userTable.id))
             .where(eq(officeUserTable.office_id, input.office_id));
 
-          const manager = users.find((u: any) => u.role === "manager");
+          const manager = users.find((u: any) => u.role === "office_manager");
           const operators = users.filter((u: any) => u.role === "operator");
 
           return {

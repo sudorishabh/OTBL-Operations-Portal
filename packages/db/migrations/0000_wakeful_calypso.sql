@@ -217,16 +217,6 @@ CREATE TABLE `sites` (
 	CONSTRAINT `sites_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `site_users` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`office_id` int NOT NULL,
-	`site_id` int NOT NULL,
-	`user_id` int NOT NULL,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-	CONSTRAINT `site_users_id` PRIMARY KEY(`id`)
-);
---> statement-breakpoint
 CREATE TABLE `trans_cont_soil` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`site_activity_id` int,
@@ -246,7 +236,7 @@ CREATE TABLE `users` (
 	`email` varchar(320) NOT NULL,
 	`password` varchar(255) NOT NULL,
 	`contact_number` varchar(15),
-	`role` varchar(50) NOT NULL DEFAULT 'operator',
+	`role` varchar(50) NOT NULL DEFAULT 'office_operator',
 	`created_by` int,
 	`status` varchar(50) NOT NULL DEFAULT 'active',
 	`created_at` timestamp NOT NULL DEFAULT (now()),
@@ -350,6 +340,8 @@ CREATE TABLE `work_orders` (
 	`description` text,
 	`status` varchar(50) NOT NULL DEFAULT 'pending',
 	`cancellation_reason` text,
+	`approved_at` timestamp,
+	`approved_by` int,
 	`created_by` int,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
@@ -385,9 +377,6 @@ ALTER TABLE `schedule_of_rates` ADD CONSTRAINT `schedule_of_rates_work_order_id_
 ALTER TABLE `site_activity_items` ADD CONSTRAINT `site_activity_items_work_order_site_id_work_order_sites_id_fk` FOREIGN KEY (`work_order_site_id`) REFERENCES `work_order_sites`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `site_activity_items` ADD CONSTRAINT `site_activity_items_schedule_of_rates_id_schedule_of_rates_id_fk` FOREIGN KEY (`schedule_of_rates_id`) REFERENCES `schedule_of_rates`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `sites` ADD CONSTRAINT `sites_office_id_offices_id_fk` FOREIGN KEY (`office_id`) REFERENCES `offices`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `site_users` ADD CONSTRAINT `site_users_office_id_offices_id_fk` FOREIGN KEY (`office_id`) REFERENCES `offices`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `site_users` ADD CONSTRAINT `site_users_site_id_sites_id_fk` FOREIGN KEY (`site_id`) REFERENCES `sites`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `site_users` ADD CONSTRAINT `site_users_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `trans_cont_soil` ADD CONSTRAINT `trans_cont_soil_site_activity_id_site_activity_items_id_fk` FOREIGN KEY (`site_activity_id`) REFERENCES `site_activity_items`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `trans_cont_soil` ADD CONSTRAINT `trans_cont_soil_work_order_site_id_work_order_sites_id_fk` FOREIGN KEY (`work_order_site_id`) REFERENCES `work_order_sites`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `work_order_site_docs` ADD CONSTRAINT `work_order_site_docs_work_order_site_id_work_order_sites_id_fk` FOREIGN KEY (`work_order_site_id`) REFERENCES `work_order_sites`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -404,6 +393,7 @@ ALTER TABLE `work_order_site_users` ADD CONSTRAINT `work_order_site_users_user_i
 ALTER TABLE `work_orders` ADD CONSTRAINT `work_orders_proposal_id_proposals_id_fk` FOREIGN KEY (`proposal_id`) REFERENCES `proposals`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `work_orders` ADD CONSTRAINT `work_orders_client_id_clients_id_fk` FOREIGN KEY (`client_id`) REFERENCES `clients`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `work_orders` ADD CONSTRAINT `work_orders_office_id_offices_id_fk` FOREIGN KEY (`office_id`) REFERENCES `offices`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `work_orders` ADD CONSTRAINT `work_orders_approved_by_users_id_fk` FOREIGN KEY (`approved_by`) REFERENCES `users`(`id`) ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `work_orders` ADD CONSTRAINT `work_orders_created_by_users_id_fk` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX `contractor_office_idx` ON `contractors` (`office_id`);--> statement-breakpoint
 CREATE INDEX `contractor_name_idx` ON `contractors` (`name`);--> statement-breakpoint
@@ -432,4 +422,5 @@ CREATE INDEX `wosu_user_idx` ON `work_order_site_users` (`user_id`);--> statemen
 CREATE INDEX `wo_client_idx` ON `work_orders` (`client_id`);--> statement-breakpoint
 CREATE INDEX `wo_office_idx` ON `work_orders` (`office_id`);--> statement-breakpoint
 CREATE INDEX `wo_status_idx` ON `work_orders` (`status`);--> statement-breakpoint
-CREATE INDEX `wo_dates_idx` ON `work_orders` (`start_date`,`end_date`);
+CREATE INDEX `wo_dates_idx` ON `work_orders` (`start_date`,`end_date`);--> statement-breakpoint
+CREATE INDEX `wo_approved_at_idx` ON `work_orders` (`approved_at`);

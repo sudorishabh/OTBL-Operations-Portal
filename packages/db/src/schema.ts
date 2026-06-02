@@ -297,7 +297,7 @@ export const officeUserTable = mysqlTable(
     }),
     role: varchar("role", {
       length: 50,
-      enum: ["manager", "operator"],
+      enum: ["office_manager", "operator"],
     }).notNull(),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),

@@ -58,7 +58,7 @@ export default function MoreScreen() {
       color: Colors.warning,
       bgColor: "#fef9c3",
       onPress: () => router.push("/(app)/user"),
-      roles: ["admin", "manager"],
+      roles: ["admin", "office_manager"],
     },
     {
       title: "Offices & Sites",

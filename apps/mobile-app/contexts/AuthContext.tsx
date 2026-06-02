@@ -275,7 +275,7 @@ export function useHasRole(requiredRole: string): boolean {
 
   const roleHierarchy: Record<string, number> = {
     admin: 3,
-    manager: 2,
+    office_manager: 2,
     operator: 1,
   };
 
@@ -295,5 +295,5 @@ export function useIsAdmin(): boolean {
  * Hook to check if user is manager or higher
  */
 export function useIsManager(): boolean {
-  return useHasRole("manager");
+  return useHasRole("office_manager");
 }

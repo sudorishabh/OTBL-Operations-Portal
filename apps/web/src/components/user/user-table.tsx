@@ -142,7 +142,7 @@ const UserTable = () => {
     switch (role) {
       case "admin":
         return "destructive";
-      case "manager":
+      case "office_manager":
         return "default";
       case "viewer":
         return "secondary";
@@ -260,7 +260,7 @@ const UserTable = () => {
               <TableCell className='text-xs'>
                 <Badge
                   variant={getRoleBadgeVariant(user.role)}
-                  className={`${user.role === "manager" ? "bg-cyan-800" : ""}`}>
+                  className={`${user.role === "office_manager" ? "bg-cyan-800" : ""}`}>
                   {capitalFirstLetter(user.role)}
                 </Badge>
               </TableCell>
