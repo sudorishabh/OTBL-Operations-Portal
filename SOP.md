@@ -1,12 +1,13 @@
 # OTBL Management System – Standard Operating Procedure (SOP)
 
-**Audience:** All system users (Administrators, Managers, and Operators).
-**Purpose:** Provide a complete, step-by-step guide to operating the OTBL (ONGC TERI Biotech Limited) Web Management System – an internal platform for managing clients, offices, sites, and work orders related to oil contamination remediation services (Bioremediation, Restoration, and combined processes).
+**Audience:** All web portal users — Administrators, Office Managers, Office Operators, Site Operators, and Viewers.
+**Purpose:** Provide a complete, step-by-step guide to operating the OTBL (ONGC TERI Biotech Limited) Web Management System — an internal platform for managing clients, offices, sites, proposals, and work orders related to oil-contamination remediation services (Bioremediation, Restoration, and combined processes).
+**Scope:** This SOP covers the **web portal** only. (A companion read-only mobile app exists but is not covered here.)
 
-> Screenshots: Throughout this document you will see placeholders such as
+> **About screenshots:** Throughout this document you will see placeholders such as
 > `📸 [SCREENSHOT: Login screen]`.
 > Replace each placeholder by inserting an image of the corresponding screen.
-> Recommended image format: PNG, 1280×800 (web view) or 390×844 (mobile view).
+> Recommended image format: PNG, 1280×800 (web view) or 390×844 (mobile/responsive view).
 > Store screenshots in a folder named `docs/screenshots/` at the project root and reference them with relative paths.
 
 ---
@@ -15,160 +16,206 @@
 
 1. [System Overview](#1-system-overview)
 2. [User Roles & Access Levels](#2-user-roles--access-levels)
-3. [Getting Started: Login & Logout](#3-getting-started-login--logout)
-4. [Dashboard Overview (Home Page)](#4-dashboard-overview-home-page)
+3. [Getting Started: Login, Landing & Logout](#3-getting-started-login-landing--logout)
+4. [Dashboard / Overview Home Page](#4-dashboard--overview-home-page)
 5. [Profile Management](#5-profile-management)
 6. [User Management (Admin Only)](#6-user-management-admin-only)
 7. [Offices & Sites Management](#7-offices--sites-management)
-8. [Clients Management](#8-clients-management)
-9. [Work Orders – End-to-End Lifecycle](#9-work-orders--end-to-end-lifecycle)
-10. [Operator Site Uploads](#10-operator-site-uploads)
-11. [Common Tasks – Quick Reference](#11-common-tasks--quick-reference)
-12. [Troubleshooting & FAQs](#12-troubleshooting--faqs)
-13. [Glossary](#13-glossary)
-14. [Where to Add Screenshots – Index](#14-where-to-add-screenshots--index)
+8. [Clients & Contacts](#8-clients--contacts)
+9. [Proposals → Work Orders (Admin Workflow)](#9-proposals--work-orders-admin-workflow)
+10. [Work Orders – Detail, Sites & Schedule of Rates](#10-work-orders--detail-sites--schedule-of-rates)
+11. [Work-Order-Site Detail – Activities, Expenses & Uploads](#11-work-order-site-detail--activities-expenses--uploads)
+12. [Recording Expenses](#12-recording-expenses)
+13. [Field Operator Site Uploads](#13-field-operator-site-uploads)
+14. [Common Tasks – Quick Reference](#14-common-tasks--quick-reference)
+15. [Permissions Matrix](#15-permissions-matrix)
+16. [Troubleshooting & FAQs](#16-troubleshooting--faqs)
+17. [Glossary](#17-glossary)
+18. [Where to Add Screenshots – Index](#18-where-to-add-screenshots--index)
 
 ---
 
 ## 1. System Overview
 
 ### 1.1 What is OTBL?
-The **OTBL Management System** is the official internal web portal of **ONGC TERI Biotech Limited (OTBL)** — a joint venture specialising in **eco-friendly remediation of oil-contaminated soil and sludge**. The portal digitises the complete project lifecycle, from initial client enquiry through field execution and final billing, replacing paper-based workflows with a single source of truth that is accessible from desktop and mobile browsers.
+The **OTBL Management System** is the official internal web portal of **ONGC TERI Biotech Limited (OTBL)** — a joint venture specialising in **eco-friendly remediation of oil-contaminated soil and sludge**. The portal digitises the complete project lifecycle, from initial client proposal through field execution, expense tracking, and final reconciliation, replacing paper-based workflows with a single source of truth accessible from desktop and mobile browsers.
 
 ### 1.2 What problems does it solve?
-- **Eliminates paper trails** – job cards, site logs, and expense vouchers are captured digitally and time-stamped.
-- **Real-time visibility** – head office can monitor field progress, costs, and completion rates the moment they happen.
-- **Centralised SOR (Schedule of Rates)** – every work order is priced from a controlled rate sheet, preventing billing errors.
-- **Auditable expense tracking** – every rupee spent at a site is attributed to a category (Contractor / Labour / Material / Equipment / Misc.) and rolled up automatically.
-- **Field-to-office evidence chain** – operators upload geo-tagged photos and documents straight from the worksite to SharePoint, instantly viewable by managers.
+- **Eliminates paper trails** – proposals, site activity sheets, and expense vouchers are captured digitally and time-stamped.
+- **Real-time visibility** – head office can monitor field progress, completion, and costs as they happen.
+- **Centralised Schedule of Rates (SOR)** – every work order is priced from a controlled rate sheet (with fixed 18% GST), preventing billing errors.
+- **Auditable expense tracking** – every rupee spent at a site is attributed to an activity and a category (Contractor / Labour / Material / Equipment / Miscellaneous) and rolled up into a per-site and per-work-order Profit & Loss view.
+- **Field-to-office evidence chain** – field operators upload geo-relevant photos and documents straight from the worksite to SharePoint, instantly viewable by the office.
+- **Controlled approvals** – proposals and work orders follow an admin-gated approval workflow so nothing goes live without sign-off.
 
 ### 1.3 Core entity model
-The system is organised around five interconnected entities. Understanding the hierarchy makes every page in the portal easier to navigate.
+The system is organised around a small set of interconnected entities. Understanding the hierarchy makes every page easier to navigate.
 
 ```
-Client ──► Work Order ──► Work-Order-Sites ──► Activities · Expenses · Operator Uploads
-              │                  ▲
-              │                  │
-            Office ──────────► Sites
-                            (physical locations)
+Client ──► Proposal ──► Work Order ──► Work-Order-Site ──► Activities · Expenses · Operator Uploads
+   │          │             │                ▲
+   │          │             │                │
+   │        Office ◄────────┘             Site (master physical location)
+   │          ▲                              ▲
+   └──────────┴── Offices own Sites and have Members (office manager + operators)
 ```
 
-| Entity | What it represents | Owned / managed by |
+| Entity | What it represents | Created / controlled by |
 |---|---|---|
-| **Client** | The customer company commissioning remediation work (e.g. ONGC, IOCL, refineries). | Admin / Manager |
-| **Office** | A physical OTBL branch (e.g. *Mumbai Office*) that executes projects in its region. | Admin |
-| **Site** | A physical contamination location belonging to an office (e.g. *ONGC Mehsana Pit 14*). | Office Manager |
-| **Work Order (WO)** | The formal contract issued for a Client, executed by an Office, against a Schedule of Rates. Bundles many sites, activities, expenses, and completion data. | Admin / Manager |
-| **Operator** | Field worker assigned to one or more work-order-sites. Uploads photos / documents and records on-ground evidence. | Office Manager |
+| **Client** | The customer company commissioning remediation work (e.g. ONGC, IOCL, refineries). | Admin / Office staff |
+| **Office** | A physical OTBL branch (e.g. *Mumbai Office*) that executes projects in its region. Owns sites and has members. | **Admin** (create); membership managed by Admin / Office Manager |
+| **Site** | A reusable master physical location belonging to an office (e.g. *ONGC Mehsana Pit 14*). | Admin / Office Manager |
+| **Proposal** | A formal proposal filed for a client + office, awaiting approval. The precursor to a work order. | **Admin only** |
+| **Work Order (WO)** | The contract created from an approved proposal, priced against a Schedule of Rates. Bundles many work-order-sites, activities, and expenses. | **Admin only** |
+| **Work-Order-Site** | A site attached to a specific work order, with its own job number, dates, activities, expenses, and operator uploads. | Office Manager / Admin (and office staff for linking existing sites) |
+
+> **Site vs. Work-Order-Site:** A **Site** is a reusable master location owned by an office. A **Work-Order-Site** is that site *attached to one specific work order*, carrying the job details, activity entries, expenses, and uploads for that engagement. The same master site can appear under more than one work order.
 
 ### 1.4 Process types supported
-Each Work Order is tagged with one of three process types, which determines the activity rows in the Schedule of Rates and the data-entry forms shown on the Site Detail dialog:
+Each Work Order is tagged with one of three process types, which determines the activities available in its Schedule of Rates and the forms shown on the Work-Order-Site detail dialog:
 
-| Process | Description | Typical activities |
+| Process | Internal value | Typical activities |
 |---|---|---|
-| **Bioremediation** | Biological treatment of oil-contaminated soil using microbial cultures developed by TERI. | Soil sampling, oil-zapping, bio-pile preparation, monitoring |
-| **Restoration** | Physical clean-up, excavation, transportation, and refilling. | Excavation, transportation, disposal, refilling |
-| **Bioremediation + Restoration (Both)** | Combined workflow — physical site preparation followed by biological treatment. | All of the above |
+| **Bioremediation** | `bioremediation` | Bioremediation of oil-contaminated soil, plus bio-sample & oil-zapping monitoring |
+| **Restoration** | `restoration` | Cleaning soil area, lifting oily slush / recovery of oil, excavation, transportation, refilling |
+| **Bioremediation & Restoration (Both)** | `bioremediation_restoration` | All of the above; the process type is chosen per site |
+
+The full activity catalogue is: *Cleaning Up Soil Area · Lifting Oily Slush / Recovery of Oil · Excavation Oil Contaminated Soil · Transportation Contaminated Soil · Refilling Excavated Oil Contaminated Soil Land · Bioremediation Oil Contaminated Soil.*
+Units of measure: **m² (Square Meter), m³ (Cubic Meter), MT (Metric Ton)**. GST is fixed at **18%**.
 
 ### 1.5 Key capabilities at a glance
-- Role-based access (Admin / Manager / Operator) with office-scoped permissions.
-- Per-work-order Schedule of Rates with automatic budget vs. completion vs. expense reconciliation.
-- Three-phase activity tracking: **Work Estimate → Order → Completion**.
-- Itemised expense entry with built-in category breakdown and net-surplus calculation.
-- Mobile-friendly operator upload screen with camera capture and mandatory file descriptions.
-- SharePoint integration for secure, long-term storage of field evidence.
-- Live dashboards for clients, sites, work orders, and statuses.
+- Five-role, role-based access with office-scoped permissions and a read-only Viewer role.
+- Admin-gated **Proposal → Work Order** approval workflow.
+- Per-work-order **Schedule of Rates** with automatic budget vs. completion vs. expense reconciliation.
+- Two-phase activity tracking per site: **Estimate / sub-WO → Completion**.
+- Itemised expense entry with category breakdown, contractor tracking, over-budget ("Exceeded") handling, and per-site **Profit & Loss**.
+- Browser-based field operator upload workspace with camera capture and mandatory file descriptions.
+- SharePoint integration for secure, long-term storage of proposals, work orders, expenses, and field evidence.
+- Live dashboards for clients, sites, work orders, and statuses, scoped to each user's access.
 
 ### 1.6 Supported devices & browsers
 - **Desktop:** Chrome, Edge, or Firefox (latest two versions). Recommended resolution ≥ 1280×800.
-- **Mobile:** Chrome (Android) and Safari (iOS) for field operator uploads. Camera capture requires HTTPS and camera permission.
-- **Tablet:** Fully supported in landscape orientation for managers reviewing site data on the move.
+- **Mobile browser:** Chrome (Android) and Safari (iOS) for field operator uploads. Camera capture requires HTTPS and camera permission.
+- **Tablet:** Fully supported in landscape orientation.
 
-📸 **[SCREENSHOT: High-level architecture / landing page]** – capture the login screen with the OTBL logo and "Management System Portal" tagline.
+📸 **[SCREENSHOT: Login / landing page]** – capture the login screen with the OTBL logo and "ONGC TERI Biotech Limited" title.
 📸 **[SCREENSHOT: Entity-relationship diagram]** – optional, useful for new-joiner training decks.
 
 ---
 
 ## 2. User Roles & Access Levels
 
-The system enforces three roles. Each role sees a different subset of menu items and pages.
+The system enforces **five roles**. Each role sees a different subset of pages, and most data is additionally **scoped to the offices or sites a user is assigned to**.
 
-| Role | Access Level | Sees in Sidebar |
-|---|---|---|
-| **Administrator (admin)** | Full system access. Can create / edit / delete any user, office, site, client, or work order. | Overview · User Management · Offices & Sites · Clients · Work Orders · Profile |
-| **Manager (manager)** | Office-scoped. Can manage clients, work orders, and sites for offices they belong to. Cannot create users. | Overview · Offices & Sites · Clients · Work Orders · Profile |
-| **Operator (operator)** | Site-scoped. Sees only the site(s) or work-order-site(s) they are assigned to – usually used for uploading site documents and photos from the field. | (No sidebar) – routed directly to their assigned site upload page. |
+### 2.1 The five roles
 
-📸 **[SCREENSHOT: Sidebar comparison]** – take three side-by-side screenshots of the sidebar as it appears for Admin, Manager, and Operator users.
+| Role | Internal value | Level | What they can do |
+|---|---|---|---|
+| **Administrator** | `admin` | 4 | Full, unrestricted access. The only role that can create users, create offices, appoint office managers, and create / approve / cancel proposals and work orders. |
+| **Office Manager** | `office_manager` | 3 | Office-scoped. Manages office operator membership, creates sites, adds sites to work orders, and records activities/expenses for their office(s). **Read-only on proposals and work orders** (cannot create, approve, or cancel them). |
+| **Office Operator** | `office_operator` | 2 | Office-scoped. A member of one or more offices; can view and work within their assigned office(s) but cannot manage membership or the office-manager seat. **Read-only on proposals and work orders.** |
+| **Site Operator** | `site_operator` | 2 | Field user assigned to specific work-order-sites. Used to upload photos / documents from the worksite. No general dashboard navigation. |
+| **Viewer** | `viewer` | 1 | **Read-only** across everything visible to them. Can open pages and view data but cannot save any change (all write actions are blocked). |
 
-> **How to determine your role:** Open the **Profile** page (sidebar → Profile) or look at the top of the **Overview** page – your name and role are shown beside the "Signed in as …" label.
+> **Two kinds of "role".** Every user has one **global role** (above), stored on their account. Separately, when a user is added to an **office**, they hold an **office-scoped role** within that office — either **office manager** or **office operator**. These are independent: a user can be the manager of one office and merely an operator in another. Office-level authority (e.g. managing members) is always decided per-office, not from the global role alone.
+
+📸 **[SCREENSHOT: User role badges in the User Management table]** – shows the colour-coded role chips.
+
+### 2.2 Membership model
+- **Office Operators** are added to **offices** (they cannot be assigned to individual sites).
+- **Site Operators** are assigned to **work-order-sites** (they are not office members).
+- The **office manager seat** is filled by a user whose global role is *Office Manager*, and **only an Administrator can appoint or remove it**.
+
+### 2.3 Dashboard "modes" — what each user lands on
+After login, the portal places each user into one of four UI modes based on their role and assignments:
+
+| Mode | Who | Navigation | Lands on |
+|---|---|---|---|
+| **Full access** | Admin, Viewer | Full sidebar | Overview (`/dashboard`) |
+| **Office-scoped** | Office Managers / Office Operators assigned to ≥ 1 office | Full sidebar; figures limited to assigned offices | Overview (`/dashboard`) |
+| **Field upload** | Site Operators with work-order-site assignments | **No sidebar** | Their site upload workspace (`/dashboard/wo-site`, or straight into the site if they have only one) |
+| **Site assignment / no access** | Users with no office and no site assignment yet | **No sidebar** | "No dashboard access yet" screen (`/dashboard/site-assigned`) |
+
+> **How to check your role and scope:** Open the **Overview** page — a banner at the top states your access level ("Full access", "Office-scoped", "Field upload", or "Site assignment") and your status. Your role is also shown on the **Profile** page.
+
+📸 **[SCREENSHOT: Sidebar comparison]** – take screenshots of the sidebar for Admin vs. an office-scoped user (and note that Site Operators / no-access users see no sidebar).
 
 ---
 
-## 3. Getting Started: Login & Logout
+## 3. Getting Started: Login, Landing & Logout
 
 ### 3.1 Logging in
 1. Open the application URL in any modern browser (Chrome, Edge, or Firefox).
-2. The login screen displays the OTBL logo and a "Welcome Back" card.
+2. The login screen displays the OTBL logo and the "ONGC TERI Biotech Limited" title.
 3. Enter:
    - **Email** – your registered email address.
    - **Password** – provided by your administrator.
 4. Click **Login**.
-5. On success you will be redirected:
-   - **Admin / Manager** → Overview page (`/dashboard`).
-   - **Operator** → directly to their assigned site upload page (`/dashboard/wo-site/<id>`) or a "No dashboard access yet" screen if not yet assigned.
+5. On success you are taken to `/dashboard`, and the portal then routes you to the right place for your role (see §3.2).
 
 📸 **[SCREENSHOT: Login screen – fields visible, no credentials filled]**
 📸 **[SCREENSHOT: Login screen – with validation error message]** (optional)
 
-### 3.2 Logging out
-- Sidebar → **Logout** (Account section), **or**
-- Profile page → "Log out" button, **or**
-- Overview page → top-right **Log out** button.
+### 3.2 Where you land after login
+- **Admin / Viewer** → **Overview** page (full access).
+- **Office Manager / Office Operator** (assigned to an office) → **Overview** page (figures limited to your office(s)).
+- **Site Operator** with work-order-site assignment(s) → your **site upload workspace** (`/dashboard/wo-site`). If you have exactly one assignment, you are taken straight into that site.
+- **No assignment yet** → a **"No dashboard access yet"** screen prompting you to contact your administrator.
+
+### 3.3 Logging out
+Depending on your view, **Log out** is available in any of these places:
+- **Sidebar → Account section** (office-scoped / admin views).
+- **Overview page → top-right Log out button.**
+- **Field upload workspace → header Log out button** (Site Operators).
+- **"No dashboard access yet" screen → Log out button.**
 
 📸 **[SCREENSHOT: Sidebar with Logout option highlighted]**
 
-### 3.3 Forgot password
-Currently passwords are admin-managed. Contact your administrator to reset.
+### 3.4 Forgot password
+Passwords are administrator-managed. To reset, contact your administrator. (You can change your *own* password from the Profile page once logged in — see §5.)
 
 ---
 
-## 4. Dashboard Overview (Home Page)
+## 4. Dashboard / Overview Home Page
 
-After logging in (admin / manager), the **Overview** page (`/dashboard`) shows:
+After logging in, full-access and office-scoped users see the **Overview** page (`/dashboard`):
 
-1. **Access & scope card** – reminds you whether you have full or office-scoped access.
-2. **Your profile card** – email, role, user ID.
-3. **At-a-glance tiles** – live counters for:
-   - Clients · Client contacts · Offices · Sites
-   - Work Orders · Pending · Completed · Cancelled
-4. **Recent Work Orders table** – the last 8 work orders with code, title, client, office, last update, and status.
-5. **Quick Navigation card** – shortcut links to Clients, Work Orders, Offices & Sites, and (for admins) User Management.
+1. **Access banner** – states your scope (Full access / Office-scoped / Field upload / Site assignment), your status badge, and your email.
+2. **"At a glance" statistics** – eight tiles:
+   - Clients · Client Contacts · Offices · Sites
+   - Total Work Orders · Pending · Completed · Cancelled
+   (For office-scoped users these counts reflect only your assigned office(s).)
+3. **Recent Work Orders table** – the most recent work orders with code (clickable), title, client, office, last updated, and a colour-coded status badge. A **View all** link opens the Work Orders page.
+4. **Quick navigation** – shortcut cards to Clients, Work Orders, Offices & Sites, and (admins only) User Management.
 
-📸 **[SCREENSHOT: Overview page – full view showing scope card, stats, recent work orders, and quick navigation]**
+📸 **[SCREENSHOT: Overview page – full view showing access banner, stats, recent work orders, and quick navigation]**
 
 ---
 
 ## 5. Profile Management
 
-**Path:** Sidebar → Profile
+**Path:** Sidebar → Profile (or the footer Account section).
 
-You can:
-- View your name, email, role, contact number, account status, and join date.
-- Update your name and contact number.
-- Change your password (current + new password required).
+Every logged-in user (except Viewers, who cannot save changes) can manage their own profile.
 
-**Steps to update profile:**
-1. Click **Profile** in the sidebar.
-2. Click the **Edit** (pencil) icon next to the field you want to change.
-3. Enter new value.
-4. Click **Save**.
+The page shows:
+- **Profile header** – avatar (initials), your name, a **role badge**, a **status badge** (Active / Inactive), and your "member since" date.
+- **Account details** – name, email, contact number, and join date.
+- **Security** – change-password form.
 
-**Steps to change password:**
-1. Open the **Change Password** card.
-2. Enter your current password.
-3. Enter your new password (visibility toggle available via the eye icon).
-4. Click **Update Password**.
+**To update your details:**
+1. Click **Profile**.
+2. In the **Account details** card, click the **Edit** (pencil) icon.
+3. Update your **Name**, **Email**, and/or **Contact Number**.
+4. Click **Save Changes**.
+
+> **Note:** Your **role** and **account status** can only be changed by an administrator — they are read-only on your own profile.
+
+**To change your password:**
+1. Open the **Change Password** (Security) card.
+2. Enter your **Current password**.
+3. Enter and confirm your **New password** (use the eye icon to toggle visibility).
+4. Click to update. You will see a "Password changed" confirmation.
 
 📸 **[SCREENSHOT: Profile page – view mode]**
 📸 **[SCREENSHOT: Profile page – edit name/contact mode]**
@@ -178,408 +225,554 @@ You can:
 
 ## 6. User Management (Admin Only)
 
-**Path:** Sidebar → User Management
-
-Visible only to Administrators.
+**Path:** Sidebar → User Management. **Visible only to Administrators.**
 
 ### 6.1 Listing users
 The page has two tabs:
-- **Show All** – paginated table of every user with name, email, role, status, contact, created date.
-- **Categorized** – users grouped by role (Admin / Manager / Operator).
+- **Show All** – a paginated table of every user.
+- **Categorized** – users grouped by role (Office Manager / Office Operator / Site Operator).
 
-A search-and-filter bar at the top lets you find users by name, email, role, or status.
+A search-and-filter bar lets you:
+- **Search** by name, email, or contact number.
+- **Filter by role** – All Roles / Office Manager / Office Operator / Site Operator / Viewer.
+- **Filter by status** – All / Active / Inactive.
+- **Reset** all filters.
+
+**Table columns:** Status · Name (sortable: Latest / Oldest / A–Z / Z–A) · Email · Contact · Role (colour-coded badge) · Offices/Sites (assignment badges) · Actions (Edit). Use **Load More** to page through results.
 
 📸 **[SCREENSHOT: User Management – Show All tab]**
 📸 **[SCREENSHOT: User Management – Categorized tab]**
 📸 **[SCREENSHOT: User search & filter bar with filters open]**
 
 ### 6.2 Creating a new user
-1. Click **+ Create User** (top right).
+1. Click **+ Create User**.
 2. Fill in:
    - **Name** (required)
    - **Email** (required, must be unique)
-   - **Contact number** (10-digit)
-   - **Role** – Admin / Manager / Operator
-   - **Password** – type or click the **Generate** button to auto-create a strong one.
+   - **Password** (required — type it; use the eye icon to show/hide)
+   - **Contact number** (optional, 10-digit)
+   - **Role** (required) — selectable options are **Office Manager, Office Operator, Site Operator, Viewer**.
+     > Administrators cannot be created through this form. New admin accounts are provisioned outside the standard UI.
 3. Click **Create**.
-4. A confirmation screen shows the new credentials with **Copy** buttons next to each field – share these securely with the new user.
+4. A **credentials confirmation** screen appears showing the new email and password with **Copy** buttons (and a **Copy All Credentials** button).
+   > ⚠️ **The password is shown only once and cannot be retrieved later.** Copy and share it securely with the new user before clicking **Done**.
 
 📸 **[SCREENSHOT: Create User dialog – empty form]**
 📸 **[SCREENSHOT: Create User dialog – credentials confirmation screen with copy buttons]**
 
 ### 6.3 Editing a user
-1. From the user table, click the **Edit** icon on the user's row.
-2. Update fields as needed.
-3. Click **Save**.
+1. In the user table, open the row's **Actions** menu → **Edit User**.
+2. Update Name, Email, Contact Number, and Role as needed (the password field is not shown when editing).
+3. Click **Update**.
 
-### 6.4 Deactivating / activating a user
-Toggle the **Status** switch on the user row (active ⇄ inactive). Inactive users cannot log in.
-
-📸 **[SCREENSHOT: User row with status toggle highlighted]**
+### 6.4 Account status
+Account **status** (Active / Inactive) is an administrator-controlled attribute. **Inactive users cannot log in.** If a user needs to be activated or deactivated, contact an administrator.
 
 ---
 
 ## 7. Offices & Sites Management
 
-**Path:** Sidebar → Offices & Sites
+**Path:** Sidebar → Offices & Sites.
 
-An **Office** is a physical branch (e.g. *Mumbai Office*). Each office owns **Sites** (physical locations where work is performed) and **Members** (managers / operators assigned to that office).
+An **Office** is a physical OTBL branch. Each office **owns Sites** (reusable master locations) and **has Members** (one office manager + any number of office operators).
 
 ### 7.1 Office list
-The page shows all offices as cards. Each card displays:
-- Office name, address, status (active/inactive)
-- Site count, member count
-- Quick links: **View details**, **Manage members**
+Offices are shown as cards. Each card displays:
+- Office name and status (Active / Inactive).
+- An **Info** panel: address, email, GST number, the assigned manager (if any), site count, operator count, and creation date.
+- A **site count** badge and an arrow to open **Office Details**.
+- **Members** and **Create Site** buttons — **shown only if you can manage this office** (i.e. you are an Administrator or *this* office's manager).
+- A short list of the office's sites (up to six), with a "+N more sites" note when there are more.
 
-A filter row supports search, status filter, and reset.
+A filter row supports search (name / address / contact) and status filtering, with a reset.
 
 📸 **[SCREENSHOT: Offices & Sites – list of office cards]**
 
-### 7.2 Creating an office
-1. Click **+ Create Office** (top right).
-2. Fill in office name, contact, address, city, state, pincode.
-3. Click **Create**.
+### 7.2 Creating an office (Admin only)
+1. Click **+ Create Office**.
+2. Fill in (all required): **Office Name, Email, Address, State, City, Pincode, GST Number.**
+3. *(Optional)* Assign members at creation:
+   - **Manager** – a single user whose global role is *Office Manager*.
+   - **Office Operators** – one or more users whose global role is *Office Operator*.
+   > Only Office Operators may be added as operators; Site Operators belong to sites, not offices.
+4. Click **Create Office**.
 
-📸 **[SCREENSHOT: Create Office dialog]**
+📸 **[SCREENSHOT: Create Office dialog – info fields]**
+📸 **[SCREENSHOT: Create Office dialog – member assignment tabs]**
 
 ### 7.3 Office Details dialog
-Click **View details** on any office card to open the Office Details dialog. It contains:
-- **Office info card** – address, contact info, status.
-- **Sites table** – paginated list of sites belonging to this office, with name, address, status, and assigned operators.
-- **Search bar** for sites within this office.
+Click the arrow on an office card to open **Office Details**. It contains:
+- **Office info** – address, city/state/pincode, email, GST, status, and manager.
+- **Sites table** – paginated list of the office's sites with status, name, address, pincode, created date, and a **Work Orders & Operators** button.
+- A **search** box for sites within this office, and **Load More** paging.
 
-From here you can:
-- **Add a new site** to this office.
-- **Open a site** to view assigned operators.
-- **Remove an operator** from a site.
-
-📸 **[SCREENSHOT: Office Details dialog – sites table view]**
-📸 **[SCREENSHOT: Office Details dialog – operator chip with remove button]**
+📸 **[SCREENSHOT: Office Details dialog – sites table]**
 
 ### 7.4 Creating a site
-1. Inside the Office Details dialog, click **+ Add Site**.
-2. Enter:
-   - Site name, address, city, state, pincode
-   - (Optional) initial operators to assign
-3. Click **Create**.
+**Who:** Administrator or the office's manager (the **Create Site** button is hidden otherwise).
+1. From the office card (or details), click **Create Site**.
+2. Enter (all required): **Site Name, Address, City, State, Pincode.**
+3. Click **Create Site**.
+
+> Operators are **not** assigned at site-creation time. Site Operators are assigned later, per work-order-site (see §11). Office membership is managed separately (§7.5).
 
 📸 **[SCREENSHOT: Create Site dialog]**
 
 ### 7.5 Managing office members
-1. From the office card, click **Manage Members**.
-2. Add a user (manager / operator) by searching their name or email.
-3. Set their role within this office.
-4. Remove members by clicking the trash icon.
+**Who:** Administrator or the office's manager (the **Members** button is hidden otherwise).
 
-📸 **[SCREENSHOT: Manage Office Members dialog]**
+Open **Members** on an office card. The dialog has two parts:
+
+**A. Currently assigned**
+- **Manager** row – shows the current manager (or "None"). The **remove** control is **visible only to Administrators**.
+- **Office Operators** row – lists current operators, each with a remove control (usable by an Administrator *or* the office manager).
+
+**B. Add members (tabs)**
+- **Managers tab** – **visible to Administrators only.** Search the Office-Manager pool and **Assign** a manager. An office can have **at most one** manager; to change it, remove the existing one first.
+- **Office Operators tab** – visible to Administrators and the office manager. Search the Office-Operator pool and **Add** operators.
+
+> **Key rule (enforced in the UI *and* on the server):** Only an **Administrator** can appoint or remove an office's **manager**. Office managers can only add or remove **office operators**. Office operators cannot manage membership at all.
+
+📸 **[SCREENSHOT: Manage Office Members dialog – Admin view (Managers + Operators tabs)]**
+📸 **[SCREENSHOT: Manage Office Members dialog – Office Manager view (Operators tab only)]**
 
 ---
 
-## 8. Clients Management
+## 8. Clients & Contacts
 
-**Path:** Sidebar → Clients
+**Path:** Sidebar → Clients.
 
 ### 8.1 Clients & Contacts tabs
-The Clients page has two tabs at the top right:
-- **Clients** – list of all client companies (with count badge).
-- **Contacts** – list of individual contact persons (with count badge).
+The page has two tabs (each with a count badge):
+- **Clients** – all client companies.
+- **Contacts** – all individual contact persons across clients.
 
-A search-and-filter bar lets you narrow down by name, email, or other fields.
+A search-and-filter bar narrows the lists. Each client card shows name, email, contact number, address, status, and roll-up counts (contacts, work orders, proposals, sites).
 
 📸 **[SCREENSHOT: Clients page – Clients tab with cards]**
 📸 **[SCREENSHOT: Clients page – Contacts tab]**
 
 ### 8.2 Creating a client
 1. Click **+ Create Client**.
-2. Enter company name, GSTIN (optional), address, city, state, pincode.
-3. Click **Create**.
+2. Enter (all required): **Name, Address, State, City, Pincode, GST Number, Contact Number, Email.**
+3. Add at least one **contact** — either select existing contacts or create new ones inline (contact fields: **Name** and **Contact Number** and **Email** required; **Designation** and **Contact Type** optional).
+4. Click **Create**.
 
 📸 **[SCREENSHOT: Create Client dialog]**
 
-### 8.3 Creating a client contact
-1. Click **+ Create Contact** (visible on the Contacts tab).
-2. Pick the client from the dropdown.
-3. Enter name, designation, email, phone.
+### 8.3 Creating a contact
+1. On the **Contacts** tab, click **+ Create Contact**.
+2. Pick the **Client** (required).
+3. Enter **Name**, **Contact Number**, **Email** (required); **Designation** and **Contact Type** are optional.
 4. Click **Create**.
 
 📸 **[SCREENSHOT: Create Contact dialog]**
 
 ### 8.4 Client detail page
-Click any client card to open the **Client Detail** page (`/dashboard/client/<id>`). This page shows:
-- **Client info card** – address, GST, contacts, status. Click **Edit details** to update.
-- **Proposals & Work Orders section** – the proposals submitted for this client and their work orders.
-
-From here you can create a new proposal / work order for the client.
+Click a client card to open the **Client Detail** page (`/dashboard/client/<id>`):
+- **Header** – client name with an **Edit details** button.
+- **Client info card** – full address, GST (masked by default, with a show/hide toggle), linked contacts, and status. A **View Contacts** button lists all contacts.
+- **Stats** – total sites, completed sites, total budget, completed-work-order budget, and budget utilization %.
+- **Proposals – Work Orders section** – the proposals filed for this client and the work orders created from them (see §9).
 
 📸 **[SCREENSHOT: Client Detail page – full view]**
-📸 **[SCREENSHOT: Client Detail page – edit client dialog]**
-📸 **[SCREENSHOT: Client Detail page – proposals section]**
+📸 **[SCREENSHOT: Client Detail page – Edit client dialog]**
+📸 **[SCREENSHOT: Client Detail page – Proposals & Work Orders section]**
 
 ---
 
-## 9. Work Orders – End-to-End Lifecycle
+## 9. Proposals → Work Orders (Admin Workflow)
 
-**Path:** Sidebar → Work Orders (`/dashboard/work-order`)
+This is the controlled, **admin-gated** core workflow. Office Managers and Office Operators can **view** proposals and work orders filed under their office, but **cannot create, approve, reject, or cancel** them — those actions are **Administrator-only**.
 
-The Work Orders module is the heart of the system. It tracks the work from creation to billing.
+```
+Create Proposal (PENDING)  ──►  Approve  ──►  Create Work Order (PENDING, from approved proposal)
+        │                                              │
+        └──► Reject (REJECTED)                         └──► Approve (sets approval gate) · Cancel (with reason)
+```
 
-### 9.1 Work Order list
-- A paginated list/table of all work orders within your scope.
-- Search bar + filters (status: pending / completed / cancelled, office filter, ordering).
-- Click any row to open the Work Order Detail page.
+### 9.1 Creating a proposal (Admin only)
+From the Client Detail page (Proposals – Work Orders section):
+1. Click to create a proposal.
+2. Fill in: **Code, Title, Description, Office** (an active office), **Proposal Submission Date**, and upload the **proposal document** (stored in SharePoint).
+3. Save. The proposal is created in **Pending** status.
 
-📸 **[SCREENSHOT: Work Order list page]**
-📸 **[SCREENSHOT: Work Order search & filter open]**
+📸 **[SCREENSHOT: Create Proposal dialog]**
 
-### 9.2 Creating a Work Order
-Work orders are usually created from the **Client Detail** page (Section 8.4), inside the Proposals & Work Orders area.
+### 9.2 Proposal statuses & approval (Admin only)
+A proposal moves through: **Pending → Approved** or **Pending → Rejected**.
+- Open a proposal to view its code, title, description, dates, and any linked work order.
+- When the proposal is **Pending** and you are an Administrator, **Approve** and **Reject** buttons are shown.
+- Only **Pending** proposals can be approved or rejected.
 
-1. Open a Client → click **+ Create Work Order**.
-2. Fill in:
-   - **Title**, **Code** (auto-generated), **Description**
-   - **Process Type** – Bioremediation / Restoration / Both
-   - **Office** – pick the executing office
-   - **Start date**, **End date**
-   - **Rate contract number**, **Agreement number** (optional)
-3. Click **Save**. The work order opens in the detail view.
+📸 **[SCREENSHOT: Proposal detail dialog – Approve / Reject buttons]**
 
-📸 **[SCREENSHOT: Create Work Order form]**
+### 9.3 Creating a work order (Admin only)
+A work order is created **from an approved proposal**. The creation dialog has two steps:
 
-### 9.3 Work Order Detail page
-Path: `/dashboard/work-order/<id>`
+**Step 1 – Basic details:**
+- **Title** (required), **Work Order Code** (required)
+- **Process Type** (required) – Bioremediation / Restoration / Both
+- **Agreement Number** (required), **Rate Contract Number** (required)
+- **Start Date** (required), **End Date** (required)
+- **Handing-over Date** (optional), **Description** (optional)
+- **Work order document** upload (required; stored in SharePoint)
 
-This page has several sections:
+**Step 2 – Schedule of Rates (SOR):**
+Add one or more activity rows. For each row:
+- **Activity** – chosen from the activities valid for the work order's process type.
+- **Unit** – m² / m³ / MT.
+- **Estimated Quantity** (must be greater than 0).
+- **RC Unit Rate**.
+- **GST %** – fixed at 18%.
+- **Unit Rate (incl. GST)** and **Total Cost** – calculated automatically.
+- **Transportation (km)** – optional.
 
-**A. Work Order Details Card** – header with code, title, client, office, dates, status, and high-level statistics:
+At least one valid activity row is required. On save, the work order is created in **Pending** status.
+
+📸 **[SCREENSHOT: Create Work Order – Step 1 (basic details)]**
+📸 **[SCREENSHOT: Create Work Order – Step 2 (Schedule of Rates)]**
+
+### 9.4 Work order approval gate (Admin only)
+Separately from its status, a work order carries an **approval gate**. An Administrator can **Approve** a work order to flip this gate (recording who approved it and when). Approving does **not** change the pending/completed status — it marks the work order as signed off / live.
+
+---
+
+## 10. Work Orders – Detail, Sites & Schedule of Rates
+
+**Path:** Sidebar → Work Orders (`/dashboard/work-order`).
+
+### 10.1 Work Order list
+A paginated table of all work orders within your scope. Tools:
+- **Search** by code, title, agreement number, client, or office.
+- **Filters** – status (pending / completed / cancelled), office, and ordering (latest / oldest / title A–Z / Z–A).
+- **Columns** – Title (sortable), Code, Client, Office, Agreement Number, Start Date, End Date, and a colour-coded **Status** badge.
+- **Load More** paging.
+
+Click a row to open the Work Order Detail page.
+
+📸 **[SCREENSHOT: Work Order list page with filters]**
+
+### 10.2 Work Order Detail page
+Path: `/dashboard/work-order/<id>`.
+
+**A. Header card** – code, title, process type, status badge, description, agreement number, RC number, and start/end dates.
+
+**B. Statistics** –
 - Total sites · Completed sites
 - Total budget amount · Total completion amount · Budget utilization %
-- Total expenses · Net surplus · Expenses by type
+- Total expenses · Net surplus · Expenses by type (Contractor / Labour / Material / Equipment / Miscellaneous)
 
-**B. Work Order Sites section** – grid (Card view) or Table view of all sites attached. Use the **Card / Table** toggle at the top.
+**C. Approval actions (Administrators only, when the WO is not cancelled):**
+- **Approve** – flips the approval gate (see §9.4); shown while the WO is not yet approved.
+- **Cancel WO** – opens a dialog requiring a **cancellation reason** (up to 1000 characters). Cancellation is terminal.
 
-**C. Action buttons (top right):**
-- **View Schedule of Rates** – open the SOR dialog.
-- **View All Expenses** – open the expenses dialog.
-- **Operator Uploads (N)** – all files uploaded by field operators across this work order's sites.
-- **+ Create Site** – attach a new site to this work order.
+**D. Sites section** – all work-order-sites attached, shown in a **Card view** or **Table view** (toggle at top), paginated. Click a site to open its detail dialog (§11).
 
-**D. Schedule of Rates table** – at the bottom, shows each activity (e.g. *Excavation*, *Transportation*, *Bioremediation*) with rate, unit, estimated quantity, and total cost.
+**E. Action buttons:**
+- **View Schedule of Rates** – the SOR table (read-only at WO level).
+- **View All Expenses** – every expense across all of this WO's sites, grouped by type with totals and net surplus.
+- **Operator Uploads (N)** – all files uploaded by field operators across this WO's sites.
+- **Create Site** – attach a site to this work order (§11.1).
 
-📸 **[SCREENSHOT: Work Order Detail page – top section (header + stats)]**
-📸 **[SCREENSHOT: Work Order Detail page – Sites in card view]**
-📸 **[SCREENSHOT: Work Order Detail page – Sites in table view]**
+**F. Schedule of Rates table** – each activity with unit, estimated quantity, RC unit rate, GST %, unit rate (incl. GST), total cost, and transportation km.
+
+📸 **[SCREENSHOT: Work Order Detail – header + statistics]**
+📸 **[SCREENSHOT: Work Order Detail – Sites in card view]**
+📸 **[SCREENSHOT: Work Order Detail – Sites in table view]**
 📸 **[SCREENSHOT: Schedule of Rates table]**
+📸 **[SCREENSHOT: Approve / Cancel Work Order actions (admin)]**
+📸 **[SCREENSHOT: Work Order Expenses dialog (View All Expenses)]**
 
-### 9.4 Adding a site to a Work Order
-1. On the Work Order Detail page, click **+ Create Site**.
-2. Choose how to attach the site:
-   - Pick an **existing site** from the office, **or**
-   - Create a **new site** inline.
-3. Enter:
-   - Job number · Start/end date
-   - Activity type (in-situ / ex-situ)
-   - Metric tonnes / rate / budget amount
-4. Click **Create**.
+### 10.3 How a Work Order becomes "Completed"
+Work order status is computed for display as follows:
+- If it was **cancelled** in the database → **Cancelled** (terminal).
+- If it was explicitly marked **completed** → **Completed**.
+- Otherwise → it shows **Completed** automatically once **every Schedule-of-Rates line has completion quantity (summed across all of its sites) that meets or exceeds the estimated quantity**; until then it stays **Pending**.
 
-📸 **[SCREENSHOT: Create Work-Order-Site dialog – step 1 (choose existing or new)]**
-📸 **[SCREENSHOT: Create Work-Order-Site dialog – step 2 (form fields)]**
+This means completion is driven by the **Completion** entries you record per site (see §11.3) — as the field work is logged, the work order rolls up toward Completed on its own.
 
-### 9.5 Site Detail dialog (inside a Work Order)
-Click any site card or row to open the Site Detail dialog. Tabs include:
-
-- **Details** – site address, dates, activity type, operators assigned.
-- **Activities** – per-phase data entry for each activity from the Schedule of Rates:
-  - **Work Estimate** phase – planned quantities.
-  - **Order** phase – ordered quantities.
-  - **Completion** phase – actual completed quantities (this drives `total_completion_amount`).
-- **Bioremediation** (visible for bioremediation work orders) – special forms for bio samples & oil zapping data.
-- **Expenses** – itemised list of expenses incurred at this site, with the option to **+ Add Expense**.
-- **Operator Uploads** – the documents uploaded by the field operator(s) for this site (read-only on this dialog; managed via the operator upload screen, Section 10).
-
-📸 **[SCREENSHOT: Site Detail dialog – Details tab]**
-📸 **[SCREENSHOT: Site Detail dialog – Activities tab with phases]**
-📸 **[SCREENSHOT: Site Detail dialog – Bioremediation tab]**
-📸 **[SCREENSHOT: Site Detail dialog – Expenses tab]**
-📸 **[SCREENSHOT: Add Expense dialog]**
-📸 **[SCREENSHOT: Site Detail dialog – Operator Uploads]**
-
-### 9.6 Editing activity submissions
-Each row in the **Activities** tab has an **Edit** (pencil) icon. Click it to amend a previously submitted quantity. The change is reflected immediately in the work order statistics.
-
-📸 **[SCREENSHOT: Activity row with Edit icon highlighted]**
-
-### 9.7 Work Order expenses (all-work-order view)
-From the Work Order Detail page, click **View All Expenses**:
-- Aggregates every expense entered across every site of this work order.
-- Grouped by expense type (Contractor / Labour / Material / Equipment / Misc).
-- Shows totals, exceeded totals, and the net surplus.
-
-📸 **[SCREENSHOT: Work Order Expenses dialog]**
-
-### 9.8 Completing or cancelling a Work Order
-A work order is auto-marked **Completed** when every site reaches its full estimated quantity (this is calculated; see `getEffectiveWorkOrderStatus`). To **cancel** a work order:
-1. Open the Work Order Detail page.
-2. Click **Cancel Work Order** (admin/manager only).
-3. Enter a **cancellation reason** and confirm.
-
-⚠️ Once a Work Order is **Completed**, you cannot add new sites to it.
+⚠️ **Cancelling a work order requires a reason and is permanent.** Only Administrators can cancel.
 
 📸 **[SCREENSHOT: Cancel Work Order dialog with reason field]**
 
 ---
 
-## 10. Operator Site Uploads
+## 11. Work-Order-Site Detail – Activities, Expenses & Uploads
 
-**Audience:** Operators (also visible to admins/managers via the Work Order Detail page).
+### 11.1 Adding a site to a Work Order
+On the Work Order Detail page, click **Create Site**. The dialog is a two-step flow:
 
-### 10.1 Operator landing page
-When an operator logs in, they are routed automatically to one of:
-- A single site upload page (`/dashboard/wo-site/<id>`) if they have one assignment.
-- A list of their assigned work-order sites if multiple.
+**Step 1 – Choose how to attach the site:**
+- **Select an existing site** from the office (search and pick), **or**
+- **Create a new site** inline (Name, Address, City, State, Pincode).
+  > Linking an *existing* site can be done by any office member. **Creating a brand-new site requires the office manager (or an Administrator).**
 
-📸 **[SCREENSHOT: Operator landing page – list of assigned sites]**
-📸 **[SCREENSHOT: Operator landing page – auto-redirect to single site]**
+**Step 2 – Work-order-site details:**
+- **Process Type** – for "Both" work orders you choose Bioremediation or Restoration for this site; otherwise it is set automatically.
+- **Start Date**, **End Date**.
+- **Job Number**, **Joint Estimate Number**, **Area**, **Installation Type** (in-situ / ex-situ), **Land Owner Name**, **Remarks**.
+- **Select Activities** – tick the activities (from the work order's Schedule of Rates) that apply to this site.
 
-### 10.2 Uploading site documents and photos
-On the work-order-site page, the operator can:
-1. Click **Select files** to pick one or more files from the device, **or**
-2. Click **Take photo** to open the camera (mobile / laptop).
-3. Each selected file appears under **Pending upload** with a mandatory **Description** field.
-4. Add a short description for each file (e.g. *"Excavation start – north side"*).
-5. Click **Upload all**. Files are sent to SharePoint and recorded in the system.
-6. Uploaded files appear under **Uploaded** with the operator's name, date, and an **External link** to open in SharePoint.
+Click **Create** to attach the work-order-site.
 
-To **delete** a file: click the trash icon next to it and confirm.
+📸 **[SCREENSHOT: Create Work-Order-Site – Step 1 (existing vs new)]**
+📸 **[SCREENSHOT: Create Work-Order-Site – Step 2 (details + activity selection)]**
 
-📸 **[SCREENSHOT: Operator upload page – empty state]**
+### 11.2 The Site Detail dialog
+Click any site card/row on the Work Order Detail page to open the **Site Detail** dialog. It is titled with the site name and shows the work order code/title beneath. The dialog contains:
+
+- **Details card** – site name, address, dates, and status, plus an **Operator Uploads** counter and a button to open the uploads list.
+- **Assigned operators section** – the Site Operators assigned to this work-order-site (assigned/removed here by an Administrator or office staff).
+- **Three tabs:**
+
+**Tab 1 — Estimate / sub-WO**
+Per-activity estimate entry for this site. For each selected activity you record values such as **estimated quantity**, **amount**, and **transportation km**, and you can attach supporting documents for this phase. For **bioremediation** work orders, this tab also surfaces the bioremediation-specific forms (bio samples and oil-zapping data).
+
+**Tab 2 — Expenses & P&L**
+The itemised expense list for this site with an **Add Expense** button (§12), plus totals (regular and "exceeded"/over-budget amounts) and the running Profit & Loss.
+
+**Tab 3 — Completion**
+Per-activity **completion** entry — the actual quantities completed (this is what drives the work order toward "Completed"; see §10.3). For bioremediation work orders, the completion bio-sample / oil-zapping data is captured here. Below the activities is a **Expense & P&L Summary** showing **Income** (from completion activities), **Total Expenses** (regular + exceeded), and **Net P&L** (surplus or deficit).
+
+📸 **[SCREENSHOT: Site Detail dialog – Estimate/sub-WO tab]**
+📸 **[SCREENSHOT: Site Detail dialog – Expenses & P&L tab]**
+📸 **[SCREENSHOT: Site Detail dialog – Completion tab with P&L summary]**
+📸 **[SCREENSHOT: Site Detail dialog – assigned operators section]**
+📸 **[SCREENSHOT: Site Detail dialog – Operator Uploads list]**
+
+### 11.3 Editing activity entries
+Activity rows can be amended via their **Edit** (pencil) control. Changes flow immediately into the site totals and the work order statistics (and can move the work order's effective status — see §10.3).
+
+📸 **[SCREENSHOT: Activity row with Edit control]**
+
+---
+
+## 12. Recording Expenses
+
+Expenses are recorded per work-order-site, from the **Expenses & P&L** tab of the Site Detail dialog (§11.2) → **Add Expense**.
+
+**The Add Expense form:**
+- **Activity** – **required** when the site has activities; the expense is tied to a specific activity so it can be reconciled against that activity's budget.
+- **Quantity** – optional; when an activity is selected the form shows the remaining quota and warns if you exceed it.
+- **Expense type** – **optional**; if you don't choose one, the expense is recorded as **Miscellaneous**. Available types: **Contractor Payment, Labour, Material, Equipment, Miscellaneous.** You can add multiple type+amount rows under one expense.
+- **Description** – **required** (shared across the rows of one expense).
+- **Contractor** – shown only when a row uses **Contractor Payment**: pick an existing contractor or create one inline (Name required; Contact and GST optional).
+- **Date** – **required**; **Invoice number** – optional.
+- **Notes** – optional free text.
+- **Supporting document** – optional upload (PDF, Word, Excel, JPG, PNG; up to 50 MB; stored in SharePoint).
+
+**Exceeded (over-budget) expenses:** When an activity's estimated quantity is fully consumed, the form switches to **Exceeded** mode — the expense is recorded as over-budget and is rolled up separately in the totals and the P&L (shown in orange).
+
+📸 **[SCREENSHOT: Add Expense dialog – activity + type rows]**
+📸 **[SCREENSHOT: Add Expense dialog – Exceeded (over-budget) mode]**
+📸 **[SCREENSHOT: Add Expense dialog – contractor section]**
+
+---
+
+## 13. Field Operator Site Uploads
+
+**Audience:** Site Operators (also viewable by Administrators / office staff via the Work Order and Site Detail screens).
+
+### 13.1 The operator workspace
+A Site Operator who is assigned to one or more work-order-sites lands (after login) in their upload workspace:
+- **`/dashboard/wo-site`** lists all assigned work-order-sites as cards (work order code + status, site name, job number, dates, area/location, and an upload count). If they have only one assignment, they go straight into it.
+- Clicking a card opens that site's **upload page**.
+
+📸 **[SCREENSHOT: Operator workspace – list of assigned sites]**
+
+### 13.2 Uploading photos and documents
+On a work-order-site upload page:
+1. Click **Select files** to pick one or more files, **or** **Take photo** to capture directly from the device camera (the camera button uses the rear/environment camera on mobile).
+2. Each selected file appears under **Pending upload** with a **mandatory Description** field.
+3. Enter a short description for **every** file (e.g. *"Excavation start – north side"*). The **Upload all** button stays disabled until each pending file has a description.
+4. Click **Upload all**. Files are sent to SharePoint and recorded against the site. Use **Clear all** or the per-file **✕** to discard pending items.
+5. Uploaded files appear under **Uploaded** as a grid — each shows the file name (a link that opens the file in SharePoint), the description, and the uploader's name and date.
+
+To **delete** an uploaded file, use its delete control and confirm.
+
+📸 **[SCREENSHOT: Operator upload page – empty / select files]**
 📸 **[SCREENSHOT: Operator upload page – pending files with description boxes]**
-📸 **[SCREENSHOT: Operator upload page – uploading progress bar at 50%]**
+📸 **[SCREENSHOT: Operator upload page – upload progress]**
 📸 **[SCREENSHOT: Operator upload page – uploaded files grid]**
 📸 **[SCREENSHOT: Operator upload page – delete confirmation]**
 
-### 10.3 Admin / Manager view of operator uploads
-- **Per Work Order:** Work Order Detail page → **Operator Uploads (N)** button.
-- **Per Site:** Site Detail dialog → **Operator Uploads** tab.
+### 13.3 Where office staff view operator uploads
+- **Per work order:** Work Order Detail → **Operator Uploads (N)**.
+- **Per site:** Site Detail dialog → **Operator Uploads** (opened from the details card).
 
 📸 **[SCREENSHOT: Work Order Operator Uploads dialog]**
 
 ---
 
-## 11. Common Tasks – Quick Reference
+## 14. Common Tasks – Quick Reference
 
-| Task | Path / Steps |
-|---|---|
-| Onboard a new manager | User Management → + Create User → role = Manager → share credentials → Offices & Sites → Manage Members → add user |
-| Onboard a new operator | User Management → + Create User → role = Operator → share credentials → Open the relevant site → assign operator |
-| Start a new project for an existing client | Clients → open client → + Create Work Order → fill details → + Create Site → attach SOR rates |
-| Record day-to-day completion | Work Order → open site → Activities tab → fill Completion phase quantities → Save |
-| Capture a site expense | Work Order → open site → Expenses tab → + Add Expense |
-| Field operator daily upload | Login → upload page opens → take photo / pick file → description → Upload all |
-| Cancel a work order | Work Order Detail → Cancel Work Order → enter reason → confirm |
-| Reset a user's password | Profile (the user) → Change Password, or admin re-create credentials and share |
+| Task | Who | Path / Steps |
+|---|---|---|
+| Onboard an office manager | Admin | User Management → + Create User → role = **Office Manager** → share credentials → Offices & Sites → office **Members** → Managers tab → Assign |
+| Onboard an office operator | Admin (create) / Admin or office manager (assign) | + Create User → role = **Office Operator** → Offices & Sites → office **Members** → Office Operators tab → Add |
+| Onboard a site operator | Admin (create) / office staff (assign) | + Create User → role = **Site Operator** → open the relevant Work-Order-Site → assign operator |
+| File a proposal for a client | **Admin** | Clients → open client → create proposal → fill details + upload document |
+| Approve / reject a proposal | **Admin** | Open the pending proposal → Approve / Reject |
+| Create a work order | **Admin** | From an **approved** proposal → Create Work Order → Step 1 details → Step 2 Schedule of Rates |
+| Approve (sign off) a work order | **Admin** | Work Order Detail → Approve |
+| Attach a site to a work order | Office member (existing site) / Office Manager or Admin (new site) | Work Order Detail → Create Site |
+| Record estimate / completion | Office staff | Work Order → open site → Estimate/sub-WO or Completion tab → enter quantities |
+| Capture a site expense | Office staff | Work Order → open site → Expenses & P&L → Add Expense (Activity required) |
+| Field operator daily upload | Site Operator | Login → upload workspace → Take photo / Select files → description → Upload all |
+| Cancel a work order | **Admin** | Work Order Detail → Cancel WO → enter reason → confirm |
+| Change your own password | Any (not Viewer) | Profile → Change Password |
 
 ---
 
-## 12. Troubleshooting & FAQs
+## 15. Permissions Matrix
 
-**Q. I logged in but see "No dashboard access yet".**
-A. You are logged in as an operator but no site assignment exists yet. Ask your administrator to assign you to a site via Offices & Sites → Office Details → site → Operators.
+| Action | Admin | Office Manager | Office Operator | Site Operator | Viewer |
+|---|---|---|---|---|---|
+| View data (within scope) | ✔ (all) | ✔ (office) | ✔ (office) | ✔ (assigned sites) | ✔ (read-only) |
+| Create / edit users | ✔ | — | — | — | — |
+| Edit own profile / password | ✔ | ✔ | ✔ | ✔ | — |
+| Create office | ✔ | — | — | — | — |
+| Appoint / remove office manager | ✔ | — | — | — | — |
+| Add / remove office operators | ✔ | ✔ (own office) | — | — | — |
+| Create site | ✔ | ✔ (own office) | — | — | — |
+| Create / approve / reject proposal | ✔ | — | — | — | — |
+| Create / approve / cancel / delete work order | ✔ | — | — | — | — |
+| Add site to a work order (link existing) | ✔ | ✔ | ✔ | — | — |
+| Add site to a work order (create new) | ✔ | ✔ | — | — | — |
+| Record activities & expenses | ✔ | ✔ | ✔ | — | — |
+| Upload field photos/documents | ✔ | ✔ | ✔ | ✔ (assigned sites) | — |
+
+> Viewers can open everything visible to them but **every save/change action is blocked** for them system-wide.
+
+---
+
+## 16. Troubleshooting & FAQs
+
+**Q. I logged in but see "No dashboard access yet."**
+A. You have no office or site assignment yet. Office Managers/Operators must be added to an office (Offices & Sites → Members); Site Operators must be assigned to a work-order-site. Contact your administrator.
 
 **Q. I can't see the User Management menu.**
 A. Only Administrators see User Management. Check your role on the Profile page.
 
-**Q. I can't add a new site to a Work Order.**
-A. Check the work order's status – if it is **Completed**, sites cannot be added. Either reopen an existing site or create a new work order.
+**Q. I can't create a proposal or work order.**
+A. Proposals and work orders are **Administrator-only**. Office Managers and Operators can view them but cannot create, approve, reject, or cancel them.
+
+**Q. I can't appoint or remove the office manager.**
+A. Only Administrators can fill or change an office's **manager** seat. Office managers can only add/remove **office operators**.
+
+**Q. I'm an office manager but the "Create Site"/"Members" buttons are missing on an office.**
+A. Those controls appear only for an office you actually manage (or for Administrators). Confirm you are the manager of *that* office.
+
+**Q. "Upload all" is disabled.**
+A. Every pending file must have a **description** before you can upload. Add a description to each file.
 
 **Q. Upload failed.**
-A. (a) Check internet connection. (b) Ensure file size is reasonable (< 50 MB). (c) Make sure a Description is entered for every pending file – uploads are blocked until each file has one.
+A. Check your internet connection, keep file size reasonable (≤ 50 MB), and ensure a description is set for each file.
+
+**Q. Nothing saves and I only see data — am I a Viewer?**
+A. Likely yes. The **Viewer** role is read-only and all write actions are blocked. Check your role on the Profile page.
 
 **Q. The page kicked me back to login mid-session.**
-A. Your session token has expired. Log in again. If this happens repeatedly, clear browser cookies for the site.
+A. Your session expired. Log in again. If it recurs, clear the site's cookies.
 
-**Q. I see "UNAUTHORIZED" / "FORBIDDEN" in a red toast.**
-A. Your role does not allow that action. Contact your administrator.
+**Q. I see "UNAUTHORIZED" or "FORBIDDEN" in a red toast.**
+A. Your role/scope doesn't allow that action. Contact your administrator.
 
-📸 **[SCREENSHOT: Common error toast – session expired]**
 📸 **[SCREENSHOT: "No dashboard access yet" screen]**
+📸 **[SCREENSHOT: Permission error toast]**
 
 ---
 
-## 13. Glossary
+## 17. Glossary
 
-- **Work Order (WO):** A contract with a client to perform remediation work, linked to one office and many sites.
-- **Schedule of Rates (SOR):** The per-activity rate sheet attached to a work order.
-- **Activity Phase:** Each activity progresses through **Work Estimate → Order → Completion** phases, each storing a quantity.
-- **Insitu / Exsitu:** Whether the remediation is performed at the contaminated location or off-site.
-- **Bioremediation:** Treatment of oil-contaminated soil using biological agents (the core service).
-- **Operator Upload:** A file (photo or document) uploaded by a field operator for a specific work-order-site, stored in SharePoint.
-- **GSTIN:** The GST identification number of a client.
-- **Net Surplus:** Total income (completion amount) minus total expenses for a work order.
-
----
-
-## 14. Where to Add Screenshots – Index
-
-Below is the complete list of screenshot placeholders used in this SOP. Capture each in order and replace the corresponding line.
-
-1. High-level architecture / landing page (Section 1)
-2. Sidebar comparison: Admin / Manager / Operator (Section 2)
-3. Login screen – empty (Section 3.1)
-4. Login screen – with validation error (Section 3.1, optional)
-5. Sidebar with Logout highlighted (Section 3.2)
-6. Overview page – full view (Section 4)
-7. Profile page – view mode (Section 5)
-8. Profile page – edit mode (Section 5)
-9. Profile page – change password (Section 5)
-10. User Management – Show All tab (Section 6.1)
-11. User Management – Categorized tab (Section 6.1)
-12. User search & filter open (Section 6.1)
-13. Create User dialog – empty form (Section 6.2)
-14. Create User dialog – credentials confirmation (Section 6.2)
-15. User row with status toggle (Section 6.4)
-16. Offices & Sites – office card list (Section 7.1)
-17. Create Office dialog (Section 7.2)
-18. Office Details dialog – sites table (Section 7.3)
-19. Office Details dialog – operator chip with remove (Section 7.3)
-20. Create Site dialog (Section 7.4)
-21. Manage Office Members dialog (Section 7.5)
-22. Clients page – Clients tab (Section 8.1)
-23. Clients page – Contacts tab (Section 8.1)
-24. Create Client dialog (Section 8.2)
-25. Create Contact dialog (Section 8.3)
-26. Client Detail page – full (Section 8.4)
-27. Client Detail page – Edit client (Section 8.4)
-28. Client Detail page – Proposals section (Section 8.4)
-29. Work Order list page (Section 9.1)
-30. Work Order search & filter open (Section 9.1)
-31. Create Work Order form (Section 9.2)
-32. Work Order Detail – header + stats (Section 9.3)
-33. Work Order Detail – Sites in card view (Section 9.3)
-34. Work Order Detail – Sites in table view (Section 9.3)
-35. Schedule of Rates table (Section 9.3)
-36. Create Work-Order-Site dialog – step 1 (Section 9.4)
-37. Create Work-Order-Site dialog – step 2 (Section 9.4)
-38. Site Detail dialog – Details tab (Section 9.5)
-39. Site Detail dialog – Activities tab (Section 9.5)
-40. Site Detail dialog – Bioremediation tab (Section 9.5)
-41. Site Detail dialog – Expenses tab (Section 9.5)
-42. Add Expense dialog (Section 9.5)
-43. Site Detail dialog – Operator Uploads (Section 9.5)
-44. Activity row with Edit icon highlighted (Section 9.6)
-45. Work Order Expenses dialog (Section 9.7)
-46. Cancel Work Order dialog (Section 9.8)
-47. Operator landing – list of assigned sites (Section 10.1)
-48. Operator landing – auto-redirect to single site (Section 10.1)
-49. Operator upload – empty state (Section 10.2)
-50. Operator upload – pending files with descriptions (Section 10.2)
-51. Operator upload – upload progress (Section 10.2)
-52. Operator upload – uploaded files grid (Section 10.2)
-53. Operator upload – delete confirmation (Section 10.2)
-54. Work Order Operator Uploads dialog (Section 10.3)
-55. Common error toast – session expired (Section 12)
-56. "No dashboard access yet" screen (Section 12)
+- **Global role:** The role on a user's account — Admin, Office Manager, Office Operator, Site Operator, or Viewer.
+- **Office-scoped role:** A user's role *within a specific office* (office manager or office operator), independent of their global role.
+- **Office:** A physical OTBL branch that owns sites and has members.
+- **Site:** A reusable master physical location owned by an office.
+- **Work Order (WO):** The contract created from an approved proposal, priced against a Schedule of Rates.
+- **Work-Order-Site:** A site attached to a specific work order, carrying that engagement's job details, activities, expenses, and uploads.
+- **Proposal:** The admin-created precursor to a work order; statuses Pending → Approved / Rejected.
+- **Approval gate (work order):** A sign-off flag (who approved, and when) that is separate from the WO's pending/completed status.
+- **Schedule of Rates (SOR):** The per-activity rate sheet attached to a work order (with fixed 18% GST).
+- **Activity phases:** Each site records **Estimate / sub-WO** and **Completion** quantities per activity.
+- **In-situ / Ex-situ:** Whether remediation is performed at the contaminated location or off-site (the work-order-site's installation type).
+- **Exceeded expense:** An expense recorded against an activity whose estimated quantity is fully consumed; tracked as over-budget.
+- **Net P&L / Net surplus:** Income (from completion activities) minus expenses, per site and per work order.
+- **Operator upload:** A photo or document uploaded by a Site Operator for a work-order-site, stored in SharePoint.
+- **Viewer:** A read-only role; can view but cannot change anything.
+- **GSTIN / GST number:** The GST identification number of a client or office.
 
 ---
 
-**End of SOP** — Version 1.0
+## 18. Where to Add Screenshots – Index
+
+Capture each in order and replace the corresponding placeholder.
+
+1. Login / landing page (§1.6)
+2. Entity-relationship diagram – optional (§1.6)
+3. User role badges in the User Management table (§2.1)
+4. Sidebar comparison: Admin vs. office-scoped (§2.3)
+5. Login screen – empty (§3.1)
+6. Login screen – with validation error (§3.1, optional)
+7. Sidebar with Logout highlighted (§3.3)
+8. Overview page – full view (§4)
+9. Profile page – view mode (§5)
+10. Profile page – edit mode (§5)
+11. Profile page – change password (§5)
+12. User Management – Show All tab (§6.1)
+13. User Management – Categorized tab (§6.1)
+14. User search & filter open (§6.1)
+15. Create User dialog – empty form (§6.2)
+16. Create User dialog – credentials confirmation (§6.2)
+17. Offices & Sites – office card list (§7.1)
+18. Create Office dialog – info fields (§7.2)
+19. Create Office dialog – member assignment tabs (§7.2)
+20. Office Details dialog – sites table (§7.3)
+21. Create Site dialog (§7.4)
+22. Manage Office Members – Admin view (Managers + Operators tabs) (§7.5)
+23. Manage Office Members – Office Manager view (Operators tab only) (§7.5)
+24. Clients page – Clients tab (§8.1)
+25. Clients page – Contacts tab (§8.1)
+26. Create Client dialog (§8.2)
+27. Create Contact dialog (§8.3)
+28. Client Detail page – full (§8.4)
+29. Client Detail page – Edit client (§8.4)
+30. Client Detail page – Proposals & Work Orders (§8.4)
+31. Create Proposal dialog (§9.1)
+32. Proposal detail dialog – Approve / Reject (§9.2)
+33. Create Work Order – Step 1 basic details (§9.3)
+34. Create Work Order – Step 2 Schedule of Rates (§9.3)
+35. Work Order list page with filters (§10.1)
+36. Work Order Detail – header + statistics (§10.2)
+37. Work Order Detail – Sites in card view (§10.2)
+38. Work Order Detail – Sites in table view (§10.2)
+39. Schedule of Rates table (§10.2)
+40. Approve / Cancel Work Order actions (§10.2)
+41. Work Order Expenses dialog (§10.2)
+42. Cancel Work Order dialog with reason (§10.3)
+43. Create Work-Order-Site – Step 1 (existing vs new) (§11.1)
+44. Create Work-Order-Site – Step 2 (details + activities) (§11.1)
+45. Site Detail dialog – Estimate/sub-WO tab (§11.2)
+46. Site Detail dialog – Expenses & P&L tab (§11.2)
+47. Site Detail dialog – Completion tab with P&L summary (§11.2)
+48. Site Detail dialog – assigned operators section (§11.2)
+49. Site Detail dialog – Operator Uploads list (§11.2)
+50. Activity row with Edit control (§11.3)
+51. Add Expense dialog – activity + type rows (§12)
+52. Add Expense dialog – Exceeded (over-budget) mode (§12)
+53. Add Expense dialog – contractor section (§12)
+54. Operator workspace – list of assigned sites (§13.1)
+55. Operator upload page – empty / select files (§13.2)
+56. Operator upload page – pending files with descriptions (§13.2)
+57. Operator upload page – upload progress (§13.2)
+58. Operator upload page – uploaded files grid (§13.2)
+59. Operator upload page – delete confirmation (§13.2)
+60. Work Order Operator Uploads dialog (§13.3)
+61. "No dashboard access yet" screen (§16)
+62. Permission error toast (§16)
+
+---
+
+**End of SOP** — Version 2.0
 For technical issues that block your work, contact the system administrator at `itadmin@teri.res.in`.
