@@ -6,7 +6,7 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { trpc } from "@/lib/trpc";
 import Input from "@/components/shared/input";
 import CustomButton from "@/components/shared/btn";
-import { useIsViewer } from "@/contexts/AuthContext";
+import { useIsAdmin, useIsViewer } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -29,6 +29,10 @@ type PickedUser = { id: number; name: string; email: string };
 
 const ManageOfficeMembersDialog = () => {
   const isViewer = useIsViewer();
+  // Only admins may appoint/revoke the office manager. Office managers can
+  // manage office operators only, so the manager-seat controls are hidden
+  // for non-admins (the server enforces this too).
+  const isAdmin = useIsAdmin();
   const { getParam, deleteParams } = useHandleParams();
   const isOpen = getParam("dialog") === "manage-office-members";
   const officeIdParam = getParam("officeId");
@@ -39,7 +43,7 @@ const ManageOfficeMembersDialog = () => {
   const { handleError } = useApiError();
 
   const [activeTab, setActiveTab] = useState<"managers" | "operators">(
-    "managers",
+    isAdmin ? "managers" : "operators",
   );
   const [managerSearch, setManagerSearch] = useState("");
   const [operatorSearch, setOperatorSearch] = useState("");
@@ -126,12 +130,12 @@ const ManageOfficeMembersDialog = () => {
 
   const handleClose = useCallback(() => {
     deleteParams(["dialog", "officeId", "officeName"]);
-    setActiveTab("managers");
+    setActiveTab(isAdmin ? "managers" : "operators");
     setManagerSearch("");
     setOperatorSearch("");
     setManagerPage(1);
     setOperatorPage(1);
-  }, [deleteParams]);
+  }, [deleteParams, isAdmin]);
 
   const onRemove = async (userId: number, label: string) => {
     try {
@@ -217,19 +221,21 @@ const ManageOfficeMembersDialog = () => {
                   </span>
                   {data?.manager ? (
                     <span className='inline-flex items-center gap-2 rounded-full border bg-white pl-2 pr-1 py-1 text-xs'>
-                      <span className='font-medium'>
+                      <span className={cn("font-medium", !isAdmin && "pr-1")}>
                         {capitalizeEachWord(data.manager.name || "")}
                       </span>
-                      <button
-                        type='button'
-                        disabled={busy || isViewer}
-                        onClick={() =>
-                          onRemove(data.manager!.id, "Manager")
-                        }
-                        className='rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
-                        aria-label='Remove manager'>
-                        <UserMinus className='h-3.5 w-3.5' />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          type='button'
+                          disabled={busy || isViewer}
+                          onClick={() =>
+                            onRemove(data.manager!.id, "Manager")
+                          }
+                          className='rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
+                          aria-label='Remove manager'>
+                          <UserMinus className='h-3.5 w-3.5' />
+                        </button>
+                      )}
                     </span>
                   ) : (
                     <span className='text-xs text-slate-500'>None</span>
@@ -303,11 +309,13 @@ const ManageOfficeMembersDialog = () => {
                     className='w-[20rem] max-w-full'
                   />
                   <TabsList className='bg-gray-300/60 h-8!'>
-                    <TabsTrigger
-                      value='managers'
-                      className='text-xs cursor-pointer'>
-                      Managers
-                    </TabsTrigger>
+                    {isAdmin && (
+                      <TabsTrigger
+                        value='managers'
+                        className='text-xs cursor-pointer'>
+                        Managers
+                      </TabsTrigger>
+                    )}
                     <TabsTrigger
                       value='operators'
                       className='text-xs cursor-pointer'>
