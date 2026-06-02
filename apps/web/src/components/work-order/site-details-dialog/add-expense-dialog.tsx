@@ -309,6 +309,10 @@ const AddExpenseDialog = ({
 
   const handleSubmit = async () => {
     // Validate shared fields
+    if (activities.length > 0 && !selectedActivityKey) {
+      toast.error("Please select an activity");
+      return;
+    }
     if (!description.trim()) { toast.error("Description is required"); return; }
     if (!expenseDate) { toast.error("Date is required"); return; }
 
@@ -460,19 +464,18 @@ const AddExpenseDialog = ({
           {activities.length > 0 && (
             <div className='space-y-1.5'>
               <Label className='text-xs font-medium text-gray-700'>
-                Activity <span className='text-gray-400'>(optional)</span>
+                Activity <span className='text-red-500'>*</span>
               </Label>
               <Select
                 value={selectedActivityKey}
                 onValueChange={(v) => {
-                  setSelectedActivityKey(v === "__none__" ? "" : v);
+                  setSelectedActivityKey(v);
                   setQuantity("");
                 }}>
                 <SelectTrigger className='h-9 text-sm'>
                   <SelectValue placeholder='Select activity this expense belongs to...' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='__none__' className='text-sm text-gray-400'>— None —</SelectItem>
                   {activities.map((a) => {
                     return (
                       <SelectItem key={a.key} value={a.key} className='text-sm'>
