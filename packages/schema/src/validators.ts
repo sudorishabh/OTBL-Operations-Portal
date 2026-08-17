@@ -142,11 +142,7 @@ export const codeValidator = z
   .string({ message: "Code is required" })
   .trim()
   .min(1, "Code is required")
-  .max(50, "Code cannot exceed 50 characters")
-  .regex(
-    /^[A-Za-z0-9\-_]+$/,
-    "Code can only contain letters, numbers, hyphens, and underscores",
-  );
+  .max(50, "Code cannot exceed 50 characters");
 
 export const agreementNumberValidator = z
   .string({ message: "Agreement number is required" })
