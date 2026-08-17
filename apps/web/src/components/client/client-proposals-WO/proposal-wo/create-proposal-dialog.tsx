@@ -253,6 +253,7 @@ const CreateProposalDialog = ({ clientId }: Props) => {
             Label='Description'
             isTextArea={true}
             placeholder='Enter description'
+            optional
           />
 
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>

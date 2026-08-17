@@ -104,12 +104,11 @@ const StatGroup = ({
   children: React.ReactNode;
   className?: string;
 }) => (
-  <div className={`px-5 py-3.5 ${className}`}>
+  <div className={`py-4 ${className}`}>
     <div className='flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3'>
-      <Icon className='size-3' />
-      {title}
+      <span className='pl-6'>{title}</span>
     </div>
-    <div className='flex flex-wrap items-start gap-6'>{children}</div>
+    <div className='flex pl-6 flex-wrap items-start gap-2'>{children}</div>
   </div>
 );
 
@@ -333,7 +332,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
           <StatGroup
             title='Sites'
             icon={MapPin}
-            className='md:w-2/9'>
+            className='md:w-2/10'>
             <Stat
               label='Total'
               value={Number(stats.totalSites).toLocaleString()}
@@ -349,7 +348,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
           <StatGroup
             title='Income & Activity'
             icon={IndianRupee}
-            className='md:w-3/9'>
+            className='gap-0! md:w-3/10'>
             <Stat
               label='Income'
               value={formatCurrency(income)}
@@ -368,7 +367,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
           <StatGroup
             title='Profit & Loss'
             icon={Wallet}
-            className='md:w-4/9'>
+            className='md:w-5/10'>
             <Stat
               label='Expenses'
               icon={TrendingDown}
@@ -377,7 +376,9 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
             />
             <Stat
               label='Exceeded'
-              valueClass={exceededExpenses > 0 ? "text-orange-600" : "text-gray-400"}
+              valueClass={
+                exceededExpenses > 0 ? "text-orange-600" : "text-gray-400"
+              }
               value={formatCurrency(exceededExpenses)}
             />
             <Stat

@@ -87,7 +87,7 @@ const ProposalCard = ({ proposal }: Props) => {
         </div>
       </div>
 
-      <p className='text-[11px] sm:text-xs text-gray-600 leading-relaxed line-clamp-2 mb-2 sm:mb-3 flex-1'>
+      <p className='text-[11px] sm:text-xs text-gray-600 leading-relaxed line-clamp-2 mb-1.5 sm:mb-2'>
         {proposal?.description || "No description provided."}
       </p>
     </div>

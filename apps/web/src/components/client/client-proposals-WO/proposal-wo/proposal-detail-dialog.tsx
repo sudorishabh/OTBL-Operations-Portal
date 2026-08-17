@@ -159,29 +159,25 @@ const ProposalDetailDialog = () => {
               </div>
             </div>
 
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-              <div className='p-4 rounded-lg bg-gray-50 border border-gray-100'>
-                <div className='flex items-center gap-2 text-gray-500 mb-1'>
-                  <CalendarDays className='w-4 h-4' />
-                  <span className='text-xs font-medium uppercase tracking-wide'>
-                    Submitted
-                  </span>
-                </div>
-                <div className='text-lg font-semibold text-gray-900'>
+            <div className='flex flex-wrap gap-2'>
+              <div className='flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-gray-50 border border-gray-100'>
+                <CalendarDays className='w-3.5 h-3.5 text-gray-400' />
+                <span className='text-[11px] font-medium uppercase tracking-wide text-gray-500'>
+                  Submitted
+                </span>
+                <span className='text-xs font-semibold text-gray-900'>
                   {formatDate(proposal.proposal_submission_date)}
-                </div>
+                </span>
               </div>
 
-              <div className='p-4 rounded-lg bg-gray-50 border border-gray-100'>
-                <div className='flex items-center gap-2 text-gray-500 mb-1'>
-                  <Clock className='w-4 h-4' />
-                  <span className='text-xs font-medium uppercase tracking-wide'>
-                    Created
-                  </span>
-                </div>
-                <div className='text-lg font-semibold text-gray-900'>
+              <div className='flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-gray-50 border border-gray-100'>
+                <Clock className='w-3.5 h-3.5 text-gray-400' />
+                <span className='text-[11px] font-medium uppercase tracking-wide text-gray-500'>
+                  Created
+                </span>
+                <span className='text-xs font-semibold text-gray-900'>
                   {formatDate(proposal.created_at)}
-                </div>
+                </span>
               </div>
             </div>
 

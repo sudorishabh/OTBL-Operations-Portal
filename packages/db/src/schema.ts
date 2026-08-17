@@ -193,6 +193,14 @@ export const workOrderTable = mysqlTable(
       length: 50,
     }).notNull(),
     description: text("description"),
+    job_number: varchar("job_number", { length: 255 }).notNull(),
+    area: varchar("area", { length: 255 }).notNull(),
+    installation_type: varchar("installation", { length: 255 }).notNull(),
+    joint_estimate_number: varchar("joint_estimate_number", {
+      length: 255,
+    }).notNull(),
+    land_owner_name: varchar("land_owner_name", { length: 255 }).notNull(),
+    remarks: varchar("remarks", { length: 255 }).notNull(),
     status: varchar("status", {
       length: 50,
       enum: [
@@ -322,15 +330,6 @@ export const workOrderSiteTable = mysqlTable(
     process_type: varchar("process_type", {
       length: 50,
     }).notNull(),
-
-    job_number: varchar("job_number", { length: 255 }).notNull(),
-    area: varchar("area", { length: 255 }).notNull(),
-    installation_type: varchar("installation", { length: 255 }).notNull(),
-    joint_estimate_number: varchar("joint_estimate_number", {
-      length: 255,
-    }).notNull(),
-    land_owner_name: varchar("land_owner_name", { length: 255 }).notNull(),
-    remarks: varchar("remarks", { length: 255 }).notNull(),
     status: varchar("status", {
       length: 50,
       enum: [

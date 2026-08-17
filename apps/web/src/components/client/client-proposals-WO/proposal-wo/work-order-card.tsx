@@ -175,9 +175,11 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
             onClick={() =>
               router.push(`/dashboard/client/workorder/${workOrder.id}`)
             }>
-            <div className='flex items-start justify-between mb-1.5 sm:mb-2'>
-              <div className='flex flex-wrap items-center gap-1.5 sm:gap-2'>
-                <div className='inline-flex items-center px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-700 text-[11px] font-mono ring-1 ring-emerald-200'>
+            <div className='flex items-center justify-between gap-2 mb-1.5 sm:mb-2'>
+              <div className='flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0'>
+                <div
+                  title={workOrder.code}
+                  className='max-w-full truncate px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-700 text-[11px] font-mono ring-1 ring-emerald-200'>
                   {workOrder.code}
                 </div>
                 {statusConfig && StatusIcon && (
@@ -188,7 +190,7 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
                   </div>
                 )}
               </div>
-              <div className='flex items-center gap-1.5 sm:gap-2'>
+              <div className='flex items-center gap-1.5 sm:gap-2 shrink-0'>
                 {workOrder?.document_key && (
                   <button
                     type='button'
