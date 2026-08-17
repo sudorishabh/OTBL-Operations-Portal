@@ -222,7 +222,7 @@ const CreateProposalDialog = ({ clientId }: Props) => {
               control={form.control}
               name='office_id'
               render={({ field }) => (
-                <FormItem className='space-y-1'>
+                <FormItem className='space-y-1 min-w-0'>
                   <FormLabel className='text-xs font-medium text-neutral-700'>
                     Office
                   </FormLabel>
