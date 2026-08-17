@@ -38,9 +38,11 @@ const CategorizedUsers = () => {
     managers = [],
     officeOperators = [],
     siteOperators = [],
+    viewers = [],
     totalManagers,
     totalOfficeOperators,
     totalSiteOperators,
+    totalViewers,
   } = categorizedUsers?.data ?? {};
 
   if (categorizedUsers.isLoading) {
@@ -48,7 +50,12 @@ const CategorizedUsers = () => {
   }
 
   const handleOpenCategoryDialog = (
-    role: "all" | "office_manager" | "office_operator" | "site_operator",
+    role:
+      | "all"
+      | "office_manager"
+      | "office_operator"
+      | "site_operator"
+      | "viewer",
   ) => {
     setFilters({ role, status: "all" });
     setParams({ dialog: "categorized", role });
@@ -80,11 +87,17 @@ const CategorizedUsers = () => {
       totalUsers: totalSiteOperators,
       onViewAll: () => handleOpenCategoryDialog(ROLES.SITE_OPERATOR),
     },
+    {
+      title: "Viewer Users",
+      users: viewers,
+      totalUsers: totalViewers,
+      onViewAll: () => handleOpenCategoryDialog(ROLES.VIEWER),
+    },
   ];
 
   return (
     <>
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6'>
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-6'>
         {userCategoryData.map((category) => (
           <Card
             key={category.title}

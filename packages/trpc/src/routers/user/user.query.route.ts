@@ -399,25 +399,31 @@ export const userQueryRouter = router({
         managers,
         officeOperators,
         siteOperators,
+        viewers,
         totalManagers,
         totalOfficeOperators,
         totalSiteOperators,
+        totalViewers,
       ] = await Promise.all([
         fetchEightByRole(ROLES.MANAGER),
         fetchEightByRole(ROLES.OFFICE_OPERATOR),
         fetchEightByRole(ROLES.SITE_OPERATOR),
+        fetchEightByRole(ROLES.VIEWER),
         totalUserByRole(ROLES.MANAGER),
         totalUserByRole(ROLES.OFFICE_OPERATOR),
         totalUserByRole(ROLES.SITE_OPERATOR),
+        totalUserByRole(ROLES.VIEWER),
       ]);
 
       return {
         managers,
         officeOperators,
         siteOperators,
+        viewers,
         totalManagers: totalManagers[0]?.count,
         totalOfficeOperators: totalOfficeOperators[0]?.count,
         totalSiteOperators: totalSiteOperators[0]?.count,
+        totalViewers: totalViewers[0]?.count,
       };
     }),
   ),
