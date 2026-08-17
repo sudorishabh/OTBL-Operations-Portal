@@ -21,6 +21,12 @@ export type workOrderType = {
   document_key: string;
   process_type: "bioremediation" | "restoration" | "bioremediation_restoration";
   description: string | null;
+  job_number: string;
+  area: string;
+  installation_type: string;
+  joint_estimate_number: string;
+  land_owner_name: string;
+  remarks: string;
   status: "pending" | "completed" | "cancelled";
   cancellation_reason: string | null;
   created_by: number | null;

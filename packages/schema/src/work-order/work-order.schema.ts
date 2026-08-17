@@ -75,6 +75,36 @@ export const baseWorkOrderSchema = z.object({
   document_key: documentKeyValidator,
   process_type: processTypeEnum,
   description: longDescriptionValidator,
+  job_number: z
+    .string()
+    .trim()
+    .min(1, "Job number is required")
+    .max(255, "Job number cannot exceed 255 characters"),
+  joint_estimate_number: z
+    .string()
+    .trim()
+    .min(1, "Joint estimate number is required")
+    .max(255, "Joint estimate number cannot exceed 255 characters"),
+  area: z
+    .string()
+    .trim()
+    .min(1, "Area is required")
+    .max(255, "Area cannot exceed 255 characters"),
+  installation_type: z
+    .string()
+    .trim()
+    .min(1, "Installation type is required")
+    .max(255, "Installation type cannot exceed 255 characters"),
+  land_owner_name: z
+    .string()
+    .trim()
+    .min(1, "Land owner name is required")
+    .max(255, "Land owner name cannot exceed 255 characters"),
+  remarks: z
+    .string()
+    .trim()
+    .max(255, "Remarks cannot exceed 255 characters")
+    .optional(),
   schedule_of_rates: z
     .array(scheduleOfRateSchema)
     .min(1, "At least one schedule of rate entry is required"),
@@ -155,12 +185,6 @@ export const createWorkOrderSiteSchema = z.object({
   date: dateValidator,
   end_date: dateValidator,
   process_type: z.string().min(1, "Process type is required"),
-  job_number: z.string().min(1, "Job number is required"),
-  area: z.string().min(1, "Area is required"),
-  installation_type: z.string().min(1, "Installation type is required"),
-  joint_estimate_number: z.string().min(1, "Joint estimate number is required"),
-  land_owner_name: z.string().min(1, "Land owner name is required"),
-  remarks: z.string().optional(),
   selected_activities: z.array(woActivitySchemaWithId).optional(),
   new_site: createSiteSchema.optional(),
 });

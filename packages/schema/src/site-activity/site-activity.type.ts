@@ -24,12 +24,6 @@ export interface WorkOrderSiteDetails {
   date: Date;
   end_date: Date;
   process_type: string;
-  job_number: string;
-  area: string;
-  installation_type: string;
-  joint_estimate_number: string;
-  land_owner_name: string;
-  remarks: string;
   status: "pending" | "completed" | "cancelled";
   created_at: Date;
   updated_at: Date;
@@ -46,6 +40,12 @@ export interface WorkOrderSiteDetails {
     code: string;
     title: string;
     process_type: string;
+    job_number: string;
+    area: string;
+    installation_type: string;
+    joint_estimate_number: string;
+    land_owner_name: string;
+    remarks: string;
   };
   activities?: SiteActivity[];
 }
