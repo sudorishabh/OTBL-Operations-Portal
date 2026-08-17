@@ -43,8 +43,8 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
 
   return (
     <div className='flex-1 flex flex-col justify-between h-full'>
-      <div className='space-y-3'>
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-3'>
+      <div className='space-y-4'>
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
           <div className='md:col-span-2'>
             <Input
               control={form.control}
@@ -118,6 +118,9 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
             Label='Area'
             placeholder='Enter area'
           />
+        </div>
+
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <Input
             control={form.control}
             fieldName='installation_type'
@@ -133,7 +136,7 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
           />
         </div>
 
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-3'>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <Input
             control={form.control}
             fieldName='remarks'
@@ -141,7 +144,6 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
             isTextArea
             optional
             placeholder='Enter remarks'
-            className='min-h-0 h-16'
           />
 
           <Input
@@ -151,7 +153,6 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
             isTextArea
             optional
             placeholder='Enter description'
-            className='min-h-0 h-16'
           />
         </div>
 
@@ -179,7 +180,7 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
         />
       </div>
 
-      <div className='flex items-center justify-end gap-3 pt-3'>
+      <div className='flex items-center justify-end gap-3 pt-4'>
         <CustomButton
           type='button'
           text='Cancel'
