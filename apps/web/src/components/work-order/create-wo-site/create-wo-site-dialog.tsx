@@ -68,12 +68,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
           ? ""
           : workOrder.process_type || "",
       selected_activities: [],
-      job_number: "",
-      area: "",
-      installation_type: "",
-      joint_estimate_number: "",
-      land_owner_name: "",
-      remarks: "",
       new_site: undefined,
     },
   });
@@ -460,47 +454,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                         formatDisplay={(val) =>
                           val ? format(new Date(val), "yyyy-MM-dd") : ""
                         }
-                      />
-                    </div>
-
-                    <Input
-                      control={control}
-                      fieldName='job_number'
-                      Label='Job Number'
-                    />
-
-                    <Input
-                      control={control}
-                      fieldName='joint_estimate_number'
-                      Label='Joint Estimate Number'
-                    />
-
-                    <Input
-                      control={control}
-                      fieldName='area'
-                      Label='Area'
-                    />
-
-                    <Input
-                      control={control}
-                      fieldName='installation_type'
-                      Label='Installation Type'
-                    />
-
-                    <div className='col-span-2'>
-                      <Input
-                        control={control}
-                        fieldName='land_owner_name'
-                        Label='Land Owner Name'
-                      />
-                    </div>
-
-                    <div className='col-span-2'>
-                      <Input
-                        control={control}
-                        fieldName='remarks'
-                        Label='Remarks'
-                        isTextArea
                       />
                     </div>
                   </div>

@@ -106,6 +106,54 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
           />
         </div>
 
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          <Input
+            control={form.control}
+            fieldName='job_number'
+            Label='Job Number'
+            placeholder='Enter job number'
+          />
+
+          <Input
+            control={form.control}
+            fieldName='joint_estimate_number'
+            Label='Joint Estimate Number'
+            placeholder='Enter joint estimate number'
+          />
+        </div>
+
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          <Input
+            control={form.control}
+            fieldName='area'
+            Label='Area'
+            placeholder='Enter area'
+          />
+
+          <Input
+            control={form.control}
+            fieldName='installation_type'
+            Label='Installation Type'
+            placeholder='Enter installation type'
+          />
+        </div>
+
+        <Input
+          control={form.control}
+          fieldName='land_owner_name'
+          Label='Land Owner Name'
+          placeholder='Enter land owner name'
+        />
+
+        <Input
+          control={form.control}
+          fieldName='remarks'
+          Label='Remarks'
+          isTextArea
+          optional
+          placeholder='Enter remarks'
+        />
+
         <Input
           control={form.control}
           fieldName='description'
