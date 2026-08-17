@@ -196,7 +196,7 @@ export default function WoSiteOperatorUploadPage() {
             <p className='text-sm text-muted-foreground mt-1'>
               {siteDetails.work_order?.title ?? "Documents"} · Job{" "}
               <span className='font-medium text-foreground/80'>
-                {siteDetails.job_number}
+                {siteDetails.work_order?.job_number ?? "—"}
               </span>
             </p>
           </div>

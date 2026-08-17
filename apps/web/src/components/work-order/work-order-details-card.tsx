@@ -15,6 +15,7 @@ import {
   TrendingDown,
   Wallet,
   ReceiptIndianRupee,
+  User,
 } from "lucide-react";
 import { capitalFirstLetter, constants, formatCurrency } from "@pkg/utils";
 import CustomButton from "@/components/shared/btn";
@@ -32,6 +33,12 @@ interface Props {
     rate_contract_number?: string | null;
     document_key?: string | null;
     agreement_number?: string | null;
+    job_number?: string | null;
+    joint_estimate_number?: string | null;
+    area?: string | null;
+    installation_type?: string | null;
+    land_owner_name?: string | null;
+    remarks?: string | null;
     status: "pending" | "completed" | "cancelled";
     cancellation_reason: string | null;
     created_at: string;
@@ -269,6 +276,76 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
                 </div>
               </div>
             </div>
+
+            <div className='flex items-center gap-3'>
+              <div className='size-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0'>
+                <Hash className='size-4 text-cyan-800' />
+              </div>
+              <div className='min-w-0 flex-1'>
+                <div className='text-[11px] uppercase tracking-wide text-gray-500'>
+                  Job Number
+                </div>
+                <p className='text-gray-700 text-xs font-medium wrap-break-word'>
+                  {workOrder.job_number?.toUpperCase() || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            <div className='flex items-center gap-3'>
+              <div className='size-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0'>
+                <Hash className='size-4 text-cyan-800' />
+              </div>
+              <div className='min-w-0 flex-1'>
+                <div className='text-[11px] uppercase tracking-wide text-gray-500'>
+                  Joint Estimate Number
+                </div>
+                <p className='text-gray-700 text-xs font-medium wrap-break-word'>
+                  {workOrder.joint_estimate_number?.toUpperCase() || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            <div className='flex items-center gap-3'>
+              <div className='size-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0'>
+                <MapPin className='size-4 text-cyan-800' />
+              </div>
+              <div className='min-w-0 flex-1'>
+                <div className='text-[11px] uppercase tracking-wide text-gray-500'>
+                  Area
+                </div>
+                <p className='text-gray-700 text-xs font-medium wrap-break-word'>
+                  {capitalFirstLetter(workOrder.area || "N/A")}
+                </p>
+              </div>
+            </div>
+
+            <div className='flex items-center gap-3'>
+              <div className='size-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0'>
+                <Building className='size-4 text-cyan-800' />
+              </div>
+              <div className='min-w-0 flex-1'>
+                <div className='text-[11px] uppercase tracking-wide text-gray-500'>
+                  Installation Type
+                </div>
+                <p className='text-gray-700 text-xs font-medium wrap-break-word'>
+                  {capitalFirstLetter(workOrder.installation_type || "N/A")}
+                </p>
+              </div>
+            </div>
+
+            <div className='flex items-center gap-3'>
+              <div className='size-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0'>
+                <User className='size-4 text-cyan-800' />
+              </div>
+              <div className='min-w-0 flex-1'>
+                <div className='text-[11px] uppercase tracking-wide text-gray-500'>
+                  Land Owner
+                </div>
+                <p className='text-gray-700 text-xs font-medium wrap-break-word'>
+                  {capitalFirstLetter(workOrder.land_owner_name || "N/A")}
+                </p>
+              </div>
+            </div>
           </div>
 
           {workOrder.document_key && (
@@ -311,6 +388,17 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
                 className='text-emerald-600 hover:text-emerald-700 font-medium shrink-0'>
                 {isDescriptionExpanded ? "less" : "more"}
               </button>
+            </div>
+          )}
+
+          {workOrder.remarks && (
+            <div className='mt-3 pt-3 border-t border-gray-200 flex items-baseline gap-2 text-xs'>
+              <span className='font-semibold text-gray-500 uppercase tracking-wide shrink-0'>
+                remarks:
+              </span>
+              <p className='text-gray-700 leading-relaxed min-w-0'>
+                {capitalFirstLetter(workOrder.remarks)}
+              </p>
             </div>
           )}
 

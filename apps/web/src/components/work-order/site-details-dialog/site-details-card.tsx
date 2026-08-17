@@ -62,12 +62,6 @@ interface WorkOrderSiteDetails {
   site_id: number;
   date: string;
   process_type: string;
-  job_number: string;
-  area: string;
-  installation_type: string;
-  joint_estimate_number: string;
-  land_owner_name: string;
-  remarks: string;
   created_at: string;
   updated_at: string;
   site: {
@@ -83,6 +77,12 @@ interface WorkOrderSiteDetails {
     code: string | null;
     title: string | null;
     process_type: string | null;
+    job_number: string | null;
+    area: string | null;
+    installation_type: string | null;
+    joint_estimate_number: string | null;
+    land_owner_name: string | null;
+    remarks: string | null;
   };
   activities:
     | {
@@ -239,27 +239,34 @@ const SiteDetailsCard = ({
         <InfoCard
           icon={FileText}
           label='Job Number'
-          value={siteDetails?.job_number.toUpperCase() ?? "N/A"}
+          value={siteDetails?.work_order?.job_number?.toUpperCase() ?? "N/A"}
         />
         <InfoCard
           icon={FileText}
           label='Joint Estimate No.'
-          value={siteDetails?.joint_estimate_number.toUpperCase() ?? "N/A"}
+          value={
+            siteDetails?.work_order?.joint_estimate_number?.toUpperCase() ??
+            "N/A"
+          }
         />
         <InfoCard
           icon={MapPin}
           label='Area'
-          value={capitalFirstLetter(siteDetails?.area ?? "N/A")}
+          value={capitalFirstLetter(siteDetails?.work_order?.area ?? "N/A")}
         />
         <InfoCard
           icon={Building2}
           label='Installation'
-          value={capitalFirstLetter(siteDetails?.installation_type ?? "N/A")}
+          value={capitalFirstLetter(
+            siteDetails?.work_order?.installation_type ?? "N/A",
+          )}
         />
         <InfoCard
           icon={User}
           label='Land Owner'
-          value={capitalFirstLetter(siteDetails?.land_owner_name ?? "N/A")}
+          value={capitalFirstLetter(
+            siteDetails?.work_order?.land_owner_name ?? "N/A",
+          )}
         />
         <InfoCard
           icon={Calendar}
@@ -297,13 +304,13 @@ const SiteDetailsCard = ({
         </div>
       </div>
 
-      {siteDetails?.remarks && (
+      {siteDetails?.work_order?.remarks && (
         <div className='mt-3 pt-3 border-t border-gray-200/50'>
           <p className='text-[10px] text-gray-400 uppercase tracking-wide mb-1'>
             Remarks
           </p>
           <p className='text-xs text-gray-600'>
-            {capitalFirstLetter(siteDetails.remarks)}
+            {capitalFirstLetter(siteDetails.work_order.remarks)}
           </p>
         </div>
       )}
