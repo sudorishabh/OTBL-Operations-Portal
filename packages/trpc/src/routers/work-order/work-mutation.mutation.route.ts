@@ -68,6 +68,12 @@ export const workOrderMutationRouter = router({
           document_key: input.document_key,
           process_type: input.process_type,
           description: input.description || null,
+          job_number: input.job_number,
+          area: input.area,
+          installation_type: input.installation_type,
+          joint_estimate_number: input.joint_estimate_number,
+          land_owner_name: input.land_owner_name,
+          remarks: input.remarks || "",
           status: constants.WORK_ORDER_STATUS.PENDING,
           created_by: parseInt(ctx.user!.sub),
         };
@@ -269,12 +275,6 @@ export const workOrderMutationRouter = router({
               date: input.date,
               end_date: input.end_date,
               process_type: input.process_type,
-              job_number: input.job_number,
-              area: input.area,
-              installation_type: input.installation_type,
-              joint_estimate_number: input.joint_estimate_number,
-              land_owner_name: input.land_owner_name,
-              remarks: input.remarks || "",
               status: "pending",
             });
 

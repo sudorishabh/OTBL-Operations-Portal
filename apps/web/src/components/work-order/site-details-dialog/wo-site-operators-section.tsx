@@ -34,14 +34,16 @@ const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
   const operators: AssignedOperator[] = data ?? [];
 
   return (
-    <div className='rounded-xl border bg-white p-4'>
+    <div className='relative overflow-hidden rounded-xl border border-emerald-500 bg-emerald-50/40 p-4 shadow-sm ring-1 ring-emerald-100'>
       <div className='mb-2 flex items-center justify-between gap-2'>
         <div className='flex items-center gap-2'>
-          <Users className='h-3.5 w-3.5 text-emerald-500' />
-          <span className='text-xs font-medium text-gray-700'>
+          <Users className='h-3.5 w-3.5 text-emerald-600' />
+          <span className='text-xs font-semibold text-emerald-800'>
             Site operators
           </span>
-          <Badge variant='outline' className='text-[10px]'>
+          <Badge
+            variant='outline'
+            className='border-emerald-300 bg-white text-[10px] text-emerald-700'>
             {operators.length} assigned
           </Badge>
         </div>
@@ -51,14 +53,14 @@ const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
           Icon={Settings2}
           text='Manage operators'
           onClick={() => setDialogOpen(true)}
-          className='h-8 px-3 text-xs'
+          className='h-8 border-emerald-300 bg-white px-3 text-xs text-emerald-700 hover:bg-emerald-50'
           disableForViewer
         />
       </div>
 
       <p className='mb-3 text-[11px] text-muted-foreground'>
-        Only the operators assigned here can upload documents to this work
-        order site.
+        Only the operators assigned here can upload documents to this work order
+        site.
       </p>
 
       {isLoading ? (
@@ -81,7 +83,7 @@ const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
           {operators.map((o) => (
             <span
               key={o.user_id}
-              className='inline-flex items-center gap-1.5 rounded-full border bg-emerald-50/50 px-2.5 py-1 text-xs'
+              className='inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-xs text-emerald-900 shadow-sm'
               title={o.email ?? undefined}>
               <span className='font-medium'>
                 {o.name ? capitalizeEachWord(o.name) : `User ${o.user_id}`}
