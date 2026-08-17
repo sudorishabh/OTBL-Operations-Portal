@@ -37,8 +37,8 @@ export type clientType = {
   city: string;
   pincode: string;
   gst_number: string;
-  contact_number: string;
-  email: string;
+  contact_number: string | null;
+  email: string | null;
 };
 
 export type getClientReturnType = {

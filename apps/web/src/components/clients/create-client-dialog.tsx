@@ -202,6 +202,7 @@ const CreateClientDialog = () => {
                   Label='Email'
                   placeholder='client@example.com'
                   inputIcon={Mail}
+                  optional
                 />
 
                 <Input
@@ -210,6 +211,7 @@ const CreateClientDialog = () => {
                   Label='Contact Number'
                   placeholder='+91 1234567890'
                   inputIcon={Phone}
+                  optional
                 />
 
                 <div className='col-span-2'>
@@ -406,6 +408,7 @@ const CreateClientDialog = () => {
                         fieldName='name'
                         Label='Name'
                         placeholder='Contact name'
+                        isWhiteBg
                       />
 
                       <Input
@@ -414,6 +417,7 @@ const CreateClientDialog = () => {
                         Label='Designation'
                         placeholder='Manager, CEO, etc.'
                         inputIcon={Briefcase}
+                        isWhiteBg
                       />
 
                       <Input
@@ -422,6 +426,7 @@ const CreateClientDialog = () => {
                         Label='Email'
                         placeholder='contact@example.com'
                         inputIcon={Mail}
+                        isWhiteBg
                       />
 
                       <Input
@@ -430,6 +435,7 @@ const CreateClientDialog = () => {
                         Label='Phone'
                         placeholder='+91 1234567890'
                         inputIcon={Phone}
+                        isWhiteBg
                       />
 
                       <div className='col-span-2'>
@@ -438,6 +444,7 @@ const CreateClientDialog = () => {
                           fieldName='contact_type'
                           Label='Contact Type'
                           placeholder='Primary, Finance, Technical, etc.'
+                          isWhiteBg
                         />
                       </div>
                     </div>

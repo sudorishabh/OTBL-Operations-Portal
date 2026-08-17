@@ -60,8 +60,8 @@ export const clientTable = mysqlTable("clients", {
   gst_number: varchar("gst_number", { length: 15 }).notNull(),
   contact_number: varchar("contact_number", {
     length: 15,
-  }).notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
+  }),
+  email: varchar("email", { length: 320 }),
   status: varchar("status", {
     length: 50,
     enum: [STATUS.ACTIVE, STATUS.INACTIVE],

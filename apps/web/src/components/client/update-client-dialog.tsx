@@ -115,8 +115,8 @@ const UpdateClientDialog = ({ clientId }: Props) => {
         city: clientData.client.city,
         pincode: clientData.client.pincode,
         gst_number: clientData.client.gst_number,
-        contact_number: clientData.client.contact_number,
-        email: clientData.client.email,
+        contact_number: clientData.client.contact_number ?? "",
+        email: clientData.client.email ?? "",
         status: clientData.client.status,
       });
     }
@@ -215,6 +215,7 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                     Label='Email'
                     placeholder='client@example.com'
                     inputIcon={Mail}
+                    optional
                   />
 
                   <Input
@@ -223,6 +224,7 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                     Label='Contact Number'
                     placeholder='+91 1234567890'
                     inputIcon={Phone}
+                    optional
                   />
 
                   <div className='col-span-2'>

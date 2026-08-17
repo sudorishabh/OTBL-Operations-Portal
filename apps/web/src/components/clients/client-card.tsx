@@ -21,8 +21,8 @@ interface Client {
   city?: string;
   pincode?: string;
   gst_number?: string;
-  contact_number?: string;
-  email?: string;
+  contact_number?: string | null;
+  email?: string | null;
   status?: string;
   created_at?: string | Date;
   work_order_number?: string | number;
@@ -115,19 +115,31 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
                   Contact
                 </span>
               </div>
-              <a
-                href={`tel:${client.contact_number}`}
-                onClick={(e) => e.stopPropagation()}
-                className='block text-sm text-gray-700 font-medium leading-snug'>
-                {client.contact_number || "-"}
-              </a>
-              <a
-                href={`mailto:${client.email}`}
-                onClick={(e) => e.stopPropagation()}
-                className='block text-xs text-gray-400 truncate mt-0.5'
-                title={client.email}>
-                {client.email || "-"}
-              </a>
+              {client.contact_number ? (
+                <a
+                  href={`tel:${client.contact_number}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className='block text-sm text-gray-700 font-medium leading-snug'>
+                  {client.contact_number}
+                </a>
+              ) : (
+                <span className='block text-sm text-gray-700 font-medium leading-snug'>
+                  -
+                </span>
+              )}
+              {client.email ? (
+                <a
+                  href={`mailto:${client.email}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className='block text-xs text-gray-400 truncate mt-0.5'
+                  title={client.email}>
+                  {client.email}
+                </a>
+              ) : (
+                <span className='block text-xs text-gray-400 truncate mt-0.5'>
+                  -
+                </span>
+              )}
             </div>
           </div>
 

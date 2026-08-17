@@ -2,12 +2,14 @@ import z from "zod";
 import {
   nameValidator,
   emailValidator,
+  optionalEmailValidator,
   addressValidator,
   cityValidator,
   stateValidator,
   pincodeValidator,
   gstNumberValidator,
   mobileValidator,
+  optionalMobileValidator,
   positiveIntValidator,
   searchQueryValidator,
 } from "../validators";
@@ -24,8 +26,8 @@ export const createClientSchema = z.object({
   city: cityValidator,
   pincode: pincodeValidator,
   gst_number: gstNumberValidator,
-  contact_number: mobileValidator,
-  email: emailValidator,
+  contact_number: optionalMobileValidator,
+  email: optionalEmailValidator,
   status: statusEnum.optional(),
 });
 

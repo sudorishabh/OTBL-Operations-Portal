@@ -233,19 +233,27 @@ const ClientDetailsCard = ({ clientId }: Props) => {
                   Icon={Phone}
                   label='Company Contacts'>
                   <div className='flex text-xs items-center gap-2'>
-                    <a
-                      href={`tel:${client.contact_number}`}
-                      className='text-gray-700 font-medium hover:underline'
-                      aria-label={`Call ${client.contact_number}`}>
-                      {client.contact_number || "-"}
-                    </a>
+                    {client.contact_number ? (
+                      <a
+                        href={`tel:${client.contact_number}`}
+                        className='text-gray-700 font-medium hover:underline'
+                        aria-label={`Call ${client.contact_number}`}>
+                        {client.contact_number}
+                      </a>
+                    ) : (
+                      <span className='text-gray-700 font-medium'>-</span>
+                    )}
                     <span aria-hidden='true'>|</span>
-                    <a
-                      href={`mailto:${client.email}`}
-                      className='text-gray-700 font-medium hover:underline truncate block max-w-full'
-                      aria-label={`Email ${client.email}`}>
-                      {client.email || "-"}
-                    </a>
+                    {client.email ? (
+                      <a
+                        href={`mailto:${client.email}`}
+                        className='text-gray-700 font-medium hover:underline truncate block max-w-full'
+                        aria-label={`Email ${client.email}`}>
+                        {client.email}
+                      </a>
+                    ) : (
+                      <span className='text-gray-700 font-medium'>-</span>
+                    )}
                   </div>
 
                   <CustomButton
