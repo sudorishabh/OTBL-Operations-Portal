@@ -22,13 +22,15 @@ const ProposalCard = ({ proposal }: Props) => {
         })
       }
       className='w-full min-w-0 rounded-lg border hover:shadow-sm transition-shadow p-3 sm:p-4 flex flex-col min-h-36 sm:min-h-52 bg-gray-100/50 cursor-pointer hover:border-green-400 group'>
-      <div className='flex items-start justify-between mb-1.5 sm:mb-2'>
-        <div className='flex items-center gap-2'>
-          <div className='inline-flex items-center px-2 py-0.5 rounded-sm bg-sky-50 text-sky-700 text-[11px] font-mono ring-1 ring-sky-200'>
+      <div className='flex items-center justify-between gap-2 mb-1.5 sm:mb-2'>
+        <div className='flex items-center gap-2 min-w-0 flex-1'>
+          <div
+            title={proposal?.code}
+            className='block max-w-full truncate px-2 py-0.5 rounded-sm bg-sky-50 text-sky-700 text-[11px] font-mono ring-1 ring-sky-200'>
             {proposal?.code}
           </div>
         </div>
-        <div className='flex items-center gap-1.5 sm:gap-2'>
+        <div className='flex items-center gap-1.5 sm:gap-2 shrink-0'>
           {proposal?.document_key && (
             <button
               type='button'
