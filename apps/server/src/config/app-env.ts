@@ -69,6 +69,11 @@ export const appEnv = {
       15 * 60 * 1000
     ),
     SENSITIVE_MAX: getEnvInt("RATE_LIMIT_SENSITIVE_MAX", 10),
+    LOGIN_ACCOUNT_WINDOW_MS: getEnvInt(
+      "RATE_LIMIT_LOGIN_ACCOUNT_WINDOW_MS",
+      15 * 60 * 1000
+    ),
+    LOGIN_ACCOUNT_MAX: getEnvInt("RATE_LIMIT_LOGIN_ACCOUNT_MAX", 5),
   },
 };
 
