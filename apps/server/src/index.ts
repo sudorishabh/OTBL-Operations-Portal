@@ -3,6 +3,7 @@ import express, { json, urlencoded } from "express";
 import helmet from "helmet";
 import cors from "./config/cors";
 import { trpcRateLimiter } from "./config/rate-limit";
+import appEnv from "./config/app-env";
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { appRouter } from "@pkg/trpc";
 import { createContext } from "./context";
@@ -15,6 +16,12 @@ dotenv.config({
 });
 
 const app = express();
+
+// Rate limiting keys on req.ip, so Express must know how many proxy hops to
+// unwind. Defaults to `false` (no proxy) unless TRUST_PROXY says otherwise:
+// behind an untrusted proxy, req.ip is the proxy's address and every client
+// collapses into a single shared bucket.
+app.set("trust proxy", appEnv.TRUST_PROXY);
 
 app.use(helmet());
 

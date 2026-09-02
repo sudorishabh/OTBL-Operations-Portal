@@ -1,5 +1,6 @@
 import rateLimit, { type AugmentedRequest } from "express-rate-limit";
 import type { Request, Response } from "express";
+import appEnv from "./app-env";
 
 /**
  * tRPC addresses procedures with a dot, not a slash — the URL for the `login`
@@ -90,15 +91,15 @@ const sharedOptions = {
 /** Strict bucket for credential-guessing surfaces. */
 export const sensitiveRateLimiter = rateLimit({
   ...sharedOptions,
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
+  windowMs: appEnv.RATE_LIMIT.SENSITIVE_WINDOW_MS,
+  limit: appEnv.RATE_LIMIT.SENSITIVE_MAX,
 });
 
 /** Broad bucket protecting the API from general hammering. */
 export const generalRateLimiter = rateLimit({
   ...sharedOptions,
-  windowMs: 60 * 1000,
-  limit: 200,
+  windowMs: appEnv.RATE_LIMIT.GENERAL_WINDOW_MS,
+  limit: appEnv.RATE_LIMIT.GENERAL_MAX,
 });
 
 /**
@@ -110,6 +111,8 @@ export const trpcRateLimiter = (
   res: Response,
   next: (err?: unknown) => void
 ): void => {
+  if (!appEnv.RATE_LIMIT.ENABLED) return next();
+
   const paths = getProcedurePaths(req);
   const isSensitive = paths.some((path) => SENSITIVE_PROCEDURES.has(path));
 
