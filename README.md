@@ -11,7 +11,6 @@ This project uses **Turborepo** and **PNPM** for high-performance monorepo manag
 ### Applications (`/apps`)
 
 - **[web](file:///c:/Users/Rishabh.Negi_i/OneDrive%20-%20The%20Energy%20and%20Resources%20Institute/Desktop/My_Files/Projects/OTBL/otbl-monorepo-2/apps/web)**: A powerful Next.js 15 administrative dashboard for managing work orders, clients, sites, and remediation activities.
-- **[mobile-app](file:///c:/Users/Rishabh.Negi_i/OneDrive%20-%20The%20Energy%20and%20Resources%20Institute/Desktop/My_Files/Projects/OTBL/otbl-monorepo-2/apps/mobile-app)**: An Expo-powered mobile application for field operators to track site activity and update work order status in real-time.
 - **[server](file:///c:/Users/Rishabh.Negi_i/OneDrive%20-%20The%20Energy%20and%20Resources%20Institute/Desktop/My_Files/Projects/OTBL/otbl-monorepo-2/apps/server)**: An Express-based backend serving as the tRPC API provider, handling business logic, database orchestration, and external integrations (AWS S3, email).
 
 ### Shared Packages (`/packages`)
