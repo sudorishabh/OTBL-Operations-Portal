@@ -42,9 +42,12 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [results, setResults] = useState<
-    { user_id: number; name: string | null; email: string | null; assigned: boolean }[]
-  >([]);
+  // Rows from the pages already loaded before the current one, kept per search
+  // term so a stale snapshot can never leak into a different search.
+  const [loadedBefore, setLoadedBefore] = useState<{
+    search: string;
+    rows: CandidateRow[];
+  }>({ search: "", rows: [] });
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [details, setDetails] = useState<Map<number, OperatorRow>>(new Map());
   const [seeded, setSeeded] = useState(false);
@@ -68,8 +71,10 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
       { enabled, retry: false },
     );
 
+  // Seed the current selection every time the dialog opens, so it always
+  // reflects what is stored on the server rather than the last session's edits.
   useEffect(() => {
-    if (!assignedData || seeded) return;
+    if (!open || seeded || !assignedData) return;
     const assigned: OperatorRow[] = assignedData;
     setSelected(new Set(assigned.map((o) => o.user_id)));
     setDetails((prev) => {
@@ -84,33 +89,52 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
       return next;
     });
     setSeeded(true);
-  }, [assignedData, seeded]);
+  }, [open, assignedData, seeded]);
 
   useEffect(() => {
     setPage(1);
-    setResults([]);
+    setLoadedBefore({ search, rows: [] });
   }, [search]);
 
+  const results = useMemo<CandidateRow[]>(() => {
+    const current: CandidateRow[] = pageData?.operators ?? [];
+    const base = loadedBefore.search === search ? loadedBefore.rows : [];
+    const merged: CandidateRow[] = [];
+    const ids = new Set<number>();
+    for (const row of [...base, ...current]) {
+      if (ids.has(row.user_id)) continue;
+      ids.add(row.user_id);
+      merged.push(row);
+    }
+    return merged;
+  }, [pageData?.operators, loadedBefore, search]);
+
   useEffect(() => {
-    if (!pageData?.operators) return;
-    const ops: CandidateRow[] = pageData.operators;
-    setResults((prev) => {
-      if (page === 1) return ops;
-      const ids = new Set(prev.map((u) => u.user_id));
-      return [...prev, ...ops.filter((u) => !ids.has(u.user_id))];
-    });
+    if (results.length === 0) return;
     setDetails((prev) => {
+      let changed = false;
       const next = new Map(prev);
-      for (const o of ops) {
+      for (const o of results) {
+        if (next.has(o.user_id)) continue;
         next.set(o.user_id, {
           user_id: o.user_id,
           name: o.name,
           email: o.email,
         });
+        changed = true;
       }
-      return next;
+      return changed ? next : prev;
     });
-  }, [pageData?.operators, page]);
+  }, [results]);
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    setSearch("");
+    setPage(1);
+    setLoadedBefore({ search: "", rows: [] });
+    setSelected(new Set());
+    setSeeded(false);
+  }, [setOpen]);
 
   const saveMutation =
     trpc.workOrderSiteMutation.setWorkOrderSiteOperators.useMutation({
@@ -125,7 +149,7 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
           ),
         ]);
         onSaved?.();
-        setOpen(false);
+        handleClose();
       },
       onError: (e: unknown) => handleError(e, { showToast: true }),
     });
@@ -145,13 +169,10 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
     });
   }, []);
 
-  const handleClose = useCallback(() => {
-    setOpen(false);
-    setSearch("");
-    setPage(1);
-    setResults([]);
-    setSeeded(false);
-  }, [setOpen]);
+  const loadMore = useCallback(() => {
+    setLoadedBefore({ search, rows: results });
+    setPage((p) => p + 1);
+  }, [search, results]);
 
   const handleSave = () => {
     saveMutation.mutate({
@@ -162,6 +183,9 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
 
   const hasMore = pageData?.pagination?.hasMore ?? false;
   const total = pageData?.pagination?.total ?? 0;
+  // While the next page is in flight pageData is undefined, so keep the button
+  // mounted to avoid it flashing out from under the cursor.
+  const fetchingMore = loadingPage && page > 1;
 
   const selectedChips = useMemo(
     () =>
@@ -286,10 +310,10 @@ const WoSiteOperatorsDialog: React.FC<Props> = ({
                   </label>
                 );
               })}
-              {hasMore && (
+              {(hasMore || fetchingMore) && (
                 <button
                   type='button'
-                  onClick={() => setPage((p) => p + 1)}
+                  onClick={loadMore}
                   disabled={loadingPage}
                   className='col-span-full rounded-md border border-dashed py-2.5 text-xs font-medium text-slate-500 transition-colors hover:text-emerald-700 disabled:opacity-50'>
                   {loadingPage ? "Loading..." : "Load more operators..."}

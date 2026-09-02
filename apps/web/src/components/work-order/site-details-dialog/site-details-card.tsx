@@ -4,9 +4,7 @@ import {
   Calendar,
   MapPin,
   Briefcase,
-  User,
   FileText,
-  Building2,
   Upload,
   Trash2,
   ExternalLink,
@@ -77,12 +75,6 @@ interface WorkOrderSiteDetails {
     code: string | null;
     title: string | null;
     process_type: string | null;
-    job_number: string | null;
-    area: string | null;
-    installation_type: string | null;
-    joint_estimate_number: string | null;
-    land_owner_name: string | null;
-    remarks: string | null;
   };
   activities:
     | {
@@ -237,38 +229,6 @@ const SiteDetailsCard = ({
           value={processLabel}
         />
         <InfoCard
-          icon={FileText}
-          label='Job Number'
-          value={siteDetails?.work_order?.job_number?.toUpperCase() ?? "N/A"}
-        />
-        <InfoCard
-          icon={FileText}
-          label='Joint Estimate No.'
-          value={
-            siteDetails?.work_order?.joint_estimate_number?.toUpperCase() ??
-            "N/A"
-          }
-        />
-        <InfoCard
-          icon={MapPin}
-          label='Area'
-          value={capitalFirstLetter(siteDetails?.work_order?.area ?? "N/A")}
-        />
-        <InfoCard
-          icon={Building2}
-          label='Installation'
-          value={capitalFirstLetter(
-            siteDetails?.work_order?.installation_type ?? "N/A",
-          )}
-        />
-        <InfoCard
-          icon={User}
-          label='Land Owner'
-          value={capitalFirstLetter(
-            siteDetails?.work_order?.land_owner_name ?? "N/A",
-          )}
-        />
-        <InfoCard
           icon={Calendar}
           label='Start Date'
           value={
@@ -303,17 +263,6 @@ const SiteDetailsCard = ({
           </div>
         </div>
       </div>
-
-      {siteDetails?.work_order?.remarks && (
-        <div className='mt-3 pt-3 border-t border-gray-200/50'>
-          <p className='text-[10px] text-gray-400 uppercase tracking-wide mb-1'>
-            Remarks
-          </p>
-          <p className='text-xs text-gray-600'>
-            {capitalFirstLetter(siteDetails.work_order.remarks)}
-          </p>
-        </div>
-      )}
 
       <div className='mt-4 pt-4 border-t border-gray-200/50'>
         <div className='flex items-center gap-2 mb-3'>

@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import Error from "@/components/shared/error";
 import OfficeSiteFilter from "./office-site-filter";
 import OfficeSiteSkeleton from "../skeleton/office-site/office-site-skeleton";
+import ScrollToTop from "@/components/scroll-to-top";
 
 const CreateOfficeDialog = dynamic(() => import("./create-office-dialog"));
 const CreateSiteDialog = dynamic(() => import("./create-site-dialog"));
@@ -87,6 +88,7 @@ const OfficeSitePage = () => {
         <OfficeDetailsDialog />
         <ManageOfficeMembersDialog />
       </Suspense>
+      <ScrollToTop />
     </>
   );
 };

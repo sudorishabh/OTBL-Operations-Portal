@@ -6,6 +6,7 @@ import { useWorkOrderManagementContext } from "@/contexts/WorkOrderManagementCon
 import WorkOrderSearchNFilter from "./work-order-search-filter";
 import { IWorkOrder } from "@/types/work-order.types";
 import WorkOrdersSkeleton from "../skeleton/work-orders/work-orders-skeleton";
+import ScrollToTop from "@/components/scroll-to-top";
 
 const WorkOrderPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,6 +79,7 @@ const WorkOrderPage = () => {
           />
         </div>
       )}
+      <ScrollToTop />
     </div>
   );
 };

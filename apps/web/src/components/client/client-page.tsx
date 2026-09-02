@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import ClientInfoSkeleton from "@/components/skeleton/client/client-info-skeleton";
 import ClientProposalSkeleton from "@/components/skeleton/client/client-proposal-skeleton";
+import ScrollToTop from "@/components/scroll-to-top";
 const ClientDetailsCard = dynamic(
   () => import("@/components/client/client-details-card"),
 );
@@ -52,6 +53,7 @@ const ClientContent = ({ clientId }: { clientId: string }) => {
         </Suspense>
       </div>
       <UpdateClientDialog clientId={clientId} />
+      <ScrollToTop />
     </PageWrapper>
   );
 };

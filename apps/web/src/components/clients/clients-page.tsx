@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import ClientsSkeleton from "@/components/skeleton/clients/clients-skeleton";
+import ScrollToTop from "@/components/scroll-to-top";
 
 const ClientsTab = dynamic(() => import("./clients-tab"));
 const ClientContactTab = dynamic(() => import("./client-contact-tab"));
@@ -80,6 +81,7 @@ const ClientsPage = () => {
 
       <CreateClientDialog />
       <CreateClientContactDialog />
+      <ScrollToTop />
     </>
   );
 };

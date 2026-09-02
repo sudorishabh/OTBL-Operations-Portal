@@ -89,24 +89,6 @@ const CompletionExpenseSummary = ({ woSiteId }: { woSiteId: number }) => {
   );
 };
 
-interface SiteDetailDialogProps {
-  siteData: {
-    id: number;
-    wo_site_id: number;
-    name: string;
-    address: string;
-    city: string;
-    state: string;
-    pincode: string;
-    start_date: string;
-    end_date: string;
-    status: "pending" | "completed" | "cancelled";
-    client_id?: number;
-    work_order_id?: number;
-    [key: string]: any;
-  } | null;
-}
-
 const SiteDetailDialog = () => {
   const { getParam, deleteParams, setParam } = useHandleParams();
   const woSiteId = Number(getParam("wo-site-id"));

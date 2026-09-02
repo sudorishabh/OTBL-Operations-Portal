@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1780374515446,
-      "tag": "0000_wakeful_calypso",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1780377338972,
-      "tag": "0001_rename_manager_role",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1786945856144,
-      "tag": "0002_make_client_email_contact_optional",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1786949778160,
-      "tag": "0003_move_wo_fields_to_work_order",
+      "when": 1786953606961,
+      "tag": "0000_harsh_tomorrow_man",
       "breakpoints": true
     }
   ]

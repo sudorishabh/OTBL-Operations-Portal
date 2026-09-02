@@ -1,11 +1,41 @@
 "use client";
 
-import React, { useRef, useCallback } from "react";
-import { Upload, X, FileText, CheckCircle, Loader2 } from "lucide-react";
+import React, { useRef, useCallback, useState } from "react";
+import {
+  Upload,
+  X,
+  FileText,
+  FileSpreadsheet,
+  Image as ImageIcon,
+  File as FileIcon,
+  CheckCircle,
+  Loader2,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+
+const getFileTypeStyle = (fileName: string) => {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "pdf") {
+    return { Icon: FileText, bg: "bg-red-50", text: "text-red-500" };
+  }
+  if (["doc", "docx"].includes(ext)) {
+    return { Icon: FileText, bg: "bg-blue-50", text: "text-blue-500" };
+  }
+  if (["xls", "xlsx", "csv"].includes(ext)) {
+    return {
+      Icon: FileSpreadsheet,
+      bg: "bg-emerald-50",
+      text: "text-emerald-600",
+    };
+  }
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
+    return { Icon: ImageIcon, bg: "bg-purple-50", text: "text-purple-500" };
+  }
+  return { Icon: FileIcon, bg: "bg-gray-100", text: "text-gray-500" };
+};
 
 interface DeferredFilePickerProps {
   onFileSelect: (file: File | null) => void;
@@ -43,6 +73,7 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
   multiple = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
 
   const validateFile = useCallback(
     (file: File): boolean => {
@@ -88,6 +119,7 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
     (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      setIsDragActive(false);
 
       if (multiple) {
         const files = Array.from(e.dataTransfer.files || []);
@@ -109,6 +141,13 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
   };
 
   const handleClear = useCallback(() => {
@@ -139,10 +178,22 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          role='button'
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
           className={cn(
-            "group border border-dashed border-gray-300 rounded-md px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-gray-50/50 hover:border-primary/40 transition-all",
-            isUploadBgWhite && "bg-white",
+            "group border-2 border-dashed rounded-lg px-4 py-4 flex items-center gap-3 cursor-pointer transition-colors",
+            isDragActive
+              ? "border-primary bg-primary/5"
+              : "border-gray-300 hover:border-primary/40 hover:bg-gray-50/50",
+            isUploadBgWhite && !isDragActive && "bg-white",
           )}>
           <input
             type='file'
@@ -152,40 +203,70 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
             accept={allowedExtensions.join(",")}
             multiple={multiple}
           />
-          <Upload className='h-4 w-4 text-gray-400 group-hover:text-primary/60 transition-colors' />
-          <span className='text-xs text-gray-500 group-hover:text-gray-600'>
-            {label}
-          </span>
-          <span className='text-xs text-gray-400 ml-auto hidden sm:inline'>
-            {allowedExtensions.slice(0, 3).join(", ")}
-            {allowedExtensions.length > 3 ? "..." : ""} • {maxSizeMB}MB
-          </span>
-        </div>
-      ) : (
-        <div className='border border-gray-200 rounded-md px-3 py-2 bg-white flex items-center gap-2'>
           <div
             className={cn(
-              "shrink-0 p-1.5 rounded-md",
-              isUploaded
-                ? "bg-green-50"
-                : isUploading
-                  ? "bg-primary/5"
-                  : "bg-gray-50",
+              "shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors",
+              isDragActive
+                ? "bg-primary/10"
+                : "bg-gray-100 group-hover:bg-primary/10",
             )}>
-            {isUploading ? (
-              <Loader2 className='h-3.5 w-3.5 text-primary animate-spin' />
-            ) : isUploaded ? (
-              <CheckCircle className='h-3.5 w-3.5 text-green-600' />
-            ) : isDeleting ? (
-              <Loader2 className='h-3.5 w-3.5 text-red-500 animate-spin' />
-            ) : (
-              <FileText className='h-3.5 w-3.5 text-gray-500' />
+            <Upload
+              className={cn(
+                "h-4 w-4 transition-colors",
+                isDragActive
+                  ? "text-primary"
+                  : "text-gray-400 group-hover:text-primary/70",
+              )}
+            />
+          </div>
+          <div className='min-w-0'>
+            <p className='text-sm font-medium text-gray-700'>{label}</p>
+            <p className='text-xs text-gray-400 mt-0.5'>
+              Drop a file here or click to browse. Accepts{" "}
+              {allowedExtensions
+                .slice(0, 3)
+                .join(", ")
+                .replace(/\./g, "")
+                .toUpperCase()}
+              {allowedExtensions.length > 3 ? " and more" : ""}, up to{" "}
+              {maxSizeMB}MB.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "border rounded-lg px-3 py-2.5 bg-white flex items-center gap-3 transition-colors",
+            isUploaded ? "border-emerald-200" : "border-gray-200",
+          )}>
+          <div className='relative shrink-0'>
+            <div
+              className={cn(
+                "h-10 w-10 rounded-md flex items-center justify-center",
+                getFileTypeStyle(selectedFile.name).bg,
+              )}>
+              {isUploading || isDeleting ? (
+                <Loader2
+                  className={cn(
+                    "h-4 w-4 animate-spin",
+                    isDeleting ? "text-red-500" : "text-primary",
+                  )}
+                />
+              ) : (
+                (() => {
+                  const { Icon, text } = getFileTypeStyle(selectedFile.name);
+                  return <Icon className={cn("h-4 w-4", text)} />;
+                })()
+              )}
+            </div>
+            {isUploaded && !isDeleting && (
+              <CheckCircle className='absolute -bottom-1 -right-1 h-4 w-4 text-emerald-600 bg-white rounded-full' />
             )}
           </div>
 
           <div className='flex-1 min-w-0'>
-            <div className='flex items-center gap-2'>
-              <span className='text-sm font-medium text-gray-700 truncate max-w-[180px]'>
+            <div className='flex items-baseline gap-2'>
+              <span className='text-sm font-medium text-gray-700 truncate max-w-[220px]'>
                 {selectedFile.name}
               </span>
               <span className='text-xs text-gray-400 shrink-0'>
@@ -193,22 +274,24 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
               </span>
             </div>
             {isUploading && (
-              <div className='flex items-center gap-2 mt-0.5'>
+              <div className='flex items-center gap-2 mt-1'>
                 <Progress
                   value={uploadProgress}
-                  className='h-1 flex-1 max-w-[120px]'
-                  indicatorClassName='bg-emerald-600'
+                  className='h-1.5 flex-1 max-w-[160px]'
+                  indicatorClassName='bg-primary'
                 />
-                <span className='text-xs text-gray-400'>{uploadProgress}%</span>
+                <span className='text-xs text-gray-400 tabular-nums'>
+                  {uploadProgress}%
+                </span>
               </div>
             )}
             {isDeleting && (
-              <span className='text-xs text-red-500'>Deleting...</span>
+              <span className='text-xs text-red-500'>Removing file…</span>
             )}
             {!isUploading && !isUploaded && !isDeleting && (
-              <span className='text-xs text-amber-600 flex items-center gap-1'>
+              <span className='inline-flex items-center gap-1.5 mt-0.5 text-xs text-amber-700 bg-amber-50 rounded-full px-2 py-0.5'>
                 <span className='w-1.5 h-1.5 bg-amber-500 rounded-full' />
-                Pending upload
+                Ready to upload
               </span>
             )}
           </div>
