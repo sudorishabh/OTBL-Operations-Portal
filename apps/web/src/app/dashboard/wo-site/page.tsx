@@ -121,23 +121,23 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
       href={`/dashboard/wo-site/${site.work_order_site_id}`}
       aria-label={`Open ${site.site_name}`}
       className='group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:border-emerald-300 hover:shadow-md focus-visible:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
-      <div className='flex-1 p-4'>
+      <div className='flex-1 p-3.5'>
         <div className='flex items-start justify-between gap-2'>
           <h2
-            className='min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight text-gray-900 transition-colors group-hover:text-emerald-700'
+            className='min-w-0 flex-1 truncate text-[16px] font-semibold tracking-tight text-gray-900 transition-colors group-hover:text-emerald-700'
             title={site.site_name}>
             {site.site_name?.toUpperCase()}
           </h2>
           <span
             className={cn(
-              "shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-semibold",
+              "shrink-0 rounded-full px-2 py-0.5 text-[12px] font-semibold",
               STATUS_STYLES[statusOf(site)],
             )}>
             {capitalFirstLetter(site.status)}
           </span>
         </div>
 
-        <div className='mt-1 flex items-center gap-2 text-[12px] text-gray-500'>
+        <div className='mt-1 flex items-center gap-2 text-[12.5px] text-gray-500'>
           <span className='truncate font-medium tabular-nums'>
             {site.wo_code}
           </span>
@@ -150,19 +150,19 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
 
         {site.wo_title && (
           <p
-            className='mt-2 truncate text-[12.5px] text-gray-400'
+            className='mt-1.5 truncate text-[13px] text-gray-400'
             title={site.wo_title}>
             {site.wo_title}
           </p>
         )}
 
-        <dl className='mt-3.5 grid grid-cols-2 gap-x-4 border-t border-gray-100 pt-3.5'>
+        <dl className='mt-3 grid grid-cols-2 gap-x-4 border-t border-gray-100 pt-3'>
           <div className='min-w-0'>
-            <dt className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+            <dt className='text-[11.5px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
               Location
             </dt>
             <dd
-              className='mt-0.5 flex items-center gap-1 text-[13px] font-medium text-gray-700'
+              className='mt-0.5 flex items-center gap-1 text-[13.5px] font-medium text-gray-700'
               title={location}>
               <MapPin className='size-3.5 shrink-0 text-gray-400' />
               <span className='truncate'>{location}</span>
@@ -170,14 +170,14 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
           </div>
 
           <div className='min-w-0'>
-            <dt className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+            <dt className='text-[11.5px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
               Schedule
             </dt>
-            <dd className='mt-0.5 whitespace-nowrap text-[13px] font-medium tabular-nums text-gray-700'>
+            <dd className='mt-0.5 whitespace-nowrap text-[13.5px] font-medium tabular-nums text-gray-700'>
               {formatRange(site)}
             </dd>
             {note && (
-              <dd className={cn("text-[12px] font-medium", note.tone)}>
+              <dd className={cn("text-[12.5px] font-medium", note.tone)}>
                 {note.text}
               </dd>
             )}
@@ -185,10 +185,10 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
         </dl>
       </div>
 
-      <div className='flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/80 px-4 py-2.5'>
+      <div className='flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/80 px-3.5 py-2'>
         <span
           className={cn(
-            "inline-flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium",
+            "inline-flex min-w-0 items-center gap-1.5 text-[13px] font-medium",
             hasUploads ? "text-gray-600" : "text-amber-700",
           )}>
           {hasUploads ? (
@@ -203,8 +203,8 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
           </span>
         </span>
 
-        <span className='flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 transition-colors duration-200 group-hover:bg-emerald-600 group-hover:text-white'>
-          <ChevronRight className='size-4' />
+        <span className='flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 transition-colors duration-200 group-hover:bg-emerald-600 group-hover:text-white'>
+          <ChevronRight className='size-3.5' />
         </span>
       </div>
     </Link>
@@ -213,21 +213,21 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
 
 const CardSkeleton = () => (
   <div className='flex animate-pulse flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-    <div className='flex-1 p-4'>
+    <div className='flex-1 p-3.5'>
       <div className='flex items-start justify-between gap-2'>
         <div className='h-4 w-2/3 rounded bg-gray-200' />
         <div className='h-4 w-16 rounded-full bg-gray-100' />
       </div>
       <div className='mt-2 h-3 w-32 rounded bg-gray-100' />
       <div className='mt-2.5 h-3 w-1/2 rounded bg-gray-100' />
-      <div className='mt-3.5 grid grid-cols-2 gap-4 border-t border-gray-100 pt-3.5'>
+      <div className='mt-3 grid grid-cols-2 gap-4 border-t border-gray-100 pt-3'>
         <div className='h-8 rounded bg-gray-100' />
         <div className='h-8 rounded bg-gray-100' />
       </div>
     </div>
-    <div className='flex items-center justify-between border-t border-gray-100 bg-gray-50/80 px-4 py-2.5'>
+    <div className='flex items-center justify-between border-t border-gray-100 bg-gray-50/80 px-3.5 py-2'>
       <div className='h-3 w-24 rounded bg-gray-100' />
-      <div className='size-7 rounded-full bg-gray-100' />
+      <div className='size-6 rounded-full bg-gray-100' />
     </div>
   </div>
 );
@@ -291,12 +291,12 @@ export default function OperatorAssignedSitesPage() {
               loading='eager'
             />
             <div className='min-w-0'>
-              <h1 className='truncate text-[15px] font-semibold text-white'>
+              <h1 className='truncate text-[16px] font-semibold text-white'>
                 {firstName
                   ? `Hi, ${capitalFirstLetter(firstName)}`
                   : "Your sites"}
               </h1>
-              <p className='truncate text-[12.5px] sm:text-[14px] text-cyan-100/80'>
+              <p className='truncate text-[13px] sm:text-[15px] text-cyan-100/80'>
                 Open a site to upload measurement sheets, bills and photos.
               </p>
             </div>
@@ -305,7 +305,7 @@ export default function OperatorAssignedSitesPage() {
           <button
             type='button'
             onClick={() => void logout()}
-            className='inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-white/20 px-2.5 text-[12.5px] font-medium text-cyan-50 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'>
+            className='inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-white/20 px-2.5 text-[13px] font-medium text-cyan-50 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'>
             <LogOut className='size-3.5' />
             <span className='hidden sm:inline'>Log out</span>
           </button>
@@ -323,7 +323,7 @@ export default function OperatorAssignedSitesPage() {
                   onClick={() => setFilter(key)}
                   aria-pressed={filter === key}
                   className={cn(
-                    "cursor-pointer rounded-md px-2.5 py-1 text-[12.5px] font-medium transition-colors",
+                    "cursor-pointer rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors",
                     filter === key
                       ? "bg-white text-gray-900 shadow-sm"
                       : "text-gray-500 hover:text-gray-800",
@@ -343,7 +343,7 @@ export default function OperatorAssignedSitesPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder='Search site, work order or job number'
                 aria-label='Search assigned sites'
-                className='h-8 border-gray-200 bg-white pl-8 pr-8 text-[13px] shadow-none placeholder:text-gray-400'
+                className='h-8 border-gray-200 bg-white pl-8 pr-8 text-[13.5px] shadow-none placeholder:text-gray-400'
               />
               {search && (
                 <button
@@ -361,7 +361,7 @@ export default function OperatorAssignedSitesPage() {
 
       <main className='mx-auto w-full max-w-3xl px-4 py-5 sm:px-6'>
         {isLoading ? (
-          <div className='space-y-3'>
+          <div className='space-y-2.5'>
             {Array.from({ length: 4 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))}
@@ -369,17 +369,17 @@ export default function OperatorAssignedSitesPage() {
         ) : sites.length === 0 ? (
           <div className='rounded-xl border border-gray-200 bg-white px-6 py-14 text-center'>
             <MapPin className='mx-auto size-7 text-gray-300' />
-            <p className='mt-3 text-[14px] font-semibold text-gray-900'>
+            <p className='mt-3 text-[15px] font-semibold text-gray-900'>
               No sites assigned to you
             </p>
-            <p className='mx-auto mt-1 max-w-sm text-[12.5px] text-gray-500'>
+            <p className='mx-auto mt-1 max-w-sm text-[13px] text-gray-500'>
               Your office assigns you to a site when work is scheduled. This
               list updates on its own once that happens.
             </p>
           </div>
         ) : visible.length === 0 ? (
           <div className='rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center'>
-            <p className='text-[13.5px] font-medium text-gray-900'>
+            <p className='text-[14px] font-medium text-gray-900'>
               {search.trim()
                 ? `No sites match \u201C${search.trim()}\u201D`
                 : `No ${filter} sites`}
@@ -390,12 +390,12 @@ export default function OperatorAssignedSitesPage() {
                 setSearch("");
                 setFilter("all");
               }}
-              className='mt-2 cursor-pointer text-[12.5px] font-medium text-emerald-700 underline-offset-2 hover:underline'>
+              className='mt-2 cursor-pointer text-[13px] font-medium text-emerald-700 underline-offset-2 hover:underline'>
               Show all sites
             </button>
           </div>
         ) : (
-          <div className='space-y-3'>
+          <div className='space-y-2.5'>
             {visible.map((site) => (
               <SiteCard
                 key={site.work_order_site_id}
