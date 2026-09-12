@@ -185,7 +185,7 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
         </dl>
       </div>
 
-      <div className='flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/80 px-3.5 py-2'>
+      <div className='flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-3.5 py-2'>
         <span
           className={cn(
             "inline-flex min-w-0 items-center gap-1.5 text-[13px] font-medium",
@@ -225,7 +225,7 @@ const CardSkeleton = () => (
         <div className='h-8 rounded bg-gray-100' />
       </div>
     </div>
-    <div className='flex items-center justify-between border-t border-gray-100 bg-gray-50/80 px-3.5 py-2'>
+    <div className='flex items-center justify-between border-t border-gray-100 bg-gray-50 px-3.5 py-2'>
       <div className='h-3 w-24 rounded bg-gray-100' />
       <div className='size-6 rounded-full bg-gray-100' />
     </div>
@@ -278,7 +278,7 @@ export default function OperatorAssignedSitesPage() {
   const firstName = user?.name?.split(" ")[0];
 
   return (
-    <div className='min-h-svh bg-gray-50'>
+    <div className='min-h-svh bg-gray-100'>
       <header className='bg-cyan-900 px-4 py-4 sm:px-6'>
         <div className='mx-auto flex max-w-3xl items-center justify-between gap-4'>
           <div className='flex min-w-0 items-center gap-4'>
