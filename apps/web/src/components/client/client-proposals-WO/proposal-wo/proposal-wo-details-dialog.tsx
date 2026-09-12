@@ -115,7 +115,7 @@ const StatusPill = ({ status }: { status: string }) => {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-[3px] text-[11px] font-semibold",
         tone.bg,
         tone.text,
       )}>
@@ -137,18 +137,18 @@ const CodeChip = ({
   <span
     title={code}
     className={cn(
-      "inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[11px] font-medium ring-1 ring-inset",
+      "inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-0.5 font-mono text-xs font-medium ring-1 ring-inset",
       tone === "sky"
         ? "bg-sky-50 text-sky-700 ring-sky-100"
         : "bg-emerald-50 text-emerald-700 ring-emerald-100",
     )}>
-    <Icon className='h-3 w-3 shrink-0 opacity-60' />
+    <Icon className='h-3.5 w-3.5 shrink-0 opacity-60' />
     <span className='truncate'>{code}</span>
   </span>
 );
 
 const StageLabel = ({ children }: { children: React.ReactNode }) => (
-  <span className='text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+  <span className='text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-500'>
     {children}
   </span>
 );
@@ -169,7 +169,7 @@ const DocumentLink = ({
       "inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline",
       tone === "sky" ? "text-sky-600" : "text-emerald-600",
     )}>
-    <ExternalLink className='h-3 w-3' />
+    <ExternalLink className='h-3.5 w-3.5' />
     Document
   </a>
 );
@@ -200,7 +200,7 @@ const Stage = ({
 );
 
 const StageMeta = ({ children }: { children: React.ReactNode }) => (
-  <div className='mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500'>
+  <div className='mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-gray-600'>
     {children}
   </div>
 );
@@ -309,14 +309,14 @@ const ProposalRow = ({
 
       <div className='py-3 pl-5 pr-3'>
         <div className='flex items-start justify-between gap-3'>
-          <h4 className='line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
+          <h4 className='line-clamp-2 text-[15px] font-semibold leading-snug text-gray-900'>
             {capitalFirstLetter(proposal.title)}
           </h4>
           <CustomButton
             text={primary.label}
             variant='arrow'
             arrowType='upright'
-            className='h-7 shrink-0 pl-2.5 text-[11px]'
+            className='h-8 shrink-0 pl-3 text-xs'
             onClick={(e) => {
               e?.stopPropagation();
               primary.run();
@@ -381,7 +381,7 @@ const ProposalRow = ({
                   {woStatus && <StatusPill status={woStatus} />}
                 </div>
                 {distinctWOTitle && (
-                  <p className='mt-1 line-clamp-1 text-xs text-gray-600'>
+                  <p className='mt-1.5 line-clamp-1 text-[13px] text-gray-600'>
                     {distinctWOTitle}
                   </p>
                 )}
@@ -397,7 +397,7 @@ const ProposalRow = ({
                   )}
                   {workOrder.agreement_number && (
                     <span className='inline-flex items-center gap-1'>
-                      <FileSignature className='h-3 w-3 text-gray-400' />
+                      <FileSignature className='h-3.5 w-3.5 text-gray-400' />
                       Agreement {workOrder.agreement_number}
                     </span>
                   )}
@@ -412,9 +412,7 @@ const ProposalRow = ({
             ) : (
               <div className='flex min-w-0 flex-wrap items-center gap-2'>
                 <StageLabel>Work order</StageLabel>
-                <span className='text-[11px] text-gray-400'>
-                  Not created yet
-                </span>
+                <span className='text-xs text-gray-500'>Not created yet</span>
               </div>
             )}
           </Stage>
@@ -430,7 +428,7 @@ const ProposalRowSkeleton = () => (
     <div className='py-3 pl-5 pr-3'>
       <div className='flex items-start justify-between gap-3'>
         <div className='h-4 w-2/5 rounded bg-gray-100' />
-        <div className='h-7 w-28 rounded-full bg-gray-100' />
+        <div className='h-8 w-32 rounded-full bg-gray-100' />
       </div>
       <div className='mt-4 space-y-4'>
         {[0, 1].map((i) => (
@@ -569,10 +567,10 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
               <div className='mb-4 rounded-xl bg-white p-3 text-gray-400 shadow-sm'>
                 <FileText className='h-6 w-6' />
               </div>
-              <h3 className='text-sm font-semibold text-gray-800'>
+              <h3 className='text-[15px] font-semibold text-gray-800'>
                 {debouncedSearch ? "No matching proposals" : "No proposals yet"}
               </h3>
-              <p className='mt-1 max-w-xs text-xs leading-relaxed text-gray-500'>
+              <p className='mt-1 max-w-sm text-sm leading-relaxed text-gray-500'>
                 {debouncedSearch
                   ? `Nothing matches "${debouncedSearch}". Try another code or title.`
                   : "Create a proposal to start tracking work orders for this client."}
