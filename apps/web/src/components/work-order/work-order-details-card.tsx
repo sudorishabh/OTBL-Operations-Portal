@@ -89,11 +89,11 @@ const Empty = () => <span className='text-gray-300'>&mdash;</span>;
 // Dense label/value pair used across the detail grid.
 const Field = ({ label, value }: { label: string; value?: string | null }) => (
   <div className='min-w-0'>
-    <div className='text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+    <div className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
       {label}
     </div>
     <p
-      className='mt-0.5 truncate text-[13px] font-medium text-gray-700'
+      className='mt-0.5 truncate text-[14px] font-medium text-gray-700'
       title={value || undefined}>
       {value || <Empty />}
     </p>
@@ -115,18 +115,19 @@ const Metric = ({
   hintClass?: string;
 }) => (
   <div className='min-w-0 px-4 py-2.5'>
-    <div className='text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+    <div className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
       {label}
     </div>
     <div
       className={cn(
-        "mt-0.5 truncate text-[15px] font-semibold leading-tight",
+        "mt-0.5 truncate text-[16px] font-semibold leading-tight",
         valueClass,
       )}>
       {value}
     </div>
-    <div className={cn("truncate text-[11px] leading-tight", hintClass)}>
-      {hint ?? " "}
+    {/* Fixed height keeps tiles aligned when a metric has no qualifier. */}
+    <div className={cn("h-4 truncate text-[12px] leading-4", hintClass)}>
+      {hint}
     </div>
   </div>
 );
@@ -174,11 +175,11 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
           </div>
           <div className='min-w-0'>
             <h2
-              className='truncate text-[15px] font-semibold tracking-tight text-gray-900'
+              className='truncate text-[16px] font-semibold tracking-tight text-gray-900'
               title={workOrder.title}>
               {capitalFirstLetter(workOrder.title)}
             </h2>
-            <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500'>
+            <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-gray-500'>
               <span className='font-mono font-medium text-gray-700'>
                 {workOrder.code.toUpperCase()}
               </span>
@@ -235,7 +236,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
               href={workOrder.document_key}
               target='_blank'
               title='View work order document'
-              className='inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+              className='inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
               <ExternalLink className='size-3' />
               PDF
             </Link>
@@ -290,14 +291,14 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
 
       {hasExpenseBreakdown && (
         <div className='flex flex-wrap items-center gap-1.5 border-b border-gray-200 bg-slate-50/60 px-4 py-2'>
-          <span className='text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500'>
+          <span className='text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500'>
             By category
           </span>
           {Object.entries(expenseSummary!.by_type).map(([type, amt]) => (
             <Badge
               key={type}
               variant='outline'
-              className='bg-white text-[11px] font-normal'>
+              className='bg-white text-[12px] font-normal'>
               {EXPENSE_TYPE_SHORT[type] ?? type}: ₹
               {Number(amt).toLocaleString("en-IN")}
             </Badge>
@@ -344,7 +345,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       </div>
 
       {hasNotes && (
-        <div className='flex items-start gap-2 border-t border-gray-100 px-4 py-2 text-[12px]'>
+        <div className='flex items-start gap-2 border-t border-gray-100 px-4 py-2 text-[13px]'>
           <div
             className={cn(
               "min-w-0 flex-1 space-y-1 text-gray-600",
@@ -378,7 +379,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       )}
 
       {workOrder.cancellation_reason && (
-        <div className='flex items-start gap-2 border-t border-rose-100 bg-rose-50/70 px-4 py-2 text-[12px]'>
+        <div className='flex items-start gap-2 border-t border-rose-100 bg-rose-50/70 px-4 py-2 text-[13px]'>
           <Ban className='mt-0.5 size-3.5 shrink-0 text-rose-500' />
           <p className='min-w-0 leading-relaxed text-rose-700'>
             <span className='font-semibold uppercase tracking-[0.08em] text-rose-500'>

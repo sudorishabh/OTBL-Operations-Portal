@@ -5,7 +5,13 @@ import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter, getEffectiveWorkOrderStatus } from "@pkg/utils";
 import { useRouter } from "next/navigation";
 import WorkOrderDetailsCard from "./work-order-details-card";
-import { File, FolderOpen, Plus, ReceiptIndianRupee, Rows3 } from "lucide-react";
+import {
+  File,
+  FolderOpen,
+  Plus,
+  ReceiptIndianRupee,
+  Rows3,
+} from "lucide-react";
 import ScheduleOfRatesTable from "./schedule-of-rates-table";
 import CreateWorkOrderSiteDialog from "./create-wo-site/create-wo-site-dialog";
 import SiteDetailDialog from "./site-details-dialog/site-details-dialog";
@@ -239,7 +245,7 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
 
   return (
     <PageWrapper
-      title={`${workOrderData.workOrder.code.toUpperCase()} - ${capitalFirstLetter(workOrderData.workOrder.title || "Work Order")}`}
+      title={`${workOrderData.workOrder.code.toUpperCase()} - ${workOrderData.workOrder.title?.toUpperCase() || "Work Order"}`}
       description='Work Order Details and Management'
       backClick={() => {
         if (from === "list") {
@@ -342,9 +348,7 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
                     />
                   </TabsContent>
                 </Tabs>
-                {isFetchingMore && (
-                  <WorkOrderSitesSkeleton />
-                )}
+                {isFetchingMore && <WorkOrderSitesSkeleton />}
                 {!isFetchingMore && pagination?.hasMore && (
                   <div className='flex justify-center mt-4'>
                     <LoadMoreBtn

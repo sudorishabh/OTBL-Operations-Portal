@@ -10,9 +10,9 @@ const WorkOrderSitesSkeleton = () => {
         skeletonsParentStyle,
         "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3",
       )}>
-      <Skeleton className={cn(skeletonStyle, "h-40")} />
-      <Skeleton className={cn(skeletonStyle, "h-40")} />
-      <Skeleton className={cn(skeletonStyle, "h-40")} />
+      <Skeleton className={cn(skeletonStyle, "h-44")} />
+      <Skeleton className={cn(skeletonStyle, "h-44")} />
+      <Skeleton className={cn(skeletonStyle, "h-44")} />
     </div>
   );
 };

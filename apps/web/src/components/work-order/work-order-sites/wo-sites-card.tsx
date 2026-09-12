@@ -73,19 +73,19 @@ const SiteCard = ({
         />
         <div className='min-w-0 flex-1'>
           <h3
-            className='truncate text-[13px] font-semibold tracking-tight text-gray-900 transition-colors group-hover:text-emerald-700'
+            className='truncate text-[14px] font-semibold tracking-tight text-gray-900 transition-colors group-hover:text-emerald-700'
             title={site.name}>
             {capitalFirstLetter(site.name)}
           </h3>
           <p
-            className='mt-0.5 truncate text-[11px] text-gray-400'
+            className='mt-0.5 truncate text-[12px] text-gray-400'
             title={location}>
             {location || "—"}
           </p>
         </div>
         <span
           className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+            "shrink-0 rounded-full px-2 py-0.5 text-[12px] font-semibold",
             status.chip,
           )}>
           {capitalFirstLetter(site.status)}
@@ -96,10 +96,10 @@ const SiteCard = ({
       {/* Schedule + operators */}
       <div className='mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-t border-gray-100 pt-3'>
         <div className='min-w-0'>
-          <div className='text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+          <div className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
             Schedule
           </div>
-          <div className='mt-0.5 whitespace-nowrap text-[12px] font-medium text-gray-700'>
+          <div className='mt-0.5 whitespace-nowrap text-[13px] font-medium text-gray-700'>
             {formatDate(site.start_date, "dd MMM yy")}
             <span className='mx-1 text-gray-300'>&rarr;</span>
             {formatDate(site.end_date, "dd MMM yy")}
@@ -107,7 +107,7 @@ const SiteCard = ({
         </div>
 
         <div className='min-w-0'>
-          <div className='text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+          <div className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
             Operators
           </div>
           <div className='mt-0.5 flex flex-wrap items-center gap-1'>
@@ -117,13 +117,13 @@ const SiteCard = ({
                   <Badge
                     key={user.user_id}
                     variant='outline'
-                    className='max-w-[7.5rem] truncate bg-white px-1.5 py-0 text-[10px] font-medium text-gray-700'>
+                    className='max-w-[7.5rem] truncate bg-white px-1.5 py-0 text-[12px] font-medium text-gray-700'>
                     {capitalFirstLetter(user.user_name)}
                   </Badge>
                 ))}
                 {operators.length > MAX_VISIBLE_OPERATORS && (
                   <span
-                    className='text-[10px] font-medium text-gray-400'
+                    className='text-[12px] font-medium text-gray-400'
                     title={operators
                       .slice(MAX_VISIBLE_OPERATORS)
                       .map((u) => capitalFirstLetter(u.user_name))
@@ -133,7 +133,7 @@ const SiteCard = ({
                 )}
               </>
             ) : (
-              <span className='text-[11px] text-gray-300'>Unassigned</span>
+              <span className='text-[12px] text-gray-300'>Unassigned</span>
             )}
           </div>
         </div>
@@ -151,20 +151,20 @@ const SiteCard = ({
                 target='_blank'
                 rel='noopener noreferrer'
                 onClick={(e) => e.stopPropagation()}
-                className='inline-flex items-center gap-1 rounded-md border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+                className='inline-flex items-center gap-1 rounded-md border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[12px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
                 <ExternalLink className='size-2.5' />
                 Sheet {idx + 1}
               </a>
             ))}
             {sheets.length > MAX_VISIBLE_SHEETS && (
-              <span className='text-[10px] font-medium text-gray-400'>
+              <span className='text-[12px] font-medium text-gray-400'>
                 +{sheets.length - MAX_VISIBLE_SHEETS}
               </span>
             )}
           </>
         )}
         <span
-          className='ml-auto shrink-0 text-[10px] text-gray-400'
+          className='ml-auto shrink-0 text-[11px] text-gray-400'
           title={formatDate(site.created_at, "MMM dd, yyyy • hh:mm a")}>
           Added {formatDate(site.created_at, "dd MMM yy")}
         </span>
