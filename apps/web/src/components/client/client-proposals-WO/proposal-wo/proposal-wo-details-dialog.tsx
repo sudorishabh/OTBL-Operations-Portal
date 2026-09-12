@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import React, { useMemo, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import CustomButton from "@/components/shared/btn";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 
 interface Props {
@@ -161,24 +162,27 @@ const ProposalSide = ({
   onOpen: () => void;
 }) => (
   <div
-    role='button'
-    tabIndex={0}
-    aria-label={`View proposal ${proposal.code}`}
     onClick={onOpen}
-    onKeyDown={(e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        onOpen();
-      }
-    }}
-    className='flex cursor-pointer flex-col rounded-lg p-3 outline-none transition-colors duration-200 hover:bg-sky-50/60 focus-visible:ring-2 focus-visible:ring-sky-500/30'>
-    <div className='flex flex-wrap items-center gap-2'>
-      <CodeChip
-        icon={Hash}
-        code={proposal.code}
-        tone='sky'
+    className='flex cursor-pointer flex-col rounded-lg p-3 transition-colors duration-200 hover:bg-sky-50/60'>
+    <div className='flex items-center justify-between gap-2'>
+      <div className='flex min-w-0 flex-wrap items-center gap-2'>
+        <CodeChip
+          icon={Hash}
+          code={proposal.code}
+          tone='sky'
+        />
+        <StatusPill status={proposal.status} />
+      </div>
+      <CustomButton
+        text='View proposal'
+        variant='arrow'
+        arrowType='upright'
+        className='shrink-0'
+        onClick={(e) => {
+          e?.stopPropagation();
+          onOpen();
+        }}
       />
-      <StatusPill status={proposal.status} />
     </div>
 
     <h4 className='mt-2 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
@@ -274,24 +278,27 @@ const ResolvedWorkOrderSide = ({
 
   return (
     <div
-      role='button'
-      tabIndex={0}
-      aria-label={`Open work order ${workOrder.code}`}
       onClick={openWorkOrder}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openWorkOrder();
-        }
-      }}
-      className='flex cursor-pointer flex-col rounded-lg p-3 outline-none transition-colors duration-200 hover:bg-emerald-50/60 focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
-      <div className='flex flex-wrap items-center gap-2'>
-        <CodeChip
-          icon={Briefcase}
-          code={workOrder.code}
-          tone='emerald'
+      className='flex cursor-pointer flex-col rounded-lg p-3 transition-colors duration-200 hover:bg-emerald-50/60'>
+      <div className='flex items-center justify-between gap-2'>
+        <div className='flex min-w-0 flex-wrap items-center gap-2'>
+          <CodeChip
+            icon={Briefcase}
+            code={workOrder.code}
+            tone='emerald'
+          />
+          {resolvedStatus && <StatusPill status={resolvedStatus} />}
+        </div>
+        <CustomButton
+          text='Open work order'
+          variant='arrow'
+          arrowType='upright'
+          className='shrink-0'
+          onClick={(e) => {
+            e?.stopPropagation();
+            openWorkOrder();
+          }}
         />
-        {resolvedStatus && <StatusPill status={resolvedStatus} />}
       </div>
 
       <h4 className='mt-2 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>

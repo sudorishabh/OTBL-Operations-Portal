@@ -17,7 +17,7 @@ interface Props {
   className?: string;
   variant: "primary" | "secondary" | "outline" | "arrow";
   arrowType?: "right" | "left" | "upright" | "downright";
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent) => void;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
   loading?: boolean;
