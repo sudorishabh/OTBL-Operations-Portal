@@ -24,11 +24,11 @@ type AssignedSite =
 
 type SiteStatus = "pending" | "completed" | "cancelled";
 
-/** Rail + chip share the product's existing status colours (see wo-sites-card). */
-const STATUS_STYLES: Record<SiteStatus, { rail: string; chip: string }> = {
-  completed: { rail: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700" },
-  cancelled: { rail: "bg-rose-400", chip: "bg-rose-50 text-rose-700" },
-  pending: { rail: "bg-amber-400", chip: "bg-amber-50 text-amber-700" },
+/** Colour is reserved for the two end states, so a list of live work reads calm. */
+const STATUS_STYLES: Record<SiteStatus, string> = {
+  completed: "bg-emerald-50 text-emerald-700",
+  cancelled: "bg-rose-50 text-rose-700",
+  pending: "bg-gray-100 text-gray-600",
 };
 
 const FILTERS = [
@@ -86,7 +86,8 @@ const scheduleNote = (site: AssignedSite) => {
   const days = differenceInCalendarDays(end, today);
   if (days < 0)
     return {
-      text: days === -1 ? "Ended yesterday" : `Ended ${Math.abs(days)} days ago`,
+      text:
+        days === -1 ? "Ended yesterday" : `Ended ${Math.abs(days)} days ago`,
       tone: "text-rose-600",
     };
   if (days === 0) return { text: "Ends today", tone: "text-rose-600" };
@@ -108,8 +109,6 @@ const byUrgency = (a: AssignedSite, b: AssignedSite) => {
 };
 
 const SiteCard = ({ site }: { site: AssignedSite }) => {
-  const status = statusOf(site);
-  const styles = STATUS_STYLES[status];
   const note = scheduleNote(site);
   const location =
     [site.site_city, site.site_state].filter(Boolean).join(", ") ||
@@ -121,119 +120,117 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
     <Link
       href={`/dashboard/wo-site/${site.work_order_site_id}`}
       aria-label={`Open ${site.site_name}`}
-      className='group flex overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors hover:border-emerald-300 focus-visible:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
-      <span
-        aria-hidden
-        className={cn("w-1 shrink-0", styles.rail)}
-      />
-
-      <div className='min-w-0 flex-1 p-4'>
-        <div className='flex items-start gap-2'>
-          <div className='min-w-0 flex-1'>
-            <div className='flex items-center gap-2 text-[12px] text-gray-500'>
-              <span className='truncate font-medium tabular-nums'>
-                {site.wo_code}
-              </span>
-              <span
-                aria-hidden
-                className='h-3 w-px shrink-0 bg-gray-200'
-              />
-              <span className='shrink-0 tabular-nums'>
-                Job {site.job_number}
-              </span>
-            </div>
-
-            <h2
-              className='mt-1 truncate text-[15px] font-semibold tracking-tight text-gray-900 transition-colors group-hover:text-emerald-700'
-              title={site.site_name}>
-              {capitalFirstLetter(site.site_name)}
-            </h2>
-
-            {site.wo_title && (
-              <p
-                className='mt-0.5 truncate text-[12.5px] text-gray-400'
-                title={site.wo_title}>
-                {site.wo_title}
-              </p>
-            )}
-          </div>
-
+      className='group flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:border-emerald-300 hover:shadow-md focus-visible:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+      <div className='flex-1 p-4'>
+        <div className='flex items-start justify-between gap-2'>
+          <h2
+            className='min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight text-gray-900 transition-colors group-hover:text-emerald-700'
+            title={site.site_name}>
+            {site.site_name?.toUpperCase()}
+          </h2>
           <span
             className={cn(
-              "shrink-0 rounded-full px-2 py-0.5 text-[12px] font-semibold",
-              styles.chip,
+              "shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-semibold",
+              STATUS_STYLES[statusOf(site)],
             )}>
             {capitalFirstLetter(site.status)}
           </span>
-          <ChevronRight className='mt-0.5 size-4 shrink-0 text-gray-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-emerald-600' />
         </div>
 
-        <div className='mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-gray-100 pt-3.5'>
+        <div className='mt-1 flex items-center gap-2 text-[12px] text-gray-500'>
+          <span className='truncate font-medium tabular-nums'>
+            {site.wo_code}
+          </span>
+          <span
+            aria-hidden
+            className='h-3 w-px shrink-0 bg-gray-200'
+          />
+          <span className='shrink-0 tabular-nums'>Job {site.job_number}</span>
+        </div>
+
+        {site.wo_title && (
+          <p
+            className='mt-2 truncate text-[12.5px] text-gray-400'
+            title={site.wo_title}>
+            {site.wo_title}
+          </p>
+        )}
+
+        <dl className='mt-3.5 grid grid-cols-2 gap-x-4 border-t border-gray-100 pt-3.5'>
           <div className='min-w-0'>
-            <div className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+            <dt className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
               Location
-            </div>
-            <p
+            </dt>
+            <dd
               className='mt-0.5 flex items-center gap-1 text-[13px] font-medium text-gray-700'
               title={location}>
               <MapPin className='size-3.5 shrink-0 text-gray-400' />
               <span className='truncate'>{location}</span>
-            </p>
+            </dd>
           </div>
 
           <div className='min-w-0'>
-            <div className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+            <dt className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
               Schedule
-            </div>
-            <p className='mt-0.5 whitespace-nowrap text-[13px] font-medium tabular-nums text-gray-700'>
+            </dt>
+            <dd className='mt-0.5 whitespace-nowrap text-[13px] font-medium tabular-nums text-gray-700'>
               {formatRange(site)}
-            </p>
+            </dd>
             {note && (
-              <p className={cn("text-[12px] font-medium", note.tone)}>
+              <dd className={cn("text-[12px] font-medium", note.tone)}>
                 {note.text}
-              </p>
+              </dd>
             )}
           </div>
+        </dl>
+      </div>
 
-          <div className='col-span-2'>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] font-medium",
-                hasUploads
-                  ? "bg-gray-50 text-gray-600"
-                  : "bg-amber-50 text-amber-700",
-              )}>
-              {hasUploads ? (
-                <CheckCircle2 className='size-3.5' />
-              ) : (
-                <FileText className='size-3.5' />
-              )}
-              {hasUploads
-                ? `${site.uploads_count} ${site.uploads_count === 1 ? "document" : "documents"} uploaded`
-                : "No documents uploaded yet"}
-            </span>
-          </div>
-        </div>
+      <div className='flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/80 px-4 py-2.5'>
+        <span
+          className={cn(
+            "inline-flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium",
+            hasUploads ? "text-gray-600" : "text-amber-700",
+          )}>
+          {hasUploads ? (
+            <CheckCircle2 className='size-3.5 shrink-0' />
+          ) : (
+            <FileText className='size-3.5 shrink-0' />
+          )}
+          <span className='truncate'>
+            {hasUploads
+              ? `${site.uploads_count} ${site.uploads_count === 1 ? "document" : "documents"}`
+              : "No documents yet"}
+          </span>
+        </span>
+
+        <span className='flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 transition-colors duration-200 group-hover:bg-emerald-600 group-hover:text-white'>
+          <ChevronRight className='size-4' />
+        </span>
       </div>
     </Link>
   );
 };
 
 const CardSkeleton = () => (
-  <div className='flex overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-    <span className='w-1 shrink-0 bg-gray-200' />
-    <div className='flex-1 animate-pulse space-y-2 p-4'>
-      <div className='h-3 w-28 rounded bg-gray-100' />
-      <div className='h-4 w-2/3 rounded bg-gray-200' />
-      <div className='h-3 w-1/2 rounded bg-gray-100' />
+  <div className='flex h-full animate-pulse flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+    <div className='flex-1 p-4'>
+      <div className='flex items-start justify-between gap-2'>
+        <div className='h-4 w-2/3 rounded bg-gray-200' />
+        <div className='h-4 w-16 rounded-full bg-gray-100' />
+      </div>
+      <div className='mt-2 h-3 w-32 rounded bg-gray-100' />
+      <div className='mt-2.5 h-3 w-1/2 rounded bg-gray-100' />
       <div className='mt-3.5 grid grid-cols-2 gap-4 border-t border-gray-100 pt-3.5'>
         <div className='h-8 rounded bg-gray-100' />
         <div className='h-8 rounded bg-gray-100' />
       </div>
     </div>
+    <div className='flex items-center justify-between border-t border-gray-100 bg-gray-50/80 px-4 py-2.5'>
+      <div className='h-3 w-24 rounded bg-gray-100' />
+      <div className='size-7 rounded-full bg-gray-100' />
+    </div>
   </div>
 );
-
 export default function OperatorAssignedSitesPage() {
   const { user, logout } = useAuthContext();
   const { data, isLoading } =
@@ -284,20 +281,22 @@ export default function OperatorAssignedSitesPage() {
     <div className='min-h-svh bg-gray-50'>
       <header className='bg-cyan-900 px-4 py-4 sm:px-6'>
         <div className='mx-auto flex max-w-4xl items-center justify-between gap-4'>
-          <div className='flex min-w-0 items-center gap-3'>
+          <div className='flex min-w-0 items-center gap-4'>
             <Image
               src='/Otbl-logo_transparent.png'
               alt='OTBL'
               width={64}
               height={32}
-              className='h-7 w-auto shrink-0 object-contain'
+              className='h-8 w-auto shrink-0 object-contain'
               loading='eager'
             />
             <div className='min-w-0'>
               <h1 className='truncate text-[15px] font-semibold text-white'>
-                {firstName ? `Hi, ${firstName}` : "Your sites"}
+                {firstName
+                  ? `Hi, ${capitalFirstLetter(firstName)}`
+                  : "Your sites"}
               </h1>
-              <p className='truncate text-[12.5px] text-cyan-100/80'>
+              <p className='truncate text-[12.5px] sm:text-[14px] text-cyan-100/80'>
                 Open a site to upload measurement sheets, bills and photos.
               </p>
             </div>
