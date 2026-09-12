@@ -372,7 +372,6 @@ export default function WoSiteOperatorUploadPage() {
               onFileSelect={handleFileSelect}
               multiple={true}
               isUploadBgWhite={true}
-              helperText='You can select more than one file'
             />
           </div>
 
@@ -392,9 +391,18 @@ export default function WoSiteOperatorUploadPage() {
           <button
             type='button'
             onClick={() => cameraInputRef.current?.click()}
-            className='inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3.5 text-[13px] font-medium text-gray-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
-            <Camera className='size-4' />
-            Take a photo
+            className='group flex w-full shrink-0 cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-white px-4 py-4 text-left transition-colors hover:border-emerald-400 hover:bg-gray-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 sm:w-auto'>
+            <span className='flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 transition-colors group-hover:bg-emerald-50'>
+              <Camera className='size-4 text-gray-400 transition-colors group-hover:text-emerald-600' />
+            </span>
+            <span className='min-w-0'>
+              <span className='block text-sm font-medium text-gray-700'>
+                Take a photo
+              </span>
+              <span className='mt-0.5 block text-xs text-gray-400'>
+                Use the camera on this device.
+              </span>
+            </span>
           </button>
         </div>
 
