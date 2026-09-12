@@ -3,14 +3,7 @@ import { useAuthContext, useIsAdmin } from "@/contexts/AuthContext";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import DashboardPageSkeleton from "@/components/skeleton/dashboard/dashboard-page-skeleton";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -46,6 +39,23 @@ type DashboardWorkOrderRow =
 type DashboardOfficeRow =
   RouterOutputs["officeQuery"]["getOffices"]["offices"][number];
 
+type StatTone = "default" | "yellow" | "green" | "red";
+
+const STAT_TONES: Record<StatTone, { icon: string; value: string }> = {
+  default: { icon: "text-cyan-700", value: "text-gray-900" },
+  yellow: { icon: "text-yellow-600", value: "text-yellow-700" },
+  green: { icon: "text-emerald-600", value: "text-emerald-700" },
+  red: { icon: "text-rose-500", value: "text-rose-600" },
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  completed: "bg-green-100 text-green-800 border-green-200",
+  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  cancelled: "bg-red-100 text-red-800 border-red-200",
+};
+
+const Empty = () => <span className='text-gray-300'>&mdash;</span>;
+
 function formatShortDate(value: Date | string | null | undefined) {
   if (value == null) return "—";
   return new Date(value).toLocaleDateString("en-IN", {
@@ -53,19 +63,6 @@ function formatShortDate(value: Date | string | null | undefined) {
     month: "short",
     year: "numeric",
   });
-}
-
-function workOrderStatusBadgeClass(status: string) {
-  switch (status) {
-    case "completed":
-      return "bg-green-600 hover:bg-green-700 text-white border-transparent";
-    case "pending":
-      return "bg-yellow-600 hover:bg-yellow-700 text-white border-transparent";
-    case "cancelled":
-      return "bg-red-600 hover:bg-red-700 text-white border-transparent";
-    default:
-      return "";
-  }
 }
 
 export default function DashboardPage() {
@@ -143,7 +140,8 @@ export default function DashboardPage() {
       case "wo_site_upload":
         return {
           title: "Field upload",
-          description: "You are routed to your work order site upload workspace.",
+          description:
+            "You are routed to your work order site upload workspace.",
         };
       default:
         return {
@@ -193,268 +191,258 @@ export default function DashboardPage() {
           Log out
         </Button>
       }>
-      <div className='mt-4 space-y-4'>
-        <Card className='shadow-sm border-cyan-900/10'>
-          <CardContent className='px-4 py-2.5'>
-            <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm'>
-              <Shield className='size-3.5 shrink-0 text-cyan-800' />
-              <span className='font-medium text-cyan-900'>{scopeCopy.title}</span>
-              <Separator orientation='vertical' className='h-3.5 hidden sm:block' />
-              <span className='text-muted-foreground text-xs'>{scopeCopy.description}</span>
-              <div className='ml-auto flex items-center gap-2'>
-                {user?.status && (
-                  <Badge
-                    variant='outline'
-                    className='h-5 px-1.5 text-[10px] font-normal capitalize'>
-                    {user.status}
-                  </Badge>
-                )}
-                {user?.email && (
-                  <span className='text-xs text-muted-foreground hidden sm:inline'>
-                    {user.email}
-                  </span>
-                )}
+      <div className='mt-3 space-y-3'>
+        {/* Scope, figures and shortcuts collapsed into one dense card. */}
+        <div className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+          <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5'>
+            <div className='flex min-w-0 items-center gap-2.5'>
+              <div className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-cyan-50 ring-1 ring-inset ring-cyan-100'>
+                <Shield className='size-4 text-cyan-700' />
+              </div>
+              <div className='min-w-0'>
+                <p className='truncate text-[14px] font-semibold leading-tight text-gray-900'>
+                  {scopeCopy.title}
+                </p>
+                <p className='truncate text-[12px] leading-tight text-gray-500'>
+                  {scopeCopy.description}
+                </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className='flex items-center gap-2'>
+              {user?.email && (
+                <span className='hidden truncate text-[12px] text-gray-500 sm:inline'>
+                  {user.email}
+                </span>
+              )}
+              {user?.status && (
+                <Badge
+                  variant='outline'
+                  className='h-5 px-1.5 text-[11px] font-normal capitalize'>
+                  {user.status}
+                </Badge>
+              )}
+            </div>
+          </div>
 
-        <div>
-          <p className='mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground'>
-            At a glance
-          </p>
-          <div className='grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4'>
-            <StatTile
+          <div className='grid grid-cols-2 divide-x divide-y divide-gray-200 border-y border-gray-200 bg-gray-50/60 sm:grid-cols-4 lg:grid-cols-8 lg:divide-y-0'>
+            <Stat
               icon={Users2}
               label='Clients'
               value={clientsQuery.data?.totalClients}
               loading={statsLoading}
             />
-            <StatTile
+            <Stat
               icon={UserCheck}
-              label='Client contacts'
+              label='Contacts'
               value={clientsQuery.data?.totalContacts}
               loading={statsLoading}
             />
-            <StatTile
+            <Stat
               icon={Building2}
               label='Offices'
               value={officeStats.officeCount}
               loading={statsLoading}
             />
-            <StatTile
+            <Stat
               icon={MapPin}
               label='Sites'
               value={officeStats.siteTotal}
               loading={statsLoading}
             />
-            <StatTile
+            <Stat
               icon={ReceiptIndianRupee}
-              label='Total work orders'
+              label='Work orders'
               value={woTotalQuery.data?.pagination.total}
               loading={statsLoading}
             />
-            <StatTile
+            <Stat
               icon={Clock3}
               label='Pending'
               value={woPendingQuery.data?.pagination.total}
               loading={statsLoading}
-              accent='yellow'
+              tone='yellow'
             />
-            <StatTile
+            <Stat
               icon={CheckCircle2}
               label='Completed'
               value={woCompletedQuery.data?.pagination.total}
               loading={statsLoading}
-              accent='green'
+              tone='green'
             />
-            <StatTile
+            <Stat
               icon={XCircle}
               label='Cancelled'
               value={woCancelledQuery.data?.pagination.total}
               loading={statsLoading}
-              accent='red'
+              tone='red'
             />
+          </div>
+
+          <div className='flex flex-wrap items-center gap-1.5 px-4 py-2'>
+            <span className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+              Go to
+            </span>
+            <QuickLink
+              href='/dashboard/client'
+              icon={Users2}
+              label='Clients'
+            />
+            <QuickLink
+              href='/dashboard/work-order'
+              icon={ReceiptIndianRupee}
+              label='Work orders'
+            />
+            <QuickLink
+              href='/dashboard/office-site'
+              icon={Tent}
+              label='Offices & sites'
+            />
+            {isAdmin && (
+              <QuickLink
+                href='/dashboard/user'
+                icon={Users}
+                label='User management'
+              />
+            )}
           </div>
         </div>
 
-        <div className='grid gap-4 lg:grid-cols-3'>
-          <Card className='lg:col-span-2 shadow-sm'>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 px-4 pt-3 pb-2'>
-              <CardTitle className='text-sm font-semibold text-cyan-900'>
-                Recent work orders
-              </CardTitle>
-              <Button
-                variant='ghost'
-                size='sm'
-                asChild
-                className='h-7 gap-1 px-2 text-xs text-cyan-800'>
-                <Link href='/dashboard/work-order'>
-                  View all
-                  <ArrowRight className='size-3' />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent className='p-0'>
-              {woRecentQuery.isLoading ? (
-                <div className='space-y-1.5 px-4 pb-4'>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton
-                      key={i}
-                      className='h-8 w-full'
-                    />
-                  ))}
-                </div>
-              ) : woRecentQuery.isError ? (
-                <p className='px-4 pb-4 text-xs text-destructive'>
-                  Could not load work orders. Refresh and try again.
-                </p>
-              ) : recentWorkOrders.length === 0 ? (
-                <p className='px-4 pb-4 text-xs text-muted-foreground'>
-                  No work orders yet.
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className='hover:bg-transparent'>
-                      <TableHead className='px-4 text-[11px] font-semibold'>Code</TableHead>
-                      <TableHead className='text-[11px] font-semibold'>Title</TableHead>
-                      <TableHead className='text-[11px] font-semibold'>Client</TableHead>
-                      <TableHead className='hidden lg:table-cell text-[11px] font-semibold'>Office</TableHead>
-                      <TableHead className='hidden md:table-cell text-[11px] font-semibold'>Updated</TableHead>
-                      <TableHead className='text-[11px] font-semibold'>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentWorkOrders.map((wo) => (
-                      <TableRow
-                        key={wo.id}
-                        className='text-xs'>
-                        <TableCell className='px-4 py-2 font-medium'>
-                          <Link
-                            href={`/dashboard/work-order/${wo.id}`}
-                            className='text-cyan-800 underline-offset-2 hover:underline'>
-                            {wo.code}
-                          </Link>
-                        </TableCell>
-                        <TableCell className='max-w-[160px] truncate py-2'>
-                          {wo.title}
-                        </TableCell>
-                        <TableCell className='py-2 max-w-[120px] truncate'>
-                          {wo.client_name ?? "—"}
-                        </TableCell>
-                        <TableCell className='hidden lg:table-cell py-2 max-w-[120px] truncate'>
-                          {wo.office_name ?? "—"}
-                        </TableCell>
-                        <TableCell className='hidden md:table-cell py-2 whitespace-nowrap text-muted-foreground'>
-                          {formatShortDate(wo.updated_at ?? wo.created_at)}
-                        </TableCell>
-                        <TableCell className='py-2'>
-                          <Badge
-                            variant='secondary'
-                            className={cn(
-                              "h-5 px-1.5 text-[10px]",
-                              workOrderStatusBadgeClass(wo.status),
-                            )}>
-                            {capitalFirstLetter(wo.status)}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+        <div className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+          <div className='flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-2'>
+            <h2 className='text-[14px] font-semibold tracking-tight text-gray-900'>
+              Recent work orders
+            </h2>
+            <Link
+              href='/dashboard/work-order'
+              className='inline-flex items-center gap-1 text-[12px] font-medium text-cyan-700 transition-colors hover:text-cyan-800'>
+              View all
+              <ArrowRight className='size-3' />
+            </Link>
+          </div>
 
-          <Card className='shadow-sm'>
-            <CardHeader className='px-4 pt-3 pb-2'>
-              <CardTitle className='text-sm font-semibold text-cyan-900'>
-                Quick navigation
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='flex flex-col gap-1 px-3 pb-3 pt-0'>
-              <QuickLink
-                href='/dashboard/client'
-                icon={Users2}
-                label='Clients'
-              />
-              <QuickLink
-                href='/dashboard/work-order'
-                icon={ReceiptIndianRupee}
-                label='Work orders'
-              />
-              <QuickLink
-                href='/dashboard/office-site'
-                icon={Tent}
-                label='Offices & sites'
-              />
-              {isAdmin && (
-                <QuickLink
-                  href='/dashboard/user'
-                  icon={Users}
-                  label='User management'
+          {woRecentQuery.isLoading ? (
+            <div className='space-y-1.5 p-3'>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton
+                  key={i}
+                  className='h-7 w-full'
                 />
-              )}
-            </CardContent>
-          </Card>
+              ))}
+            </div>
+          ) : woRecentQuery.isError ? (
+            <p className='px-4 py-6 text-center text-[13px] text-rose-600'>
+              Could not load work orders. Refresh and try again.
+            </p>
+          ) : recentWorkOrders.length === 0 ? (
+            <p className='px-4 py-6 text-center text-[13px] text-gray-500'>
+              No work orders yet.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className='border-gray-200 bg-gray-50/60 hover:bg-gray-50/60'>
+                  <TableHead className='h-8 px-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+                    Code
+                  </TableHead>
+                  <TableHead className='h-8 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+                    Title
+                  </TableHead>
+                  <TableHead className='h-8 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+                    Client
+                  </TableHead>
+                  <TableHead className='hidden h-8 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 lg:table-cell'>
+                    Office
+                  </TableHead>
+                  <TableHead className='hidden h-8 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 md:table-cell'>
+                    Updated
+                  </TableHead>
+                  <TableHead className='h-8 px-4 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+                    Status
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentWorkOrders.map((wo) => (
+                  <TableRow
+                    key={wo.id}
+                    className='border-gray-100 text-[13px]'>
+                    <TableCell className='px-4 py-1.5 font-mono font-medium'>
+                      <Link
+                        href={`/dashboard/work-order/${wo.id}`}
+                        className='text-cyan-700 underline-offset-2 hover:underline'>
+                        {wo.code.toUpperCase()}
+                      </Link>
+                    </TableCell>
+                    <TableCell
+                      className='max-w-[220px] truncate px-3 py-1.5 font-medium text-gray-700'
+                      title={wo.title}>
+                      {capitalFirstLetter(wo.title)}
+                    </TableCell>
+                    <TableCell className='max-w-[140px] truncate px-3 py-1.5 text-gray-600'>
+                      {wo.client_name ?? <Empty />}
+                    </TableCell>
+                    <TableCell className='hidden max-w-[140px] truncate px-3 py-1.5 text-gray-600 lg:table-cell'>
+                      {wo.office_name ?? <Empty />}
+                    </TableCell>
+                    <TableCell className='hidden whitespace-nowrap px-3 py-1.5 text-gray-500 md:table-cell'>
+                      {formatShortDate(wo.updated_at ?? wo.created_at)}
+                    </TableCell>
+                    <TableCell className='px-4 py-1.5 text-right'>
+                      <Badge
+                        className={cn(
+                          "h-5 border px-1.5 text-[11px] font-medium",
+                          STATUS_STYLES[wo.status],
+                        )}>
+                        {capitalFirstLetter(wo.status)}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
     </PageWrapper>
   );
 }
 
-function StatTile({
+// Divided metric tile: micro label with icon, headline figure underneath.
+function Stat({
   icon: Icon,
   label,
   value,
   loading,
-  accent,
+  tone = "default",
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
   value: number | undefined;
   loading: boolean;
-  accent?: "yellow" | "green" | "red";
+  tone?: StatTone;
 }) {
-  const iconBg = accent === "yellow"
-    ? "bg-yellow-50 text-yellow-700"
-    : accent === "green"
-      ? "bg-green-50 text-green-700"
-      : accent === "red"
-        ? "bg-red-50 text-red-600"
-        : "bg-cyan-900/10 text-cyan-900";
-
-  const numColor = accent === "yellow"
-    ? "text-yellow-700"
-    : accent === "green"
-      ? "text-green-700"
-      : accent === "red"
-        ? "text-red-600"
-        : "text-cyan-900";
+  const styles = STAT_TONES[tone];
 
   return (
-    <Card className='shadow-sm'>
-      <CardContent className='p-1 sm:p-3'>
-        <div className='flex items-center justify-between gap-1'>
-          <div className='min-w-0'>
-            <p className='truncate text-[9px] sm:text-[11px] font-medium text-muted-foreground leading-tight'>
-              {label}
-            </p>
-            {loading ? (
-              <Skeleton className='mt-0.5 h-4 w-8 sm:mt-1.5 sm:h-6 sm:w-12' />
-            ) : (
-              <p className={cn("text-base sm:text-xl font-semibold tabular-nums leading-tight", numColor)}>
-                {value ?? 0}
-              </p>
-            )}
-          </div>
-          <div className={cn("shrink-0 rounded p-1 sm:p-1.5", iconBg)}>
-            <Icon className='size-2.5 sm:size-3.5' />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className='min-w-0 px-3 py-2'>
+      <div className='flex items-center gap-1.5'>
+        <Icon className={cn("size-3 shrink-0", styles.icon)} />
+        <span className='truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+          {label}
+        </span>
+      </div>
+      {loading ? (
+        <Skeleton className='mt-1 h-5 w-10' />
+      ) : (
+        <p
+          className={cn(
+            "mt-0.5 truncate text-[18px] font-semibold leading-tight tabular-nums",
+            styles.value,
+          )}>
+          {Number(value ?? 0).toLocaleString("en-IN")}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -470,12 +458,9 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className='flex items-center justify-between rounded-md border border-transparent bg-gray-50 px-3 py-2 text-xs font-medium text-cyan-900 transition-colors hover:border-cyan-900/15 hover:bg-cyan-50'>
-      <span className='flex items-center gap-2'>
-        <Icon className='size-3.5 text-cyan-700' />
-        {label}
-      </span>
-      <ArrowRight className='size-3 opacity-40' />
+      className='inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[12px] font-medium text-cyan-900 transition-colors hover:border-cyan-900/20 hover:bg-cyan-50'>
+      <Icon className='size-3.5 text-cyan-700' />
+      {label}
     </Link>
   );
 }
