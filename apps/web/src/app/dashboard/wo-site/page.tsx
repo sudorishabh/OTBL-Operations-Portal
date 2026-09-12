@@ -5,7 +5,14 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { capitalFirstLetter } from "@pkg/utils";
-import { differenceInCalendarDays, format } from "date-fns";
+import {
+  STATUS_STYLES,
+  formatDateRange,
+  isOpenStatus,
+  scheduleNote,
+  statusOf,
+  toDate,
+} from "@/lib/wo-site-display";
 import {
   CheckCircle2,
   ChevronRight,
@@ -22,15 +29,6 @@ import { useMemo, useState } from "react";
 type AssignedSite =
   RouterOutputs["workOrderSiteQuery"]["getMyAssignedWorkOrderSites"][number];
 
-type SiteStatus = "pending" | "completed" | "cancelled";
-
-/** Colour is reserved for the two end states, so a list of live work reads calm. */
-const STATUS_STYLES: Record<SiteStatus, string> = {
-  completed: "bg-emerald-50 text-emerald-700",
-  cancelled: "bg-rose-50 text-rose-700",
-  pending: "bg-gray-100 text-gray-600",
-};
-
 const FILTERS = [
   { key: "open", label: "Open" },
   { key: "closed", label: "Closed" },
@@ -42,59 +40,7 @@ type FilterKey = (typeof FILTERS)[number]["key"];
 /** Show search + filters only once the list is long enough to need them. */
 const TOOLBAR_THRESHOLD = 5;
 
-const toDate = (value: string | Date | null | undefined) => {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const statusOf = (site: AssignedSite): SiteStatus =>
-  site.status === "completed" || site.status === "cancelled"
-    ? site.status
-    : "pending";
-
-const isOpen = (site: AssignedSite) => statusOf(site) === "pending";
-
-const formatRange = (site: AssignedSite) => {
-  const start = toDate(site.start_date);
-  const end = toDate(site.end_date);
-  if (!start && !end) return "Not scheduled";
-  if (start && end) {
-    const sameYear = start.getFullYear() === end.getFullYear();
-    return `${format(start, sameYear ? "d MMM" : "d MMM yy")} – ${format(end, "d MMM yy")}`;
-  }
-  return format((start ?? end)!, "d MMM yy");
-};
-
-/** Plain-language urgency, only for sites that are still open. */
-const scheduleNote = (site: AssignedSite) => {
-  if (!isOpen(site)) return null;
-
-  const start = toDate(site.start_date);
-  const end = toDate(site.end_date);
-  const today = new Date();
-
-  if (start && differenceInCalendarDays(start, today) > 0) {
-    const days = differenceInCalendarDays(start, today);
-    return {
-      text: days === 1 ? "Starts tomorrow" : `Starts in ${days} days`,
-      tone: "text-gray-500",
-    };
-  }
-
-  if (!end) return null;
-  const days = differenceInCalendarDays(end, today);
-  if (days < 0)
-    return {
-      text:
-        days === -1 ? "Ended yesterday" : `Ended ${Math.abs(days)} days ago`,
-      tone: "text-rose-600",
-    };
-  if (days === 0) return { text: "Ends today", tone: "text-rose-600" };
-  if (days === 1) return { text: "Ends tomorrow", tone: "text-amber-600" };
-  if (days <= 5) return { text: `${days} days left`, tone: "text-amber-600" };
-  return { text: `${days} days left`, tone: "text-gray-500" };
-};
+const isOpen = (site: AssignedSite) => isOpenStatus(site.status);
 
 /** Open sites first, soonest deadline first; closed sites fall to the bottom. */
 const byUrgency = (a: AssignedSite, b: AssignedSite) => {
@@ -109,7 +55,7 @@ const byUrgency = (a: AssignedSite, b: AssignedSite) => {
 };
 
 const SiteCard = ({ site }: { site: AssignedSite }) => {
-  const note = scheduleNote(site);
+  const note = scheduleNote(site.status, site.start_date, site.end_date);
   const location =
     [site.site_city, site.site_state].filter(Boolean).join(", ") ||
     site.site_address ||
@@ -131,13 +77,13 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
           <span
             className={cn(
               "shrink-0 rounded-full px-2 py-0.5 text-[12px] font-semibold",
-              STATUS_STYLES[statusOf(site)],
+              STATUS_STYLES[statusOf(site.status)],
             )}>
             {capitalFirstLetter(site.status)}
           </span>
         </div>
 
-        <div className='mt-1 flex items-center gap-2 text-[12.5px] text-gray-500'>
+        <div className='mt-1 flex items-center gap-2 text-[14px] text-gray-500'>
           <span className='truncate font-medium tabular-nums'>
             {site.wo_code}
           </span>
@@ -150,7 +96,7 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
 
         {site.wo_title && (
           <p
-            className='mt-1.5 truncate text-[13px] text-gray-400'
+            className='mt-1.5 truncate text-[14px] text-gray-500'
             title={site.wo_title}>
             {site.wo_title}
           </p>
@@ -174,7 +120,7 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
               Schedule
             </dt>
             <dd className='mt-0.5 whitespace-nowrap text-[13.5px] font-medium tabular-nums text-gray-700'>
-              {formatRange(site)}
+              {formatDateRange(site.start_date, site.end_date)}
             </dd>
             {note && (
               <dd className={cn("text-[12.5px] font-medium", note.tone)}>
