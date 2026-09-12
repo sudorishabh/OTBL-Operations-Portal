@@ -163,7 +163,7 @@ const ProposalSide = ({
 }) => (
   <div
     onClick={onOpen}
-    className='flex cursor-pointer flex-col rounded-lg p-3 transition-colors duration-200 hover:bg-sky-50/60'>
+    className='flex cursor-pointer flex-col rounded-lg p-2.5 transition-colors duration-200 hover:bg-sky-50/60'>
     <div className='flex items-center justify-between gap-2'>
       <div className='flex min-w-0 flex-wrap items-center gap-2'>
         <CodeChip
@@ -177,7 +177,7 @@ const ProposalSide = ({
         text='View proposal'
         variant='arrow'
         arrowType='upright'
-        className='shrink-0'
+        className='h-7 shrink-0 pl-2.5 text-[11px]'
         onClick={(e) => {
           e?.stopPropagation();
           onOpen();
@@ -185,11 +185,11 @@ const ProposalSide = ({
       />
     </div>
 
-    <h4 className='mt-2 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
+    <h4 className='mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
       {capitalFirstLetter(proposal.title)}
     </h4>
 
-    <div className='mt-3 grid grid-cols-2 gap-x-4 gap-y-3'>
+    <div className='mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2'>
       <Field label='Submitted'>
         {formatDate(proposal.proposal_submission_date)}
       </Field>
@@ -197,7 +197,7 @@ const ProposalSide = ({
     </div>
 
     {proposal.document_key && (
-      <div className='mt-3'>
+      <div className='mt-2'>
         <DocumentLink
           href={proposal.document_key}
           tone='sky'
@@ -263,7 +263,7 @@ const ResolvedWorkOrderSide = ({
 
   if (!workOrder) {
     return (
-      <div className='m-3 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-200 p-5 text-center'>
+      <div className='m-2.5 flex flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gray-200 p-4 text-center'>
         <Briefcase className='h-4 w-4 text-gray-300' />
         <p className='text-xs font-medium text-gray-500'>No work order yet</p>
         <p className='text-[11px] leading-relaxed text-gray-400'>
@@ -279,7 +279,7 @@ const ResolvedWorkOrderSide = ({
   return (
     <div
       onClick={openWorkOrder}
-      className='flex cursor-pointer flex-col rounded-lg p-3 transition-colors duration-200 hover:bg-emerald-50/60'>
+      className='flex cursor-pointer flex-col rounded-lg p-2.5 transition-colors duration-200 hover:bg-emerald-50/60'>
       <div className='flex items-center justify-between gap-2'>
         <div className='flex min-w-0 flex-wrap items-center gap-2'>
           <CodeChip
@@ -293,7 +293,7 @@ const ResolvedWorkOrderSide = ({
           text='Open work order'
           variant='arrow'
           arrowType='upright'
-          className='shrink-0'
+          className='h-7 shrink-0 pl-2.5 text-[11px]'
           onClick={(e) => {
             e?.stopPropagation();
             openWorkOrder();
@@ -301,19 +301,13 @@ const ResolvedWorkOrderSide = ({
         />
       </div>
 
-      <h4 className='mt-2 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
+      <h4 className='mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
         {workOrder.title
           ? capitalFirstLetter(workOrder.title)
           : "Untitled work order"}
       </h4>
 
-      {PROCESS_LABELS[workOrder.process_type] && (
-        <p className='mt-1 text-[11px] text-gray-500'>
-          {PROCESS_LABELS[workOrder.process_type]}
-        </p>
-      )}
-
-      <div className='mt-3 grid grid-cols-3 gap-x-4 gap-y-3'>
+      <div className='mt-2.5 grid grid-cols-3 gap-x-3 gap-y-2'>
         <Field label='Start'>{formatDate(workOrder.start_date)}</Field>
         <Field label='End'>{formatDate(workOrder.end_date)}</Field>
         <Field label='Handover'>
@@ -321,10 +315,15 @@ const ResolvedWorkOrderSide = ({
         </Field>
       </div>
 
-      {(workOrder.agreement_number || workOrder.document_key) && (
-        <div className='mt-3 flex flex-wrap items-center gap-x-4 gap-y-1'>
+      {(PROCESS_LABELS[workOrder.process_type] ||
+        workOrder.agreement_number ||
+        workOrder.document_key) && (
+        <div className='mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500'>
+          {PROCESS_LABELS[workOrder.process_type] && (
+            <span>{PROCESS_LABELS[workOrder.process_type]}</span>
+          )}
           {workOrder.agreement_number && (
-            <span className='inline-flex items-center gap-1 text-[11px] text-gray-500'>
+            <span className='inline-flex items-center gap-1'>
               <FileSignature className='h-3 w-3 text-gray-400' />
               Agreement {workOrder.agreement_number}
             </span>
@@ -344,7 +343,7 @@ const ResolvedWorkOrderSide = ({
 // The rail carries the actual point of the row: whether the proposal on the
 // left ever became the work order on the right.
 const LinkRail = ({ linked }: { linked: boolean }) => (
-  <div className='relative flex items-center justify-center py-2 md:w-12 md:py-0'>
+  <div className='relative flex items-center justify-center py-1.5 md:w-10 md:py-0'>
     <div
       aria-hidden
       className='absolute inset-0 flex items-center justify-center'>
@@ -353,44 +352,44 @@ const LinkRail = ({ linked }: { linked: boolean }) => (
     <span
       title={linked ? "Linked to a work order" : "Not linked to a work order"}
       className={cn(
-        "relative z-10 inline-flex items-center justify-center rounded-full bg-white p-1.5 ring-1",
+        "relative z-10 inline-flex items-center justify-center rounded-full bg-white p-1 ring-1",
         linked
           ? "text-emerald-600 ring-emerald-200"
           : "text-gray-300 ring-gray-200",
       )}>
       {linked ? (
-        <Check className='h-3.5 w-3.5' />
+        <Check className='h-3 w-3' />
       ) : (
-        <Link2Off className='h-3.5 w-3.5' />
+        <Link2Off className='h-3 w-3' />
       )}
     </span>
   </div>
 );
 
 const ProposalRowSkeleton = () => (
-  <div className='animate-pulse rounded-xl border border-gray-200 bg-white p-1.5 sm:p-2.5'>
+  <div className='animate-pulse rounded-xl border border-gray-200 bg-white p-1 sm:p-1.5'>
     <div className='grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'>
-      <div className='space-y-3 p-3'>
+      <div className='space-y-2.5 p-2.5'>
         <div className='flex gap-2'>
           <div className='h-5 w-24 rounded-md bg-gray-100' />
           <div className='h-5 w-20 rounded-full bg-gray-100' />
         </div>
         <div className='h-4 w-3/4 rounded bg-gray-100' />
-        <div className='grid grid-cols-2 gap-4'>
+        <div className='grid grid-cols-2 gap-3'>
           <div className='h-8 rounded bg-gray-50' />
           <div className='h-8 rounded bg-gray-50' />
         </div>
       </div>
-      <div className='flex items-center justify-center py-2 md:w-12 md:py-0'>
-        <div className='h-7 w-7 rounded-full bg-gray-100' />
+      <div className='flex items-center justify-center py-1.5 md:w-10 md:py-0'>
+        <div className='h-6 w-6 rounded-full bg-gray-100' />
       </div>
-      <div className='space-y-3 p-3'>
+      <div className='space-y-2.5 p-2.5'>
         <div className='flex gap-2'>
           <div className='h-5 w-24 rounded-md bg-gray-100' />
           <div className='h-5 w-20 rounded-full bg-gray-100' />
         </div>
         <div className='h-4 w-2/3 rounded bg-gray-100' />
-        <div className='grid grid-cols-3 gap-4'>
+        <div className='grid grid-cols-3 gap-3'>
           <div className='h-8 rounded bg-gray-50' />
           <div className='h-8 rounded bg-gray-50' />
           <div className='h-8 rounded bg-gray-50' />
@@ -508,7 +507,7 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
 
         <div className='mt-4 min-h-0 flex-1 overflow-y-auto pr-1'>
           {isLoading ? (
-            <div className='space-y-3'>
+            <div className='space-y-2.5'>
               {Array.from({ length: 3 }).map((_, i) => (
                 <ProposalRowSkeleton key={i} />
               ))}
@@ -530,7 +529,7 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
           ) : (
             <div
               className={cn(
-                "space-y-3 transition-opacity duration-200",
+                "space-y-2.5 transition-opacity duration-200",
                 isFetching && !isLoading ? "opacity-60" : "opacity-100",
               )}>
               {allProposals.map(
@@ -538,7 +537,7 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
                 ({ proposal, workOrder }: any) => (
                   <div
                     key={proposal.id}
-                    className='rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm transition-all duration-200 hover:border-gray-300 hover:shadow-md sm:p-2.5'>
+                    className='rounded-xl border border-gray-200 bg-white p-1 shadow-sm transition-all duration-200 hover:border-gray-300 hover:shadow-md sm:p-1.5'>
                     <div className='grid grid-cols-1 items-stretch md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'>
                       <ProposalSide
                         proposal={proposal}
