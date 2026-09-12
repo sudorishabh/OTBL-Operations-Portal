@@ -499,15 +499,18 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
   const pagination = data?.pagination;
   const total = pagination?.total ?? 0;
 
+  // `isOpen` belongs in the deps: closing empties allProposals, and on reopen
+  // the query replays the same cached `data` object, so a [data]-only effect
+  // never fires again and the list stays empty.
   useEffect(() => {
-    if (!data?.proposals) return;
+    if (!isOpen || !data?.proposals) return;
     if (page === 1) {
       setAllProposals(data.proposals);
     } else {
       setAllProposals((prev) => [...prev, ...data.proposals]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [data, isOpen]);
 
   const handleLoadMore = () => {
     if (pagination?.hasMore) setPage((prev) => prev + 1);
