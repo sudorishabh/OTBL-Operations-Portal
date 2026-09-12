@@ -95,7 +95,7 @@ const Btn = ({
             onClick={onClick}
             title={accessibleName}
             className={cn(
-              "group h-8 inline-flex items-center gap-2 rounded-full border border-gray-300/70 bg-white pl-3 pr-1 text-[0.813rem] font-medium text-gray-700 cursor-pointer transition-all duration-200 hover:border-emerald-600/40 hover:text-emerald-700 hover:shadow-sm",
+              "group h-8 inline-flex items-center gap-2 rounded-full border border-gray-300/70 bg-white pl-3 pr-1 text-[0.813rem] font-medium text-gray-700 cursor-pointer transition-all duration-200 hover:border-emerald-600/40 hover:shadow-sm",
               className,
             )}>
             {text}
