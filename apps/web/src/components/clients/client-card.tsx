@@ -142,7 +142,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, contactsCount }) => {
         </div>
 
         {/* Details: one aligned label row spanning the full card width */}
-        <div className='mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-gray-100 pt-4 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.6fr)]'>
+        <div className='mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-gray-200 pt-4 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.6fr)]'>
           <Field
             icon={MapPin}
             label='Location'

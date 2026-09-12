@@ -32,7 +32,7 @@ const ClientContent = ({ clientId }: { clientId: string }) => {
 
   return (
     <PageWrapper
-      title={capitalFirstLetter(getParam("name") || "Client Info")}
+      title={getParam("name")?.toUpperCase() || "Client Info"}
       description='Manage Client Info and Work Orders'
       backClick={() => router.push("/dashboard/client")}
       button={
