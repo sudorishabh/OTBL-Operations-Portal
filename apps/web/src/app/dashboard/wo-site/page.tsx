@@ -242,9 +242,6 @@ export default function OperatorAssignedSitesPage() {
                   ? `Hi, ${capitalFirstLetter(firstName)}`
                   : "Your sites"}
               </h1>
-              <p className='truncate text-[13px] sm:text-[15px] text-cyan-100/80'>
-                Open a site to upload measurement sheets, bills and photos.
-              </p>
             </div>
           </div>
 
@@ -306,6 +303,19 @@ export default function OperatorAssignedSitesPage() {
       )}
 
       <main className='mx-auto w-full max-w-3xl px-4 py-5 sm:px-6'>
+        {!isLoading && sites.length > 0 && (
+          <section className='mb-2.5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
+            <h2 className='text-[14px] font-semibold tracking-tight text-gray-900'>
+              Your assigned sites
+            </h2>
+            <p className='mt-1 max-w-prose text-[13px] leading-relaxed text-gray-500'>
+              These are the work order sites your office has put you on. Open a
+              site to upload its measurement sheets, bills and photos, and the
+              office picks them up from there.
+            </p>
+          </section>
+        )}
+
         {isLoading ? (
           <div className='space-y-2.5'>
             {Array.from({ length: 4 }).map((_, i) => (
