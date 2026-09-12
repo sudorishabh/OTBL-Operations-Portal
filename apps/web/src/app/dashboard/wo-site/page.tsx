@@ -120,7 +120,7 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
     <Link
       href={`/dashboard/wo-site/${site.work_order_site_id}`}
       aria-label={`Open ${site.site_name}`}
-      className='group flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:border-emerald-300 hover:shadow-md focus-visible:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+      className='group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:border-emerald-300 hover:shadow-md focus-visible:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
       <div className='flex-1 p-4'>
         <div className='flex items-start justify-between gap-2'>
           <h2
@@ -212,7 +212,7 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
 };
 
 const CardSkeleton = () => (
-  <div className='flex h-full animate-pulse flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+  <div className='flex animate-pulse flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
     <div className='flex-1 p-4'>
       <div className='flex items-start justify-between gap-2'>
         <div className='h-4 w-2/3 rounded bg-gray-200' />
@@ -280,7 +280,7 @@ export default function OperatorAssignedSitesPage() {
   return (
     <div className='min-h-svh bg-gray-50'>
       <header className='bg-cyan-900 px-4 py-4 sm:px-6'>
-        <div className='mx-auto flex max-w-4xl items-center justify-between gap-4'>
+        <div className='mx-auto flex max-w-3xl items-center justify-between gap-4'>
           <div className='flex min-w-0 items-center gap-4'>
             <Image
               src='/Otbl-logo_transparent.png'
@@ -314,7 +314,7 @@ export default function OperatorAssignedSitesPage() {
 
       {showToolbar && (
         <div className='sticky top-0 z-20 border-b border-gray-200 bg-white/90 px-4 py-2.5 backdrop-blur sm:px-6'>
-          <div className='mx-auto flex max-w-4xl flex-wrap items-center gap-2'>
+          <div className='mx-auto flex max-w-3xl flex-wrap items-center gap-2'>
             <div className='flex items-center gap-1 rounded-lg bg-gray-100 p-0.5'>
               {FILTERS.map(({ key, label }) => (
                 <button
@@ -359,9 +359,9 @@ export default function OperatorAssignedSitesPage() {
         </div>
       )}
 
-      <main className='mx-auto w-full max-w-4xl px-4 py-5 sm:px-6'>
+      <main className='mx-auto w-full max-w-3xl px-4 py-5 sm:px-6'>
         {isLoading ? (
-          <div className='grid grid-cols-1 gap-3 lg:grid-cols-2'>
+          <div className='space-y-3'>
             {Array.from({ length: 4 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))}
@@ -395,7 +395,7 @@ export default function OperatorAssignedSitesPage() {
             </button>
           </div>
         ) : (
-          <div className='grid grid-cols-1 gap-3 lg:grid-cols-2'>
+          <div className='space-y-3'>
             {visible.map((site) => (
               <SiteCard
                 key={site.work_order_site_id}
