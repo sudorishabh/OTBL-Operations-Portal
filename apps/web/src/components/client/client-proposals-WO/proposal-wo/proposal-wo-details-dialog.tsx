@@ -557,7 +557,7 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
             surfaces against the dialog. */}
         <div className='mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl bg-gray-50/70 p-2'>
           {isLoading ? (
-            <div className='space-y-2.5'>
+            <div className='grid gap-2.5 xl:grid-cols-2'>
               {Array.from({ length: 4 }).map((_, i) => (
                 <ProposalRowSkeleton key={i} />
               ))}
@@ -579,7 +579,7 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
           ) : (
             <div
               className={cn(
-                "space-y-2.5 transition-opacity duration-200",
+                "grid gap-2.5 transition-opacity duration-200 xl:grid-cols-2",
                 isFetching && !isLoading ? "opacity-60" : "opacity-100",
               )}>
               {allProposals.map(
