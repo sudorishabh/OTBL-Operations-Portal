@@ -505,7 +505,9 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
           )}
         </div>
 
-        <div className='mt-4 min-h-0 flex-1 overflow-y-auto pr-1'>
+        {/* Soft well behind the list so the white cards read as separate
+            surfaces against the dialog. */}
+        <div className='mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl bg-gray-50/70 p-2'>
           {isLoading ? (
             <div className='space-y-2.5'>
               {Array.from({ length: 3 }).map((_, i) => (
