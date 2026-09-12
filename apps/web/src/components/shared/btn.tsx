@@ -22,6 +22,8 @@ interface Props {
   disabled?: boolean;
   loading?: boolean;
   disableForViewer?: boolean;
+  /** Tooltip + accessible name. Falls back to `text` when omitted. */
+  title?: string;
 }
 
 const Btn = ({
@@ -35,6 +37,7 @@ const Btn = ({
   disabled = false,
   loading = false,
   disableForViewer = false,
+  title,
 }: Props) => {
   const isViewer = useIsViewer();
   const blockedForViewer = disableForViewer && isViewer && variant !== "arrow";
@@ -70,25 +73,58 @@ const Btn = ({
       break;
   }
 
+  const ArrowIcon =
+    arrowType === "right"
+      ? ArrowRight
+      : arrowType === "left"
+        ? ArrowLeft
+        : arrowType === "upright"
+          ? ArrowUpRight
+          : arrowType === "downright"
+            ? ArrowDownRight
+            : null;
+
+  const accessibleName = title || text;
+
   return (
     <>
       {variant === "arrow" ? (
-        <div
-          className={cn(
-            "h-8 w-8 rounded-full bg-white border group-hover:border-0 flex items-center justify-center group hover:bg-emerald-600 relative cursor-pointer transition-all duration-200 hover:shadow-sm",
-            className,
-          )}
-          onClick={onClick}>
-          {arrowType === "right" ? (
-            <ArrowRight className='h-4 w-4 text-emerald-700 group-hover:text-white' />
-          ) : arrowType === "left" ? (
-            <ArrowLeft className='h-4 w-4 text-emerald-700 group-hover:text-white' />
-          ) : arrowType === "upright" ? (
-            <ArrowUpRight className='h-4 w-4 text-emerald-700 group-hover:text-white' />
-          ) : arrowType === "downright" ? (
-            <ArrowDownRight className='h-4 w-4 text-emerald-700 group-hover:text-white' />
-          ) : null}
-        </div>
+        text ? (
+          <button
+            type={type}
+            onClick={onClick}
+            title={accessibleName}
+            className={cn(
+              "group h-8 inline-flex items-center gap-2 rounded-full border border-gray-300/70 bg-white pl-3 pr-1 text-[0.813rem] font-medium text-gray-700 cursor-pointer transition-all duration-200 hover:border-emerald-600/40 hover:text-emerald-700 hover:shadow-sm",
+              className,
+            )}>
+            {text}
+            <span className='flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 transition-colors duration-200 group-hover:bg-emerald-600 group-hover:text-white'>
+              {ArrowIcon && <ArrowIcon className='h-3.5 w-3.5' />}
+            </span>
+          </button>
+        ) : (
+          <div
+            role='button'
+            tabIndex={0}
+            title={accessibleName}
+            aria-label={accessibleName}
+            className={cn(
+              "h-8 w-8 rounded-full bg-white border group-hover:border-0 flex items-center justify-center group hover:bg-emerald-600 relative cursor-pointer transition-all duration-200 hover:shadow-sm",
+              className,
+            )}
+            onClick={onClick}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.();
+              }
+            }}>
+            {ArrowIcon && (
+              <ArrowIcon className='h-4 w-4 text-emerald-700 group-hover:text-white' />
+            )}
+          </div>
+        )
       ) : blockedForViewer ? (
         <span
           title='Read-only access — viewers cannot make changes'

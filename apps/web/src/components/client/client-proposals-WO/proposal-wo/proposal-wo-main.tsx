@@ -64,6 +64,8 @@ const ProposalWOMain = ({ clientId }: Props) => {
               />
             )}
             <CustomButton
+              text={total > 0 ? `View all ${total}` : "View all"}
+              title='View all proposals and work orders'
               variant='arrow'
               arrowType='upright'
               onClick={() => {
