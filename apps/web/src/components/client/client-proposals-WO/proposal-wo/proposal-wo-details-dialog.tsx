@@ -8,23 +8,16 @@ import { format } from "date-fns";
 import {
   Search,
   FileText,
-  CalendarDays,
-  Clock,
-  CheckCircle2,
   XCircle,
   Briefcase,
   Check,
   Link2Off,
   Hash,
-  FileCode,
-  Calendar,
-  CalendarCheck,
-  Beaker,
-  Shovel,
-  AlignEndHorizontal,
+  FileSignature,
   ExternalLink,
 } from "lucide-react";
 import React, { useMemo, useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 
 interface Props {
@@ -57,59 +50,158 @@ const toNumberSafe = (val: unknown) => {
 };
 
 const formatDate = (date: Date | string | null | undefined) => {
-  if (!date) return "—";
+  if (!date) return null;
   return format(new Date(date), "dd MMM yyyy");
 };
 
-const getStatusConfig = (status: string) => {
+const getStatusTone = (status: string) => {
   switch (status) {
     case "approved":
     case "completed":
       return {
-        icon: CheckCircle2,
         bg: "bg-emerald-50",
         text: "text-emerald-700",
-        ring: "ring-emerald-200",
         dot: "bg-emerald-500",
       };
     case "rejected":
     case "cancelled":
-      return {
-        icon: XCircle,
-        bg: "bg-red-50",
-        text: "text-red-700",
-        ring: "ring-red-200",
-        dot: "bg-red-500",
-      };
+      return { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" };
     default:
-      return {
-        icon: Clock,
-        bg: "bg-amber-50",
-        text: "text-amber-700",
-        ring: "ring-amber-200",
-        dot: "bg-amber-500",
-      };
+      return { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" };
   }
 };
 
-const getProcessTypeConfig = (type: string) => {
-  switch (type) {
-    case "bioremediation":
-      return {
-        label: "Bioremediation",
-        color: "text-emerald-600",
-      };
-    case "restoration":
-      return { label: "Restoration", color: "text-green-600" };
-    case "bioremediation_restoration":
-      return {
-        label: "Bio + Restoration",
-        color: "text-emerald-600",
-      };
-    default:
-      return { label: type, color: "text-gray-600" };
-  }
+const PROCESS_LABELS: Record<string, string> = {
+  bioremediation: "Bioremediation",
+  restoration: "Restoration",
+  bioremediation_restoration: "Bioremediation + restoration",
 };
+
+const StatusPill = ({ status }: { status: string }) => {
+  const tone = getStatusTone(status);
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+        tone.bg,
+        tone.text,
+      )}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />
+      {capitalFirstLetter(status)}
+    </span>
+  );
+};
+
+const CodeChip = ({
+  icon: Icon,
+  code,
+  tone,
+}: {
+  icon: React.ElementType;
+  code: string;
+  tone: "sky" | "emerald";
+}) => (
+  <span
+    title={code}
+    className={cn(
+      "inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[11px] font-medium ring-1 ring-inset",
+      tone === "sky"
+        ? "bg-sky-50 text-sky-700 ring-sky-100"
+        : "bg-emerald-50 text-emerald-700 ring-emerald-100",
+    )}>
+    <Icon className='h-3 w-3 shrink-0 opacity-60' />
+    <span className='truncate'>{code}</span>
+  </span>
+);
+
+const Field = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <div className='min-w-0'>
+    <div className='text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+      {label}
+    </div>
+    <div className='mt-0.5 truncate text-xs font-medium text-gray-700'>
+      {children ?? <span className='text-gray-300'>&mdash;</span>}
+    </div>
+  </div>
+);
+
+const DocumentLink = ({
+  href,
+  tone,
+}: {
+  href: string;
+  tone: "sky" | "emerald";
+}) => (
+  <a
+    href={href}
+    target='_blank'
+    rel='noreferrer'
+    onClick={(e) => e.stopPropagation()}
+    className={cn(
+      "inline-flex items-center gap-1 text-[11px] font-medium underline-offset-2 hover:underline",
+      tone === "sky" ? "text-sky-600" : "text-emerald-600",
+    )}>
+    <ExternalLink className='h-3 w-3' />
+    Document
+  </a>
+);
+
+const ProposalSide = ({
+  proposal,
+  onOpen,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  proposal: any;
+  onOpen: () => void;
+}) => (
+  <div
+    role='button'
+    tabIndex={0}
+    aria-label={`View proposal ${proposal.code}`}
+    onClick={onOpen}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onOpen();
+      }
+    }}
+    className='flex cursor-pointer flex-col rounded-lg p-3 outline-none transition-colors duration-200 hover:bg-sky-50/60 focus-visible:ring-2 focus-visible:ring-sky-500/30'>
+    <div className='flex flex-wrap items-center gap-2'>
+      <CodeChip
+        icon={Hash}
+        code={proposal.code}
+        tone='sky'
+      />
+      <StatusPill status={proposal.status} />
+    </div>
+
+    <h4 className='mt-2 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
+      {capitalFirstLetter(proposal.title)}
+    </h4>
+
+    <div className='mt-3 grid grid-cols-2 gap-x-4 gap-y-3'>
+      <Field label='Submitted'>
+        {formatDate(proposal.proposal_submission_date)}
+      </Field>
+      <Field label='Created'>{formatDate(proposal.created_at)}</Field>
+    </div>
+
+    {proposal.document_key && (
+      <div className='mt-3'>
+        <DocumentLink
+          href={proposal.document_key}
+          tone='sky'
+        />
+      </div>
+    )}
+  </div>
+);
 
 const ResolvedWorkOrderSide = ({
   workOrder,
@@ -138,6 +230,7 @@ const ResolvedWorkOrderSide = ({
       }
 
       const usedQtyByActivity: Record<string, number> = (sites || []).reduce(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (acc: Record<string, number>, s: any) => {
           for (const c of s.completions || []) {
             const key = activityKey(c.activity_name);
@@ -148,6 +241,7 @@ const ResolvedWorkOrderSide = ({
         {},
       );
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const isSORFullyUsed = scheduleOfRates.every((item: any) => {
         const completionActivity =
           SOR_ACTIVITY_TO_COMPLETION_ACTIVITY[item.activity] ?? item.activity;
@@ -163,152 +257,136 @@ const ResolvedWorkOrderSide = ({
     return workOrder.status;
   }, [workOrder, woDetails]);
 
-  const woStatus = resolvedStatus ? getStatusConfig(resolvedStatus) : null;
-  const WOStatusIcon = woStatus?.icon;
+  if (!workOrder) {
+    return (
+      <div className='m-3 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-200 p-5 text-center'>
+        <Briefcase className='h-4 w-4 text-gray-300' />
+        <p className='text-xs font-medium text-gray-500'>No work order yet</p>
+        <p className='text-[11px] leading-relaxed text-gray-400'>
+          This proposal has not been converted.
+        </p>
+      </div>
+    );
+  }
 
-  const processConfig = workOrder
-    ? getProcessTypeConfig(workOrder.process_type)
-    : null;
+  const openWorkOrder = () =>
+    router.push(`/dashboard/client/workorder/${workOrder.id}`);
 
   return (
     <div
-      className={`md:pl-3 rounded transition-colors duration-200 -m-1 p-1 ${
-        workOrder ? "cursor-pointer hover:bg-emerald-50/50" : ""
-      }`}
-      onClick={() => {
-        if (workOrder) {
-          router.push(`/dashboard/client/workorder/${workOrder.id}`);
+      role='button'
+      tabIndex={0}
+      aria-label={`Open work order ${workOrder.code}`}
+      onClick={openWorkOrder}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openWorkOrder();
         }
       }}
-      title={workOrder ? "Go to work order page" : undefined}>
-      {workOrder ? (
-        <>
-          <div className='flex items-center gap-2 mb-2.5'>
-            <span className='inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-mono font-medium ring-1 ring-emerald-200'>
-              <Briefcase className='w-3 h-3 mr-1 opacity-60' />
-              {workOrder.code}
+      className='flex cursor-pointer flex-col rounded-lg p-3 outline-none transition-colors duration-200 hover:bg-emerald-50/60 focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+      <div className='flex flex-wrap items-center gap-2'>
+        <CodeChip
+          icon={Briefcase}
+          code={workOrder.code}
+          tone='emerald'
+        />
+        {resolvedStatus && <StatusPill status={resolvedStatus} />}
+      </div>
+
+      <h4 className='mt-2 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
+        {workOrder.title
+          ? capitalFirstLetter(workOrder.title)
+          : "Untitled work order"}
+      </h4>
+
+      {PROCESS_LABELS[workOrder.process_type] && (
+        <p className='mt-1 text-[11px] text-gray-500'>
+          {PROCESS_LABELS[workOrder.process_type]}
+        </p>
+      )}
+
+      <div className='mt-3 grid grid-cols-3 gap-x-4 gap-y-3'>
+        <Field label='Start'>{formatDate(workOrder.start_date)}</Field>
+        <Field label='End'>{formatDate(workOrder.end_date)}</Field>
+        <Field label='Handover'>
+          {formatDate(workOrder.handing_over_date)}
+        </Field>
+      </div>
+
+      {(workOrder.agreement_number || workOrder.document_key) && (
+        <div className='mt-3 flex flex-wrap items-center gap-x-4 gap-y-1'>
+          {workOrder.agreement_number && (
+            <span className='inline-flex items-center gap-1 text-[11px] text-gray-500'>
+              <FileSignature className='h-3 w-3 text-gray-400' />
+              Agreement {workOrder.agreement_number}
             </span>
-            {woStatus && WOStatusIcon && (
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${woStatus.bg} ${woStatus.text} ring-1 ${woStatus.ring}`}>
-                <WOStatusIcon className='w-3 h-3' />
-                {capitalFirstLetter(resolvedStatus || workOrder.status)}
-              </span>
-            )}
-          </div>
-
-          <h4 className='text-sm font-semibold text-gray-900 leading-snug line-clamp-2 mb-2'>
-            {workOrder.title
-              ? capitalFirstLetter(workOrder.title)
-              : "Untitled Work Order"}
-          </h4>
-
-          {processConfig ? (
-            <span className={`text-[11px] font-medium ${processConfig.color}`}>
-              {processConfig.label}
-            </span>
-          ) : null}
-
-          <div className='grid grid-cols-3 gap-1.5 mb-2.5'>
-            <div className='flex items-center gap-1 rounded-md bg-white border border-gray-200/70 px-2 py-1.5'>
-              <div className='min-w-0'>
-                <div className='text-[8px] uppercase tracking-wider text-gray-400'>
-                  Start
-                </div>
-                <div className='text-[10px] font-medium text-gray-700 truncate'>
-                  {formatDate(workOrder.start_date)}
-                </div>
-              </div>
-            </div>
-            <div className='flex items-center gap-1 rounded-md bg-white border border-gray-200/70 px-2 py-1.5'>
-              <div className='min-w-0'>
-                <div className='text-[8px] uppercase tracking-wider text-gray-400'>
-                  End
-                </div>
-                <div className='text-[10px] font-medium text-gray-700 truncate'>
-                  {formatDate(workOrder.end_date)}
-                </div>
-              </div>
-            </div>
-            <div className='flex items-center gap-1 rounded-md bg-white border border-gray-200/70 px-2 py-1.5'>
-              <div className='min-w-0'>
-                <div className='text-[8px] uppercase tracking-wider text-gray-400'>
-                  Handover
-                </div>
-                <div className='text-[10px] font-medium text-gray-700 truncate'>
-                  {formatDate(workOrder.handing_over_date)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className='flex items-center gap-3'>
-            {workOrder.agreement_number && (
-              <div className='flex items-center gap-1 text-[11px] text-gray-400'>
-                <FileCode className='w-3 h-3' />
-                AGR: {workOrder.agreement_number}
-              </div>
-            )}
-            {workOrder.document_key && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.open(workOrder.document_key, "_blank");
-                }}
-                className='inline-flex items-center gap-1 text-[11px] text-emerald-600 hover:text-emerald-700 transition-colors'>
-                <ExternalLink className='w-3 h-3' />
-                Document
-              </button>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className='flex flex-col items-center justify-center h-full text-center py-4'>
-          <div className='p-2.5 rounded-xl bg-linear-to-br from-gray-100 to-gray-50 text-gray-400 mb-3'>
-            <Briefcase className='w-5 h-5' />
-          </div>
-          <p className='text-xs font-medium text-gray-500 mb-0.5'>
-            No Work Order
-          </p>
-          <p className='text-[10px] text-gray-400 max-w-[140px]'>
-            This proposal doesn't have a linked work order yet
-          </p>
+          )}
+          {workOrder.document_key && (
+            <DocumentLink
+              href={workOrder.document_key}
+              tone='emerald'
+            />
+          )}
         </div>
       )}
     </div>
   );
 };
 
-const ProposalCardSkeleton = () => (
-  <div className='rounded-xl border border-gray-100 bg-white p-3 sm:p-5 animate-pulse'>
-    <div className='flex flex-col md:flex-row items-stretch gap-4'>
-      <div className='flex-1 space-y-3'>
-        <div className='flex items-center gap-2'>
-          <div className='h-5 w-20 bg-gray-200 rounded' />
-          <div className='h-5 w-16 bg-gray-200 rounded-full' />
-        </div>
-        <div className='h-4 w-3/4 bg-gray-200 rounded' />
-        <div className='flex gap-2'>
-          <div className='h-12 flex-1 bg-gray-100 rounded-lg' />
-          <div className='h-12 flex-1 bg-gray-100 rounded-lg' />
-        </div>
-        <div className='h-3 w-1/2 bg-gray-200 rounded' />
-      </div>
+// The rail carries the actual point of the row: whether the proposal on the
+// left ever became the work order on the right.
+const LinkRail = ({ linked }: { linked: boolean }) => (
+  <div className='relative flex items-center justify-center py-2 md:w-12 md:py-0'>
+    <div
+      aria-hidden
+      className='absolute inset-0 flex items-center justify-center'>
+      <div className='w-full border-t border-dashed border-gray-200 md:h-full md:w-0 md:border-l md:border-t-0' />
+    </div>
+    <span
+      title={linked ? "Linked to a work order" : "Not linked to a work order"}
+      className={cn(
+        "relative z-10 inline-flex items-center justify-center rounded-full bg-white p-1.5 ring-1",
+        linked
+          ? "text-emerald-600 ring-emerald-200"
+          : "text-gray-300 ring-gray-200",
+      )}>
+      {linked ? (
+        <Check className='h-3.5 w-3.5' />
+      ) : (
+        <Link2Off className='h-3.5 w-3.5' />
+      )}
+    </span>
+  </div>
+);
 
-      <div className='flex items-center justify-center md:w-10'>
-        <div className='h-8 w-8 bg-gray-200 rounded-full' />
-      </div>
-
-      <div className='flex-1 space-y-3'>
-        <div className='flex items-center gap-2'>
-          <div className='h-5 w-16 bg-gray-200 rounded' />
-          <div className='h-5 w-14 bg-gray-200 rounded-full' />
-        </div>
-        <div className='h-4 w-2/3 bg-gray-200 rounded' />
+const ProposalRowSkeleton = () => (
+  <div className='animate-pulse rounded-xl border border-gray-200 bg-white p-1.5 sm:p-2.5'>
+    <div className='grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'>
+      <div className='space-y-3 p-3'>
         <div className='flex gap-2'>
-          <div className='h-10 flex-1 bg-gray-100 rounded-lg' />
-          <div className='h-10 flex-1 bg-gray-100 rounded-lg' />
-          <div className='h-10 flex-1 bg-gray-100 rounded-lg' />
+          <div className='h-5 w-24 rounded-md bg-gray-100' />
+          <div className='h-5 w-20 rounded-full bg-gray-100' />
+        </div>
+        <div className='h-4 w-3/4 rounded bg-gray-100' />
+        <div className='grid grid-cols-2 gap-4'>
+          <div className='h-8 rounded bg-gray-50' />
+          <div className='h-8 rounded bg-gray-50' />
+        </div>
+      </div>
+      <div className='flex items-center justify-center py-2 md:w-12 md:py-0'>
+        <div className='h-7 w-7 rounded-full bg-gray-100' />
+      </div>
+      <div className='space-y-3 p-3'>
+        <div className='flex gap-2'>
+          <div className='h-5 w-24 rounded-md bg-gray-100' />
+          <div className='h-5 w-20 rounded-full bg-gray-100' />
+        </div>
+        <div className='h-4 w-2/3 rounded bg-gray-100' />
+        <div className='grid grid-cols-3 gap-4'>
+          <div className='h-8 rounded bg-gray-50' />
+          <div className='h-8 rounded bg-gray-50' />
+          <div className='h-8 rounded bg-gray-50' />
         </div>
       </div>
     </div>
@@ -318,13 +396,13 @@ const ProposalCardSkeleton = () => (
 const ProposalWODetailsDialog = ({ clientId }: Props) => {
   const { getParam, setParam, setParams, deleteParam, deleteParams } =
     useHandleParams();
-  const router = useRouter();
   const isOpen = getParam("dialog") === "proposal-wo";
   const isFull = getParam("window") === "full";
 
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [allProposals, setAllProposals] = useState<any[]>([]);
 
   useEffect(() => {
@@ -362,7 +440,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
     );
 
   const pagination = data?.pagination;
-  const totalPages = pagination?.totalPages ?? 0;
   const total = pagination?.total ?? 0;
 
   useEffect(() => {
@@ -379,6 +456,16 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
     if (pagination?.hasMore) setPage((prev) => prev + 1);
   };
 
+  const openProposal = (proposalId: number) => {
+    deleteParams(["dialog", "window"]);
+    setTimeout(() => {
+      setParams({
+        dialog: "proposal-detail",
+        "proposal-id": proposalId.toString(),
+      });
+    }, 100);
+  };
+
   return (
     <DialogWindow
       open={isOpen}
@@ -386,180 +473,89 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
       size='2xl'
       heightFull={true}
       title='Proposals & Work Orders'
-      description={`Viewing all proposals${total > 0 ? ` · ${total} total` : ""}`}
+      description='Every proposal for this client, and the work order it became.'
       isFullScreen={isFull}
       onToggleFullScreen={() =>
         isFull ? deleteParam("window") : setParam("window", "full")
       }>
-      <div className='flex flex-col h-full'>
-        <div className='shrink-0 mb-5'>
-          <div className='relative'>
-            <Search className='absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400' />
-            <input
-              type='text'
-              placeholder='Search by proposal code or title…'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className='w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl
-                focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400
-                placeholder:text-gray-400 transition-all duration-200'
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className='absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors'>
-                <XCircle className='h-4 w-4' />
-              </button>
-            )}
-          </div>
+      <div className='flex h-full flex-col'>
+        <div className='relative shrink-0'>
+          <Search className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400' />
+          <input
+            type='text'
+            placeholder='Search by code or title'
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className='w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-9 text-sm text-gray-900 transition-colors duration-200 placeholder:text-gray-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20'
+          />
+          {searchQuery && (
+            <button
+              type='button'
+              aria-label='Clear search'
+              onClick={() => setSearchQuery("")}
+              className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600'>
+              <XCircle className='h-4 w-4' />
+            </button>
+          )}
         </div>
 
-        <div className='flex-1 min-h-0 overflow-y-auto space-y-4 pr-1'>
+        <div className='mt-4 min-h-0 flex-1 overflow-y-auto pr-1'>
           {isLoading ? (
-            <div className='space-y-4'>
+            <div className='space-y-3'>
               {Array.from({ length: 3 }).map((_, i) => (
-                <ProposalCardSkeleton key={i} />
+                <ProposalRowSkeleton key={i} />
               ))}
             </div>
           ) : allProposals.length === 0 ? (
-            <div className='flex flex-col items-center justify-center h-full py-16'>
-              <div className='p-4 rounded-2xl bg-linear-to-br from-gray-100 to-gray-50 text-gray-400 mb-5 shadow-sm'>
-                <FileText className='w-8 h-8' />
+            <div className='flex h-full flex-col items-center justify-center py-16 text-center'>
+              <div className='mb-4 rounded-xl bg-gray-50 p-3 text-gray-400'>
+                <FileText className='h-6 w-6' />
               </div>
-              <h3 className='text-base font-semibold text-gray-800 mb-1'>
-                {debouncedSearch ? "No results found" : "No proposals yet"}
+              <h3 className='text-sm font-semibold text-gray-800'>
+                {debouncedSearch ? "No matching proposals" : "No proposals yet"}
               </h3>
-              <p className='text-sm text-gray-500 text-center max-w-xs'>
+              <p className='mt-1 max-w-xs text-xs leading-relaxed text-gray-500'>
                 {debouncedSearch
-                  ? `No proposals matching "${debouncedSearch}". Try a different search.`
-                  : "Create your first proposal to get started."}
+                  ? `Nothing matches "${debouncedSearch}". Try another code or title.`
+                  : "Create a proposal to start tracking work orders for this client."}
               </p>
             </div>
           ) : (
-            allProposals.map(({ proposal, workOrder }: any, index: number) => {
-              const proposalStatus = getStatusConfig(proposal.status);
-              const ProposalStatusIcon = proposalStatus.icon;
-
-              return (
-                <div
-                  key={proposal.id}
-                  className={`group rounded-md border bg-gray-100/50 shadow-sm hover:shadow-md
-                    transition-all duration-300
-                    ${isFetching && !isLoading ? "opacity-60" : "opacity-100"}`}>
-                  <div className='p-3 sm:p-5'>
-                    <div className='grid grid-cols-1 md:grid-cols-[1fr_48px_1fr] items-stretch gap-0'>
-                      <div
-                        className='md:pr-3 cursor-pointer rounded hover:bg-sky-50/50 transition-colors duration-200 -m-1 p-1'
-                        onClick={() => {
-                          deleteParams(["dialog", "window"]);
-                          setTimeout(() => {
-                            setParams({
-                              dialog: "proposal-detail",
-                              "proposal-id": proposal.id.toString(),
-                            });
-                          }, 100);
-                        }}
-                        title='View proposal details'>
-                        <span className='inline-flex mb-2.5 items-center px-2 py-0.5 rounded bg-sky-50 text-sky-700 text-[11px] font-mono font-medium ring-1 ring-sky-200'>
-                          <Hash className='w-3 h-3 mr-1 opacity-60' />
-                          {proposal.code}
-                        </span>
-
-                        <h4 className='text-sm font-semibold text-gray-900 leading-snug line-clamp-2 mb-2'>
-                          {capitalFirstLetter(proposal.title)}
-                        </h4>
-
-                        <div className='grid grid-cols-2 gap-2 mb-3'>
-                          <div className='flex items-center gap-2 rounded-lg border bg-white border-gray-200/70 px-2.5 py-2'>
-                            <div className='min-w-0'>
-                              <div className='text-[9px] uppercase tracking-wider text-gray-400 font-medium'>
-                                Submitted
-                              </div>
-                              <div className='text-xs font-medium text-gray-800 truncate'>
-                                {formatDate(proposal.proposal_submission_date)}
-                              </div>
-                            </div>
-                          </div>
-                          <div className='flex items-center gap-2 rounded-lg border bg-white border-gray-200/70 px-2.5 py-2'>
-                            <div className='min-w-0'>
-                              <div className='text-[9px] uppercase tracking-wider text-gray-400 font-medium'>
-                                Created
-                              </div>
-                              <div className='text-xs font-medium text-gray-800 truncate'>
-                                {formatDate(proposal.created_at)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className='flex items-center gap-3'>
-                          {proposal.document_key && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(proposal.document_key, "_blank");
-                              }}
-                              className='inline-flex items-center gap-1 text-[11px] text-sky-600 hover:text-sky-700 transition-colors'>
-                              <ExternalLink className='w-3 h-3' />
-                              Document
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className='relative flex items-center justify-center py-3 md:py-0'>
-                        <div className='absolute inset-0 flex items-center justify-center'>
-                          <div className='w-full h-px md:h-full md:w-px border-t md:border-t-0 md:border-l border-dashed border-gray-300' />
-                        </div>
-                        <div
-                          className={`relative z-10 inline-flex items-center justify-center rounded-full border-2 bg-white p-2 shadow-sm transition-transform duration-200 group-hover:scale-110 ${
-                            workOrder
-                              ? "border-emerald-200 text-emerald-600"
-                              : "border-gray-200 text-gray-400"
-                          }`}
-                          title={
-                            workOrder
-                              ? "Linked with Work Order"
-                              : "No Work Order linked"
-                          }>
-                          {workOrder ? (
-                            <Check className='w-4 h-4' />
-                          ) : (
-                            <Link2Off className='w-4 h-4' />
-                          )}
-                        </div>
-                      </div>
-
+            <div
+              className={cn(
+                "space-y-3 transition-opacity duration-200",
+                isFetching && !isLoading ? "opacity-60" : "opacity-100",
+              )}>
+              {allProposals.map(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ({ proposal, workOrder }: any) => (
+                  <div
+                    key={proposal.id}
+                    className='rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm transition-all duration-200 hover:border-gray-300 hover:shadow-md sm:p-2.5'>
+                    <div className='grid grid-cols-1 items-stretch md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'>
+                      <ProposalSide
+                        proposal={proposal}
+                        onOpen={() => openProposal(proposal.id)}
+                      />
+                      <LinkRail linked={!!workOrder} />
                       <ResolvedWorkOrderSide workOrder={workOrder} />
                     </div>
                   </div>
-                </div>
-              );
-            })
+                ),
+              )}
+            </div>
           )}
         </div>
 
         {total > 0 && (
-          <div className='shrink-0 pt-4 mt-4 border-t border-gray-100'>
-            <div className='flex items-center justify-between text-xs text-gray-500 mb-2'>
-              <span>
-                Showing{" "}
-                <span className='font-medium text-gray-700'>
-                  {allProposals.length}
-                </span>{" "}
-                of <span className='font-medium text-gray-700'>{total}</span>{" "}
-                proposals
-              </span>
-              {totalPages > 1 && (
-                <span>
-                  Page <span className='font-medium text-gray-700'>{page}</span>{" "}
-                  of{" "}
-                  <span className='font-medium text-gray-700'>
-                    {totalPages}
-                  </span>
-                </span>
-              )}
-            </div>
+          <div className='mt-4 shrink-0 border-t border-gray-100 pt-4'>
+            <p className='mb-2 text-xs text-gray-500'>
+              Showing{" "}
+              <span className='font-medium text-gray-700'>
+                {allProposals.length}
+              </span>{" "}
+              of <span className='font-medium text-gray-700'>{total}</span>
+            </p>
             {pagination?.hasMore && (
               <LoadMoreBtn
                 onClick={handleLoadMore}
@@ -569,23 +565,6 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
           </div>
         )}
       </div>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `,
-        }}
-      />
     </DialogWindow>
   );
 };
