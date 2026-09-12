@@ -91,17 +91,22 @@ const getStatusTone = (status: string) => {
   return { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" };
 };
 
-// The spine on the card's left edge is the one thing readable while scrolling
-// fast: where this proposal ended up.
-const getSpineClass = (proposalStatus: string, woStatus?: string) => {
-  if (!woStatus) {
-    return isStopped(proposalStatus)
-      ? "bg-red-200"
-      : "bg-[repeating-linear-gradient(180deg,#e5e7eb_0_5px,transparent_5px_10px)]";
-  }
-  if (isStopped(woStatus)) return "bg-red-300";
-  if (isDone(woStatus)) return "bg-emerald-400";
-  return "bg-amber-300";
+// Where the proposal ended up, carried by the thread running between the two
+// stages and by the work order node it lands on.
+const getOutcomeTone = (woStatus?: string) => {
+  if (!woStatus)
+    return {
+      thread: "w-0 border-l border-dashed border-gray-300",
+      node: "",
+    };
+  if (isStopped(woStatus))
+    return { thread: "w-px bg-red-200", node: "bg-red-400 ring-red-50" };
+  if (isDone(woStatus))
+    return {
+      thread: "w-px bg-emerald-300",
+      node: "bg-emerald-500 ring-emerald-50",
+    };
+  return { thread: "w-px bg-amber-300", node: "bg-amber-400 ring-amber-50" };
 };
 
 const PROCESS_LABELS: Record<string, string> = {
@@ -178,18 +183,18 @@ const DocumentLink = ({
 // down to the step below it.
 const Stage = ({
   marker,
-  connected = false,
+  thread,
   children,
 }: {
   marker: React.ReactNode;
-  connected?: boolean;
+  thread?: string;
   children: React.ReactNode;
 }) => (
   <li className='relative grid grid-cols-[14px_minmax(0,1fr)] gap-x-3'>
-    {connected && (
+    {thread && (
       <span
         aria-hidden
-        className='absolute bottom-[-20px] left-[6.5px] top-4 w-px bg-gray-200'
+        className={cn("absolute bottom-[-20px] left-[6.5px] top-4", thread)}
       />
     )}
     <span className='relative z-10 mt-1 flex h-3.5 w-3.5 items-center justify-center'>
@@ -294,20 +299,13 @@ const ProposalRow = ({
     : null;
   const handover = workOrder ? formatDate(workOrder.handing_over_date) : null;
   const submitted = formatDate(proposal.proposal_submission_date);
+  const tone = getOutcomeTone(woStatus);
 
   return (
     <article
       onClick={primary.run}
-      className='group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:border-gray-300 hover:shadow-md'>
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-y-0 left-0 w-1",
-          getSpineClass(proposal.status, woStatus),
-        )}
-      />
-
-      <div className='py-3 pl-5 pr-3'>
+      className='group cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:border-gray-300 hover:shadow-md'>
+      <div className='px-4 py-3.5'>
         <div className='flex items-start justify-between gap-3'>
           <h4 className='line-clamp-2 text-[15px] font-semibold leading-snug text-gray-900'>
             {capitalFirstLetter(proposal.title)}
@@ -326,7 +324,7 @@ const ProposalRow = ({
 
         <ol className='mt-3 space-y-4'>
           <Stage
-            connected
+            thread={tone.thread}
             marker={
               <span className='h-2.5 w-2.5 rotate-45 rounded-[2px] bg-sky-400 ring-4 ring-sky-50' />
             }>
@@ -364,7 +362,12 @@ const ProposalRow = ({
           <Stage
             marker={
               workOrder ? (
-                <span className='h-2.5 w-2.5 rotate-45 rounded-[2px] bg-emerald-500 ring-4 ring-emerald-50' />
+                <span
+                  className={cn(
+                    "h-2.5 w-2.5 rotate-45 rounded-[2px] ring-4",
+                    tone.node,
+                  )}
+                />
               ) : (
                 <span className='h-3 w-3 rounded-full border border-dashed border-gray-300 bg-white' />
               )
@@ -557,7 +560,7 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
             surfaces against the dialog. */}
         <div className='mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl bg-gray-50/70 p-2'>
           {isLoading ? (
-            <div className='grid gap-2.5 xl:grid-cols-2'>
+            <div className='grid gap-4 xl:grid-cols-2'>
               {Array.from({ length: 4 }).map((_, i) => (
                 <ProposalRowSkeleton key={i} />
               ))}
@@ -579,7 +582,7 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
           ) : (
             <div
               className={cn(
-                "grid gap-2.5 transition-opacity duration-200 xl:grid-cols-2",
+                "grid gap-4 transition-opacity duration-200 xl:grid-cols-2",
                 isFetching && !isLoading ? "opacity-60" : "opacity-100",
               )}>
               {allProposals.map(
