@@ -4,14 +4,12 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "next/navigation";
 import { capitalFirstLetter } from "@pkg/utils";
-import { format } from "date-fns";
+import { format, isSameYear } from "date-fns";
 import {
   Search,
   FileText,
   XCircle,
   Briefcase,
-  Check,
-  Link2Off,
   Hash,
   FileSignature,
   ExternalLink,
@@ -50,26 +48,60 @@ const toNumberSafe = (val: unknown) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const toDate = (date: Date | string | null | undefined) =>
+  date ? new Date(date) : null;
+
 const formatDate = (date: Date | string | null | undefined) => {
-  if (!date) return null;
-  return format(new Date(date), "dd MMM yyyy");
+  const d = toDate(date);
+  return d ? format(d, "dd MMM yyyy") : null;
 };
 
-const getStatusTone = (status: string) => {
-  switch (status) {
-    case "approved":
-    case "completed":
-      return {
-        bg: "bg-emerald-50",
-        text: "text-emerald-700",
-        dot: "bg-emerald-500",
-      };
-    case "rejected":
-    case "cancelled":
-      return { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" };
-    default:
-      return { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" };
+// "01 Apr – 30 Jun 2026" when the year is shared, so a run of work reads as one
+// span rather than two unrelated dates.
+const formatDateRange = (
+  start: Date | string | null | undefined,
+  end: Date | string | null | undefined,
+) => {
+  const from = toDate(start);
+  const to = toDate(end);
+  if (from && to) {
+    return isSameYear(from, to)
+      ? `${format(from, "dd MMM")} – ${format(to, "dd MMM yyyy")}`
+      : `${format(from, "dd MMM yyyy")} – ${format(to, "dd MMM yyyy")}`;
   }
+  if (from) return `From ${format(from, "dd MMM yyyy")}`;
+  if (to) return `Until ${format(to, "dd MMM yyyy")}`;
+  return null;
+};
+
+const isDone = (status?: string) =>
+  status === "approved" || status === "completed";
+const isStopped = (status?: string) =>
+  status === "rejected" || status === "cancelled";
+
+const getStatusTone = (status: string) => {
+  if (isDone(status))
+    return {
+      bg: "bg-emerald-50",
+      text: "text-emerald-700",
+      dot: "bg-emerald-500",
+    };
+  if (isStopped(status))
+    return { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" };
+  return { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" };
+};
+
+// The spine on the card's left edge is the one thing readable while scrolling
+// fast: where this proposal ended up.
+const getSpineClass = (proposalStatus: string, woStatus?: string) => {
+  if (!woStatus) {
+    return isStopped(proposalStatus)
+      ? "bg-red-200"
+      : "bg-[repeating-linear-gradient(180deg,#e5e7eb_0_5px,transparent_5px_10px)]";
+  }
+  if (isStopped(woStatus)) return "bg-red-300";
+  if (isDone(woStatus)) return "bg-emerald-400";
+  return "bg-amber-300";
 };
 
 const PROCESS_LABELS: Record<string, string> = {
@@ -115,21 +147,10 @@ const CodeChip = ({
   </span>
 );
 
-const Field = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) => (
-  <div className='min-w-0'>
-    <div className='text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
-      {label}
-    </div>
-    <div className='mt-0.5 truncate text-xs font-medium text-gray-700'>
-      {children ?? <span className='text-gray-300'>&mdash;</span>}
-    </div>
-  </div>
+const StageLabel = ({ children }: { children: React.ReactNode }) => (
+  <span className='text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+    {children}
+  </span>
 );
 
 const DocumentLink = ({
@@ -145,7 +166,7 @@ const DocumentLink = ({
     rel='noreferrer'
     onClick={(e) => e.stopPropagation()}
     className={cn(
-      "inline-flex items-center gap-1 text-[11px] font-medium underline-offset-2 hover:underline",
+      "inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline",
       tone === "sky" ? "text-sky-600" : "text-emerald-600",
     )}>
     <ExternalLink className='h-3 w-3' />
@@ -153,74 +174,47 @@ const DocumentLink = ({
   </a>
 );
 
-const ProposalSide = ({
-  proposal,
-  onOpen,
+// One step of the proposal to work order run. `connected` draws the thread
+// down to the step below it.
+const Stage = ({
+  marker,
+  connected = false,
+  children,
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  proposal: any;
-  onOpen: () => void;
+  marker: React.ReactNode;
+  connected?: boolean;
+  children: React.ReactNode;
 }) => (
-  <div
-    onClick={onOpen}
-    className='flex cursor-pointer flex-col rounded-lg p-2.5 transition-colors duration-200 hover:bg-sky-50/60'>
-    <div className='flex items-center justify-between gap-2'>
-      <div className='flex min-w-0 flex-wrap items-center gap-2'>
-        <CodeChip
-          icon={Hash}
-          code={proposal.code}
-          tone='sky'
-        />
-        <StatusPill status={proposal.status} />
-      </div>
-      <CustomButton
-        text='View proposal'
-        variant='arrow'
-        arrowType='upright'
-        className='h-7 shrink-0 pl-2.5 text-[11px]'
-        onClick={(e) => {
-          e?.stopPropagation();
-          onOpen();
-        }}
+  <li className='relative grid grid-cols-[14px_minmax(0,1fr)] gap-x-3'>
+    {connected && (
+      <span
+        aria-hidden
+        className='absolute bottom-[-20px] left-[6.5px] top-4 w-px bg-gray-200'
       />
-    </div>
-
-    <h4 className='mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
-      {capitalFirstLetter(proposal.title)}
-    </h4>
-
-    <div className='mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2'>
-      <Field label='Submitted'>
-        {formatDate(proposal.proposal_submission_date)}
-      </Field>
-      <Field label='Created'>{formatDate(proposal.created_at)}</Field>
-    </div>
-
-    {proposal.document_key && (
-      <div className='mt-2'>
-        <DocumentLink
-          href={proposal.document_key}
-          tone='sky'
-        />
-      </div>
     )}
+    <span className='relative z-10 mt-1 flex h-3.5 w-3.5 items-center justify-center'>
+      {marker}
+    </span>
+    <div className='min-w-0'>{children}</div>
+  </li>
+);
+
+const StageMeta = ({ children }: { children: React.ReactNode }) => (
+  <div className='mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500'>
+    {children}
   </div>
 );
 
-const ResolvedWorkOrderSide = ({
-  workOrder,
-}: {
+const useResolvedWorkOrderStatus = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  workOrder: any;
-}) => {
-  const router = useRouter();
-
+  workOrder: any,
+): string | undefined => {
   const { data: woDetails } = trpc.workOrderQuery.getWorkOrderDetails.useQuery(
     { id: Number(workOrder?.id) },
     { enabled: !!workOrder?.id },
   );
 
-  const resolvedStatus = useMemo(() => {
+  return useMemo(() => {
     if (!workOrder) return undefined;
 
     if (woDetails?.workOrder) {
@@ -260,140 +254,196 @@ const ResolvedWorkOrderSide = ({
 
     return workOrder.status;
   }, [workOrder, woDetails]);
+};
 
-  if (!workOrder) {
-    return (
-      <div className='m-2.5 flex flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gray-200 p-4 text-center'>
-        <Briefcase className='h-4 w-4 text-gray-300' />
-        <p className='text-xs font-medium text-gray-500'>No work order yet</p>
-        <p className='text-[11px] leading-relaxed text-gray-400'>
-          This proposal has not been converted.
-        </p>
-      </div>
-    );
-  }
+const normalizeTitle = (title?: string | null) =>
+  (title || "").trim().toLowerCase().replace(/\s+/g, " ");
 
-  const openWorkOrder = () =>
-    router.push(`/dashboard/client/workorder/${workOrder.id}`);
+const ProposalRow = ({
+  proposal,
+  workOrder,
+  onOpenProposal,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  proposal: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  workOrder: any;
+  onOpenProposal: () => void;
+}) => {
+  const router = useRouter();
+  const woStatus = useResolvedWorkOrderStatus(workOrder);
+
+  const openWorkOrder = () => {
+    if (workOrder) router.push(`/dashboard/client/workorder/${workOrder.id}`);
+  };
+
+  const primary = workOrder
+    ? { label: "Open work order", run: openWorkOrder }
+    : { label: "View proposal", run: onOpenProposal };
+
+  // The work order usually repeats the proposal title; only show it when
+  // whoever created it typed something different.
+  const distinctWOTitle =
+    workOrder?.title &&
+    normalizeTitle(workOrder.title) !== normalizeTitle(proposal.title)
+      ? capitalFirstLetter(workOrder.title)
+      : null;
+
+  const dateRange = workOrder
+    ? formatDateRange(workOrder.start_date, workOrder.end_date)
+    : null;
+  const handover = workOrder ? formatDate(workOrder.handing_over_date) : null;
+  const submitted = formatDate(proposal.proposal_submission_date);
 
   return (
-    <div
-      onClick={openWorkOrder}
-      className='flex cursor-pointer flex-col rounded-lg p-2.5 transition-colors duration-200 hover:bg-emerald-50/60'>
-      <div className='flex items-center justify-between gap-2'>
-        <div className='flex min-w-0 flex-wrap items-center gap-2'>
-          <CodeChip
-            icon={Briefcase}
-            code={workOrder.code}
-            tone='emerald'
+    <article
+      onClick={primary.run}
+      className='group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:border-gray-300 hover:shadow-md'>
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-y-0 left-0 w-1",
+          getSpineClass(proposal.status, woStatus),
+        )}
+      />
+
+      <div className='py-3 pl-5 pr-3'>
+        <div className='flex items-start justify-between gap-3'>
+          <h4 className='line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
+            {capitalFirstLetter(proposal.title)}
+          </h4>
+          <CustomButton
+            text={primary.label}
+            variant='arrow'
+            arrowType='upright'
+            className='h-7 shrink-0 pl-2.5 text-[11px]'
+            onClick={(e) => {
+              e?.stopPropagation();
+              primary.run();
+            }}
           />
-          {resolvedStatus && <StatusPill status={resolvedStatus} />}
         </div>
-        <CustomButton
-          text='Open work order'
-          variant='arrow'
-          arrowType='upright'
-          className='h-7 shrink-0 pl-2.5 text-[11px]'
-          onClick={(e) => {
-            e?.stopPropagation();
-            openWorkOrder();
-          }}
-        />
+
+        <ol className='mt-3 space-y-4'>
+          <Stage
+            connected
+            marker={
+              <span className='h-2.5 w-2.5 rotate-45 rounded-[2px] bg-sky-400 ring-4 ring-sky-50' />
+            }>
+            <div className='flex min-w-0 flex-wrap items-center gap-2'>
+              <StageLabel>Proposal</StageLabel>
+              <CodeChip
+                icon={Hash}
+                code={proposal.code}
+                tone='sky'
+              />
+              <StatusPill status={proposal.status} />
+            </div>
+            <StageMeta>
+              {submitted && <span>Submitted {submitted}</span>}
+              {proposal.document_key && (
+                <DocumentLink
+                  href={proposal.document_key}
+                  tone='sky'
+                />
+              )}
+              {workOrder && (
+                <button
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenProposal();
+                  }}
+                  className='font-medium text-sky-600 underline-offset-2 hover:underline'>
+                  View proposal
+                </button>
+              )}
+            </StageMeta>
+          </Stage>
+
+          <Stage
+            marker={
+              workOrder ? (
+                <span className='h-2.5 w-2.5 rotate-45 rounded-[2px] bg-emerald-500 ring-4 ring-emerald-50' />
+              ) : (
+                <span className='h-3 w-3 rounded-full border border-dashed border-gray-300 bg-white' />
+              )
+            }>
+            {workOrder ? (
+              <>
+                <div className='flex min-w-0 flex-wrap items-center gap-2'>
+                  <StageLabel>Work order</StageLabel>
+                  <CodeChip
+                    icon={Briefcase}
+                    code={workOrder.code}
+                    tone='emerald'
+                  />
+                  {woStatus && <StatusPill status={woStatus} />}
+                </div>
+                {distinctWOTitle && (
+                  <p className='mt-1 line-clamp-1 text-xs text-gray-600'>
+                    {distinctWOTitle}
+                  </p>
+                )}
+                <StageMeta>
+                  {dateRange && (
+                    <span className='font-medium text-gray-700'>
+                      {dateRange}
+                    </span>
+                  )}
+                  {handover && <span>Handover {handover}</span>}
+                  {PROCESS_LABELS[workOrder.process_type] && (
+                    <span>{PROCESS_LABELS[workOrder.process_type]}</span>
+                  )}
+                  {workOrder.agreement_number && (
+                    <span className='inline-flex items-center gap-1'>
+                      <FileSignature className='h-3 w-3 text-gray-400' />
+                      Agreement {workOrder.agreement_number}
+                    </span>
+                  )}
+                  {workOrder.document_key && (
+                    <DocumentLink
+                      href={workOrder.document_key}
+                      tone='emerald'
+                    />
+                  )}
+                </StageMeta>
+              </>
+            ) : (
+              <div className='flex min-w-0 flex-wrap items-center gap-2'>
+                <StageLabel>Work order</StageLabel>
+                <span className='text-[11px] text-gray-400'>
+                  Not created yet
+                </span>
+              </div>
+            )}
+          </Stage>
+        </ol>
       </div>
-
-      <h4 className='mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-gray-900'>
-        {workOrder.title
-          ? capitalFirstLetter(workOrder.title)
-          : "Untitled work order"}
-      </h4>
-
-      <div className='mt-2.5 grid grid-cols-3 gap-x-3 gap-y-2'>
-        <Field label='Start'>{formatDate(workOrder.start_date)}</Field>
-        <Field label='End'>{formatDate(workOrder.end_date)}</Field>
-        <Field label='Handover'>
-          {formatDate(workOrder.handing_over_date)}
-        </Field>
-      </div>
-
-      {(PROCESS_LABELS[workOrder.process_type] ||
-        workOrder.agreement_number ||
-        workOrder.document_key) && (
-        <div className='mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500'>
-          {PROCESS_LABELS[workOrder.process_type] && (
-            <span>{PROCESS_LABELS[workOrder.process_type]}</span>
-          )}
-          {workOrder.agreement_number && (
-            <span className='inline-flex items-center gap-1'>
-              <FileSignature className='h-3 w-3 text-gray-400' />
-              Agreement {workOrder.agreement_number}
-            </span>
-          )}
-          {workOrder.document_key && (
-            <DocumentLink
-              href={workOrder.document_key}
-              tone='emerald'
-            />
-          )}
-        </div>
-      )}
-    </div>
+    </article>
   );
 };
 
-// The rail carries the actual point of the row: whether the proposal on the
-// left ever became the work order on the right.
-const LinkRail = ({ linked }: { linked: boolean }) => (
-  <div className='relative flex items-center justify-center py-1.5 md:w-10 md:py-0'>
-    <div
-      aria-hidden
-      className='absolute inset-0 flex items-center justify-center'>
-      <div className='w-full border-t border-dashed border-gray-200 md:h-full md:w-0 md:border-l md:border-t-0' />
-    </div>
-    <span
-      title={linked ? "Linked to a work order" : "Not linked to a work order"}
-      className={cn(
-        "relative z-10 inline-flex items-center justify-center rounded-full bg-white p-1 ring-1",
-        linked
-          ? "text-emerald-600 ring-emerald-200"
-          : "text-gray-300 ring-gray-200",
-      )}>
-      {linked ? (
-        <Check className='h-3 w-3' />
-      ) : (
-        <Link2Off className='h-3 w-3' />
-      )}
-    </span>
-  </div>
-);
-
 const ProposalRowSkeleton = () => (
-  <div className='animate-pulse rounded-xl border border-gray-200 bg-white p-1 sm:p-1.5'>
-    <div className='grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'>
-      <div className='space-y-2.5 p-2.5'>
-        <div className='flex gap-2'>
-          <div className='h-5 w-24 rounded-md bg-gray-100' />
-          <div className='h-5 w-20 rounded-full bg-gray-100' />
-        </div>
-        <div className='h-4 w-3/4 rounded bg-gray-100' />
-        <div className='grid grid-cols-2 gap-3'>
-          <div className='h-8 rounded bg-gray-50' />
-          <div className='h-8 rounded bg-gray-50' />
-        </div>
+  <div className='relative animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white'>
+    <span className='absolute inset-y-0 left-0 w-1 bg-gray-100' />
+    <div className='py-3 pl-5 pr-3'>
+      <div className='flex items-start justify-between gap-3'>
+        <div className='h-4 w-2/5 rounded bg-gray-100' />
+        <div className='h-7 w-28 rounded-full bg-gray-100' />
       </div>
-      <div className='flex items-center justify-center py-1.5 md:w-10 md:py-0'>
-        <div className='h-6 w-6 rounded-full bg-gray-100' />
-      </div>
-      <div className='space-y-2.5 p-2.5'>
-        <div className='flex gap-2'>
-          <div className='h-5 w-24 rounded-md bg-gray-100' />
-          <div className='h-5 w-20 rounded-full bg-gray-100' />
-        </div>
-        <div className='h-4 w-2/3 rounded bg-gray-100' />
-        <div className='grid grid-cols-3 gap-3'>
-          <div className='h-8 rounded bg-gray-50' />
-          <div className='h-8 rounded bg-gray-50' />
-          <div className='h-8 rounded bg-gray-50' />
-        </div>
+      <div className='mt-4 space-y-4'>
+        {[0, 1].map((i) => (
+          <div
+            key={i}
+            className='grid grid-cols-[14px_minmax(0,1fr)] gap-x-3'>
+            <div className='mt-1 h-3 w-3 rounded-full bg-gray-100' />
+            <div className='space-y-2'>
+              <div className='h-4 w-1/2 rounded bg-gray-100' />
+              <div className='h-3 w-2/3 rounded bg-gray-50' />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   </div>
@@ -510,13 +560,13 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
         <div className='mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl bg-gray-50/70 p-2'>
           {isLoading ? (
             <div className='space-y-2.5'>
-              {Array.from({ length: 3 }).map((_, i) => (
+              {Array.from({ length: 4 }).map((_, i) => (
                 <ProposalRowSkeleton key={i} />
               ))}
             </div>
           ) : allProposals.length === 0 ? (
             <div className='flex h-full flex-col items-center justify-center py-16 text-center'>
-              <div className='mb-4 rounded-xl bg-gray-50 p-3 text-gray-400'>
+              <div className='mb-4 rounded-xl bg-white p-3 text-gray-400 shadow-sm'>
                 <FileText className='h-6 w-6' />
               </div>
               <h3 className='text-sm font-semibold text-gray-800'>
@@ -537,18 +587,12 @@ const ProposalWODetailsDialog = ({ clientId }: Props) => {
               {allProposals.map(
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ({ proposal, workOrder }: any) => (
-                  <div
+                  <ProposalRow
                     key={proposal.id}
-                    className='rounded-xl border border-gray-200 bg-white p-1 shadow-sm transition-all duration-200 hover:border-gray-300 hover:shadow-md sm:p-1.5'>
-                    <div className='grid grid-cols-1 items-stretch md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'>
-                      <ProposalSide
-                        proposal={proposal}
-                        onOpen={() => openProposal(proposal.id)}
-                      />
-                      <LinkRail linked={!!workOrder} />
-                      <ResolvedWorkOrderSide workOrder={workOrder} />
-                    </div>
-                  </div>
+                    proposal={proposal}
+                    workOrder={workOrder}
+                    onOpenProposal={() => openProposal(proposal.id)}
+                  />
                 ),
               )}
             </div>
