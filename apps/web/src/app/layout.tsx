@@ -18,8 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OTBL Site Dashboard",
-  description: "OTBL  Dashboard",
+  title: "OTBL Operations Portal",
+  description:
+    "ONGC TERI Biotech's operations portal for oil-contaminated land remediation, from client proposal and work order to field execution, expenses and completion.",
 };
 
 export default function RootLayout({
