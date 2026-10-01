@@ -166,7 +166,7 @@ export default function DashboardPage() {
     return (
       <PageWrapper
         title='Overview'
-        description='OTBL management dashboard'>
+        description='OTBL Operations Portal'>
         <DashboardPageSkeleton />
       </PageWrapper>
     );
@@ -178,7 +178,7 @@ export default function DashboardPage() {
       description={
         user?.name
           ? `Signed in as ${user.name} · ${user.role}`
-          : "OTBL management dashboard"
+          : "OTBL Operations Portal"
       }
       button={
         <Button
