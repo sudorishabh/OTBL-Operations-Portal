@@ -1,5 +1,4 @@
 import React from "react";
-import { Rows3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -61,10 +60,7 @@ const RestorationRatesTable = ({
         <TableHeader>
           <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
             <TableHead className={cn(headClass, "font-semibold text-gray-700")}>
-              <span className='inline-flex items-center gap-1.5'>
-                <Rows3 className='size-3.5 text-gray-400' />
-                Schedule of rates
-              </span>
+              Schedule of rates
             </TableHead>
             <TableHead className={cn(headClass, "text-right")}>
               Est. Qty

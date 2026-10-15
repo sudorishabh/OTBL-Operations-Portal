@@ -851,7 +851,6 @@ const SiteExpensesSection = ({
 
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
         <div className='flex items-center gap-2'>
-          <ReceiptIndianRupee className='w-4 h-4 text-gray-400' />
           <h3 className='text-sm font-semibold text-gray-700 whitespace-nowrap'>Expense List</h3>
           {expenses.length > 0 && (
             <Badge variant='outline' className='text-[10px] px-1.5 py-0 h-4 bg-gray-50'>
