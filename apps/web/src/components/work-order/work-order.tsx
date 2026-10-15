@@ -177,7 +177,10 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
         )}
 
         {hasRestoration && (
-          <RestorationSection scheduleOfRates={scheduleOfRates} />
+          <RestorationSection
+            workOrder={derivedWorkOrder}
+            scheduleOfRates={scheduleOfRates}
+          />
         )}
 
         <ScheduleOfRatesTable
