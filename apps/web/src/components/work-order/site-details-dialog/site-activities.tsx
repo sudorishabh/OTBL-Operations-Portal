@@ -9,7 +9,6 @@ import {
   Building2,
   Trash2,
   ExternalLink,
-  CheckCircle,
   FileText,
   X,
   Receipt,
@@ -20,6 +19,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import DeferredFilePicker from "@/components/shared/deferred-file-picker";
+import DocumentsField from "@/components/shared/documents-field";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -98,7 +98,12 @@ const PhaseForm = ({
       }
     | undefined;
   siteDocuments:
-    | { id: number; type: string; document_url: string }[]
+    | {
+        id: number;
+        type: string;
+        document_url: string;
+        document_id?: string | null;
+      }[]
     | undefined;
   oilZappingData?: { estimated_quantity?: string | null }[];
 }) => {
@@ -134,21 +139,20 @@ const PhaseForm = ({
     [expenseSummaryQuery.data?.byActivity],
   );
 
-  const [file, setFile] = useState<File | null>(null);
-  const [subWoFile, setSubWoFile] = useState<File | null>(null);
-  const [estimateFile, setEstimateFile] = useState<File | null>(null);
-  const [completionCertFile, setCompletionCertFile] = useState<File | null>(
-    null,
-  );
+  // Files waiting to upload, keyed by document type (sub_wo, estimate, ...).
+  const [pendingDocs, setPendingDocs] = useState<Record<string, File[]>>({});
   const [billFiles, setBillFiles] = useState<File[]>([]);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
 
   const {
-    uploadFile,
+    uploadFiles,
     isUploading: isFileUploading,
     progress,
     reset: resetUpload,
   } = useSharePointUpload({
     folderPath: `/WorkOrders/Sites/${woSiteId}/${phase}`,
+    // Sub WO and Estimate share this folder; never overwrite each other.
+    conflictBehavior: "rename",
   });
 
   const deleteDocumentMutation =
@@ -279,10 +283,7 @@ const PhaseForm = ({
         utils.expenseQuery.getExpenses.invalidate({
           work_order_site_id: woSiteId,
         });
-        setFile(null);
-        setSubWoFile(null);
-        setEstimateFile(null);
-        setCompletionCertFile(null);
+        setPendingDocs({});
         setBillFiles([]);
         resetUpload();
         setIsEditMode(false);
@@ -311,10 +312,7 @@ const PhaseForm = ({
         utils.expenseQuery.getExpenses.invalidate({
           work_order_site_id: woSiteId,
         });
-        setFile(null);
-        setSubWoFile(null);
-        setEstimateFile(null);
-        setCompletionCertFile(null);
+        setPendingDocs({});
         setBillFiles([]);
         resetUpload();
         setIsEditMode(false);
@@ -380,81 +378,51 @@ const PhaseForm = ({
       return;
     }
 
-    let subWoDocUrl = siteDocuments?.find(
-      (d) => d.type === "sub_wo",
-    )?.document_url;
-    let estimateDocUrl = siteDocuments?.find(
-      (d) => d.type === "estimate",
-    )?.document_url;
-    let docUrl = siteDocuments?.find((d) => d.type === phase)?.document_url;
-    let completionCertUrl = siteDocuments?.find(
-      (d) => d.type === "completion_certificate",
-    )?.document_url;
+    const documentCount = (type: string) =>
+      (siteDocuments?.filter((d) => d.type === type).length ?? 0) +
+      (pendingDocs[type]?.length ?? 0);
 
     if (phase === "estimate_sub-wo") {
-      if ((!subWoDocUrl && !subWoFile) || (!estimateDocUrl && !estimateFile)) {
+      if (documentCount("sub_wo") === 0 || documentCount("estimate") === 0) {
         toast.error("Please upload both Sub WO and Estimate documents.");
         return;
       }
     } else if (phase === "completion") {
-      if (!completionCertUrl && !completionCertFile) {
+      if (documentCount("completion_certificate") === 0) {
         toast.error("Please upload Completion Certificate.");
         return;
       }
-    } else {
-      if (!docUrl && !file) {
-        toast.error(`Please upload the ${PHASE_LABELS[phase]} document.`);
-        return;
-      }
+    } else if (documentCount(phase) === 0) {
+      toast.error(`Please upload the ${PHASE_LABELS[phase]} document.`);
+      return;
     }
 
-    if (phase === "estimate_sub-wo") {
-      if (subWoFile) {
-        const result = await uploadFile(subWoFile);
-        if (result) subWoDocUrl = result.webUrl;
-        else return;
-      }
-      if (estimateFile) {
-        const result = await uploadFile(estimateFile);
-        if (result) estimateDocUrl = result.webUrl;
-        else return;
-      }
-    } else if (phase === "completion") {
-      if (completionCertFile) {
-        const result = await uploadFile(completionCertFile);
-        if (result) completionCertUrl = result.webUrl;
-        else return;
-      }
-      for (const billFile of billFiles) {
-        const result = await uploadFile(billFile);
-        if (result) {
-          await createSiteDocMutation.mutateAsync({
-            work_order_site_id: woSiteId,
-            type: "bills",
-            document_url: result.webUrl,
-          });
-        }
-      }
-    } else if (file) {
-      const result = await uploadFile(file);
-      if (result) docUrl = result.webUrl;
-      else return;
-    }
+    // Each uploaded file is saved as its own site document of that type.
+    const uploadsByType: [string, File[]][] = [
+      ...Object.entries(pendingDocs),
+      ["bills", billFiles],
+    ];
+    for (const [type, files] of uploadsByType) {
+      if (files.length === 0) continue;
 
-    if (completionCertFile && completionCertUrl) {
-      await createSiteDocMutation.mutateAsync({
-        work_order_site_id: woSiteId,
-        type: "completion_certificate",
-        document_url: completionCertUrl,
-      });
+      setUploadingType(type);
+      const uploaded = await uploadFiles(files);
+      setUploadingType(null);
+      if (!uploaded) return;
+
+      for (const doc of uploaded) {
+        await createSiteDocMutation.mutateAsync({
+          work_order_site_id: woSiteId,
+          type,
+          document_url: doc.webUrl,
+          document_id: doc.id,
+        });
+      }
     }
 
     const commonData = {
       work_order_site_id: woSiteId,
       phase,
-      document_url: docUrl,
-      sub_wo_document_url: subWoDocUrl,
-      estimate_document_url: estimateDocUrl,
     };
 
     if (isBioremediation) {
@@ -532,54 +500,31 @@ const PhaseForm = ({
     saveContaminatedSoil.isPending ||
     isFileUploading;
 
-  const renderDocumentSection = (
-    type: string,
-    currentFile: File | null,
-    setFileFn: (f: File | null) => void,
-  ) => {
-    const existing = siteDocuments?.find((d) => d.type === type);
+  const renderDocumentSection = (type: string) => {
+    const savedDocs = siteDocuments?.filter((d) => d.type === type) ?? [];
     const label = PHASE_LABELS[type as DocType] || type;
 
-    if (existing && !currentFile) {
-      return (
-        <div className='group relative flex items-center gap-3 bg-emerald-50/60 p-3 rounded-xl border border-emerald-200/70 transition-all hover:border-emerald-300 hover:shadow-sm'>
-          <div className='flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 shrink-0'>
-            <CheckCircle className='size-4' />
-          </div>
-          <div className='flex-1 min-w-0'>
-            <p className='text-[11px] font-semibold text-emerald-800 leading-tight'>
-              {label} Document
-            </p>
-            <a
-              href={existing.document_url}
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-[10px] text-emerald-600 hover:text-emerald-700 flex items-center gap-1 mt-0.5 transition-colors'>
-              View uploaded file
-              <ExternalLink className='size-3' />
-            </a>
-          </div>
-          <Button
-            size='sm'
-            variant='ghost'
-            onClick={() =>
-              confirm("Delete this document?") &&
-              deleteDocumentMutation.mutate({ id: existing.id })
-            }
-            className='h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all'>
-            <Trash2 className='size-3.5' />
-          </Button>
-        </div>
-      );
-    }
     return (
-      <DeferredFilePicker
-        label={`Upload ${label} Document`}
-        selectedFile={currentFile}
-        onFileSelect={setFileFn}
-        isUploading={isFileUploading}
-        uploadProgress={progress}
-        className='bg-white rounded-xl'
+      <DocumentsField
+        label={`Upload ${label} Documents`}
+        files={pendingDocs[type] ?? []}
+        onFilesChange={(files) =>
+          setPendingDocs((prev) => ({ ...prev, [type]: files }))
+        }
+        existing={savedDocs.map((doc, index) => ({
+          url: doc.document_url,
+          id: doc.document_id ?? null,
+          name: `${label} document ${index + 1}`,
+        }))}
+        onRemoveExisting={(index) => {
+          const doc = savedDocs[index];
+          if (doc && confirm("Delete this document?")) {
+            deleteDocumentMutation.mutate({ id: doc.id });
+          }
+        }}
+        isUploading={uploadingType === type}
+        progress={progress}
+        className='rounded-xl'
       />
     );
   };
@@ -599,13 +544,13 @@ const PhaseForm = ({
               <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
                 Sub WO
               </span>
-              {renderDocumentSection("sub_wo", subWoFile, setSubWoFile)}
+              {renderDocumentSection("sub_wo")}
             </div>
             <div className='space-y-1.5'>
               <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
                 Estimate
               </span>
-              {renderDocumentSection("estimate", estimateFile, setEstimateFile)}
+              {renderDocumentSection("estimate")}
             </div>
           </div>
         ) : phase === "completion" ? (
@@ -614,11 +559,7 @@ const PhaseForm = ({
               <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
                 Completion Certificate
               </span>
-              {renderDocumentSection(
-                "completion_certificate",
-                completionCertFile,
-                setCompletionCertFile,
-              )}
+              {renderDocumentSection("completion_certificate")}
             </div>
 
             <div className='rounded-xl border border-slate-200/80 bg-slate-50/50 p-3'>
@@ -716,7 +657,7 @@ const PhaseForm = ({
             </div>
           </div>
         ) : (
-          renderDocumentSection(phase, file, setFile)
+          renderDocumentSection(phase)
         )}
       </div>
 
