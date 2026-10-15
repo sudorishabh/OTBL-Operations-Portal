@@ -15,8 +15,11 @@ import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+import { constants } from "@pkg/utils";
 
-const getFileTypeStyle = (fileName: string) => {
+const { MAX_DOCUMENTS, DOCUMENT_EXTENSIONS } = constants;
+
+export const getFileTypeStyle = (fileName: string) => {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "pdf") {
     return { Icon: FileText, bg: "bg-red-50", text: "text-red-500" };
@@ -53,6 +56,9 @@ interface DeferredFilePickerProps {
   className?: string;
   helperText?: string;
   multiple?: boolean;
+  // Multiple mode: the cap, and how many files the parent already holds.
+  maxFiles?: number;
+  fileCount?: number;
 }
 
 const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
@@ -66,14 +72,18 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
   onDelete,
   uploadedUrl,
   label = "Select Document",
-  allowedExtensions = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt"],
+  allowedExtensions = DOCUMENT_EXTENSIONS,
   maxSizeMB = 50,
   className,
   helperText,
   multiple = false,
+  maxFiles = MAX_DOCUMENTS,
+  fileCount = 0,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
+  const remainingSlots = Math.max(maxFiles - fileCount, 0);
+  const isFull = multiple && remainingSlots === 0;
 
   const validateFile = useCallback(
     (file: File): boolean => {
@@ -96,15 +106,28 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
     [allowedExtensions, maxSizeMB],
   );
 
+  // Multiple mode keeps only as many valid files as there are slots left.
+  const acceptFiles = useCallback(
+    (files: File[]) => {
+      const validFiles = files.filter(validateFile);
+      if (validFiles.length > remainingSlots) {
+        toast.error(
+          remainingSlots === 0
+            ? `You can add up to ${maxFiles} files`
+            : `Only ${remainingSlots} more ${remainingSlots === 1 ? "file" : "files"} can be added (up to ${maxFiles})`,
+        );
+      }
+      validFiles.slice(0, remainingSlots).forEach(onFileSelect);
+    },
+    [validateFile, remainingSlots, maxFiles, onFileSelect],
+  );
+
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (multiple) {
-        const files = Array.from(e.target.files || []);
-        files.forEach((file) => {
-          if (validateFile(file)) {
-            onFileSelect(file);
-          }
-        });
+        acceptFiles(Array.from(e.target.files || []));
+        // Let the same file be picked again after it is removed.
+        e.target.value = "";
       } else {
         const file = e.target.files?.[0];
         if (file && validateFile(file)) {
@@ -112,7 +135,7 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
         }
       }
     },
-    [onFileSelect, validateFile, multiple],
+    [onFileSelect, validateFile, multiple, acceptFiles],
   );
 
   const handleDrop = useCallback(
@@ -122,12 +145,7 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
       setIsDragActive(false);
 
       if (multiple) {
-        const files = Array.from(e.dataTransfer.files || []);
-        files.forEach((file) => {
-          if (validateFile(file)) {
-            onFileSelect(file);
-          }
-        });
+        acceptFiles(Array.from(e.dataTransfer.files || []));
       } else {
         const file = e.dataTransfer.files?.[0];
         if (file && validateFile(file)) {
@@ -135,7 +153,7 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
         }
       }
     },
-    [onFileSelect, validateFile, multiple],
+    [onFileSelect, validateFile, multiple, acceptFiles],
   );
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -174,7 +192,12 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
 
   return (
     <div className={cn("w-full", className)}>
-      {!selectedFile ? (
+      {isFull ? (
+        <div className='rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-500'>
+          You&apos;ve added the maximum of {maxFiles} files. Remove one to add
+          another.
+        </div>
+      ) : !selectedFile ? (
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={handleDragOver}
@@ -222,13 +245,16 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
           <div className='min-w-0'>
             <p className='text-sm font-medium text-gray-700'>{label}</p>
             <p className='text-xs text-gray-400 mt-0.5'>
-              Drop a file here or click to browse. Accepts{" "}
+              {multiple
+                ? `Drop up to ${remainingSlots} ${remainingSlots === 1 ? "file" : "files"} here or click to browse. Accepts `
+                : "Drop a file here or click to browse. Accepts "}
               {allowedExtensions
                 .slice(0, 3)
                 .join(", ")
                 .replace(/\./g, "")
                 .toUpperCase()}
-              {allowedExtensions.length > 3 ? " and more" : ""}, up to{" "}
+              {allowedExtensions.length > 3 ? " and more" : ""}
+              {multiple ? ", each up to " : ", up to "}
               {maxSizeMB}MB.
             </p>
           </div>

@@ -73,8 +73,7 @@ export const expenseQueryRouter = router({
               expense_date: workOrderSiteExpenseTable.expense_date,
               invoice_number: workOrderSiteExpenseTable.invoice_number,
               notes: workOrderSiteExpenseTable.notes,
-              document_url: workOrderSiteExpenseTable.document_url,
-              document_id: workOrderSiteExpenseTable.document_id,
+              documents: workOrderSiteExpenseTable.documents,
               created_by: workOrderSiteExpenseTable.created_by,
               created_at: workOrderSiteExpenseTable.created_at,
               updated_at: workOrderSiteExpenseTable.updated_at,
@@ -180,7 +179,7 @@ export const expenseQueryRouter = router({
               notes: workOrderSiteExpenseTable.notes,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
               invoice_number: workOrderSiteExpenseTable.invoice_number,
-              document_url: workOrderSiteExpenseTable.document_url,
+              documents: workOrderSiteExpenseTable.documents,
               amount: workOrderSiteExpenseTable.amount,
             })
             .from(workOrderSiteExpenseTable)
@@ -209,7 +208,7 @@ export const expenseQueryRouter = router({
                 row.notes ?? "",
                 String(row.contractor_id ?? ""),
                 row.invoice_number ?? "",
-                row.document_url ?? "",
+                (row.documents ?? []).map((doc) => doc.url).join(","),
               ].join("||");
               if (!seenForQty.has(qtyKey)) {
                 seenForQty.add(qtyKey);
@@ -254,7 +253,7 @@ export const expenseQueryRouter = router({
               expense_date: workOrderSiteExpenseTable.expense_date,
               invoice_number: workOrderSiteExpenseTable.invoice_number,
               notes: workOrderSiteExpenseTable.notes,
-              document_url: workOrderSiteExpenseTable.document_url,
+              documents: workOrderSiteExpenseTable.documents,
               created_at: workOrderSiteExpenseTable.created_at,
             })
             .from(workOrderSiteExpenseTable)

@@ -19,7 +19,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import CustomButton from "@/components/shared/btn";
-import DeferredFilePicker from "@/components/shared/deferred-file-picker";
+import DocumentsField from "@/components/shared/documents-field";
+import {
+  toDocuments,
+  toStoredDocument,
+  type StoredDocument,
+} from "@/lib/documents";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import {
   Plus,
@@ -101,8 +106,7 @@ export interface Expense {
   expense_date: string | Date;
   invoice_number: string | null;
   notes: string | null;
-  document_url: string | null;
-  document_id: string | null;
+  documents: StoredDocument[] | null;
 }
 
 interface Props {
@@ -151,9 +155,10 @@ const AddExpenseDialog = ({
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadedDocUrl, setUploadedDocUrl] = useState<string | null>(null);
-  const [uploadedDocId, setUploadedDocId] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  // Saved documents in edit mode. Removing one only detaches it: expenses
+  // recorded together share the same files.
+  const [savedDocuments, setSavedDocuments] = useState<StoredDocument[]>([]);
 
   const [showAddContractor, setShowAddContractor] = useState(false);
   const [newContractorName, setNewContractorName] = useState("");
@@ -167,12 +172,12 @@ const AddExpenseDialog = ({
 
   const sharePointUpload = useSharePointUpload({
     folderPath: `/WorkOrders/Sites/${workOrderSiteId}/Expenses`,
+    conflictBehavior: "rename",
   });
 
   const resetDocumentState = useCallback(() => {
-    setSelectedFile(null);
-    setUploadedDocUrl(null);
-    setUploadedDocId(null);
+    setFiles([]);
+    setSavedDocuments([]);
     sharePointUpload.reset();
   }, [sharePointUpload]);
 
@@ -190,9 +195,8 @@ const AddExpenseDialog = ({
       setExpenseDate(format(new Date(editingExpense.expense_date), "yyyy-MM-dd"));
       setInvoiceNumber(editingExpense.invoice_number ?? "");
       setNotes(editingExpense.notes ?? "");
-      setUploadedDocUrl(editingExpense.document_url ?? null);
-      setUploadedDocId(editingExpense.document_id ?? null);
-      setSelectedFile(null);
+      setSavedDocuments(toDocuments(editingExpense.documents));
+      setFiles([]);
     } else {
       setItems([newItem()]);
       setContractorId("");
@@ -287,18 +291,6 @@ const AddExpenseDialog = ({
     });
   };
 
-  const handleFileSelect = useCallback((file: File | null) => {
-    setSelectedFile(file);
-    if (file) { setUploadedDocUrl(null); setUploadedDocId(null); }
-  }, []);
-
-  const handleDeleteUploadedDoc = useCallback(async () => {
-    if (uploadedDocId) await sharePointUpload.deleteFile(uploadedDocId);
-    setUploadedDocUrl(null);
-    setUploadedDocId(null);
-    setSelectedFile(null);
-  }, [uploadedDocId, sharePointUpload]);
-
   const handleSubmit = async () => {
     if (activities.length > 0 && !selectedActivityKey) {
       toast.error("Please select an activity");
@@ -327,14 +319,9 @@ const AddExpenseDialog = ({
       }
     }
 
-    let docUrl = uploadedDocUrl;
-    let docId = uploadedDocId;
-    if (selectedFile) {
-      const result = await sharePointUpload.uploadFile(selectedFile);
-      if (!result) return;
-      docUrl = result.webUrl;
-      docId = result.id;
-    }
+    const uploaded = await sharePointUpload.uploadFiles(files);
+    if (!uploaded) return;
+    const documents = [...savedDocuments, ...uploaded.map(toStoredDocument)];
 
     const sharedPayload = {
       activity_key: selectedActivityKey || null,
@@ -344,8 +331,7 @@ const AddExpenseDialog = ({
       expense_date: new Date(expenseDate).toISOString(),
       invoice_number: invoiceNumber.trim() || null,
       notes: notes.trim() || null,
-      document_url: docUrl ?? null,
-      document_id: docId ?? null,
+      documents,
     };
 
     if (isEditing && editingExpense) {
@@ -693,21 +679,18 @@ const AddExpenseDialog = ({
           <div className='space-y-1.5'>
             <Label className='text-xs font-medium text-gray-700 flex items-center gap-1.5'>
               <Paperclip className='w-3 h-3 text-gray-400' />
-              Supporting Document <span className='text-gray-400'>(optional)</span>
+              Supporting Documents <span className='text-gray-400'>(optional)</span>
             </Label>
-            <DeferredFilePicker
-              label='Attach invoice, bill, or receipt'
-              selectedFile={selectedFile}
-              onFileSelect={handleFileSelect}
+            <DocumentsField
+              label='Attach invoices, bills, or receipts'
+              files={files}
+              onFilesChange={setFiles}
+              existing={savedDocuments}
+              onRemoveExisting={(index) =>
+                setSavedDocuments((prev) => prev.filter((_, i) => i !== index))
+              }
               isUploading={isUploadingDoc}
-              uploadProgress={sharePointUpload.progress}
-              isUploaded={!!uploadedDocUrl}
-              uploadedUrl={uploadedDocUrl ?? undefined}
-              onDelete={handleDeleteUploadedDoc}
-              isDeleting={sharePointUpload.isDeleting}
-              isUploadBgWhite={true}
-              allowedExtensions={[".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png"]}
-              helperText='PDF, Word, Excel or image — max 50 MB.'
+              progress={sharePointUpload.progress}
             />
           </div>
         </div>

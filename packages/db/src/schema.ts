@@ -9,8 +9,16 @@ import {
   tinyint,
   index,
   uniqueIndex,
+  json,
 } from "drizzle-orm/mysql-core";
 import { constants } from "@pkg/utils";
+
+// One uploaded SharePoint file in a record's `documents` list.
+export type StoredDocumentRow = {
+  url: string;
+  id?: string | null;
+  name?: string | null;
+};
 
 const { ROLES, STATUS, PROPOSAL_STATUS, WORK_ORDER_STATUS } = constants;
 
@@ -97,6 +105,7 @@ export const proposalTable = mysqlTable(
     code: varchar("code", { length: 255 }).notNull().unique(),
     title: varchar("title", { length: 255 }).notNull(),
     document_key: varchar("document_key", { length: 255 }).notNull(),
+    documents: json("documents").$type<StoredDocumentRow[]>(),
     description: text("description"),
     proposal_submission_date: timestamp("proposal_submission_date").notNull(),
 
@@ -201,6 +210,7 @@ export const workOrderTable = mysqlTable(
     end_date: timestamp("end_date").notNull(),
     handing_over_date: timestamp("handing_over_date").notNull(),
     document_key: varchar("document_key", { length: 255 }).notNull(),
+    documents: json("documents").$type<StoredDocumentRow[]>(),
     process_type: varchar("process_type", {
       length: 50,
     }).notNull(),
@@ -613,6 +623,7 @@ export const bioSampleTable = mysqlTable("bio_samples", {
     { onDelete: "cascade" },
   ),
   tph_document_url: varchar("tph_document_url", { length: 255 }).notNull(),
+  documents: json("documents").$type<StoredDocumentRow[]>(),
   tph_value: decimal("tph_value", {
     precision: 10,
     scale: 2,
@@ -637,6 +648,7 @@ export const bioOilZappingTable = mysqlTable("bio_oil_zapping", {
     onDelete: "cascade",
   }),
   document_url: varchar("document_url", { length: 255 }),
+  documents: json("documents").$type<StoredDocumentRow[]>(),
   estimated_quantity: decimal("estimated_quantity", {
     precision: 20,
     scale: 2,
@@ -703,6 +715,7 @@ export const workOrderSiteExpenseTable = mysqlTable(
     is_exceeded: tinyint("is_exceeded").notNull().default(0),
     document_url: varchar("document_url", { length: 500 }),
     document_id: varchar("document_id", { length: 255 }),
+    documents: json("documents").$type<StoredDocumentRow[]>(),
     created_by: int("created_by").references(() => userTable.id, {
       onDelete: "set null",
     }),

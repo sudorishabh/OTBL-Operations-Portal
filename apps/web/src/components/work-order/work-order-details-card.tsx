@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { capitalFirstLetter, constants, formatCurrency } from "@pkg/utils";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+import DocumentsMenu from "@/components/shared/documents-menu";
+import { toDocuments } from "@/lib/documents";
 
 interface Props {
   workOrder: {
@@ -22,7 +23,7 @@ interface Props {
     end_date: string;
     process_type?: string | null;
     rate_contract_number?: string | null;
-    document_key?: string | null;
+    documents?: unknown;
     agreement_number?: string | null;
     job_number?: string | null;
     joint_estimate_number?: string | null;
@@ -155,6 +156,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       ? format(new Date(workOrder.start_date), "MMM dd, yyyy")
       : "N/A";
 
+  const documents = toDocuments(workOrder.documents);
   const processLabel =
     constants.processTypeOptions.find(
       (opt) => opt.value === workOrder.process_type,
@@ -231,16 +233,19 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
               {processLabel}
             </Badge>
           )}
-          {workOrder.document_key && (
-            <Link
-              href={workOrder.document_key}
-              target='_blank'
-              title='View work order document'
-              className='inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+          <DocumentsMenu
+            documents={documents}
+            align='start'>
+            <button
+              type='button'
+              title='View work order documents'
+              className='inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
               <ExternalLink className='size-3' />
-              PDF
-            </Link>
-          )}
+              {documents.length === 1
+                ? "Document"
+                : `${documents.length} documents`}
+            </button>
+          </DocumentsMenu>
         </div>
       </div>
 

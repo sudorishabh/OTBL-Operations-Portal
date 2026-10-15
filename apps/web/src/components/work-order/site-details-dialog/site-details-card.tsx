@@ -277,8 +277,8 @@ const SiteDetailsCard = ({
           selectedFile={null}
           onFileSelect={handleMeasurementSheetFileSelect}
           multiple={true}
+          fileCount={measurementSheetFiles.length}
           isUploadBgWhite={true}
-          helperText='You can select multiple files'
         />
 
         {measurementSheetFiles.length > 0 && (

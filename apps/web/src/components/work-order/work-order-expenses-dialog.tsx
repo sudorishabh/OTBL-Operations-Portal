@@ -1,5 +1,7 @@
 "use client";
 import React, { useMemo, useState } from "react";
+import DocumentsMenu from "@/components/shared/documents-menu";
+import { toDocuments } from "@/lib/documents";
 import { format } from "date-fns";
 import {
   AlertTriangle,
@@ -268,6 +270,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
               ) : (
                 filtered.map((e: any) => {
                   const isExceeded = !!e.is_exceeded;
+                  const documents = toDocuments(e.documents);
                   return (
                     <TableRow
                       key={e.id}
@@ -319,14 +322,22 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                         {e.description || "—"}
                       </TableCell>
                       <TableCell className='px-3 py-2 text-center'>
-                        {e.document_url ? (
-                          <a
-                            href={e.document_url}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            className='inline-flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors'>
-                            <FileText className='size-3.5' />
-                          </a>
+                        {documents.length > 0 ? (
+                          <DocumentsMenu
+                            documents={documents}
+                            align='center'>
+                            <button
+                              type='button'
+                              aria-label='View documents'
+                              className='inline-flex cursor-pointer items-center justify-center gap-0.5 text-slate-400 hover:text-blue-600 transition-colors'>
+                              <FileText className='size-3.5' />
+                              {documents.length > 1 && (
+                                <span className='text-[10px] font-semibold tabular-nums'>
+                                  {documents.length}
+                                </span>
+                              )}
+                            </button>
+                          </DocumentsMenu>
                         ) : (
                           <span className='text-slate-300'>—</span>
                         )}

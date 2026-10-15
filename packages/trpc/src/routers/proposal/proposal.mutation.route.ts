@@ -39,6 +39,8 @@ export const proposalMutationRouter = router({
         try {
           const result = await ctx.db.insert(proposalTable).values({
             ...input,
+            // Legacy single-document column, kept until it is dropped.
+            document_key: input.documents[0]!.url,
             status: constants.PROPOSAL_STATUS.PENDING,
           });
 

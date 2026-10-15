@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "efeab73c-1102-4193-9384-ba3a0f3cd163",
+  "id": "374d4331-bf3b-4554-8397-f4f9f9deb5ee",
   "prevId": "2fbe6cab-5797-4fed-9b85-67f39de3539d",
   "tables": {
     "bio_oil_zapping": {
@@ -38,6 +38,13 @@
         "document_url": {
           "name": "document_url",
           "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "documents": {
+          "name": "documents",
+          "type": "json",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -156,6 +163,13 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "documents": {
+          "name": "documents",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "tph_value": {
@@ -570,13 +584,6 @@
           "notNull": true,
           "autoincrement": true
         },
-        "parent_client_id": {
-          "name": "parent_client_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "name": {
           "name": "name",
           "type": "varchar(255)",
@@ -660,21 +667,7 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "clients_parent_client_id_parent_clients_id_fk": {
-          "name": "clients_parent_client_id_parent_clients_id_fk",
-          "tableFrom": "clients",
-          "tableTo": "parent_clients",
-          "columnsFrom": [
-            "parent_client_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {
         "clients_id": {
           "name": "clients_id",
@@ -1285,61 +1278,6 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "parent_clients": {
-      "name": "parent_clients",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "onUpdate": true,
-          "default": "(now())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "parent_clients_id": {
-          "name": "parent_clients_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "parent_clients_name_unique": {
-          "name": "parent_clients_name_unique",
-          "columns": [
-            "name"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
     "proposals": {
       "name": "proposals",
       "columns": {
@@ -1383,6 +1321,13 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "documents": {
+          "name": "documents",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "description": {
@@ -2375,6 +2320,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "documents": {
+          "name": "documents",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "int",
@@ -2959,6 +2911,13 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "documents": {
+          "name": "documents",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "process_type": {

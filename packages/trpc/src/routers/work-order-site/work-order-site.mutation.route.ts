@@ -12,6 +12,7 @@ import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
 import { fromDatabaseError, notFound, validationError } from "../../errors";
 import { constants } from "@pkg/utils";
+import { validators } from "@pkg/schema";
 import {
   getSharePointConfig,
   isSharePointConfigured,
@@ -60,14 +61,14 @@ type SaveActivityData = z.infer<typeof saveActivityDataSchema>;
 
 const createBioSampleSchema = z.object({
   work_order_site_id: z.number().positive(),
-  tph_document_url: z.string(),
+  documents: validators.documentsValidator,
   tph_value: z.string(),
   application_month: z.string(),
 });
 
 const createOilZappingSchema = z.object({
   work_order_site_id: z.number().positive(),
-  document_url: z.string().min(1, "Document URL is required"),
+  documents: validators.documentsValidator,
   estimated_quantity: z
     .string()
     .min(1, "Quantity is required")
@@ -605,7 +606,9 @@ export const workOrderSiteMutationRouter = router({
       try {
         const [result] = await ctx.db.insert(bioSampleTable).values({
           work_order_site_id: input.work_order_site_id,
-          tph_document_url: input.tph_document_url,
+          documents: input.documents,
+          // Legacy single-document column, kept until it is dropped.
+          tph_document_url: input.documents[0]!.url,
           tph_value: input.tph_value,
           application_month: input.application_month,
         });
@@ -671,7 +674,9 @@ export const workOrderSiteMutationRouter = router({
 
         const [result] = await ctx.db.insert(bioOilZappingTable).values({
           work_order_site_id: input.work_order_site_id,
-          document_url: input.document_url,
+          documents: input.documents,
+          // Legacy single-document column, kept until it is dropped.
+          document_url: input.documents[0]!.url,
           estimated_quantity: capped.toFixed(2),
         });
         return {

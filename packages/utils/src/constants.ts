@@ -95,6 +95,15 @@ export const unitOptions = [
 
 export const GST_PERCENTAGE = 18;
 
+// Most documents a user can upload at once, or attach to one record.
+export const MAX_DOCUMENTS = 10;
+
+// Every document upload is PDF only.
+export const DOCUMENT_EXTENSIONS = [".pdf"];
+
+// The one exception: site photos taken with the operator page camera.
+export const PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png"];
+
 export const allActivityOptions = [
   {
     value: WO_ACTIVITIES.clean_soil_area,
@@ -138,6 +147,9 @@ export default {
   WO_ACTIVITIES,
   WO_UNITS,
   GST_PERCENTAGE,
+  MAX_DOCUMENTS,
+  DOCUMENT_EXTENSIONS,
+  PHOTO_EXTENSIONS,
   processTypeOptions,
   unitOptions,
   allActivityOptions,
