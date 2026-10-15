@@ -1,31 +1,29 @@
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  getTableColumns,
-  inArray,
-  like,
-  or,
-} from "drizzle-orm";
+import { and, asc, count, eq, like, or } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import {
-  assertCanAccessOffice,
-  getAccessScope,
-  resolveVisibleOfficeIds,
-} from "../../access-scope";
 import { fromDatabaseError, notFound } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { z } from "zod";
+import { assertCanUseVendors, canUseVendors } from "./vendor-access";
 
-const { contractorTable, officeTable } = schema;
+const { contractorTable } = schema;
+
+const searchWhere = (search: string | undefined) => {
+  const term = search?.trim() ? `%${escapeLike(search.trim())}%` : null;
+  return term
+    ? or(
+        like(contractorTable.name, term),
+        like(contractorTable.contact_number, term),
+        like(contractorTable.email, term),
+        like(contractorTable.gst_number, term),
+      )
+    : undefined;
+};
 
 export const contractorQueryRouter = router({
-  // The vendors of every office the user can see, for the Vendors page.
+  // Every vendor, paginated, for the Vendors page.
   getVendors: protectedProcedure
     .input(
       z.object({
@@ -33,26 +31,13 @@ export const contractorQueryRouter = router({
         limit: z.number().min(1).max(100).default(20),
         search: z.string().optional(),
         status: z.enum(["active", "inactive"]).optional(),
-        office_id: z.number().positive().optional(),
       }),
     )
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { page, limit, search, status, office_id } = input;
+        const { page, limit, search, status } = input;
 
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-
-        // Site operators see no vendors, as with offices.
-        const visibleOfficeIds =
-          scope.kind === "restricted" && scope.ui !== "office"
-            ? []
-            : await resolveVisibleOfficeIds(ctx.db, scope);
-
-        if (visibleOfficeIds && visibleOfficeIds.length === 0) {
+        if (!(await canUseVendors(ctx))) {
           return {
             vendors: [],
             pagination: {
@@ -65,21 +50,9 @@ export const contractorQueryRouter = router({
           };
         }
 
-        const term = search?.trim() ? `%${escapeLike(search.trim())}%` : null;
         const where = and(
-          visibleOfficeIds
-            ? inArray(contractorTable.office_id, visibleOfficeIds)
-            : undefined,
-          office_id ? eq(contractorTable.office_id, office_id) : undefined,
           status ? eq(contractorTable.status, status) : undefined,
-          term
-            ? or(
-                like(contractorTable.name, term),
-                like(contractorTable.contact_number, term),
-                like(contractorTable.email, term),
-                like(contractorTable.gst_number, term),
-              )
-            : undefined,
+          searchWhere(search),
         );
 
         try {
@@ -90,15 +63,8 @@ export const contractorQueryRouter = router({
           const total = totalRow?.total ?? 0;
 
           const vendors = await ctx.db
-            .select({
-              ...getTableColumns(contractorTable),
-              office_name: officeTable.name,
-            })
+            .select()
             .from(contractorTable)
-            .leftJoin(
-              officeTable,
-              eq(contractorTable.office_id, officeTable.id),
-            )
             .where(where)
             .orderBy(asc(contractorTable.name))
             .limit(limit)
@@ -120,37 +86,19 @@ export const contractorQueryRouter = router({
       }),
     ),
 
+  // Every vendor by name, for pickers.
   getContractors: protectedProcedure
-    .input(
-      z.object({
-        office_id: z.number().positive(),
-        search: z.string().optional(),
-      }),
-    )
+    .input(z.object({ search: z.string().optional() }))
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { office_id, search } = input;
-
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessOffice(ctx.db, scope, office_id);
+        await assertCanUseVendors(ctx);
 
         try {
-          const whereClause = search
-            ? and(
-                eq(contractorTable.office_id, office_id),
-                like(contractorTable.name, `%${escapeLike(search)}%`),
-              )
-            : eq(contractorTable.office_id, office_id);
-
           const contractors = await ctx.db
             .select()
             .from(contractorTable)
-            .where(whereClause)
-            .orderBy(desc(contractorTable.created_at));
+            .where(searchWhere(input.search))
+            .orderBy(asc(contractorTable.name));
 
           return { contractors };
         } catch (error) {
@@ -163,6 +111,8 @@ export const contractorQueryRouter = router({
     .input(z.object({ id: z.number().positive() }))
     .query(
       handleQuery(async ({ input, ctx }) => {
+        await assertCanUseVendors(ctx);
+
         try {
           const [contractor] = await ctx.db
             .select()
@@ -172,13 +122,6 @@ export const contractorQueryRouter = router({
           if (!contractor) {
             throw notFound("Contractor", input.id);
           }
-
-          const scope = await getAccessScope(
-            ctx.db,
-            Number(ctx.user!.sub),
-            ctx.user!.role,
-          );
-          await assertCanAccessOffice(ctx.db, scope, contractor.office_id);
 
           return { contractor };
         } catch (error) {

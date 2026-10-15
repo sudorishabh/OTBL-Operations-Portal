@@ -102,10 +102,9 @@ const SiteDetailDialog = () => {
           <TabsContent
             value='expenses'
             className='mt-4'>
-            {woSiteId > 0 && siteDetails?.work_order?.office_id ? (
+            {woSiteId > 0 && siteDetails ? (
               <SiteExpensesSection
                 woSiteId={woSiteId}
-                officeId={siteDetails.work_order.office_id}
                 processType={siteDetails?.process_type}
               />
             ) : (

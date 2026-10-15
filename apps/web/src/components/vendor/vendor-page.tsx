@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { HardHat, MoreHorizontal, Pencil, Search, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
+import { capitalFirstLetter } from "@pkg/utils";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,6 @@ import VendorDialog from "./vendor-dialog";
 type Vendor = {
   id: number;
   name: string;
-  office_name: string | null;
   contact_number: string | null;
   email: string | null;
   address: string | null;
@@ -71,8 +70,6 @@ type VendorsPage = {
   };
 };
 
-type OfficeOption = { id: number; name: string };
-
 const PAGE_SIZE = 20;
 const ALL = "all";
 
@@ -86,21 +83,13 @@ const VendorPage = () => {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(ALL);
-  const [officeId, setOfficeId] = useState<string>(ALL);
   const debouncedSearch = useDebounce(search, 300);
   const [deleting, setDeleting] = useState<Vendor | null>(null);
-
-  const { data: officesData } = trpc.officeQuery.getOffices.useQuery({
-    searchQuery: "",
-    status: "all",
-  });
-  const offices: OfficeOption[] = officesData?.offices ?? [];
 
   const queryInput = {
     limit: PAGE_SIZE,
     search: debouncedSearch.trim() || undefined,
     status: status === ALL ? undefined : (status as "active" | "inactive"),
-    office_id: officeId === ALL ? undefined : Number(officeId),
   };
 
   // Loaded pages belong to one query input; changing it starts over at page 1.
@@ -123,7 +112,7 @@ const VendorPage = () => {
   const failedQuery = pageQueries.find((query) => query.isError);
   const isInitialLoading = !!pageQueries[0]?.isLoading;
   const isFetchingMore = pageCount > 1 && !!pageQueries.at(-1)?.isLoading;
-  const isFiltered = !!queryInput.search || status !== ALL || officeId !== ALL;
+  const isFiltered = !!queryInput.search || status !== ALL;
 
   const deleteVendor = trpc.contractorMutation.deleteContractor.useMutation({
     onSuccess: () => {
@@ -137,7 +126,6 @@ const VendorPage = () => {
   const resetFilters = () => {
     setSearch("");
     setStatus(ALL);
-    setOfficeId(ALL);
   };
 
   const renderList = () => {
@@ -171,7 +159,7 @@ const VendorPage = () => {
           description={
             isFiltered
               ? "Try another search or clear the filters."
-              : "Add the contractors your offices give restoration work to."
+              : "Add the contractors restoration work is ordered to."
           }
         />
       );
@@ -183,7 +171,6 @@ const VendorPage = () => {
           <TableHeader>
             <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
               <TableHead className={headClass}>Vendor</TableHead>
-              <TableHead className={headClass}>Office</TableHead>
               <TableHead className={headClass}>Contact</TableHead>
               <TableHead className={headClass}>GST / PAN</TableHead>
               <TableHead className={headClass}>Status</TableHead>
@@ -206,11 +193,6 @@ const VendorPage = () => {
                       {vendor.address}
                     </p>
                   )}
-                </TableCell>
-                <TableCell className={cellClass}>
-                  {vendor.office_name
-                    ? capitalizeEachWord(vendor.office_name)
-                    : "—"}
                 </TableCell>
                 <TableCell className={cellClass}>
                   <p>{vendor.contact_number || "—"}</p>
@@ -303,25 +285,6 @@ const VendorPage = () => {
             className='h-9 bg-white pl-9'
           />
         </div>
-        <Select
-          value={officeId}
-          onValueChange={setOfficeId}>
-          <SelectTrigger
-            aria-label='Filter by office'
-            className='h-9 bg-white sm:w-56'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All offices</SelectItem>
-            {offices.map((office) => (
-              <SelectItem
-                key={office.id}
-                value={String(office.id)}>
-                {capitalizeEachWord(office.name)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Select
           value={status}
           onValueChange={setStatus}>

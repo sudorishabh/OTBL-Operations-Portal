@@ -2,12 +2,11 @@ import { eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { assertCanAccessOffice, getAccessScope } from "../../access-scope";
 import { fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
-import { assertOfficeManager } from "../../helper/office-permissions";
 import { vendorSchemas } from "@pkg/schema";
 import { z } from "zod";
+import { assertCanManageVendors, assertCanUseVendors } from "./vendor-access";
 
 const { contractorTable } = schema;
 
@@ -20,18 +19,12 @@ export const contractorMutationRouter = router({
     .input(vendorSchemas.createVendorSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessOffice(ctx.db, scope, input.office_id);
+        await assertCanUseVendors(ctx);
 
         try {
           const [created] = await ctx.db
             .insert(contractorTable)
             .values({
-              office_id: input.office_id,
               name: input.name.trim(),
               contact_number: optionalText(input.contact_number) ?? null,
               email: optionalText(input.email) ?? null,
@@ -49,7 +42,8 @@ export const contractorMutationRouter = router({
 
           return { success: true, id: created.id };
         } catch (error) {
-          if (error && typeof error === "object" && "errorCode" in error) throw error;
+          if (error && typeof error === "object" && "errorCode" in error)
+            throw error;
           throw fromDatabaseError(error, "Creating contractor");
         }
       }),
@@ -60,6 +54,7 @@ export const contractorMutationRouter = router({
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { id, name, status } = input;
+        assertCanManageVendors(ctx);
 
         const existing = await ctx.db
           .select()
@@ -69,14 +64,6 @@ export const contractorMutationRouter = router({
         if (existing.length === 0) {
           throw notFound("Contractor", id);
         }
-
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessOffice(ctx.db, scope, existing[0]!.office_id);
-        await assertOfficeManager(ctx, existing[0]!.office_id);
 
         try {
           await ctx.db
@@ -103,6 +90,8 @@ export const contractorMutationRouter = router({
     .input(z.object({ id: z.number().positive() }))
     .mutation(
       handleMutation(async ({ input, ctx }) => {
+        assertCanManageVendors(ctx);
+
         const existing = await ctx.db
           .select()
           .from(contractorTable)
@@ -111,14 +100,6 @@ export const contractorMutationRouter = router({
         if (existing.length === 0) {
           throw notFound("Contractor", input.id);
         }
-
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessOffice(ctx.db, scope, existing[0]!.office_id);
-        await assertOfficeManager(ctx, existing[0]!.office_id);
 
         try {
           await ctx.db

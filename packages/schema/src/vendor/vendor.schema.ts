@@ -10,7 +10,7 @@ import { constants } from "@pkg/utils";
 const { STATUS } = constants;
 
 // Vendors are stored in the contractors table: a vendor is the contractor a
-// work order's restoration is ordered to.
+// work order's restoration is ordered to. They're shared by every office.
 
 const optionalPanNumberValidator = z
   .string()
@@ -43,12 +43,9 @@ const vendorFields = {
 
 export const vendorStatusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
-export const createVendorSchema = z.object({
-  office_id: positiveIntValidator,
-  ...vendorFields,
-});
+export const createVendorSchema = z.object(vendorFields);
 
-// A vendor stays in its office; fields left out keep their value.
+// Fields left out keep their value.
 export const updateVendorSchema = z
   .object(vendorFields)
   .partial()

@@ -10,15 +10,7 @@ import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import CustomForm from "@/components/shared/form";
 import CustomInput from "@/components/shared/input";
-import OfficeSelect from "@/components/shared/office-select";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form } from "@/components/ui/form";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useApiError } from "@/hooks/useApiError";
@@ -32,7 +24,6 @@ type VendorFormInput = z.input<typeof vendorFormSchema>;
 type VendorFormValues = z.output<typeof vendorFormSchema>;
 
 const EMPTY_FORM: VendorFormInput = {
-  office_id: undefined as unknown as number,
   name: "",
   contact_number: "",
   email: "",
@@ -42,15 +33,13 @@ const EMPTY_FORM: VendorFormInput = {
   status: STATUS.ACTIVE,
 };
 
-type OfficeOption = { id: number; name: string; status: string };
-
 const statusOptions = [
   { value: STATUS.ACTIVE, label: "Active" },
   { value: STATUS.INACTIVE, label: "Inactive" },
 ];
 
 // Adds (dialog=create-vendor) or edits (dialog=edit-vendor&vendorId=…) a
-// vendor. A vendor belongs to one office and stays there.
+// vendor, which every office shares.
 const VendorDialog = () => {
   const { getParam, deleteParams } = useHandleParams();
   const dialog = getParam("dialog");
@@ -71,23 +60,12 @@ const VendorDialog = () => {
   );
   const vendor = vendorQuery.data?.contractor;
 
-  const { data: officesData, isLoading: isLoadingOffices } =
-    trpc.officeQuery.getOffices.useQuery(
-      { searchQuery: "", status: "all" },
-      { enabled: isOpen },
-    );
-  const offices: OfficeOption[] = officesData?.offices ?? [];
-  const vendorOffice = offices.find(
-    (office) => office.id === vendor?.office_id,
-  );
-
   // Re-seed on every open so a cancelled edit doesn't linger.
   useEffect(() => {
     if (!isOpen) return;
     form.reset(
       isEdit && vendor
         ? {
-            office_id: vendor.office_id,
             name: vendor.name,
             contact_number: vendor.contact_number ?? "",
             email: vendor.email ?? "",
@@ -120,11 +98,11 @@ const VendorDialog = () => {
     onError: (error: any) => handleError(error, { showToast: true }),
   });
 
-  function onSubmit({ office_id, status, ...fields }: VendorFormValues) {
+  function onSubmit({ status, ...fields }: VendorFormValues) {
     if (isEdit) {
       updateVendor.mutate({ id: vendorId, status, ...fields });
     } else {
-      createVendor.mutate({ office_id, ...fields });
+      createVendor.mutate(fields);
     }
   }
 
@@ -134,7 +112,7 @@ const VendorDialog = () => {
       setOpen={handleClose}
       isLoading={isEdit && vendorQuery.isLoading}
       title={isEdit ? "Edit Vendor" : "Add Vendor"}
-      description='A vendor is a contractor an office gives restoration work to.'
+      description='A vendor is a contractor restoration work is ordered to.'
       size='md'
       heightMode='auto'>
       {isEdit && !vendorQuery.isLoading && !vendor ? (
@@ -144,46 +122,14 @@ const VendorDialog = () => {
       ) : (
         <Form {...form}>
           <CustomForm onSubmit={form.handleSubmit(onSubmit)}>
+            <CustomInput
+              control={form.control}
+              fieldName='name'
+              Label='Vendor Name'
+              placeholder='e.g. Sharma Earthmovers'
+            />
+
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <CustomInput
-                control={form.control}
-                fieldName='name'
-                Label='Vendor Name'
-                placeholder='e.g. Sharma Earthmovers'
-              />
-
-              {isEdit ? (
-                <div className='space-y-1 min-w-0'>
-                  <p className='text-xs font-medium text-neutral-700'>Office</p>
-                  <p className='flex h-9 items-center truncate rounded-md bg-gray-100/50 px-3 text-sm text-gray-700'>
-                    {vendorOffice?.name ?? "—"}
-                  </p>
-                </div>
-              ) : (
-                <FormField
-                  control={form.control}
-                  name='office_id'
-                  render={({ field }) => (
-                    <FormItem className='space-y-1 min-w-0'>
-                      <FormLabel className='text-xs font-medium text-neutral-700'>
-                        Office
-                      </FormLabel>
-                      <FormControl>
-                        <OfficeSelect
-                          offices={offices.filter(
-                            (office) => office.status === STATUS.ACTIVE,
-                          )}
-                          value={field.value}
-                          onChange={field.onChange}
-                          isLoading={isLoadingOffices}
-                        />
-                      </FormControl>
-                      <FormMessage className='text-xs' />
-                    </FormItem>
-                  )}
-                />
-              )}
-
               <CustomInput
                 control={form.control}
                 fieldName='contact_number'

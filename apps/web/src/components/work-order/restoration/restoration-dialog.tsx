@@ -119,12 +119,10 @@ const RestorationDialog = ({
             </section>
             <RestorationContractorCard
               restoration={restoration}
-              officeId={workOrder.office_id}
               workOrderId={workOrder.id}
             />
             <SiteExpensesSection
               woSiteId={restoration.id}
-              officeId={workOrder.office_id}
               processType={WO_PROCESS.RESTORATION}
               splitByContractor
               contractor={restoration.contractor}

@@ -19,16 +19,11 @@ type Vendor = { id: number; name: string; status: string };
 
 interface Props {
   restoration: Restoration;
-  officeId: number;
   workOrderId: number;
 }
 
 // The vendor the restoration is ordered to; the office manager assigns it.
-const RestorationContractorCard = ({
-  restoration,
-  officeId,
-  workOrderId,
-}: Props) => {
+const RestorationContractorCard = ({ restoration, workOrderId }: Props) => {
   const isManager = useIsManager();
   const utils = trpc.useUtils();
   const [isEditing, setIsEditing] = useState(false);
@@ -36,12 +31,12 @@ const RestorationContractorCard = ({
   const contractor = restoration.contractor;
 
   const vendorsQuery = trpc.contractorQuery.getContractors.useQuery(
-    { office_id: officeId },
+    {},
     { enabled: isEditing },
   );
-  const vendors = (
-    (vendorsQuery.data?.contractors ?? []) as Vendor[]
-  ).filter((vendor) => vendor.status === "active");
+  const vendors = ((vendorsQuery.data?.contractors ?? []) as Vendor[]).filter(
+    (vendor) => vendor.status === "active",
+  );
 
   const saveMutation =
     trpc.restorationMutation.setRestorationContractor.useMutation({

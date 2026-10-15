@@ -135,7 +135,6 @@ const getExpenseRecordKey = (exp: Expense) =>
 
 interface Props {
   woSiteId: number;
-  officeId: number;
   processType?: string;
   // Lists expenses under the contractor apart from the rest.
   splitByContractor?: boolean;
@@ -146,7 +145,6 @@ interface Props {
 
 const SiteExpensesSection = ({
   woSiteId,
-  officeId,
   processType,
   splitByContractor = false,
   contractor = null,
@@ -899,7 +897,6 @@ const SiteExpensesSection = ({
         onClose={handleCloseDialog}
         onSuccess={resetExpenseList}
         workOrderSiteId={woSiteId}
-        officeId={officeId}
         editingExpense={editingExpense}
         activities={activityOptions}
         usedQtyByActivity={usedQtyByActivity}

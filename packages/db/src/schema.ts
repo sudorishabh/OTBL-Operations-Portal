@@ -675,13 +675,11 @@ export const bioOilZappingTable = mysqlTable("bio_oil_zapping", {
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
+// Vendors: the contractors work is ordered to, shared by every office.
 export const contractorTable = mysqlTable(
   "contractors",
   {
     id: int("id").autoincrement().primaryKey(),
-    office_id: int("office_id")
-      .notNull()
-      .references(() => officeTable.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 255 }).notNull(),
     contact_number: varchar("contact_number", { length: 15 }),
     email: varchar("email", { length: 320 }),
@@ -697,10 +695,7 @@ export const contractorTable = mysqlTable(
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
-  (table) => [
-    index("contractor_office_idx").on(table.office_id),
-    index("contractor_name_idx").on(table.name),
-  ],
+  (table) => [index("contractor_name_idx").on(table.name)],
 );
 
 export const workOrderSiteExpenseTable = mysqlTable(

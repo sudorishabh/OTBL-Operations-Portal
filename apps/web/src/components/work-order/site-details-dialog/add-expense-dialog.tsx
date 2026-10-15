@@ -116,7 +116,6 @@ interface Props {
   onClose: () => void;
   onSuccess?: () => void;
   workOrderSiteId: number;
-  officeId: number;
   editingExpense?: Expense | null;
   activities?: ActivityOption[];
   usedQtyByActivity?: Record<string, number>;
@@ -142,7 +141,6 @@ const AddExpenseDialog = ({
   onClose,
   onSuccess,
   workOrderSiteId,
-  officeId,
   editingExpense,
   activities = [],
   usedQtyByActivity = {},
@@ -268,8 +266,8 @@ const AddExpenseDialog = ({
   const totalAmount = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
 
   const contractorsQuery = trpc.contractorQuery.getContractors.useQuery(
-    { office_id: officeId },
-    { enabled: open && !!officeId },
+    {},
+    { enabled: open },
   );
   // Inactive vendors can't take new expenses, but an edit keeps its own.
   const contractors = (contractorsQuery.data?.contractors ?? []).filter(
@@ -278,7 +276,7 @@ const AddExpenseDialog = ({
 
   const createContractorMutation = trpc.contractorMutation.createContractor.useMutation({
     onSuccess: (data: any) => {
-      utils.contractorQuery.getContractors.invalidate({ office_id: officeId });
+      utils.contractorQuery.invalidate();
       setContractorId(String(data.id));
       setShowAddContractor(false);
       setNewContractorName("");
@@ -307,7 +305,6 @@ const AddExpenseDialog = ({
       return;
     }
     createContractorMutation.mutate({
-      office_id: officeId,
       name: newContractorName.trim(),
       contact_number: newContractorContact.trim() || undefined,
       gst_number: newContractorGst.trim() || undefined,

@@ -109,18 +109,12 @@ export const restorationMutationRouter = router({
 
         if (input.contractor_id) {
           const [vendor] = await ctx.db
-            .select({
-              office_id: contractorTable.office_id,
-              status: contractorTable.status,
-            })
+            .select({ status: contractorTable.status })
             .from(contractorTable)
             .where(eq(contractorTable.id, input.contractor_id));
 
           if (!vendor) {
             throw notFound("Vendor", input.contractor_id);
-          }
-          if (vendor.office_id !== restoration.office_id) {
-            throw businessRule("This vendor belongs to another office.");
           }
           if (vendor.status !== STATUS.ACTIVE) {
             throw businessRule("This vendor is inactive.");
