@@ -98,7 +98,7 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
           <p className='text-sm text-gray-600'>
             Restoration isn&apos;t set up for this work order yet.{" "}
             {isManager
-              ? "Set it up to manage its estimate, operators and expenses."
+              ? "Set it up to manage its operators, expenses and completion."
               : "The office manager can set it up."}
           </p>
           {isManager && (
