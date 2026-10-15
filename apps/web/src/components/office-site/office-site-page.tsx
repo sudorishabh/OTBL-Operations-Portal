@@ -11,6 +11,7 @@ import OfficeSiteSkeleton from "../skeleton/office-site/office-site-skeleton";
 import ScrollToTop from "@/components/scroll-to-top";
 
 const CreateOfficeDialog = dynamic(() => import("./create-office-dialog"));
+const EditOfficeDialog = dynamic(() => import("./edit-office-dialog"));
 const CreateSiteDialog = dynamic(() => import("./create-site-dialog"));
 const OfficeDetailsDialog = dynamic(() => import("./office-details-dialog"));
 const ManageOfficeMembersDialog = dynamic(
@@ -84,6 +85,7 @@ const OfficeSitePage = () => {
 
       <Suspense fallback={null}>
         <CreateOfficeDialog />
+        <EditOfficeDialog />
         <CreateSiteDialog />
         <OfficeDetailsDialog />
         <ManageOfficeMembersDialog />
