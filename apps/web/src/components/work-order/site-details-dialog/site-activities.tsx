@@ -673,9 +673,11 @@ const PhaseForm = ({
               )}
 
               <DeferredFilePicker
-                label='Add New Bill'
+                label='Add Bills'
                 onFileSelect={(f) => f && setBillFiles((prev) => [...prev, f])}
                 selectedFile={null}
+                multiple
+                fileCount={billFiles.length}
                 isUploading={isFileUploading}
                 uploadProgress={progress}
                 className='bg-white h-9 rounded-lg'

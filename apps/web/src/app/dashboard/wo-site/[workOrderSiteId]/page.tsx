@@ -24,7 +24,7 @@ import {
   scheduleNote,
   statusOf,
 } from "@/lib/wo-site-display";
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, constants } from "@pkg/utils";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -41,6 +41,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
+
+const { MAX_DOCUMENTS } = constants;
 
 type PendingItem = { file: File; description: string };
 
@@ -371,6 +373,7 @@ export default function WoSiteOperatorUploadPage() {
               selectedFile={null}
               onFileSelect={handleFileSelect}
               multiple={true}
+              fileCount={pendingItems.length}
               isUploadBgWhite={true}
             />
           </div>
@@ -391,7 +394,13 @@ export default function WoSiteOperatorUploadPage() {
           <button
             type='button'
             onClick={() => cameraInputRef.current?.click()}
-            className='group flex w-full shrink-0 cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-white px-4 py-4 text-left transition-colors hover:border-emerald-400 hover:bg-gray-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 sm:w-auto'>
+            disabled={pendingItems.length >= MAX_DOCUMENTS}
+            title={
+              pendingItems.length >= MAX_DOCUMENTS
+                ? `You can add up to ${MAX_DOCUMENTS} files at a time`
+                : undefined
+            }
+            className='group flex disabled:cursor-not-allowed disabled:opacity-50 w-full shrink-0 cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-white px-4 py-4 text-left transition-colors hover:border-emerald-400 hover:bg-gray-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 sm:w-auto'>
             <span className='flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 transition-colors group-hover:bg-emerald-50'>
               <Camera className='size-4 text-gray-400 transition-colors group-hover:text-emerald-600' />
             </span>
