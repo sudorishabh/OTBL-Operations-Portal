@@ -2,7 +2,15 @@ import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { MapPin, Phone, Users, Eye, EyeOff, LucideIcon } from "lucide-react";
+import {
+  MapPin,
+  Phone,
+  Users,
+  Eye,
+  EyeOff,
+  LucideIcon,
+  Network,
+} from "lucide-react";
 import CustomButton from "@/components/shared/btn";
 import ContactDialog from "./contact-dialog";
 import { capitalFirstLetter } from "@pkg/utils";
@@ -169,6 +177,19 @@ const ClientDetailsCard = ({ clientId }: Props) => {
                   className={`${getStatusColor(client.status)} rounded-md`}>
                   {capitalFirstLetter(client.status)}
                 </Badge>
+
+                {client.parent_client_name && (
+                  <span className='inline-flex items-center gap-1.5 text-slate-500'>
+                    <Network
+                      className='size-3.5 text-emerald-600'
+                      aria-hidden='true'
+                    />
+                    Branch of
+                    <span className='font-medium text-slate-700'>
+                      {client.parent_client_name.toUpperCase()}
+                    </span>
+                  </span>
+                )}
 
                 {client.gst_number && (
                   <div className='text-slate-500'>
