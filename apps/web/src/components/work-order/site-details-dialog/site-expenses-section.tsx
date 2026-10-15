@@ -136,9 +136,9 @@ const getExpenseRecordKey = (exp: Expense) =>
 interface Props {
   woSiteId: number;
   processType?: string;
-  // Lists expenses under the contractor apart from the rest.
+  // Lists the expenses under each contractor apart from the rest.
   splitByContractor?: boolean;
-  contractor?: { id: number; name: string } | null;
+  contractors?: { id: number; name: string }[];
   // Off when the caller already shows estimated, used and left quantities.
   showEstimateTable?: boolean;
 }
@@ -147,7 +147,7 @@ const SiteExpensesSection = ({
   woSiteId,
   processType,
   splitByContractor = false,
-  contractor = null,
+  contractors = [],
   showEstimateTable = true,
 }: Props) => {
   const utils = trpc.useUtils();
@@ -551,13 +551,20 @@ const SiteExpensesSection = ({
     </div>
   );
 
-  const isUnderContractor = (group: ExpenseRecordGroup) =>
-    !!contractor && group.contractorId === contractor.id;
-  const contractorRecords = recordGroupsFlat.filter(isUnderContractor);
-  const otherRecords = recordGroupsFlat.filter((g) => !isUnderContractor(g));
-  const contractorTotal = contractor
-    ? (summary?.byContractor?.[String(contractor.id)] ?? 0)
-    : 0;
+  const contractorIds = new Set(contractors.map((c) => c.id));
+  const recordsUnder = (contractorId: number) =>
+    recordGroupsFlat.filter((g) => g.contractorId === contractorId);
+  // Expenses under none of the contractors, including payments to vendors
+  // that aren't one.
+  const otherRecords = recordGroupsFlat.filter(
+    (g) => g.contractorId === null || !contractorIds.has(g.contractorId),
+  );
+  const totalUnder = (contractorId: number): number =>
+    summary?.byContractor?.[String(contractorId)] ?? 0;
+  const contractorsTotal = contractors.reduce(
+    (sum, c) => sum + totalUnder(c.id),
+    0,
+  );
 
   const renderContractorGroup = (
     title: string,
@@ -826,21 +833,32 @@ const SiteExpensesSection = ({
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
       ) : splitByContractor ? (
         <div className='space-y-5'>
+          {contractors.length === 0
+            ? renderContractorGroup(
+                "Under a contractor",
+                0,
+                0,
+                emptyGroupText("Add a contractor to record expenses under it."),
+              )
+            : contractors.map((c) => {
+                const name = capitalFirstLetter(c.name);
+                const records = recordsUnder(c.id);
+                return (
+                  <React.Fragment key={c.id}>
+                    {renderContractorGroup(
+                      `Under ${name}`,
+                      totalUnder(c.id),
+                      records.length,
+                      records.length > 0
+                        ? renderRecordsBox(records)
+                        : emptyGroupText(`No expenses under ${name} yet.`),
+                    )}
+                  </React.Fragment>
+                );
+              })}
           {renderContractorGroup(
-            contractor
-              ? `Under ${capitalFirstLetter(contractor.name)}`
-              : "Under the contractor",
-            contractorTotal,
-            contractorRecords.length,
-            !contractor
-              ? emptyGroupText("Assign a contractor to record expenses under it.")
-              : contractorRecords.length > 0
-                ? renderRecordsBox(contractorRecords)
-                : emptyGroupText("No expenses under the contractor yet."),
-          )}
-          {renderContractorGroup(
-            "Not under the contractor",
-            expenseTotal - contractorTotal,
+            "Not under a contractor",
+            expenseTotal - contractorsTotal,
             otherRecords.length,
             otherRecords.length > 0
               ? renderRecordsBox(otherRecords)
@@ -900,7 +918,7 @@ const SiteExpensesSection = ({
         editingExpense={editingExpense}
         activities={activityOptions}
         usedQtyByActivity={usedQtyByActivity}
-        contractor={contractor}
+        contractors={contractors}
       />
 
       <AlertDialog

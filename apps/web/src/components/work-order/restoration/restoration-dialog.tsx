@@ -125,7 +125,7 @@ const RestorationDialog = ({
               woSiteId={restoration.id}
               processType={WO_PROCESS.RESTORATION}
               splitByContractor
-              contractor={restoration.contractor}
+              contractors={restoration.contractors}
               showEstimateTable={false}
             />
           </TabsContent>

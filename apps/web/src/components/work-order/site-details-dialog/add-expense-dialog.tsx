@@ -119,9 +119,13 @@ interface Props {
   editingExpense?: Expense | null;
   activities?: ActivityOption[];
   usedQtyByActivity?: Record<string, number>;
-  // The contractor the work is ordered to; expenses can be recorded under it.
-  contractor?: { id: number; name: string } | null;
+  // The contractors the work is ordered to; an expense can be recorded under
+  // one of them.
+  contractors?: { id: number; name: string }[];
 }
+
+// "Expense under" value for an expense under none of the contractors.
+const NOT_UNDER = "none";
 
 const newItem = (): ExpenseItem => ({
   id: Math.random().toString(36).slice(2),
@@ -144,14 +148,15 @@ const AddExpenseDialog = ({
   editingExpense,
   activities = [],
   usedQtyByActivity = {},
-  contractor = null,
+  contractors = [],
 }: Props) => {
   const utils = trpc.useUtils();
 
   const [items, setItems] = useState<ExpenseItem[]>([newItem()]);
 
   const [contractorId, setContractorId] = useState<string>("");
-  const [underContractor, setUnderContractor] = useState(true);
+  // A contractor id, NOT_UNDER, or "" until chosen.
+  const [underId, setUnderId] = useState("");
   const [selectedActivityKey, setSelectedActivityKey] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
   const [description, setDescription] = useState("");
@@ -172,13 +177,15 @@ const AddExpenseDialog = ({
   const [isSavingMulti, setIsSavingMulti] = useState(false);
 
   const isEditing = !!editingExpense;
-  const isUnderContractor = !!contractor && underContractor;
+  const underContractor =
+    contractors.find((c) => String(c.id) === underId) ?? null;
+  const isUnderContractor = !!underContractor;
   const hasContractorPayment = items.some((i) => i.expense_type === "contractor_payment");
 
-  // Under the contractor every item carries it; otherwise only a contractor
+  // Under a contractor every item carries it; otherwise only a contractor
   // payment names one.
   const contractorIdFor = (type: ExpenseTypeSelection) => {
-    if (isUnderContractor) return contractor!.id;
+    if (underContractor) return underContractor.id;
     return type === "contractor_payment" && contractorId
       ? Number(contractorId)
       : null;
@@ -203,8 +210,11 @@ const AddExpenseDialog = ({
         amount: editingExpense.amount,
       }]);
       setContractorId(editingExpense.contractor_id ? String(editingExpense.contractor_id) : "");
-      setUnderContractor(
-        !!contractor && editingExpense.contractor_id === contractor.id,
+      const under = contractors.find(
+        (c) => c.id === editingExpense.contractor_id,
+      );
+      setUnderId(
+        under ? String(under.id) : contractors.length > 0 ? NOT_UNDER : "",
       );
       setSelectedActivityKey(editingExpense.activity_key ?? "");
       setQuantity(editingExpense.quantity ?? "");
@@ -217,7 +227,8 @@ const AddExpenseDialog = ({
     } else {
       setItems([newItem()]);
       setContractorId("");
-      setUnderContractor(!!contractor);
+      // With one contractor it is the likely choice; with several, ask.
+      setUnderId(contractors.length === 1 ? String(contractors[0]!.id) : "");
       setSelectedActivityKey("");
       setQuantity("");
       setDescription("");
@@ -270,7 +281,7 @@ const AddExpenseDialog = ({
     { enabled: open },
   );
   // Inactive vendors can't take new expenses, but an edit keeps its own.
-  const contractors = (contractorsQuery.data?.contractors ?? []).filter(
+  const vendors = (contractorsQuery.data?.contractors ?? []).filter(
     (c: any) => c.status === "active" || String(c.id) === contractorId,
   );
 
@@ -312,6 +323,10 @@ const AddExpenseDialog = ({
   };
 
   const handleSubmit = async () => {
+    if (contractors.length > 0 && !underId) {
+      toast.error("Choose which contractor this expense is under");
+      return;
+    }
     if (activities.length > 0 && !selectedActivityKey) {
       toast.error("Please select an activity");
       return;
@@ -444,39 +459,39 @@ const AddExpenseDialog = ({
 
         <div className='flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0'>
 
-          {contractor && (
+          {contractors.length > 0 && (
             <div className='space-y-1.5'>
               <Label className='text-xs font-medium text-gray-700'>
-                Expense under
+                Expense under <span className='text-red-500'>*</span>
               </Label>
               <div
                 role='radiogroup'
                 aria-label='Expense under'
                 className='grid grid-cols-2 gap-2'>
                 {[
-                  {
-                    value: true,
-                    label: `Under ${capitalFirstLetter(contractor.name)}`,
+                  ...contractors.map((c) => ({
+                    value: String(c.id),
+                    label: `Under ${capitalFirstLetter(c.name)}`,
                     Icon: HardHat,
-                  },
+                  })),
                   {
-                    value: false,
-                    label: "Not under the contractor",
+                    value: NOT_UNDER,
+                    label: "Not under a contractor",
                     Icon: MoreHorizontal,
                   },
                 ].map(({ value, label, Icon }) => (
                   <button
-                    key={label}
+                    key={value}
                     type='button'
                     role='radio'
-                    aria-checked={underContractor === value}
+                    aria-checked={underId === value}
                     onClick={() => {
-                      setUnderContractor(value);
+                      setUnderId(value);
                       setContractorId("");
                     }}
                     className={cn(
                       "flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors",
-                      underContractor === value
+                      underId === value
                         ? "border-blue-300 bg-blue-50 text-blue-700"
                         : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
                     )}>
@@ -629,10 +644,10 @@ const AddExpenseDialog = ({
                       <SelectValue placeholder='Select contractor...' />
                     </SelectTrigger>
                     <SelectContent>
-                      {contractors.length === 0 && (
+                      {vendors.length === 0 && (
                         <div className='px-3 py-2 text-xs text-gray-400'>No contractors yet</div>
                       )}
-                      {contractors.map((c: any) => (
+                      {vendors.map((c: any) => (
                         <SelectItem key={c.id} value={String(c.id)} className='text-sm'>
                           {c.name}
                           {c.gst_number && <span className='text-gray-400 ml-1'>· {c.gst_number}</span>}
