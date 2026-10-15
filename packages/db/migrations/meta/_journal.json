@@ -43,6 +43,13 @@
       "when": 1792071030306,
       "tag": "0005_shared_vendors",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1792071900348,
+      "tag": "0006_restoration_contractors",
+      "breakpoints": true
     }
   ]
 }

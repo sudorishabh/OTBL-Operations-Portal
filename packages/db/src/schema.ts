@@ -698,6 +698,32 @@ export const contractorTable = mysqlTable(
   (table) => [index("contractor_name_idx").on(table.name)],
 );
 
+// The vendors a work order site's work is ordered to; restoration can have
+// several.
+export const workOrderSiteContractorTable = mysqlTable(
+  "wo_site_contractors",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    work_order_site_id: int("work_order_site_id")
+      .notNull()
+      .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
+    contractor_id: int("contractor_id")
+      .notNull()
+      .references(() => contractorTable.id, { onDelete: "cascade" }),
+    assigned_by: int("assigned_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("wosc_wo_site_contractor_idx").on(
+      table.work_order_site_id,
+      table.contractor_id,
+    ),
+    index("wosc_contractor_idx").on(table.contractor_id),
+  ],
+);
+
 export const workOrderSiteExpenseTable = mysqlTable(
   "wo_site_expenses",
   {
