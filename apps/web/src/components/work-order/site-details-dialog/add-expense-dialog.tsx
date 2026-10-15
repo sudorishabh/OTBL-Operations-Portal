@@ -691,7 +691,6 @@ const AddExpenseDialog = ({
               }
               isUploading={isUploadingDoc}
               progress={sharePointUpload.progress}
-              allowedExtensions={[".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png"]}
             />
           </div>
         </div>

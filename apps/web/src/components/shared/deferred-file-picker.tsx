@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { constants } from "@pkg/utils";
 
-const { MAX_DOCUMENTS } = constants;
+const { MAX_DOCUMENTS, DOCUMENT_EXTENSIONS } = constants;
 
 export const getFileTypeStyle = (fileName: string) => {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -72,7 +72,7 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
   onDelete,
   uploadedUrl,
   label = "Select Document",
-  allowedExtensions = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt"],
+  allowedExtensions = DOCUMENT_EXTENSIONS,
   maxSizeMB = 50,
   className,
   helperText,

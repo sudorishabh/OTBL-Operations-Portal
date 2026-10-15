@@ -42,7 +42,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-const { MAX_DOCUMENTS } = constants;
+const { MAX_DOCUMENTS, PHOTO_EXTENSIONS } = constants;
 
 type PendingItem = { file: File; description: string };
 
@@ -365,7 +365,7 @@ export default function WoSiteOperatorUploadPage() {
 
       <Section
         title='Add documents'
-        description='Measurement sheets, bills and site photos. Files are stored in SharePoint.'>
+        description='PDF documents such as measurement sheets and bills, or site photos from the camera. Files are stored in SharePoint.'>
         <div className='flex flex-col gap-2 sm:flex-row sm:items-stretch'>
           <div className='flex-1'>
             <DeferredFilePicker
@@ -381,12 +381,21 @@ export default function WoSiteOperatorUploadPage() {
           <input
             ref={cameraInputRef}
             type='file'
-            accept='image/*'
+            accept={PHOTO_EXTENSIONS.join(",")}
             capture='environment'
             className='hidden'
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) handleFileSelect(file);
+              const isPhoto =
+                !!file &&
+                PHOTO_EXTENSIONS.some((ext) =>
+                  file.name.toLowerCase().endsWith(ext),
+                );
+              if (file && !isPhoto) {
+                toast.error("Photos must be JPG or PNG");
+              } else if (file) {
+                handleFileSelect(file);
+              }
               e.target.value = "";
             }}
           />

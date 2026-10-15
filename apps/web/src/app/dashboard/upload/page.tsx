@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import toast from "react-hot-toast";
 import { constants } from "@pkg/utils";
 
-const { MAX_DOCUMENTS } = constants;
+const { MAX_DOCUMENTS, DOCUMENT_EXTENSIONS } = constants;
 
 export default function DocumentUploadPage() {
   const [dragActive, setDragActive] = useState<boolean>(false);
@@ -39,13 +39,19 @@ export default function DocumentUploadPage() {
     }
   };
 
-  // Keep at most MAX_DOCUMENTS files queued for one upload.
+  // Keep at most MAX_DOCUMENTS PDF files queued for one upload.
   const addFiles = (incoming: File[]) => {
+    const pdfs = incoming.filter((file) =>
+      DOCUMENT_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext)),
+    );
+    if (pdfs.length < incoming.length) {
+      toast.error("Only PDF files can be uploaded");
+    }
     const room = Math.max(MAX_DOCUMENTS - files.length, 0);
-    if (incoming.length > room) {
+    if (pdfs.length > room) {
       toast.error(`You can upload up to ${MAX_DOCUMENTS} files at a time`);
     }
-    setFiles((prev) => [...prev, ...incoming].slice(0, MAX_DOCUMENTS));
+    setFiles((prev) => [...prev, ...pdfs].slice(0, MAX_DOCUMENTS));
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -131,7 +137,7 @@ export default function DocumentUploadPage() {
             {dragActive ? "Drop files here" : "Drag & drop files here"}
           </h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-            Supported formats: PDF, Word, Excel, Images (JPEG, PNG). Up to {MAX_DOCUMENTS} files, each up to 50MB.
+            PDF files only. Up to {MAX_DOCUMENTS} files, each up to 50MB.
           </p>
 
           <Input
@@ -140,7 +146,7 @@ export default function DocumentUploadPage() {
             multiple
             className="hidden"
             onChange={handleChange}
-            accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
+            accept={DOCUMENT_EXTENSIONS.join(",")}
           />
           <Button onClick={onButtonClick} variant={dragActive ? "secondary" : "default"}>
             Browse Files
