@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import DialogWindow from "@/components/shared/dialog-window";
@@ -30,6 +30,7 @@ import { useApiError } from "@/hooks/useApiError";
 import toast from "react-hot-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import ParentClientField from "./parent-client-field";
 
 const contactSchema = clientSchemas.createClientContactSchema.omit({
   client_id: true,
@@ -48,6 +49,7 @@ type Contact = {
 const CreateClientDialog = () => {
   const searchParams = useSearchParams();
   const isAddClientMode = searchParams.get("dialog") === "create-client";
+  const parentClientIdParam = searchParams.get("parentClientId");
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [isAddingNewContact, setIsAddingNewContact] = useState(false);
   const [contactMode, setContactMode] = useState<"existing" | "new">(
@@ -55,7 +57,7 @@ const CreateClientDialog = () => {
   );
   const [contactSearch, setContactSearch] = useState("");
 
-  const { deleteParam } = useHandleParams();
+  const { deleteParams } = useHandleParams();
   const { handleError } = useApiError();
 
   const utils = trpc.useUtils();
@@ -82,6 +84,7 @@ const CreateClientDialog = () => {
   const form = useForm<clientTypes.createClientInput>({
     resolver: zodResolver(clientSchemas.createClientSchema),
     defaultValues: {
+      parent_client_id: null,
       name: "",
       address: "",
       state: "",
@@ -104,8 +107,17 @@ const CreateClientDialog = () => {
     },
   });
 
+  // "Add Branch" on a main client opens this dialog with that parent preselected.
+  useEffect(() => {
+    if (!isAddClientMode) return;
+    form.setValue(
+      "parent_client_id",
+      parentClientIdParam ? Number(parentClientIdParam) : null,
+    );
+  }, [isAddClientMode, parentClientIdParam, form]);
+
   const handleCloseDialog = () => {
-    deleteParam("dialog");
+    deleteParams(["dialog", "parentClientId"]);
     form.reset();
     contactForm.reset();
     setSelectedContacts([]);
@@ -187,6 +199,10 @@ const CreateClientDialog = () => {
                 </h3>
               </div>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='col-span-2'>
+                  <ParentClientField />
+                </div>
+
                 <div className='col-span-2'>
                   <Input
                     control={form.control}
