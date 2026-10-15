@@ -18,12 +18,13 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { useApiError } from "@/hooks/useApiError";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import BranchRow, { type Branch } from "./branch-row";
+import BranchRow from "./branch-row";
+import type { ClientListItem } from "./client-list-parts";
 
 interface Props {
   parentClient: { id: number; name: string };
   // A main client has no page of its own; only its branches open.
-  branches: Branch[];
+  branches: ClientListItem[];
 }
 
 const IconAction = ({
