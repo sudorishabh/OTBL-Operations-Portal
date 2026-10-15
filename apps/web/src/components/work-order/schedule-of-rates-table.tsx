@@ -19,6 +19,10 @@ import {
 } from "lucide-react";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
+import { workOrderTypes } from "@pkg/schema";
+import { constants } from "@pkg/utils";
+
+const { TRANSPORT_SLABS } = constants;
 
 interface ScheduleOfRate {
   id: number;
@@ -30,6 +34,7 @@ interface ScheduleOfRate {
   unit_rate_inc_gst: string;
   total_cost: string;
   transportation_km?: string | null;
+  transportation_slabs?: workOrderTypes.TransportationSlabs | null;
 }
 
 interface SiteCompletion {
@@ -112,6 +117,31 @@ const toNumberSafe = (val: unknown) => {
       ? Number(val.replace(/,/g, "").trim())
       : Number(val);
   return Number.isFinite(n) ? n : 0;
+};
+
+// Transportation rows list their distance slabs; older rows only recorded a
+// distance.
+const TransportDetails = ({ item }: { item: ScheduleOfRate }) => {
+  const slabs = item.transportation_slabs;
+  if (slabs) {
+    return (
+      <ul className='mt-1 space-y-0.5 text-xs font-normal text-gray-500'>
+        {TRANSPORT_SLABS.map((slab) => (
+          <li key={slab.key}>
+            {slab.label}: {toNumberSafe(slabs[slab.key]).toLocaleString("en-IN")}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (item.transportation_km) {
+    return (
+      <p className='mt-1 text-xs font-normal text-gray-500'>
+        {item.transportation_km} km
+      </p>
+    );
+  }
+  return null;
 };
 
 const SiteSpendingCard = ({
@@ -471,9 +501,6 @@ const ScheduleOfRatesTable = ({
                   <TableHead className='font-semibold text-gray-700 text-right'>
                     Rate (Inc. GST)
                   </TableHead>
-                  <TableHead className='font-semibold text-gray-700 text-right text-nowrap'>
-                    Trans. Km
-                  </TableHead>
                   <TableHead className='font-semibold text-gray-700 text-right'>
                     Total Cost
                   </TableHead>
@@ -493,6 +520,7 @@ const ScheduleOfRatesTable = ({
                       className='hover:bg-blue-50/30 transition-colors border-b last:border-0'>
                       <TableCell className='font-medium text-gray-800 p-4'>
                         {formatActivityName(item.activity)}
+                        <TransportDetails item={item} />
                       </TableCell>
                       <TableCell className='text-center'>
                         <Badge
@@ -520,13 +548,6 @@ const ScheduleOfRatesTable = ({
                       <TableCell className='text-right font-mono text-gray-600'>
                         {formatCurrency(item.unit_rate_inc_gst)}
                       </TableCell>
-                      <TableCell className='text-right font-mono text-gray-600'>
-                        {item.transportation_km ? (
-                          <span>{item.transportation_km} km</span>
-                        ) : (
-                          <span className='text-gray-300'>-</span>
-                        )}
-                      </TableCell>
                       <TableCell className='text-right font-semibold text-gray-800'>
                         {formatCurrency(item.total_cost)}
                       </TableCell>
@@ -537,7 +558,7 @@ const ScheduleOfRatesTable = ({
               <TableFooter className='bg-slate-50 border-t-2 border-slate-100'>
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className='text-right font-bold text-base text-gray-700 py-4'>
                     SOR Grand Total
                   </TableCell>
