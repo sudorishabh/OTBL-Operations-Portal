@@ -38,6 +38,19 @@ const RestorationDialog = ({
   const isOpen = getParam("dialog") === "restoration";
   const [isFullScreen, setIsFullScreen] = useState(false);
 
+  const expenseSummaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery(
+    { work_order_site_id: restoration.id },
+    { enabled: isOpen },
+  );
+  const byActivity: Record<string, { totalQuantity: number }> =
+    expenseSummaryQuery.data?.byActivity ?? {};
+  const usedQtyByActivity = Object.fromEntries(
+    Object.entries(byActivity).map(([activity, totals]) => [
+      activity,
+      totals.totalQuantity,
+    ]),
+  );
+
   const operatorUploadsQuery =
     trpc.workOrderSiteQuery.getOperatorUploads.useQuery(
       { work_order_site_id: restoration.id },
@@ -101,6 +114,7 @@ const RestorationDialog = ({
               <RestorationRatesTable
                 rates={rates}
                 estimatedTotal={estimatedTotal}
+                usedQtyByActivity={usedQtyByActivity}
               />
             </section>
             <RestorationContractorCard
@@ -114,6 +128,7 @@ const RestorationDialog = ({
               processType={WO_PROCESS.RESTORATION}
               splitByContractor
               contractor={restoration.contractor}
+              showEstimateTable={false}
             />
           </TabsContent>
 
