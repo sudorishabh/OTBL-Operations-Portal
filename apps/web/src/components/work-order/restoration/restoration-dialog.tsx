@@ -4,6 +4,7 @@ import { Rows3 } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import DialogWindow from "@/components/shared/dialog-window";
+import CollapsiblePreview from "@/components/shared/collapsible-preview";
 import useHandleParams from "@/hooks/useHandleParams";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import SiteActivities from "../site-details-dialog/site-activities";
@@ -112,11 +113,14 @@ const RestorationDialog = ({
                   Schedule of Rates
                 </h3>
               </div>
-              <RestorationRatesTable
-                rates={rates}
-                estimatedTotal={estimatedTotal}
-                usedQtyByActivity={usedQtyByActivity}
-              />
+              <CollapsiblePreview
+                expandLabel={`Show all ${rates.length} activities`}>
+                <RestorationRatesTable
+                  rates={rates}
+                  estimatedTotal={estimatedTotal}
+                  usedQtyByActivity={usedQtyByActivity}
+                />
+              </CollapsiblePreview>
             </section>
             <SiteExpensesSection
               woSiteId={restoration.id}
