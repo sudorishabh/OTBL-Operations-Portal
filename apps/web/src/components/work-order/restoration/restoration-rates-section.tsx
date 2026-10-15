@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import { Rows3 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import CollapsiblePreview from "@/components/shared/collapsible-preview";
 import RestorationRatesTable, {
@@ -33,21 +32,13 @@ const RestorationRatesSection = ({
   );
 
   return (
-    <section className='space-y-2'>
-      <div className='flex items-center gap-2'>
-        <Rows3 className='size-4 text-gray-400' />
-        <h3 className='text-sm font-semibold text-gray-700'>
-          Schedule of Rates
-        </h3>
-      </div>
-      <CollapsiblePreview expandLabel={`Show all ${rates.length} activities`}>
-        <RestorationRatesTable
-          rates={rates}
-          estimatedTotal={estimatedTotal}
-          usedQtyByActivity={usedQtyByActivity}
-        />
-      </CollapsiblePreview>
-    </section>
+    <CollapsiblePreview expandLabel={`Show all ${rates.length} activities`}>
+      <RestorationRatesTable
+        rates={rates}
+        estimatedTotal={estimatedTotal}
+        usedQtyByActivity={usedQtyByActivity}
+      />
+    </CollapsiblePreview>
   );
 };
 
