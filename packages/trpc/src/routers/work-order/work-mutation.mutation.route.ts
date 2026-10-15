@@ -65,7 +65,9 @@ export const workOrderMutationRouter = router({
           start_date: input?.start_date,
           end_date: input.end_date,
           handing_over_date: input.handing_over_date,
-          document_key: input.document_key,
+          documents: input.documents,
+          // Legacy single-document column, kept until it is dropped.
+          document_key: input.documents[0]!.url,
           process_type: input.process_type,
           description: input.description || null,
           job_number: input.job_number,

@@ -1,41 +1,29 @@
 "use client";
 import React from "react";
-import {
-  FormField,
-  FormItem,
-  FormControl,
-  FormMessage,
-} from "@/components/ui/form";
 import Input from "@/components/shared/input";
 import CustomButton from "@/components/shared/btn";
-import DeferredFilePicker from "@/components/shared/deferred-file-picker";
+import DocumentsField from "@/components/shared/documents-field";
 import { constants } from "@pkg/utils";
 import { useFormContext } from "react-hook-form";
 
 const { processTypeOptions } = constants;
 
 interface Step1BasicDetailsProps {
-  selectedFile: File | null;
-  handleFileSelect: (file: File | null) => void;
+  files: File[];
+  onFilesChange: (files: File[]) => void;
+  filesError: string;
   isUploading: boolean;
   progress: number;
-  uploadedFile: boolean;
-  documentUrl: string;
-  deleteFile: () => void;
-  isDeleting: boolean;
   onNext: () => void;
   onCancel: () => void;
 }
 
 const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
-  selectedFile,
-  handleFileSelect,
+  files,
+  onFilesChange,
+  filesError,
   isUploading,
   progress,
-  uploadedFile,
-  documentUrl,
-  deleteFile,
-  isDeleting,
   onNext,
   onCancel,
 }) => {
@@ -156,28 +144,18 @@ const Step1BasicDetails: React.FC<Step1BasicDetailsProps> = ({
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name='document_key'
-          render={() => (
-            <FormItem>
-              <FormControl>
-                <DeferredFilePicker
-                  label='Work Order Document *'
-                  selectedFile={selectedFile}
-                  onFileSelect={handleFileSelect}
-                  isUploading={isUploading}
-                  uploadProgress={progress}
-                  isUploaded={!!uploadedFile}
-                  uploadedUrl={documentUrl}
-                  onDelete={deleteFile}
-                  isDeleting={isDeleting}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+        <div>
+          <DocumentsField
+            label='Work Order Documents *'
+            files={files}
+            onFilesChange={onFilesChange}
+            isUploading={isUploading}
+            progress={progress}
+          />
+          {filesError && (
+            <p className='mt-1 text-xs text-destructive'>{filesError}</p>
           )}
-        />
+        </div>
       </div>
 
       <div className='flex items-center justify-end gap-3 pt-4'>

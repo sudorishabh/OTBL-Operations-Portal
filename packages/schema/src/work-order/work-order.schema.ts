@@ -3,7 +3,7 @@ import {
   titleValidator,
   codeValidator,
   agreementNumberValidator,
-  documentKeyValidator,
+  documentsValidator,
   positiveIntValidator,
   longDescriptionValidator,
   searchQueryValidator,
@@ -72,7 +72,7 @@ export const baseWorkOrderSchema = z.object({
   start_date: dateValidator,
   end_date: dateValidator,
   handing_over_date: dateValidator,
-  document_key: documentKeyValidator,
+  documents: documentsValidator,
   process_type: processTypeEnum,
   description: longDescriptionValidator,
   job_number: z

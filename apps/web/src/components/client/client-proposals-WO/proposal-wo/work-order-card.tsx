@@ -24,6 +24,8 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { type workOrderTypes } from "@pkg/schema";
 import { trpc } from "@/lib/trpc";
 import { useIsAdmin } from "@/contexts/AuthContext";
+import DocumentsMenu from "@/components/shared/documents-menu";
+import { toDocuments } from "@/lib/documents";
 
 interface Props {
   workOrder: workOrderTypes.workOrderType | null;
@@ -114,6 +116,7 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
   const { setParams } = useHandleParams();
   const router = useRouter();
   const isAdmin = useIsAdmin();
+  const documents = toDocuments(workOrder?.documents);
 
   const { data: woDetails } = trpc.workOrderQuery.getWorkOrderDetails.useQuery(
     { id: Number(workOrder?.id) },
@@ -191,18 +194,23 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
                 )}
               </div>
               <div className='flex items-center gap-1.5 sm:gap-2 shrink-0'>
-                {workOrder?.document_key && (
+                <DocumentsMenu documents={documents}>
                   <button
                     type='button'
-                    className='h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white border flex items-center justify-center transition-colors hover:bg-emerald-50 cursor-pointer'
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      window.open(workOrder.document_key, "_blank");
-                    }}>
+                    title={
+                      documents.length === 1
+                        ? "View document"
+                        : `View ${documents.length} documents`
+                    }
+                    className='relative h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white border flex items-center justify-center transition-colors hover:bg-emerald-50 cursor-pointer'>
                     <File className='h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-700' />
+                    {documents.length > 1 && (
+                      <span className='absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold leading-4 text-white'>
+                        {documents.length}
+                      </span>
+                    )}
                   </button>
-                )}
+                </DocumentsMenu>
                 <CustomButton
                   text='View'
                   arrowType='right'
