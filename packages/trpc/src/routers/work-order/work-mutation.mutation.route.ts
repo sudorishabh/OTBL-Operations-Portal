@@ -51,6 +51,19 @@ export const workOrderMutationRouter = router({
           });
         }
 
+        // A proposal has at most one work order.
+        const [existingWorkOrder] = await ctx.db
+          .select({ id: workOrderTable.id })
+          .from(workOrderTable)
+          .where(eq(workOrderTable.proposal_id, input.proposal_id))
+          .limit(1);
+
+        if (existingWorkOrder) {
+          throw alreadyExists("Work order", undefined, {
+            userMessage: "This proposal already has a work order.",
+          });
+        }
+
         const proposal = existingProposal[0]!;
         const officeId = proposal.office_id;
 
