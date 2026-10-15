@@ -13,8 +13,6 @@ import CompletionExpenseSummary from "../site-details-dialog/completion-expense-
 import AddRestorationVendor from "./add-restoration-vendor";
 import RemoveRestorationVendor from "./remove-restoration-vendor";
 import RestorationSummary from "./restoration-summary";
-import RestorationRatesSection from "./restoration-rates-section";
-import type { RestorationRate } from "./restoration-rates-table";
 import type { Restoration } from "./restoration-section";
 
 const { WO_PROCESS } = constants;
@@ -22,17 +20,10 @@ const { WO_PROCESS } = constants;
 interface Props {
   workOrder: any;
   restoration: Restoration;
-  rates: RestorationRate[];
-  estimatedTotal: number;
 }
 
 // The one place restoration work is managed, as it has no sites.
-const RestorationDialog = ({
-  workOrder,
-  restoration,
-  rates,
-  estimatedTotal,
-}: Props) => {
+const RestorationDialog = ({ workOrder, restoration }: Props) => {
   const { getParam, setParam, deleteParams } = useHandleParams();
   const isOpen = getParam("dialog") === "restoration";
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -90,11 +81,6 @@ const RestorationDialog = ({
           <TabsContent
             value='expenses'
             className='mt-4 space-y-5'>
-            <RestorationRatesSection
-              restorationId={restoration.id}
-              rates={rates}
-              estimatedTotal={estimatedTotal}
-            />
             <SiteExpensesSection
               woSiteId={restoration.id}
               processType={WO_PROCESS.RESTORATION}

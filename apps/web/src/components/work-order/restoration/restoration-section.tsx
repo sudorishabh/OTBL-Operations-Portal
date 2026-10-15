@@ -13,6 +13,7 @@ import Error from "@/components/shared/error";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProcessSectionHeader, { PROCESS_TONES } from "../process-section-header";
 import RestorationDialog from "./restoration-dialog";
+import RestorationRatesSection from "./restoration-rates-section";
 import type { RestorationRate } from "./restoration-rates-table";
 
 const { allActivityOptions } = constants;
@@ -124,7 +125,7 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
       .join(", ");
 
     return (
-      <>
+      <div className='space-y-5'>
         <button
           type='button'
           onClick={() => setParam("dialog", "restoration")}
@@ -173,13 +174,19 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
           </div>
         </button>
 
+        {rates.length > 0 && (
+          <RestorationRatesSection
+            restorationId={restoration.id}
+            rates={rates}
+            estimatedTotal={estimatedTotal}
+          />
+        )}
+
         <RestorationDialog
           workOrder={workOrder}
           restoration={restoration}
-          rates={rates}
-          estimatedTotal={estimatedTotal}
         />
-      </>
+      </div>
     );
   };
 
