@@ -472,6 +472,8 @@ export const workOrderSiteDocsTable = mysqlTable("work_order_site_docs", {
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
+// The five restoration activity tables hold completion entries only, as
+// restoration has no estimate.
 export const cleaningUpSoilAreaTable = mysqlTable("clean_soil_area", {
   id: int("id").autoincrement().primaryKey(),
   site_activity_id: int("site_activity_id").references(
@@ -491,7 +493,7 @@ export const cleaningUpSoilAreaTable = mysqlTable("clean_soil_area", {
     scale: 2,
   }),
   type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
+    enum: ["completion"],
     length: 255,
   }).notNull(),
   created_at: timestamp("created_at").notNull().defaultNow(),
@@ -516,7 +518,7 @@ export const liftingRecoveryOilSlushTable = mysqlTable("lifting_oil_slush", {
     scale: 2,
   }),
   type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
+    enum: ["completion"],
     length: 255,
   }).notNull(),
   created_at: timestamp("created_at").notNull().defaultNow(),
@@ -541,7 +543,7 @@ export const excavationContSoilTable = mysqlTable("excav_cont_soil", {
     scale: 2,
   }),
   type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
+    enum: ["completion"],
     length: 255,
   }).notNull(),
   created_at: timestamp("created_at").notNull().defaultNow(),
@@ -567,7 +569,7 @@ export const transportationContSoilTable = mysqlTable("trans_cont_soil", {
     scale: 2,
   }),
   type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
+    enum: ["completion"],
     length: 255,
   }).notNull(),
   created_at: timestamp("created_at").notNull().defaultNow(),
@@ -593,7 +595,7 @@ export const refillingExcavatedContSoilTable = mysqlTable("refill_excav_soil", {
     scale: 2,
   }),
   type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
+    enum: ["completion"],
     length: 255,
   }).notNull(),
   created_at: timestamp("created_at").notNull().defaultNow(),
