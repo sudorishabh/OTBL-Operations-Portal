@@ -1,4 +1,7 @@
 import { Schema, z } from "zod";
+import { constants } from "@pkg/utils";
+
+const { MAX_DOCUMENTS } = constants;
 
 export const nameValidator = z
   .string({ message: "Name is required" })
@@ -241,6 +244,26 @@ export const documentKeyValidator = z
   .min(1, "Document key is required")
   .max(500, "Document key cannot exceed 500 characters");
 
+// One uploaded SharePoint file as stored on a record.
+export const storedDocumentValidator = z.object({
+  url: z
+    .string({ message: "Document link is required" })
+    .trim()
+    .min(1, "Document link is required")
+    .max(1000, "Document link cannot exceed 1000 characters"),
+  id: z.string().trim().max(255).nullish(),
+  name: z.string().trim().max(512).nullish(),
+});
+
+export const documentsValidator = z
+  .array(storedDocumentValidator)
+  .min(1, "Upload at least one document")
+  .max(MAX_DOCUMENTS, `You can attach up to ${MAX_DOCUMENTS} documents`);
+
+export const optionalDocumentsValidator = z
+  .array(storedDocumentValidator)
+  .max(MAX_DOCUMENTS, `You can attach up to ${MAX_DOCUMENTS} documents`);
+
 export const pageValidator = z
   .number({ message: "Page number is required" })
   .int("Page must be a whole number")
@@ -285,3 +308,4 @@ export const paginationFieldsValidator = z.object({
 export type AddressFields = z.infer<typeof addressFieldsValidator>;
 export type ContactFields = z.infer<typeof contactFieldsValidator>;
 export type PaginationFields = z.infer<typeof paginationFieldsValidator>;
+export type StoredDocument = z.infer<typeof storedDocumentValidator>;
