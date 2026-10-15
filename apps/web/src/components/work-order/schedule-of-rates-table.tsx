@@ -143,6 +143,8 @@ const sorNumberClass = cn(
   sorCellClass,
   "text-right text-sm tabular-nums text-gray-600",
 );
+const slabNumberClass =
+  "px-4 py-1.5 text-right text-xs tabular-nums text-gray-600";
 
 const SiteSpendingCard = ({
   site,
@@ -521,7 +523,7 @@ const ScheduleOfRatesTable = ({
                       <TableRow
                         className={cn(
                           "border-gray-100 hover:bg-transparent",
-                          slabs && "border-b-0",
+                          slabs && "border-dashed border-gray-200",
                         )}>
                         <TableCell className={sorCellClass}>
                           <p className='text-sm font-medium text-gray-900'>
@@ -529,7 +531,8 @@ const ScheduleOfRatesTable = ({
                           </p>
                           {slabs && (
                             <p className='mt-0.5 text-xs text-gray-500'>
-                              Quantity is the total of the distance slabs.
+                              Quantity and RC rate are the totals of the
+                              distance slabs.
                             </p>
                           )}
                           {!slabs && toNumberSafe(item.transportation_km) > 0 && (
@@ -571,36 +574,45 @@ const ScheduleOfRatesTable = ({
 
                       {slabs &&
                         TRANSPORT_SLABS.map((slab, slabIndex) => {
+                          const slabValue = slabs[slab.key];
                           const isLast =
                             slabIndex === TRANSPORT_SLABS.length - 1;
+                          // Margins, not padding, so the guide line stops
+                          // at the first and last slab.
+                          const edgeClass = cn(
+                            slabIndex === 0 && "mt-2",
+                            isLast && "mb-2",
+                          );
                           return (
                             <TableRow
                               key={slab.key}
                               className={cn(
-                                "hover:bg-transparent",
+                                "bg-gray-50/80 hover:bg-gray-50/80",
                                 isLast ? "border-gray-100" : "border-b-0",
                               )}>
                               <TableCell className='p-0 sm:p-0'>
                                 <div
                                   className={cn(
-                                    "ml-6 border-l border-gray-200 py-1.5 pl-4 text-xs text-gray-600",
-                                    isLast && "mb-3",
+                                    "ml-6 border-l border-gray-300 py-1.5 pl-4 text-xs text-gray-600",
+                                    edgeClass,
                                   )}>
                                   {slab.label}
                                 </div>
                               </TableCell>
                               <TableCell className='p-0 sm:p-0' />
                               <TableCell className='p-0 sm:p-0'>
-                                <div
-                                  className={cn(
-                                    "px-4 py-1.5 text-right text-xs tabular-nums text-gray-600",
-                                    isLast && "mb-3",
-                                  )}>
-                                  {formatQuantity(slabs[slab.key])}
+                                <div className={cn(slabNumberClass, edgeClass)}>
+                                  {formatQuantity(slabValue?.quantity)}
+                                </div>
+                              </TableCell>
+                              <TableCell className='p-0 sm:p-0' />
+                              <TableCell className='p-0 sm:p-0'>
+                                <div className={cn(slabNumberClass, edgeClass)}>
+                                  {formatCurrency(slabValue?.rate ?? 0)}
                                 </div>
                               </TableCell>
                               <TableCell
-                                colSpan={4}
+                                colSpan={2}
                                 className='p-0 sm:p-0'
                               />
                             </TableRow>
