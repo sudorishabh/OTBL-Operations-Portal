@@ -159,14 +159,6 @@ const ClientsTab = ({ tab }: Props) => {
     );
   }
 
-  const renderClientCard = (client: Client) => (
-    <ClientCard
-      key={client.id}
-      client={client}
-      contactsCount={client.contacts_count ?? 0}
-    />
-  );
-
   return (
     <div className='space-y-4'>
       {groups.map(({ parentClient, branches }) => (
@@ -180,12 +172,20 @@ const ClientsTab = ({ tab }: Props) => {
       {standalone.length > 0 && (
         <div className='space-y-3'>
           {groups.length > 0 && (
-            <h3 className='pt-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-400'>
-              Standalone clients
+            <h3 className='pt-3 text-sm font-medium text-gray-500'>
+              Clients without a main client
+              <span className='ml-1.5 tabular-nums text-gray-400'>
+                {standalone.length}
+              </span>
             </h3>
           )}
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4'>
-            {standalone.map(renderClientCard)}
+          <div className='space-y-3'>
+            {standalone.map((client) => (
+              <ClientCard
+                key={client.id}
+                client={client}
+              />
+            ))}
           </div>
         </div>
       )}
