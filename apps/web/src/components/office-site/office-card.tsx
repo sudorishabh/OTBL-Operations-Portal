@@ -68,13 +68,13 @@ const InfoRow: React.FC<{
   label: string;
   value: React.ReactNode;
 }> = ({ icon: Icon, label, value }) => (
-  <div className='flex items-start gap-2.5'>
-    <Icon className='mt-0.5 size-3.5 shrink-0 text-slate-400' />
-    <div className='min-w-0 leading-tight'>
-      <p className='text-[10px] font-medium uppercase tracking-wide text-slate-400'>
+  <div className='flex items-start gap-3'>
+    <Icon className='mt-0.5 size-4 shrink-0 text-slate-400' />
+    <div className='min-w-0 leading-snug'>
+      <p className='text-[11px] font-medium uppercase tracking-wide text-slate-400'>
         {label}
       </p>
-      <p className='break-words text-xs text-slate-700'>{value}</p>
+      <p className='mt-0.5 break-words text-sm text-slate-700'>{value}</p>
     </div>
   </div>
 );
@@ -146,30 +146,30 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                 Info
               </button>
 
-              <div className='pointer-events-none absolute left-0 top-full z-30 w-80 max-w-[calc(100vw-2rem)] origin-top-left scale-95 pt-2 opacity-0 transition-all duration-200 ease-out group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:scale-100 group-focus-within:opacity-100 sm:w-96'>
+              <div className='pointer-events-none absolute left-0 top-full z-30 w-[24rem] max-w-[calc(100vw-2rem)] origin-top-left scale-95 pt-2 opacity-0 transition-all duration-200 ease-out group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:scale-100 group-focus-within:opacity-100 sm:w-[34rem]'>
                 <div className='overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ring-1 ring-black/5'>
-                  <div className='flex items-start justify-between gap-3 border-b border-slate-100 bg-linear-to-br from-slate-50 to-white px-4 py-3'>
-                    <div className='flex min-w-0 items-start gap-2.5'>
-                      <span className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-100'>
-                        <Building2 className='size-4' />
+                  <div className='flex items-start justify-between gap-3 border-b border-slate-100 bg-linear-to-br from-slate-50 to-white px-5 py-4'>
+                    <div className='flex min-w-0 items-center gap-3'>
+                      <span className='flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-100'>
+                        <Building2 className='size-5' />
                       </span>
                       <div className='min-w-0'>
-                        <p className='truncate text-sm font-semibold text-slate-800'>
+                        <p className='truncate text-base font-semibold text-slate-800'>
                           {capitalizeEachWord(office.name)}
                         </p>
-                        <p className='text-[11px] text-slate-400'>
+                        <p className='text-xs text-slate-400'>
                           Office overview
                         </p>
                       </div>
                     </div>
                     <span
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
                         isActive
                           ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
                           : "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
                       }`}>
                       <span
-                        className={`size-1.5 rounded-full ${
+                        className={`size-2 rounded-full ${
                           isActive ? "bg-emerald-500" : "bg-slate-400"
                         }`}
                       />
@@ -177,7 +177,7 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                     </span>
                   </div>
 
-                  <div className='space-y-3 px-4 py-3'>
+                  <div className='space-y-4 px-5 py-4'>
                     <InfoRow
                       icon={MapPin}
                       label='Address'
@@ -207,22 +207,22 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                       />
                     ) : null}
 
-                    <div className='flex items-center gap-2 pt-0.5'>
-                      <div className='flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 ring-1 ring-inset ring-slate-100'>
-                        <Building2 className='size-3.5 text-emerald-600' />
-                        <span className='text-xs font-semibold text-slate-700'>
+                    <div className='flex flex-wrap items-center gap-3 pt-1'>
+                      <div className='flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-inset ring-slate-100'>
+                        <Building2 className='size-4 text-emerald-600' />
+                        <span className='text-sm font-semibold text-slate-700'>
                           {office.siteCount}
                         </span>
-                        <span className='text-[11px] text-slate-400'>
+                        <span className='text-xs text-slate-400'>
                           {office.siteCount === 1 ? "Site" : "Sites"}
                         </span>
                       </div>
-                      <div className='flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 ring-1 ring-inset ring-slate-100'>
-                        <Users className='size-3.5 text-emerald-600' />
-                        <span className='text-xs font-semibold text-slate-700'>
+                      <div className='flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-inset ring-slate-100'>
+                        <Users className='size-4 text-emerald-600' />
+                        <span className='text-sm font-semibold text-slate-700'>
                           {office.operators.length}
                         </span>
-                        <span className='text-[11px] text-slate-400'>
+                        <span className='text-xs text-slate-400'>
                           {office.operators.length === 1
                             ? "Office Operator"
                             : "Office Operators"}
@@ -231,8 +231,8 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                     </div>
                   </div>
 
-                  <div className='flex items-center gap-1.5 border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-[11px] text-slate-500'>
-                    <Calendar className='size-3.5 text-slate-400' />
+                  <div className='flex items-center gap-1.5 border-t border-slate-100 bg-slate-50/60 px-5 py-2.5 text-xs text-slate-500'>
+                    <Calendar className='size-4 text-slate-400' />
                     Created{" "}
                     {new Date(office.created_at).toLocaleDateString("en-IN", {
                       day: "numeric",
