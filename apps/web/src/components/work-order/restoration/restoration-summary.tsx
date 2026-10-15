@@ -24,13 +24,13 @@ const Field = ({
   label: string;
   children: React.ReactNode;
 }) => (
-  <div className='min-w-0'>
-    <div className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+  <div className='flex min-w-0 items-center gap-2'>
+    <span className='shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
       {label}
-    </div>
-    <div className='mt-0.5 text-[13px] font-medium text-gray-800'>
+    </span>
+    <span className='min-w-0 text-[13px] font-medium text-gray-800'>
       {children}
-    </div>
+    </span>
   </div>
 );
 
@@ -46,12 +46,12 @@ const RestorationSummary = ({
   );
 
   return (
-    <div className='flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between'>
-      <div className='grid flex-1 grid-cols-1 gap-4 sm:grid-cols-3'>
+    <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
+      <div className='flex flex-wrap items-center gap-x-6 gap-y-1.5'>
         <Field label='Status'>
           <span
             className={cn(
-              "inline-flex rounded-full px-2 py-0.5 text-[12px] font-semibold",
+              "inline-flex rounded-full px-2 text-[12px] leading-5 font-semibold",
               STATUS_STYLES[status],
             )}>
             {capitalFirstLetter(status)}
@@ -76,6 +76,7 @@ const RestorationSummary = ({
           Icon={FolderOpen}
           text={`Operator Uploads (${operatorUploadsCount})`}
           onClick={onOpenOperatorUploads}
+          className='h-7 text-xs'
         />
       )}
     </div>
