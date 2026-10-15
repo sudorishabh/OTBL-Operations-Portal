@@ -4,6 +4,10 @@ import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import { assertOfficeManager } from "../../helper/office-permissions";
+import {
+  assertCanAccessWorkOrderSite,
+  getAccessScope,
+} from "../../access-scope";
 import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import type { TrpcContext } from "../../context";
@@ -19,6 +23,7 @@ const {
   workOrderSiteTable,
   workOrderSiteContractorTable,
   workOrderSiteExpenseTable,
+  workOrderSiteDocsTable,
   contractorTable,
 } = schema;
 const { WO_PROCESS, STATUS } = constants;
@@ -201,6 +206,56 @@ export const restorationMutationRouter = router({
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Removing the restoration contractor");
+        }
+      }),
+    ),
+
+  // Marks the restoration complete once its completion certificate is in.
+  // It records no quantities: restoration tracks its expenses only.
+  completeRestoration: protectedProcedure
+    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const { work_order_site_id } = input;
+
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
+
+        const [restoration] = await ctx.db
+          .select({ process_type: workOrderSiteTable.process_type })
+          .from(workOrderSiteTable)
+          .where(eq(workOrderSiteTable.id, work_order_site_id));
+
+        if (restoration?.process_type !== WO_PROCESS.RESTORATION) {
+          throw notFound("Restoration", work_order_site_id);
+        }
+
+        const [certificates] = await ctx.db
+          .select({ total: count() })
+          .from(workOrderSiteDocsTable)
+          .where(
+            and(
+              eq(workOrderSiteDocsTable.work_order_site_id, work_order_site_id),
+              eq(workOrderSiteDocsTable.type, "completion_certificate"),
+            ),
+          );
+        if (!certificates?.total) {
+          throw businessRule("Upload the completion certificate first.");
+        }
+
+        try {
+          await ctx.db
+            .update(workOrderSiteTable)
+            .set({ is_completed: true })
+            .where(eq(workOrderSiteTable.id, work_order_site_id));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Completing restoration");
         }
       }),
     ),
