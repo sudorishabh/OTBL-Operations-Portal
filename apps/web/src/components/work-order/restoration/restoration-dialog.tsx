@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { Rows3 } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import DialogWindow from "@/components/shared/dialog-window";
@@ -9,6 +10,7 @@ import SiteActivities from "../site-details-dialog/site-activities";
 import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
+import CompletionExpenseSummary from "../site-details-dialog/completion-expense-summary";
 import RestorationContractorCard from "./restoration-contractor-card";
 import RestorationSummary from "./restoration-summary";
 import RestorationRatesTable, {
@@ -72,48 +74,35 @@ const RestorationDialog = ({
           subject='restoration'
         />
 
-        <Tabs defaultValue='rates'>
-          <TabsList className='grid h-9 w-full grid-cols-3'>
-            <TabsTrigger
-              value='rates'
-              className='text-xs'>
-              Schedule of Rates
-            </TabsTrigger>
-            <TabsTrigger
-              value='estimate'
-              className='text-xs'>
-              Estimate/sub-WO
-            </TabsTrigger>
+        <Tabs defaultValue='expenses'>
+          <TabsList className='grid h-9 w-full grid-cols-2'>
             <TabsTrigger
               value='expenses'
               className='text-xs'>
               Expenses
             </TabsTrigger>
+            <TabsTrigger
+              value='completion'
+              className='text-xs'>
+              Completion
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent
-            value='rates'
-            className='mt-4'>
-            <RestorationRatesTable
-              rates={rates}
-              estimatedTotal={estimatedTotal}
-            />
-          </TabsContent>
-
-          <TabsContent
-            value='estimate'
-            className='mt-4'>
-            <SiteActivities
-              woSiteId={restoration.id}
-              processType={WO_PROCESS.RESTORATION}
-              phase='estimate_sub-wo'
-              showPhaseTabs={false}
-            />
-          </TabsContent>
-
-          <TabsContent
             value='expenses'
-            className='mt-4 space-y-4'>
+            className='mt-4 space-y-5'>
+            <section className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <Rows3 className='size-4 text-gray-400' />
+                <h3 className='text-sm font-semibold text-gray-700'>
+                  Schedule of Rates
+                </h3>
+              </div>
+              <RestorationRatesTable
+                rates={rates}
+                estimatedTotal={estimatedTotal}
+              />
+            </section>
             <RestorationContractorCard
               restoration={restoration}
               officeId={workOrder.office_id}
@@ -126,6 +115,18 @@ const RestorationDialog = ({
               splitByContractor
               contractor={restoration.contractor}
             />
+          </TabsContent>
+
+          <TabsContent
+            value='completion'
+            className='mt-4'>
+            <SiteActivities
+              woSiteId={restoration.id}
+              processType={WO_PROCESS.RESTORATION}
+              phase='completion'
+              showPhaseTabs={false}
+            />
+            <CompletionExpenseSummary woSiteId={restoration.id} />
           </TabsContent>
         </Tabs>
       </div>
