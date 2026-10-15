@@ -82,15 +82,15 @@ const RestorationDialog = ({
         )}
 
         <Tabs defaultValue='expenses'>
-          <TabsList className='grid h-9 w-full grid-cols-2'>
+          <TabsList className='grid h-8 w-52 grid-cols-2'>
             <TabsTrigger
               value='expenses'
-              className='text-xs'>
+              className='px-3 text-xs'>
               Expenses
             </TabsTrigger>
             <TabsTrigger
               value='completion'
-              className='text-xs'>
+              className='px-3 text-xs'>
               Completion
             </TabsTrigger>
           </TabsList>
