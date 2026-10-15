@@ -173,9 +173,8 @@ const ClientsTab = ({ tab }: Props) => {
         <ParentClientGroup
           key={parentClient.id}
           parentClient={parentClient}
-          branchCount={branches.length}>
-          {branches.map(renderClientCard)}
-        </ParentClientGroup>
+          branches={branches}
+        />
       ))}
 
       {standalone.length > 0 && (
