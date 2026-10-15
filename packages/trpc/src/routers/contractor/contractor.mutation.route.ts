@@ -6,6 +6,7 @@ import { assertCanAccessOffice, getAccessScope } from "../../access-scope";
 import { fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { assertOfficeManager } from "../../helper/office-permissions";
+import { vendorSchemas } from "@pkg/schema";
 import { z } from "zod";
 
 const { contractorTable } = schema;
@@ -14,30 +15,9 @@ const { contractorTable } = schema;
 const optionalText = (value: string | undefined) =>
   value === undefined ? undefined : value.trim() || null;
 
-const createContractorSchema = z.object({
-  office_id: z.number().positive(),
-  name: z.string().min(1, "Name is required").max(255),
-  contact_number: z.string().max(15).optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  address: z.string().max(500).optional(),
-  gst_number: z.string().max(15).optional(),
-  pan_number: z.string().max(10).optional(),
-});
-
-const updateContractorSchema = z.object({
-  id: z.number().positive(),
-  name: z.string().min(1).max(255).optional(),
-  contact_number: z.string().max(15).optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  address: z.string().max(500).optional(),
-  gst_number: z.string().max(15).optional(),
-  pan_number: z.string().max(10).optional(),
-  status: z.enum(["active", "inactive"]).optional(),
-});
-
 export const contractorMutationRouter = router({
   createContractor: protectedProcedure
-    .input(createContractorSchema)
+    .input(vendorSchemas.createVendorSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const scope = await getAccessScope(
@@ -76,7 +56,7 @@ export const contractorMutationRouter = router({
     ),
 
   updateContractor: protectedProcedure
-    .input(updateContractorSchema)
+    .input(vendorSchemas.updateVendorSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { id, name, status } = input;
