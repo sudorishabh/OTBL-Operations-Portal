@@ -1,4 +1,14 @@
-import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  like,
+  or,
+} from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -15,6 +25,7 @@ import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-w
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
 
 const {
+  parentClientTable,
   clientTable,
   clientContactTable,
   workOrderTable,
@@ -30,6 +41,44 @@ const {
 } = schema;
 
 export const clientQueryRouter = router({
+  // Restricted users only see main clients that have a branch visible to them.
+  getParentClients: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const scope = await getAccessScope(
+        ctx.db,
+        Number(ctx.user!.sub),
+        ctx.user!.role,
+      );
+      const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
+
+      try {
+        if (scope.kind === "full") {
+          return await ctx.db
+            .select({ id: parentClientTable.id, name: parentClientTable.name })
+            .from(parentClientTable)
+            .orderBy(asc(parentClientTable.name));
+        }
+
+        if (!clientIds || clientIds.length === 0) return [];
+
+        return await ctx.db
+          .selectDistinct({
+            id: parentClientTable.id,
+            name: parentClientTable.name,
+          })
+          .from(parentClientTable)
+          .innerJoin(
+            clientTable,
+            eq(clientTable.parent_client_id, parentClientTable.id),
+          )
+          .where(inArray(clientTable.id, clientIds))
+          .orderBy(asc(parentClientTable.name));
+      } catch (error) {
+        throw fromDatabaseError(error, "Fetching main clients");
+      }
+    }),
+  ),
+
   totalClientAndContact: protectedProcedure.query(
     handleQuery(async ({ ctx }) => {
       try {
@@ -102,6 +151,7 @@ export const clientQueryRouter = router({
           like(clientTable.gst_number, `%${escapeLike(searchQuery)}%`),
           like(clientTable.city, `%${escapeLike(searchQuery)}%`),
           like(clientTable.contact_number, `%${escapeLike(searchQuery)}%`),
+          like(parentClientTable.name, `%${escapeLike(searchQuery)}%`),
         );
         clientQuery = clientQuery
           ? and(clientQuery, searchCondition)
@@ -120,8 +170,15 @@ export const clientQueryRouter = router({
 
       try {
         const clients = await ctx.db
-          .select()
+          .select({
+            ...getTableColumns(clientTable),
+            parent_client_name: parentClientTable.name,
+          })
           .from(clientTable)
+          .leftJoin(
+            parentClientTable,
+            eq(parentClientTable.id, clientTable.parent_client_id),
+          )
           .where(clientQuery)
           .orderBy(desc(clientTable.created_at));
 
@@ -188,8 +245,15 @@ export const clientQueryRouter = router({
         );
 
         const client = await ctx.db
-          .select()
+          .select({
+            ...getTableColumns(clientTable),
+            parent_client_name: parentClientTable.name,
+          })
           .from(clientTable)
+          .leftJoin(
+            parentClientTable,
+            eq(parentClientTable.id, clientTable.parent_client_id),
+          )
           .where(eq(clientTable.id, input.clientId));
 
         if (client.length === 0) {

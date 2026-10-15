@@ -14,6 +14,7 @@ import ScrollToTop from "@/components/scroll-to-top";
 const ClientsTab = dynamic(() => import("./clients-tab"));
 const ClientContactTab = dynamic(() => import("./client-contact-tab"));
 const CreateClientDialog = dynamic(() => import("./create-client-dialog"));
+const ParentClientDialog = dynamic(() => import("./parent-client-dialog"));
 const CreateClientContactDialog = dynamic(
   () => import("./create-client-contact-dialog"),
 );
@@ -80,6 +81,7 @@ const ClientsPage = () => {
       </div>
 
       <CreateClientDialog />
+      <ParentClientDialog />
       <CreateClientContactDialog />
       <ScrollToTop />
     </>

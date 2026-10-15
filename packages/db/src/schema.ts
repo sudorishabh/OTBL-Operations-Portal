@@ -58,8 +58,20 @@ export const userTable = mysqlTable(
   ],
 );
 
+// A main client (e.g. ONGC) only groups its branches; branches are clients.
+export const parentClientTable = mysqlTable("parent_clients", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+});
+
 export const clientTable = mysqlTable("clients", {
   id: int("id").autoincrement().primaryKey(),
+  parent_client_id: int("parent_client_id").references(
+    () => parentClientTable.id,
+    { onDelete: "set null" },
+  ),
   name: varchar("name", { length: 255 }).notNull(),
   address: varchar("address", { length: 255 }).notNull(),
   state: varchar("state", { length: 255 }).notNull(),

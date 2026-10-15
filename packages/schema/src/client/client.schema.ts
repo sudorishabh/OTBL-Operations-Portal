@@ -19,7 +19,19 @@ const { STATUS } = constants;
 
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
+export const createParentClientSchema = z.object({ name: nameValidator });
+
+export const updateParentClientSchema = createParentClientSchema.extend({
+  id: positiveIntValidator,
+});
+
+export const deleteParentClientSchema = z.object({
+  parentClientId: positiveIntValidator,
+});
+
 export const createClientSchema = z.object({
+  // null leaves the client as a standalone, ungrouped client.
+  parent_client_id: positiveIntValidator.nullable().optional(),
   name: nameValidator,
   address: addressValidator,
   state: stateValidator,
