@@ -191,21 +191,23 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                           : ""
                       }${office.pincode ? ` – ${office.pincode}` : ""}`}
                     />
-                    <InfoRow icon={Mail} label='Email' value={office.email} />
-                    {office.gst_number ? (
-                      <InfoRow
-                        icon={ReceiptText}
-                        label='GST Number'
-                        value={office.gst_number}
-                      />
-                    ) : null}
-                    {office.manager?.name ? (
-                      <InfoRow
-                        icon={UserCog}
-                        label='Manager'
-                        value={capitalizeEachWord(office.manager.name)}
-                      />
-                    ) : null}
+                    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                      <InfoRow icon={Mail} label='Email' value={office.email} />
+                      {office.gst_number ? (
+                        <InfoRow
+                          icon={ReceiptText}
+                          label='GST Number'
+                          value={office.gst_number}
+                        />
+                      ) : null}
+                      {office.manager?.name ? (
+                        <InfoRow
+                          icon={UserCog}
+                          label='Manager'
+                          value={capitalizeEachWord(office.manager.name)}
+                        />
+                      ) : null}
+                    </div>
 
                     <div className='flex flex-wrap items-center gap-3 pt-1'>
                       <div className='flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-inset ring-slate-100'>
