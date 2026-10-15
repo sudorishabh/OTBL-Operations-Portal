@@ -27,8 +27,8 @@ interface Props {
   usedQtyByActivity: Record<string, number>;
 }
 
-const headClass = "h-10 px-4 sm:h-10 sm:px-4 text-xs font-medium text-gray-500";
-const cellClass = "px-4 py-3 sm:px-4 sm:py-3";
+const headClass = "h-8 px-3 sm:h-8 sm:px-3 text-xs font-medium text-gray-500";
+const cellClass = "px-3 py-1.5 sm:px-3 sm:py-1.5 text-[13px]";
 const numberClass = cn(cellClass, "text-right tabular-nums text-gray-700");
 
 const formatCurrency = (amount: string | number) =>
@@ -82,10 +82,7 @@ const RestorationRatesTable = ({
                 key={rate.id}
                 className='border-gray-100 hover:bg-transparent'>
                 <TableCell
-                  className={cn(
-                    cellClass,
-                    "text-sm font-medium text-gray-900",
-                  )}>
+                  className={cn(cellClass, "font-medium text-gray-900")}>
                   {rate.label}
                 </TableCell>
                 <TableCell className={numberClass}>
@@ -117,7 +114,7 @@ const RestorationRatesTable = ({
           <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
             <TableCell
               colSpan={5}
-              className={cn(cellClass, "text-sm font-semibold text-gray-900")}>
+              className={cn(cellClass, "font-semibold text-gray-900")}>
               Estimated restoration total (incl. GST)
             </TableCell>
             <TableCell
