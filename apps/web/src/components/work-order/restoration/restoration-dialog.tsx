@@ -11,7 +11,7 @@ import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-sec
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import CompletionExpenseSummary from "../site-details-dialog/completion-expense-summary";
-import RestorationContractorCard from "./restoration-contractor-card";
+import RestorationContractorsCard from "./restoration-contractors-card";
 import RestorationSummary from "./restoration-summary";
 import RestorationRatesTable, {
   RestorationRate,
@@ -117,7 +117,7 @@ const RestorationDialog = ({
                 usedQtyByActivity={usedQtyByActivity}
               />
             </section>
-            <RestorationContractorCard
+            <RestorationContractorsCard
               restoration={restoration}
               workOrderId={workOrder.id}
             />
