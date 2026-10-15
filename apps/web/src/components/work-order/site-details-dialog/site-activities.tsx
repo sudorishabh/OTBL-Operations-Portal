@@ -187,26 +187,6 @@ const PhaseForm = ({
         return;
       }
 
-      const expenseTotal =
-        phase === "completion"
-          ? (expensesByActivity[activity.activity]?.totalQuantity ?? 0)
-          : 0;
-      if (!isBioremediation && phase === "completion" && expenseTotal > 0) {
-        const rate = parseFloat(activity.rate || "0");
-        const autoAmount = (expenseTotal * rate).toFixed(2);
-        const saved = getActivityData(
-          activity.activity,
-          phase,
-          isBioremediation,
-        );
-        newFormData[activity.activity] = {
-          estimated_quantity: expenseTotal.toFixed(2),
-          amount: autoAmount,
-          transportation_km: saved?.transportation_km?.toString() || "",
-        };
-        return;
-      }
-
       const data = getActivityData(activity.activity, phase, isBioremediation);
       if (data) {
         newFormData[activity.activity] = {
@@ -229,7 +209,6 @@ const PhaseForm = ({
     getActivityData,
     isBioremediation,
     totalOilZappingQty,
-    expensesByActivity,
   ]);
 
   const handleChange = (
@@ -257,34 +236,6 @@ const PhaseForm = ({
       };
     });
   };
-
-  const saveRestoration =
-    trpc.workOrderSiteMutation.saveRestorationCompletion.useMutation({
-      onSuccess: () => {
-        toast.success("Restoration completion saved.");
-        utils.workOrderSiteQuery.getRestorationData.invalidate();
-        utils.workOrderSiteQuery.getSiteActivities.invalidate({
-          work_order_site_id: woSiteId,
-        });
-        utils.workOrderSiteQuery.getSiteDocuments.invalidate();
-        utils.expenseQuery.getExpenseSummary.invalidate({
-          work_order_site_id: woSiteId,
-        });
-        utils.expenseQuery.getExpenses.invalidate({
-          work_order_site_id: woSiteId,
-        });
-        setPendingDocs({});
-        resetUpload();
-        setIsEditMode(false);
-      },
-      onError: (err: any) => {
-        const message =
-          err instanceof Error
-            ? err.message
-            : "Failed to save the data. Please try again.";
-        toast.error(`Failed to save: ${message}`);
-      },
-    });
 
   const saveContaminatedSoil =
     trpc.workOrderSiteMutation.saveContaminatedSoil.useMutation({
@@ -429,58 +380,10 @@ const PhaseForm = ({
           });
         }
       }
-    } else {
-      // Restoration has no estimate, so only its completion is saved.
-      const payload: any = { work_order_site_id: woSiteId };
-
-      activities.forEach((activity) => {
-        const data = formData[activity.activity];
-        if (!data) return;
-
-        let fieldName = "";
-        switch (activity.activity) {
-          case "clean_up_oil_spill":
-          case "clean_soil_area":
-          case constants.WO_ACTIVITIES.clean_soil_area:
-            fieldName = "clean_soil_area";
-            break;
-          case "lifting_oil_slush":
-          case constants.WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL:
-            fieldName = "lifting_oil_slush";
-            break;
-          case "excav_cont_soil":
-          case constants.WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL:
-            fieldName = "excav_cont_soil";
-            break;
-          case "trans_cont_soil":
-          case "trnsprt_oil_slush":
-          case constants.WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL:
-            fieldName = "trans_cont_soil";
-            break;
-          case "refill_excav_soil":
-          case constants.WO_ACTIVITIES
-            .REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND:
-            fieldName = "refill_excav_soil";
-            break;
-        }
-
-        if (fieldName) {
-          payload[fieldName] = {
-            estimated_quantity: data.estimated_quantity,
-            amount: data.amount || undefined,
-            transportation_km: data.transportation_km || undefined,
-          };
-        }
-      });
-
-      saveRestoration.mutate(payload);
     }
   };
 
-  const isLoading =
-    saveRestoration.isPending ||
-    saveContaminatedSoil.isPending ||
-    isFileUploading;
+  const isLoading = saveContaminatedSoil.isPending || isFileUploading;
 
   const renderDocumentSection = (type: string) => {
     const savedDocs = siteDocuments?.filter((d) => d.type === type) ?? [];
@@ -547,11 +450,6 @@ const PhaseForm = ({
         )}
       </div>
 
-      {(() => {
-        const hasTransportActivity = activities.some(
-          (a) => a.activity === "trans_cont_soil",
-        );
-        return (
           <div className='rounded-xl border bg-gray-100/50 overflow-hidden'>
             <div className='overflow-x-auto'>
             <Table className='w-full text-xs'>
@@ -569,15 +467,9 @@ const PhaseForm = ({
                   <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
                     Est. Qty
                   </TableHead>
-                  <TableHead
-                    className={`px-2 py-3 text-center ${hasTransportActivity ? "" : ""} w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider`}>
+                  <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
                     Amount
                   </TableHead>
-                  {hasTransportActivity && (
-                    <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
-                      Transport (KM)
-                    </TableHead>
-                  )}
                 </TableRow>
               </TableHeader>
               <TableBody className='divide-y'>
@@ -587,9 +479,6 @@ const PhaseForm = ({
                     amount: "",
                     transportation_km: "",
                   };
-
-                  const isTransportActivity =
-                    activity.activity === "trans_cont_soil";
 
                   const isBioremActivity =
                     isBioremediation &&
@@ -608,14 +497,7 @@ const PhaseForm = ({
                       ? expensesByActivity[activity.activity]
                       : undefined;
 
-                  const isAutoFilledFromExpenses =
-                    !isBioremediation &&
-                    phase === "completion" &&
-                    !!expenseSummary &&
-                    expenseSummary.totalQuantity > 0;
-
-                  // Bioremediation is measured against its estimate,
-                  // restoration against the schedule of rates.
+                  // Bioremediation is measured against its estimate.
                   const estimateQty = isBioremActivity
                     ? parseFloat(
                         getActivityData(
@@ -624,20 +506,12 @@ const PhaseForm = ({
                           isBioremediation,
                         )?.estimated_quantity?.toString() || "0",
                       )
-                    : isAutoFilledFromExpenses
-                      ? parseFloat(activity.sor_estimated_quantity || "0")
-                      : 0;
+                    : 0;
                   const exceededQty =
                     isAutoFilledFromZapping && estimateQty > 0
                       ? totalOilZappingQty - estimateQty
                       : 0;
-                  const expenseQty = expenseSummary?.totalQuantity ?? 0;
-                  const expenseExceededQty =
-                    isAutoFilledFromExpenses && estimateQty > 0
-                      ? expenseQty - estimateQty
-                      : 0;
-
-                  const expenseColSpan = hasTransportActivity ? 6 : 5;
+                  const expenseColSpan = 5;
 
                   return (
                     <React.Fragment key={activity.id}>
@@ -664,13 +538,9 @@ const PhaseForm = ({
                               e.target.value,
                             )
                           }
-                          readOnly={
-                            isAutoFilledFromZapping ||
-                            isAutoFilledFromExpenses ||
-                            isReadOnly
-                          }
+                          readOnly={isAutoFilledFromZapping || isReadOnly}
                           className={`h-10 w-full border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 text-center text-xs placeholder:text-slate-300 ${
-                            isAutoFilledFromZapping || isAutoFilledFromExpenses
+                            isAutoFilledFromZapping
                               ? "bg-blue-50/60 text-blue-700 font-semibold cursor-default"
                               : isReadOnly
                                 ? "bg-slate-50/60 text-slate-600 cursor-default"
@@ -682,38 +552,6 @@ const PhaseForm = ({
                               : "0.00"
                           }
                         />
-                        {isAutoFilledFromExpenses && (
-                          <div className='px-2 py-1.5 flex flex-col gap-1 text-xs border-t border-blue-100 bg-blue-50/40'>
-                            <div className='flex justify-between text-blue-600'>
-                              <span className='opacity-70'>
-                                From expenses:
-                              </span>
-                              <span className='font-medium'>
-                                {expenseQty.toFixed(2)}
-                              </span>
-                            </div>
-                            {estimateQty > 0 && (
-                              <div className='flex justify-between text-slate-500'>
-                                <span className='opacity-70'>
-                                  SOR qty:
-                                </span>
-                                <span className='font-medium'>
-                                  {estimateQty.toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-                            {expenseExceededQty > 0 && (
-                              <div className='flex justify-between border-t border-red-200/60 pt-1 mt-0.5'>
-                                <span className='font-semibold text-red-600'>
-                                  Exceeded:
-                                </span>
-                                <span className='text-red-600 font-bold'>
-                                  +{expenseExceededQty.toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
                         {isAutoFilledFromZapping && (
                           <div className='px-2 py-1.5 flex flex-col gap-1 text-xs border-t border-blue-100 bg-blue-50/40'>
                             <div className='flex justify-between text-blue-600'>
@@ -755,29 +593,6 @@ const PhaseForm = ({
                           placeholder='0.00'
                         />
                       </TableCell>
-                      {hasTransportActivity && (
-                        <TableCell className='p-0'>
-                          {isTransportActivity ? (
-                            <Input
-                              value={currentData.transportation_km}
-                              onChange={(e) =>
-                                handleChange(
-                                  activity.activity,
-                                  "transportation_km",
-                                  e.target.value,
-                                )
-                              }
-                              readOnly={isReadOnly}
-                              className={`h-10 w-full border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 text-center text-xs placeholder:text-slate-300 ${isReadOnly ? "bg-slate-50/60 text-slate-600 cursor-default" : "bg-transparent"}`}
-                              placeholder='0.00'
-                            />
-                          ) : (
-                            <div className='flex items-center justify-center h-10 text-slate-300'>
-                              —
-                            </div>
-                          )}
-                        </TableCell>
-                      )}
                     </TableRow>
                     {expenseSummary && expenseSummary.count > 0 && (
                       <TableRow className='bg-slate-50/60 hover:bg-slate-50/60'>
@@ -815,8 +630,6 @@ const PhaseForm = ({
             </Table>
             </div>
           </div>
-        );
-      })()}
 
       <div className='flex justify-end gap-2 pt-1'>
         {isReadOnly ? (
@@ -859,23 +672,14 @@ const SiteActivities = ({
   processType,
   phase,
   showPhaseTabs = true,
-  showSorAvailability = true,
 }: {
   woSiteId: number;
   processType: string | undefined;
   phase?: (typeof PHASES)[number];
   showPhaseTabs?: boolean;
-  // Off when the caller already shows the schedule of rates.
-  showSorAvailability?: boolean;
 }) => {
   const siteActivitiesQuery =
     trpc.workOrderSiteQuery.getSiteActivities.useQuery(
-      { work_order_site_id: woSiteId },
-      { enabled: !!woSiteId },
-    );
-
-  const restorationDataQuery =
-    trpc.workOrderSiteQuery.getRestorationData.useQuery(
       { work_order_site_id: woSiteId },
       { enabled: !!woSiteId },
     );
@@ -893,69 +697,27 @@ const SiteActivities = ({
 
   const getActivityData = useCallback(
     (activityKey: string, phase: DocType, isBioremediation: boolean) => {
-      if (isBioremediation) {
-        if (!bioremediationDataQuery.data) return undefined;
-        const data = bioremediationDataQuery.data;
-        if (
-          activityKey === "biorem_cont_soil" ||
-          activityKey ===
-            constants.WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL
-        ) {
-          const activityType =
-            phase === "completion" ? "completion" : "estimate_sub-wo";
-          return data.contaminatedSoil.find(
-            (item: any) => item.type === activityType,
-          );
-        }
-        return undefined;
-      } else {
-        // Restoration only has completion data.
-        if (!restorationDataQuery.data || phase !== "completion") {
-          return undefined;
-        }
-        const data = restorationDataQuery.data;
-        const activityType = "completion";
-        switch (activityKey) {
-          case "clean_up_oil_spill":
-          case "clean_soil_area":
-          case constants.WO_ACTIVITIES.clean_soil_area:
-            return data.cleaningUpSoilArea.find(
-              (item: any) => item.type === activityType,
-            );
-          case "lifting_oil_slush":
-          case constants.WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL:
-            return data.liftingRecoveryOilSlush.find(
-              (item: any) => item.type === activityType,
-            );
-          case "excav_cont_soil":
-          case constants.WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL:
-            return data.excavationContSoil.find(
-              (item: any) => item.type === activityType,
-            );
-          case "trans_cont_soil":
-          case "trnsprt_oil_slush":
-          case constants.WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL:
-            return data.transportationContSoil.find(
-              (item: any) => item.type === activityType,
-            );
-          case "refill_excav_soil":
-          case constants.WO_ACTIVITIES
-            .REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND:
-            return data.refillingExcavatedContSoil.find(
-              (item: any) => item.type === activityType,
-            );
-          default:
-            return undefined;
-        }
+      const data = bioremediationDataQuery.data;
+      if (!isBioremediation || !data) return undefined;
+      if (
+        activityKey === "biorem_cont_soil" ||
+        activityKey ===
+          constants.WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL
+      ) {
+        const activityType =
+          phase === "completion" ? "completion" : "estimate_sub-wo";
+        return data.contaminatedSoil.find(
+          (item: any) => item.type === activityType,
+        );
       }
+      return undefined;
     },
-    [bioremediationDataQuery.data, restorationDataQuery.data],
+    [bioremediationDataQuery.data],
   );
 
   return (
     <div className='space-y-5'>
-      {showSorAvailability &&
-        siteActivitiesQuery.data?.some((a: any) => a.sor_estimated_quantity) && (
+      {siteActivitiesQuery.data?.some((a: any) => a.sor_estimated_quantity) && (
         <div className='rounded-lg border bg-gray-100/50 overflow-hidden'>
           <div className='px-3 py-1.5 border-b flex items-center gap-1.5 bg-slate-50/80'>
             <span className='text-[11px] font-semibold text-slate-600'>
@@ -1068,9 +830,7 @@ const SiteActivities = ({
             <div className='flex items-center gap-3'>
               <div>
                 <h3 className='text-sm font-bold text-gray-800'>
-                  {processType === "bioremediation"
-                    ? "Bioremediation Data"
-                    : "Restoration Data"}
+                  Bioremediation Data
                 </h3>
                 <p className='text-[10px] text-slate-400'>
                   {showPhaseTabs
