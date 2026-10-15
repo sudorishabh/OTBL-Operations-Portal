@@ -88,7 +88,7 @@ export const workOrderMutationRouter = router({
           const workOrderId = workOrderResult[0].insertId;
 
           if (input.schedule_of_rates && input.schedule_of_rates.length > 0) {
-            const scheduleOfRatesData = input.schedule_of_rates.map((sor: any) => ({
+            const scheduleOfRatesData = input.schedule_of_rates.map((sor) => ({
               work_order_id: workOrderId,
               activity: sor.activity.name,
               unit: sor.unit,
@@ -97,7 +97,7 @@ export const workOrderMutationRouter = router({
               gst_percentage: sor.gst_percentage.toString(),
               unit_rate_inc_gst: sor.unit_rate_inc_gst.toString(),
               total_cost: sor.total_cost.toString(),
-              transportation_km: sor.transportation_km?.toString() || null,
+              transportation_slabs: sor.transportation_slabs ?? null,
             }));
 
             await ctx.db
