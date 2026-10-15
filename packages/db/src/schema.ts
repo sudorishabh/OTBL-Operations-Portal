@@ -358,10 +358,6 @@ export const workOrderSiteTable = mysqlTable(
     site_id: int("site_id").references(() => siteTable.id, {
       onDelete: "cascade",
     }),
-    // The vendor the work is ordered to.
-    contractor_id: int("contractor_id").references(() => contractorTable.id, {
-      onDelete: "set null",
-    }),
     date: timestamp("date").notNull(),
     end_date: timestamp("end_date").notNull(),
     process_type: varchar("process_type", {
@@ -385,7 +381,6 @@ export const workOrderSiteTable = mysqlTable(
     uniqueIndex("wo_site_unique_idx").on(table.work_order_id, table.site_id),
     index("wo_site_work_order_idx").on(table.work_order_id),
     index("wo_site_site_idx").on(table.site_id),
-    index("wo_site_contractor_idx").on(table.contractor_id),
     index("wo_site_status_idx").on(table.status),
   ],
 );

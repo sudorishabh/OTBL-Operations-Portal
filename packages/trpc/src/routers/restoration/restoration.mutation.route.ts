@@ -133,38 +133,6 @@ export const restorationMutationRouter = router({
       }),
     ),
 
-  // The vendor the restoration is ordered to; null clears it.
-  setRestorationContractor: protectedProcedure
-    .input(
-      z.object({
-        work_order_site_id: z.number().positive(),
-        contractor_id: z.number().positive().nullable(),
-      }),
-    )
-    .mutation(
-      handleMutation(async ({ input, ctx }) => {
-        await assertManagesRestoration(ctx, input.work_order_site_id);
-
-        if (input.contractor_id) {
-          await assertActiveVendor(ctx, input.contractor_id);
-        }
-
-        try {
-          await ctx.db
-            .update(workOrderSiteTable)
-            .set({ contractor_id: input.contractor_id })
-            .where(eq(workOrderSiteTable.id, input.work_order_site_id));
-
-          return { success: true };
-        } catch (error) {
-          throw fromDatabaseError(
-            error,
-            "Assigning the restoration contractor",
-          );
-        }
-      }),
-    ),
-
   // Adds a vendor to the contractors the restoration is ordered to.
   addRestorationContractor: protectedProcedure
     .input(restorationContractorInput)

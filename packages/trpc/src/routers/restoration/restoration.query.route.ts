@@ -30,17 +30,8 @@ export const restorationQueryRouter = router({
               id: workOrderSiteTable.id,
               status: workOrderSiteTable.status,
               is_completed: workOrderSiteTable.is_completed,
-              contractor_id: workOrderSiteTable.contractor_id,
-              contractor_name: contractorTable.name,
-              contractor_contact_number: contractorTable.contact_number,
-              contractor_email: contractorTable.email,
-              contractor_gst_number: contractorTable.gst_number,
             })
             .from(workOrderSiteTable)
-            .leftJoin(
-              contractorTable,
-              eq(workOrderSiteTable.contractor_id, contractorTable.id),
-            )
             .where(restorationRowWhere(input.work_order_id))
             .limit(1);
 
@@ -80,16 +71,6 @@ export const restorationQueryRouter = router({
             id: row.id,
             status: row.status,
             is_completed: row.is_completed,
-            contractor:
-              row.contractor_id && row.contractor_name
-                ? {
-                    id: row.contractor_id,
-                    name: row.contractor_name,
-                    contact_number: row.contractor_contact_number,
-                    email: row.contractor_email,
-                    gst_number: row.contractor_gst_number,
-                  }
-                : null,
             contractors,
           };
         } catch (error) {
