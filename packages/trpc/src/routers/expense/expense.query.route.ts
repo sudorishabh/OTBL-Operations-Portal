@@ -188,8 +188,16 @@ export const expenseQueryRouter = router({
 
           const byActivity: Record<string, { totalAmount: number; exceededAmount: number; totalQuantity: number; count: number }> = {};
           const seenForQty = new Set<string>();
+          // Totals per contractor id; expenses under none are keyed "none".
+          const byContractor: Record<string, number> = {};
 
           for (const row of activityRows) {
+            const contractorKey = row.contractor_id
+              ? String(row.contractor_id)
+              : "none";
+            byContractor[contractorKey] =
+              (byContractor[contractorKey] ?? 0) + Number(row.amount || 0);
+
             if (!row.activity_key) continue;
             if (!byActivity[row.activity_key]) {
               byActivity[row.activity_key] = { totalAmount: 0, exceededAmount: 0, totalQuantity: 0, count: 0 };
@@ -218,7 +226,15 @@ export const expenseQueryRouter = router({
             }
           }
 
-          return { byType, grandTotal, regularTotal, exceededTotal, incomeTotal, byActivity };
+          return {
+            byType,
+            grandTotal,
+            regularTotal,
+            exceededTotal,
+            incomeTotal,
+            byActivity,
+            byContractor,
+          };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching expense summary");
         }
