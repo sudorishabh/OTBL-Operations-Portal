@@ -7,22 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FlaskConical,
   Building2,
-  Trash2,
-  ExternalLink,
-  FileText,
-  X,
   Receipt,
   BarChart3,
   Rows3,
-  ReceiptIndianRupee,
   Pencil,
   AlertTriangle,
 } from "lucide-react";
-import DeferredFilePicker from "@/components/shared/deferred-file-picker";
 import DocumentsField from "@/components/shared/documents-field";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import {
   Table,
@@ -39,7 +32,6 @@ type DocType =
   | "estimate"
   | "completion"
   | "estimate_sub-wo"
-  | "bills"
   | "completion_certificate";
 
 const PHASES: DocType[] = ["estimate_sub-wo", "completion"];
@@ -48,7 +40,6 @@ const PHASE_LABELS: Record<string, string> = {
   estimate: "Estimate",
   completion: "Completion",
   "estimate_sub-wo": "Estimate / Sub-WO",
-  bills: "Bills",
   completion_certificate: "Completion Certificate",
 };
 
@@ -141,7 +132,6 @@ const PhaseForm = ({
 
   // Files waiting to upload, keyed by document type (sub_wo, estimate, ...).
   const [pendingDocs, setPendingDocs] = useState<Record<string, File[]>>({});
-  const [billFiles, setBillFiles] = useState<File[]>([]);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
   const {
@@ -284,7 +274,6 @@ const PhaseForm = ({
           work_order_site_id: woSiteId,
         });
         setPendingDocs({});
-        setBillFiles([]);
         resetUpload();
         setIsEditMode(false);
       },
@@ -313,7 +302,6 @@ const PhaseForm = ({
           work_order_site_id: woSiteId,
         });
         setPendingDocs({});
-        setBillFiles([]);
         resetUpload();
         setIsEditMode(false);
       },
@@ -398,11 +386,7 @@ const PhaseForm = ({
     }
 
     // Each uploaded file is saved as its own site document of that type.
-    const uploadsByType: [string, File[]][] = [
-      ...Object.entries(pendingDocs),
-      ["bills", billFiles],
-    ];
-    for (const [type, files] of uploadsByType) {
+    for (const [type, files] of Object.entries(pendingDocs)) {
       if (files.length === 0) continue;
 
       setUploadingType(type);
@@ -552,107 +536,11 @@ const PhaseForm = ({
             </div>
           </div>
         ) : phase === "completion" ? (
-          <div className='space-y-4'>
-            <div className='space-y-1.5'>
-              <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
-                Completion Certificate
-              </span>
-              {renderDocumentSection("completion_certificate")}
-            </div>
-
-            <div className='rounded-xl border border-slate-200/80 bg-slate-50/50 p-3'>
-              <div className='flex items-center justify-between mb-2.5'>
-                <div className='flex items-center gap-2'>
-                  <ReceiptIndianRupee className='size-3.5 text-slate-400' />
-                  <h4 className='text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
-                    Bills
-                  </h4>
-                  {(siteDocuments?.filter((d) => d.type === "bills").length ||
-                    0) > 0 && (
-                    <span className='text-[9px] font-bold bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full'>
-                      {siteDocuments?.filter((d) => d.type === "bills").length}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {(siteDocuments?.filter((d) => d.type === "bills").length || 0) >
-                0 && (
-                <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3'>
-                  {siteDocuments
-                    ?.filter((d) => d.type === "bills")
-                    .map((doc, index) => (
-                      <div
-                        key={doc.id}
-                        className='group flex items-center gap-2.5 bg-white p-2 rounded-lg border border-slate-200/70 hover:border-slate-300 transition-all'>
-                        <div className='flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 text-blue-500 text-[10px] font-bold shrink-0'>
-                          {index + 1}
-                        </div>
-                        <a
-                          href={doc.document_url}
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          className='text-[11px] font-medium text-gray-600 truncate hover:text-blue-600 flex items-center gap-1 transition-colors flex-1 min-w-0'>
-                          Bill Document {index + 1}
-                          <ExternalLink className='size-3 shrink-0 opacity-50' />
-                        </a>
-                        <Button
-                          size='sm'
-                          variant='ghost'
-                          onClick={() =>
-                            confirm("Delete this bill?") &&
-                            deleteDocumentMutation.mutate({ id: doc.id })
-                          }
-                          className='h-6 w-6 p-0 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0'>
-                          <Trash2 className='size-3' />
-                        </Button>
-                      </div>
-                    ))}
-                </div>
-              )}
-
-              <DeferredFilePicker
-                label='Add Bills'
-                onFileSelect={(f) => f && setBillFiles((prev) => [...prev, f])}
-                selectedFile={null}
-                multiple
-                fileCount={billFiles.length}
-                isUploading={isFileUploading}
-                uploadProgress={progress}
-                className='bg-white h-9 rounded-lg'
-              />
-
-              {billFiles.length > 0 && (
-                <div className='mt-2 space-y-1.5'>
-                  <span className='text-[9px] font-semibold text-amber-600 uppercase tracking-wider'>
-                    Pending Upload ({billFiles.length})
-                  </span>
-                  {billFiles.map((f, i) => (
-                    <div
-                      key={i}
-                      className='flex items-center justify-between bg-amber-50/60 px-2.5 py-1.5 rounded-lg border border-amber-200/60'>
-                      <div className='flex items-center gap-2 min-w-0'>
-                        <div className='w-5 h-5 rounded bg-amber-100 flex items-center justify-center'>
-                          <FileText className='size-3 text-amber-600' />
-                        </div>
-                        <span className='text-[10px] text-slate-600 truncate'>
-                          {f.name}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() =>
-                          setBillFiles((prev) =>
-                            prev.filter((_, idx) => idx !== i),
-                          )
-                        }
-                        className='text-red-400 hover:text-red-600 p-0.5 rounded hover:bg-red-50 transition-colors shrink-0'>
-                        <X className='size-3' />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className='space-y-1.5'>
+            <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
+              Completion Certificate
+            </span>
+            {renderDocumentSection("completion_certificate")}
           </div>
         ) : (
           renderDocumentSection(phase)
