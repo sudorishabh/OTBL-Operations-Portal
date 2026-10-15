@@ -56,10 +56,13 @@ import {
   ExternalLink,
   ReceiptIndianRupee,
   AlertTriangle,
+  ChevronRight,
+  CornerDownRight,
 } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
+import { cn } from "@/lib/utils";
 import { useIsViewer } from "@/contexts/AuthContext";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import AddExpenseDialog, {
@@ -136,7 +139,7 @@ const getExpenseRecordKey = (exp: Expense) =>
 interface Props {
   woSiteId: number;
   processType?: string;
-  // Lists the expenses under each contractor apart from the rest.
+  // Lists the expenses under each vendor apart from the rest.
   splitByContractor?: boolean;
   contractors?: { id: number; name: string }[];
   // Off when the caller already shows estimated, used and left quantities.
@@ -160,6 +163,9 @@ const SiteExpensesSection = ({
   const [deletingGroupIds, setDeletingGroupIds] = useState<number[] | null>(null);
   const [activityFilter, setActivityFilter] = useState<string>("__all__");
   const [breakdownGroup, setBreakdownGroup] = useState<ExpenseRecordGroup | null>(null);
+  // The vendor a new expense starts under, when added from its group.
+  const [addUnderId, setAddUnderId] = useState<number | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const [expensePage, setExpensePage] = useState(1);
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
@@ -280,6 +286,13 @@ const SiteExpensesSection = ({
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingExpense(null);
+    setAddUnderId(null);
+  };
+
+  const openAddExpense = (underId: number | null = null) => {
+    setEditingExpense(null);
+    setAddUnderId(underId);
+    setDialogOpen(true);
   };
 
   const confirmDelete = async () => {
@@ -371,7 +384,7 @@ const SiteExpensesSection = ({
     return groups.filter((g) => g.activityKey === filterKey);
   }, [activityGroups, groupedRecordsByActivity, activityFilter]);
 
-  const renderRecordRow = (group: ExpenseRecordGroup) => {
+  const renderRecordRow = (group: ExpenseRecordGroup, showVendor = true) => {
     const isExceeded = group.isExceeded;
     const uniqueTypes = Array.from(new Set(group.items.map((i) => i.expense_type)));
     const primaryExpenseForEdit: Expense | undefined =
@@ -436,9 +449,11 @@ const SiteExpensesSection = ({
           )}
           {group.unit ? <span className='text-gray-400 ml-1'>{group.unit}</span> : null}
         </TableCell>
-        <TableCell className='py-2.5 text-xs text-gray-600'>
-          {group.contractorName ?? <span className='text-gray-300'>—</span>}
-        </TableCell>
+        {showVendor && (
+          <TableCell className='py-2.5 text-xs text-gray-600'>
+            {group.contractorName ?? <span className='text-gray-300'>—</span>}
+          </TableCell>
+        )}
         <TableCell className='py-2.5 text-xs text-gray-500'>
           {group.invoiceNumber ?? <span className='text-gray-300'>—</span>}
         </TableCell>
@@ -527,7 +542,7 @@ const SiteExpensesSection = ({
     );
   };
 
-  const renderRecordsTable = (groups: ExpenseRecordGroup[]) => (
+  const renderRecordsTable = (groups: ExpenseRecordGroup[], showVendor = true) => (
     <Table>
       <TableHeader>
         <TableRow className='bg-gray-50/50 hover:bg-gray-50/50'>
@@ -536,29 +551,31 @@ const SiteExpensesSection = ({
           <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Type</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Description</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 text-center w-[90px] whitespace-nowrap'>Qty</TableHead>
-          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Contractor</TableHead>
+          {showVendor && (
+            <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Contractor</TableHead>
+          )}
           <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Invoice #</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 text-center w-[60px] whitespace-nowrap'>Doc</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 text-right whitespace-nowrap'>Amount (₹)</TableHead>
           <TableHead className='w-[70px]' />
         </TableRow>
       </TableHeader>
-      <TableBody>{groups.map((g) => renderRecordRow(g))}</TableBody>
+      <TableBody>{groups.map((g) => renderRecordRow(g, showVendor))}</TableBody>
     </Table>
   );
 
-  // A records table in its own bordered box, for the contractor groups.
-  const renderRecordsBox = (groups: ExpenseRecordGroup[]) => (
+  // A records table in its own bordered box, for the vendor groups.
+  const renderRecordsBox = (groups: ExpenseRecordGroup[], showVendor = true) => (
     <div className='overflow-x-auto rounded-md border border-gray-100'>
-      {renderRecordsTable(groups)}
+      {renderRecordsTable(groups, showVendor)}
     </div>
   );
 
   const contractorIds = new Set(contractors.map((c) => c.id));
   const recordsUnder = (contractorId: number) =>
     recordGroupsFlat.filter((g) => g.contractorId === contractorId);
-  // Expenses under none of the contractors, including payments to vendors
-  // that aren't one.
+  // Expenses under none of the vendors, including contractor payments to
+  // vendors that aren't one.
   const otherRecords = recordGroupsFlat.filter(
     (g) => g.contractorId === null || !contractorIds.has(g.contractorId),
   );
@@ -569,33 +586,67 @@ const SiteExpensesSection = ({
     0,
   );
 
-  const renderContractorGroup = (
-    title: string,
-    total: number,
-    count: number,
-    content: React.ReactNode,
-  ) => (
-    <div className='space-y-2'>
-      <div className='flex items-center justify-between gap-2'>
-        <div className='flex min-w-0 items-center gap-2'>
-          <h4 className='truncate text-xs font-semibold text-gray-700'>
-            {title}
-          </h4>
-          {count > 0 && (
-            <Badge
-              variant='outline'
-              className='h-4 bg-gray-50 px-1.5 py-0 text-[10px]'>
+  const toggleGroup = (key: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  // A vendor's expenses, opened and closed by the arrow beside its name.
+  const renderVendorGroup = ({
+    groupKey,
+    Icon,
+    title,
+    total,
+    count,
+    content,
+    actions,
+  }: {
+    groupKey: string;
+    Icon: React.ElementType;
+    title: string;
+    total: number;
+    count: number;
+    content: React.ReactNode;
+    actions?: React.ReactNode;
+  }) => {
+    const isOpen = !collapsedGroups.has(groupKey);
+    return (
+      <div key={groupKey} className='rounded-lg border border-gray-200 bg-white'>
+        <div className='flex items-center gap-2 px-3 py-2'>
+          <button
+            type='button'
+            onClick={() => toggleGroup(groupKey)}
+            aria-expanded={isOpen}
+            className='flex min-w-0 flex-1 items-center gap-2 text-left'>
+            <ChevronRight
+              className={cn(
+                "size-4 shrink-0 text-gray-400 transition-transform",
+                isOpen && "rotate-90",
+              )}
+            />
+            <Icon className='size-3.5 shrink-0 text-purple-600' />
+            <span className='truncate text-sm font-semibold text-gray-800'>{title}</span>
+            <Badge variant='outline' className='h-4 shrink-0 bg-gray-50 px-1.5 py-0 text-[10px]'>
               {count}
             </Badge>
-          )}
+          </button>
+          <span className='shrink-0 text-sm font-semibold tabular-nums text-gray-800'>
+            {formatCurrency(total)}
+          </span>
+          {actions}
         </div>
-        <span className='shrink-0 text-xs font-semibold tabular-nums text-gray-800'>
-          {formatCurrency(total)}
-        </span>
+        {isOpen && (
+          <div className='flex gap-2 border-t border-gray-100 px-3 py-3'>
+            <CornerDownRight className='mt-1.5 size-4 shrink-0 text-purple-300' />
+            <div className='min-w-0 flex-1'>{content}</div>
+          </div>
+        )}
       </div>
-      {content}
-    </div>
-  );
+    );
+  };
 
   const emptyGroupText = (text: string) => (
     <p className='rounded-md border border-dashed py-6 text-center text-xs text-gray-400'>
@@ -826,7 +877,7 @@ const SiteExpensesSection = ({
             text='Add Expense'
             variant='primary'
             Icon={Plus}
-            onClick={() => { setEditingExpense(null); setDialogOpen(true); }}
+            onClick={() => openAddExpense()}
             className='h-8 text-xs'
             disableForViewer
           />
@@ -836,38 +887,46 @@ const SiteExpensesSection = ({
       {expensesQuery.isLoading && expensePage === 1 ? (
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
       ) : splitByContractor ? (
-        <div className='space-y-5'>
-          {contractors.length === 0
-            ? renderContractorGroup(
-                "Under a contractor",
-                0,
-                0,
-                emptyGroupText("Add a contractor to record expenses under it."),
-              )
-            : contractors.map((c) => {
-                const name = capitalFirstLetter(c.name);
-                const records = recordsUnder(c.id);
-                return (
-                  <React.Fragment key={c.id}>
-                    {renderContractorGroup(
-                      `Under ${name}`,
-                      totalUnder(c.id),
-                      records.length,
-                      records.length > 0
-                        ? renderRecordsBox(records)
-                        : emptyGroupText(`No expenses under ${name} yet.`),
-                    )}
-                  </React.Fragment>
-                );
-              })}
-          {renderContractorGroup(
-            "Not under a contractor",
-            expenseTotal - contractorsTotal,
-            otherRecords.length,
-            otherRecords.length > 0
-              ? renderRecordsBox(otherRecords)
-              : emptyGroupText("No other expenses yet."),
-          )}
+        <div className='space-y-3'>
+          {contractors.length === 0 &&
+            emptyGroupText("No vendors yet. Add a vendor to record expenses under it.")}
+          {contractors.map((c) => {
+            const name = capitalFirstLetter(c.name);
+            const records = recordsUnder(c.id);
+            return renderVendorGroup({
+              groupKey: `vendor-${c.id}`,
+              Icon: HardHat,
+              title: name,
+              total: totalUnder(c.id),
+              count: records.length,
+              content:
+                records.length > 0
+                  ? renderRecordsBox(records, false)
+                  : emptyGroupText(`No expenses under ${name} yet.`),
+              actions: (
+                <button
+                  type='button'
+                  title={`Add an expense under ${name}`}
+                  aria-label={`Add an expense under ${name}`}
+                  onClick={() => openAddExpense(c.id)}
+                  disabled={isViewer}
+                  className='shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-30'>
+                  <Plus className='size-3.5' />
+                </button>
+              ),
+            });
+          })}
+          {renderVendorGroup({
+            groupKey: "not-under-vendor",
+            Icon: ReceiptIndianRupee,
+            title: "Not under a vendor",
+            total: expenseTotal - contractorsTotal,
+            count: otherRecords.length,
+            content:
+              otherRecords.length > 0
+                ? renderRecordsBox(otherRecords)
+                : emptyGroupText("No other expenses yet."),
+          })}
           {expensesPagination && expensesPagination.total > expenses.length && (
             <p className='text-xs text-gray-400'>
               Showing {expenses.length} of {expensesPagination.total} entries
@@ -923,6 +982,7 @@ const SiteExpensesSection = ({
         activities={activityOptions}
         usedQtyByActivity={usedQtyByActivity}
         contractors={contractors}
+        defaultContractorId={addUnderId}
       />
 
       <AlertDialog

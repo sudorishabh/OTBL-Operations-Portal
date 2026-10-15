@@ -122,6 +122,8 @@ interface Props {
   // The contractors the work is ordered to; an expense can be recorded under
   // one of them.
   contractors?: { id: number; name: string }[];
+  // The contractor a new expense starts under.
+  defaultContractorId?: number | null;
 }
 
 // "Expense under" value for an expense under none of the contractors.
@@ -149,6 +151,7 @@ const AddExpenseDialog = ({
   activities = [],
   usedQtyByActivity = {},
   contractors = [],
+  defaultContractorId = null,
 }: Props) => {
   const utils = trpc.useUtils();
 
@@ -228,7 +231,13 @@ const AddExpenseDialog = ({
       setItems([newItem()]);
       setContractorId("");
       // With one contractor it is the likely choice; with several, ask.
-      setUnderId(contractors.length === 1 ? String(contractors[0]!.id) : "");
+      setUnderId(
+        defaultContractorId
+          ? String(defaultContractorId)
+          : contractors.length === 1
+            ? String(contractors[0]!.id)
+            : "",
+      );
       setSelectedActivityKey("");
       setQuantity("");
       setDescription("");
@@ -324,7 +333,7 @@ const AddExpenseDialog = ({
 
   const handleSubmit = async () => {
     if (contractors.length > 0 && !underId) {
-      toast.error("Choose which contractor this expense is under");
+      toast.error("Choose which vendor this expense is under");
       return;
     }
     if (activities.length > 0 && !selectedActivityKey) {
@@ -476,7 +485,7 @@ const AddExpenseDialog = ({
                   })),
                   {
                     value: NOT_UNDER,
-                    label: "Not under a contractor",
+                    label: "Not under a vendor",
                     Icon: MoreHorizontal,
                   },
                 ].map(({ value, label, Icon }) => (
