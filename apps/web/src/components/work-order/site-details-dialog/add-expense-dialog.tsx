@@ -271,7 +271,10 @@ const AddExpenseDialog = ({
     { office_id: officeId },
     { enabled: open && !!officeId },
   );
-  const contractors = contractorsQuery.data?.contractors ?? [];
+  // Inactive vendors can't take new expenses, but an edit keeps its own.
+  const contractors = (contractorsQuery.data?.contractors ?? []).filter(
+    (c: any) => c.status === "active" || String(c.id) === contractorId,
+  );
 
   const createContractorMutation = trpc.contractorMutation.createContractor.useMutation({
     onSuccess: (data: any) => {
