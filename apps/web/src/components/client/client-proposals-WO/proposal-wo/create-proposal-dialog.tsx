@@ -18,20 +18,35 @@ import { trpc } from "@/lib/trpc";
 import CustomForm from "@/components/shared/form";
 import toast from "react-hot-toast";
 import { useHandleParams } from "@/hooks/useHandleParams";
-import DeferredFilePicker from "@/components/shared/deferred-file-picker";
+import DocumentsField from "@/components/shared/documents-field";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import { useApiError } from "@/hooks/useApiError";
-import { proposalSchemas, type proposalTypes } from "@pkg/schema";
+import { toStoredDocument } from "@/lib/documents";
+import { proposalSchemas } from "@pkg/schema";
 import { z } from "zod";
 
-type ProposalFormInput = z.input<typeof proposalSchemas.baseProposalSchema>;
+// Documents are picked as files and uploaded on submit, so the form omits them.
+const proposalFormSchema = proposalSchemas.baseProposalSchema.omit({
+  documents: true,
+});
+type ProposalFormInput = z.input<typeof proposalFormSchema>;
+type ProposalFormValues = z.output<typeof proposalFormSchema>;
+
+const EMPTY_FORM: ProposalFormInput = {
+  code: "",
+  title: "",
+  description: "",
+  office_id: undefined as unknown as number,
+  proposal_submission_date: undefined as unknown as Date,
+};
 
 interface Props {
   clientId: number;
 }
 
 const CreateProposalDialog = ({ clientId }: Props) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [filesError, setFilesError] = useState("");
   const { deleteParams, getParam } = useHandleParams();
   const { handleError } = useApiError();
   const mode = getParam("dialog");
@@ -39,19 +54,15 @@ const CreateProposalDialog = ({ clientId }: Props) => {
   const isOpenDialog = isAddMode;
 
   const {
-    uploadFile,
-    deleteFile,
+    uploadFiles,
     isUploading,
-    isDeleting,
     progress,
     reset: resetUpload,
   } = useSharePointUpload({
     folderPath: "/Proposals",
-    conflictBehavior: "replace",
+    // The folder is shared by all proposals; never overwrite another's file.
+    conflictBehavior: "rename",
   });
-
-  const [uploadedUrl, setUploadedUrl] = useState<string>("");
-  const [uploadedFileId, setUploadedFileId] = useState<string>("");
 
   const { data: officesData, isLoading: isLoadingOffices } =
     trpc.officeQuery.getOffices.useQuery(
@@ -59,20 +70,9 @@ const CreateProposalDialog = ({ clientId }: Props) => {
       { enabled: isOpenDialog },
     );
 
-  const form = useForm<
-    ProposalFormInput,
-    unknown,
-    proposalTypes.BaseProposalInput
-  >({
-    resolver: zodResolver(proposalSchemas.baseProposalSchema),
-    defaultValues: {
-      code: "",
-      title: "",
-      description: "",
-      document_key: "",
-      office_id: undefined,
-      proposal_submission_date: undefined,
-    },
+  const form = useForm<ProposalFormInput, unknown, ProposalFormValues>({
+    resolver: zodResolver(proposalFormSchema),
+    defaultValues: EMPTY_FORM,
   });
 
   const utils = trpc.useUtils();
@@ -96,105 +96,42 @@ const CreateProposalDialog = ({ clientId }: Props) => {
     deleteParams(["dialog"]);
 
     setTimeout(() => {
-      form.reset({
-        code: "",
-        title: "",
-        description: "",
-        document_key: "",
-        office_id: undefined,
-        proposal_submission_date: undefined,
-      });
-      setSelectedFile(null);
-      setUploadedUrl("");
-      setUploadedFileId("");
+      form.reset(EMPTY_FORM);
+      setFiles([]);
+      setFilesError("");
       resetUpload();
     }, 500);
   }, [deleteParams, form, isUploading, resetUpload]);
 
   useEffect(() => {
     if (isAddMode) {
-      form.reset({
-        code: "",
-        title: "",
-        description: "",
-        document_key: "",
-        office_id: undefined,
-        proposal_submission_date: undefined,
-      });
-      setSelectedFile(null);
-      setUploadedUrl("");
-      setUploadedFileId("");
+      form.reset(EMPTY_FORM);
+      setFiles([]);
+      setFilesError("");
       resetUpload();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAddMode]);
 
-  const handleFileSelect = useCallback(
-    (file: File | null) => {
-      setSelectedFile(file);
-      if (file) {
-        setUploadedUrl("");
-        setUploadedFileId("");
-        form.setValue("document_key", `pending:${file.name}`, {
-          shouldValidate: true,
-        });
-      } else {
-        if (!uploadedUrl) {
-          form.setValue("document_key", "", { shouldValidate: true });
-        }
-      }
-    },
-    [form, uploadedUrl],
-  );
+  const handleFilesChange = (nextFiles: File[]) => {
+    setFiles(nextFiles);
+    if (nextFiles.length > 0) setFilesError("");
+  };
 
-  const handleDeleteFile = useCallback(async () => {
-    if (uploadedFileId) {
-      try {
-        await deleteFile(uploadedFileId);
-      } catch (error) {
-        console.error("Failed to delete file from SharePoint", error);
-      }
+  async function onSubmit(values: ProposalFormValues) {
+    if (files.length === 0) {
+      setFilesError("Upload at least one document");
+      return;
     }
 
-    setSelectedFile(null);
-    setUploadedUrl("");
-    setUploadedFileId("");
-    form.setValue("document_key", "", { shouldValidate: true });
-    resetUpload();
-  }, [form, resetUpload, deleteFile, uploadedFileId]);
+    const uploaded = await uploadFiles(files);
+    if (!uploaded) return;
 
-  async function onSubmit(values: proposalTypes.BaseProposalInput) {
-    try {
-      let documentPath = values.document_key;
-
-      if (selectedFile && !uploadedUrl && documentPath.startsWith("pending:")) {
-        const uploadResult = await uploadFile(selectedFile);
-        if (!uploadResult) {
-          return;
-        }
-        documentPath = uploadResult.webUrl;
-        setUploadedUrl(documentPath);
-        setUploadedFileId(uploadResult.id);
-      } else if (uploadedUrl) {
-        documentPath = uploadedUrl;
-      }
-
-      if (documentPath.startsWith("pending:")) {
-        toast.error("Please upload a document");
-        return;
-      }
-
-      addProposal.mutate({
-        ...values,
-        client_id: clientId,
-        document_key: documentPath,
-      });
-    } catch (error) {
-      if (uploadedFileId) {
-        await deleteFile(uploadedFileId);
-      }
-      toast.error("Error submitting form. Please try again.");
-    }
+    addProposal.mutate({
+      ...values,
+      client_id: clientId,
+      documents: uploaded.map(toStoredDocument),
+    });
   }
 
   const offices = officesData?.offices ?? [];
@@ -266,28 +203,18 @@ const CreateProposalDialog = ({ clientId }: Props) => {
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name='document_key'
-            render={() => (
-              <FormItem>
-                <FormControl>
-                  <DeferredFilePicker
-                    label='Proposal Document'
-                    selectedFile={selectedFile}
-                    onFileSelect={handleFileSelect}
-                    isUploading={isUploading}
-                    uploadProgress={progress}
-                    isUploaded={!!uploadedUrl}
-                    uploadedUrl={uploadedUrl}
-                    onDelete={handleDeleteFile}
-                    isDeleting={isDeleting}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          <div>
+            <DocumentsField
+              label='Proposal Documents'
+              files={files}
+              onFilesChange={handleFilesChange}
+              isUploading={isUploading}
+              progress={progress}
+            />
+            {filesError && (
+              <p className='mt-1 text-xs text-destructive'>{filesError}</p>
             )}
-          />
+          </div>
 
           <CustomButton
             type='submit'

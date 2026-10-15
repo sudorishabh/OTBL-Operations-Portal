@@ -1,6 +1,7 @@
 import z from "zod";
 import * as proposalSchema from "./proposal.schema";
 import { workOrderType } from "../work-order/work-order.type";
+import type { StoredDocument } from "../validators";
 
 export type BaseProposalInput = z.infer<
   typeof proposalSchema.baseProposalSchema
@@ -18,7 +19,7 @@ export type proposalType = {
   office_id: number;
   code: string;
   title: string;
-  document_key: string;
+  documents: StoredDocument[] | null;
   description: string | null;
   proposal_submission_date: string;
   status: "approved" | "rejected" | "pending";
