@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { HardHat } from "lucide-react";
+import { HardHat, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalFirstLetter } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import VendorFormDialog from "@/components/vendor/vendor-form-dialog";
 import type { Restoration } from "./restoration-section";
 
 type Vendor = { id: number; name: string; status: string };
@@ -28,6 +29,7 @@ const RestorationContractorCard = ({ restoration, workOrderId }: Props) => {
   const utils = trpc.useUtils();
   const [isEditing, setIsEditing] = useState(false);
   const [selectedId, setSelectedId] = useState("");
+  const [isAddingVendor, setIsAddingVendor] = useState(false);
   const contractor = restoration.contractor;
 
   const vendorsQuery = trpc.contractorQuery.getContractors.useQuery(
@@ -92,15 +94,24 @@ const RestorationContractorCard = ({ restoration, workOrderId }: Props) => {
           </div>
         </div>
         {isManager && !isEditing && (
-          <CustomButton
-            variant='outline'
-            text={contractor ? "Change contractor" : "Assign contractor"}
-            onClick={() => {
-              setSelectedId(contractor ? String(contractor.id) : "");
-              setIsEditing(true);
-            }}
-            disableForViewer
-          />
+          <div className='flex shrink-0 gap-2'>
+            <CustomButton
+              variant='outline'
+              Icon={Plus}
+              text='New vendor'
+              onClick={() => setIsAddingVendor(true)}
+              disableForViewer
+            />
+            <CustomButton
+              variant='outline'
+              text={contractor ? "Change contractor" : "Assign contractor"}
+              onClick={() => {
+                setSelectedId(contractor ? String(contractor.id) : "");
+                setIsEditing(true);
+              }}
+              disableForViewer
+            />
+          </div>
         )}
       </div>
 
@@ -121,8 +132,7 @@ const RestorationContractorCard = ({ restoration, workOrderId }: Props) => {
             <SelectContent>
               {!vendorsQuery.isLoading && vendors.length === 0 && (
                 <div className='px-3 py-2 text-xs text-gray-500'>
-                  This office has no active vendors. Add one on the Vendors
-                  page.
+                  No active vendors yet. Use New vendor to add one.
                 </div>
               )}
               {vendors.map((vendor) => (
@@ -136,6 +146,13 @@ const RestorationContractorCard = ({ restoration, workOrderId }: Props) => {
             </SelectContent>
           </Select>
           <div className='flex gap-2'>
+            <CustomButton
+              variant='outline'
+              Icon={Plus}
+              text='New vendor'
+              onClick={() => setIsAddingVendor(true)}
+              disableForViewer
+            />
             <CustomButton
               variant='primary'
               text='Save'
@@ -159,6 +176,13 @@ const RestorationContractorCard = ({ restoration, workOrderId }: Props) => {
           </div>
         </div>
       )}
+
+      {/* A vendor added here becomes the contractor right away. */}
+      <VendorFormDialog
+        open={isAddingVendor}
+        onOpenChange={setIsAddingVendor}
+        onSaved={(vendorId) => save(vendorId)}
+      />
     </div>
   );
 };
