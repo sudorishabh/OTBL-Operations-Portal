@@ -144,6 +144,8 @@ interface Props {
   contractors?: { id: number; name: string }[];
   // Off when the caller already shows estimated, used and left quantities.
   showEstimateTable?: boolean;
+  // Off to drop the income, expenses and net P&L cards.
+  showSummaryCards?: boolean;
   // Extra buttons beside Add Expense.
   headerActions?: React.ReactNode;
   // Shown on a vendor with no expenses, such as a button to remove it.
@@ -156,6 +158,7 @@ const SiteExpensesSection = ({
   splitByContractor = false,
   contractors = [],
   showEstimateTable = true,
+  showSummaryCards = true,
   headerActions,
   emptyVendorActions,
 }: Props) => {
@@ -706,59 +709,61 @@ const SiteExpensesSection = ({
         </DialogContent>
       </Dialog>
 
-      <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
-        <div className='rounded-lg border bg-emerald-50/60 border-emerald-100 p-2.5'>
-          <div className='flex items-center gap-1 mb-0.5'>
-            <TrendingUp className='w-2.5 h-2.5 text-emerald-600' />
-            <span className='text-[10px] font-semibold text-emerald-600 uppercase tracking-wider'>
-              Income Earned
-            </span>
-          </div>
-          <p className='text-sm font-bold text-emerald-700 leading-tight'>
-            {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(incomeTotal)}
-          </p>
-          <p className='text-[8px] text-emerald-600 mt-0.5'>From completed activities</p>
-        </div>
-
-        <div className='rounded-lg border border-gray-100 p-2.5 space-y-1'>
-          <div className='flex items-center gap-1'>
-            <TrendingDown className='w-2.5 h-2.5 text-gray-500' />
-            <span className='text-[10px] font-semibold text-gray-500 uppercase tracking-wider'>
-              Total Expenses
-            </span>
-          </div>
-          <p className='text-sm font-bold text-gray-800 leading-tight'>
-            {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(expenseTotal)}
-          </p>
-          {exceededTotal > 0 && (
-            <div className='flex flex-col gap-0.5 pt-1 border-t border-gray-100'>
-              <span className='text-[8px] text-gray-400'>
-                Regular: {formatCurrency(regularTotal)}
-              </span>
-              <span className='text-[8px] text-orange-600 font-semibold flex items-center gap-1'>
-                <AlertTriangle className='w-2 h-2' />
-                Exceeded: {formatCurrency(exceededTotal)}
+      {showSummaryCards && (
+        <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
+          <div className='rounded-lg border bg-emerald-50/60 border-emerald-100 p-2.5'>
+            <div className='flex items-center gap-1 mb-0.5'>
+              <TrendingUp className='w-2.5 h-2.5 text-emerald-600' />
+              <span className='text-[10px] font-semibold text-emerald-600 uppercase tracking-wider'>
+                Income Earned
               </span>
             </div>
-          )}
-        </div>
-
-        <div
-          className={`rounded-lg border p-2.5 ${netPL >= 0 ? "bg-emerald-50/60 border-emerald-100" : "bg-orange-50/60 border-orange-100"}`}>
-          <div className='flex items-center gap-1 mb-0.5'>
-            <Minus className={`w-2.5 h-2.5 ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
-            <span className={`text-[10px] font-semibold uppercase tracking-wider ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`}>
-              Net P&amp;L
-            </span>
+            <p className='text-sm font-bold text-emerald-700 leading-tight'>
+              {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(incomeTotal)}
+            </p>
+            <p className='text-[8px] text-emerald-600 mt-0.5'>From completed activities</p>
           </div>
-          <p className={`text-sm font-bold leading-tight ${netPL >= 0 ? "text-emerald-700" : "text-orange-700"}`}>
-            {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(Math.abs(netPL))}
-          </p>
-          <p className={`text-[8px] mt-0.5 ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`}>
-            {netPL >= 0 ? "Surplus" : "Deficit"}
-          </p>
+
+          <div className='rounded-lg border border-gray-100 p-2.5 space-y-1'>
+            <div className='flex items-center gap-1'>
+              <TrendingDown className='w-2.5 h-2.5 text-gray-500' />
+              <span className='text-[10px] font-semibold text-gray-500 uppercase tracking-wider'>
+                Total Expenses
+              </span>
+            </div>
+            <p className='text-sm font-bold text-gray-800 leading-tight'>
+              {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(expenseTotal)}
+            </p>
+            {exceededTotal > 0 && (
+              <div className='flex flex-col gap-0.5 pt-1 border-t border-gray-100'>
+                <span className='text-[8px] text-gray-400'>
+                  Regular: {formatCurrency(regularTotal)}
+                </span>
+                <span className='text-[8px] text-orange-600 font-semibold flex items-center gap-1'>
+                  <AlertTriangle className='w-2 h-2' />
+                  Exceeded: {formatCurrency(exceededTotal)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div
+            className={`rounded-lg border p-2.5 ${netPL >= 0 ? "bg-emerald-50/60 border-emerald-100" : "bg-orange-50/60 border-orange-100"}`}>
+            <div className='flex items-center gap-1 mb-0.5'>
+              <Minus className={`w-2.5 h-2.5 ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
+              <span className={`text-[10px] font-semibold uppercase tracking-wider ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`}>
+                Net P&amp;L
+              </span>
+            </div>
+            <p className={`text-sm font-bold leading-tight ${netPL >= 0 ? "text-emerald-700" : "text-orange-700"}`}>
+              {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(Math.abs(netPL))}
+            </p>
+            <p className={`text-[8px] mt-0.5 ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`}>
+              {netPL >= 0 ? "Surplus" : "Deficit"}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {showEstimateTable && (
         <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>

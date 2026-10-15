@@ -128,6 +128,7 @@ const RestorationDialog = ({
               splitByContractor
               contractors={restoration.contractors}
               showEstimateTable={false}
+              showSummaryCards={false}
               headerActions={
                 <AddRestorationVendor
                   restoration={restoration}
