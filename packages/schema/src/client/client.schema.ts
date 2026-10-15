@@ -8,8 +8,8 @@ import {
   stateValidator,
   pincodeValidator,
   gstNumberValidator,
-  mobileValidator,
-  optionalMobileValidator,
+  contactNumberValidator,
+  optionalContactNumberValidator,
   positiveIntValidator,
   searchQueryValidator,
 } from "../validators";
@@ -26,7 +26,7 @@ export const createClientSchema = z.object({
   city: cityValidator,
   pincode: pincodeValidator,
   gst_number: gstNumberValidator,
-  contact_number: optionalMobileValidator,
+  contact_number: optionalContactNumberValidator,
   email: optionalEmailValidator,
   status: statusEnum.optional(),
 });
@@ -43,7 +43,7 @@ export const createClientContactSchema = z.object({
     .trim()
     .max(100, "Designation cannot exceed 100 characters")
     .optional(),
-  contact_number: mobileValidator,
+  contact_number: contactNumberValidator,
   email: emailValidator,
   contact_type: z
     .string()

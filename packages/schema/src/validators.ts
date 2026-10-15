@@ -47,21 +47,28 @@ export const optionalEmailValidator = z
   .optional()
   .or(z.literal(""));
 
-export const mobileValidator = z
-  .string({ message: "Mobile number is required" })
-  .trim()
-  .regex(
-    /^(\+91[\-\s]?)?[6-9]\d{9}$/,
-    "Please enter a valid Indian mobile number (10 digits starting with 6-9)",
-  );
+// A mobile (98765 43210) or a landline with its STD code (011-23456789),
+// optionally prefixed by +91, 91 or 0. Spaces, hyphens and brackets are ignored.
+const CONTACT_NUMBER_PATTERN = /^(?:\+91|91|0)?[1-9]\d{9}$/;
+const CONTACT_NUMBER_MESSAGE =
+  "Please enter a valid mobile or landline number (with STD code)";
 
-export const optionalMobileValidator = z
+const isContactNumber = (value: string) =>
+  CONTACT_NUMBER_PATTERN.test(value.replace(/[\s\-()]/g, ""));
+
+// The 15 character limit matches the varchar(15) contact_number columns.
+export const contactNumberValidator = z
+  .string({ message: "Contact number is required" })
+  .trim()
+  .min(1, "Contact number is required")
+  .max(15, "Contact number cannot exceed 15 characters")
+  .refine(isContactNumber, CONTACT_NUMBER_MESSAGE);
+
+export const optionalContactNumberValidator = z
   .string()
   .trim()
-  .regex(
-    /^(\+91[\-\s]?)?[6-9]\d{9}$/,
-    "Please enter a valid Indian mobile number (10 digits starting with 6-9)",
-  )
+  .max(15, "Contact number cannot exceed 15 characters")
+  .refine(isContactNumber, CONTACT_NUMBER_MESSAGE)
   .optional()
   .or(z.literal(""));
 
@@ -273,7 +280,7 @@ export const addressFieldsValidator = z.object({
 
 export const contactFieldsValidator = z.object({
   email: emailValidator,
-  mobile: mobileValidator,
+  mobile: contactNumberValidator,
 });
 
 export const paginationFieldsValidator = z.object({
