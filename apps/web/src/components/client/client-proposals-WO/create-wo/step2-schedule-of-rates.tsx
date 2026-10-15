@@ -75,19 +75,29 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
   });
 
   const processType = form.watch("process_type");
+  // `form` is a new object every render, so depend on its stable getValues.
+  const { getValues } = form;
 
   // List exactly the process type's activities, keeping anything already
   // entered if the user comes back to this step.
   useEffect(() => {
-    const current = form.getValues("schedule_of_rates") ?? [];
+    const current = getValues("schedule_of_rates") ?? [];
+    const activities = activitiesForProcess(processType);
+    const isInSync =
+      current.length === activities.length &&
+      activities.every(
+        (option, i) => current[i]?.activity.name === option.value,
+      );
+    if (isInSync) return;
+
     replace(
-      activitiesForProcess(processType).map(
+      activities.map(
         (option) =>
           current.find((row) => row.activity.name === option.value) ??
           emptyRow(option),
       ),
     );
-  }, [form, processType, replace]);
+  }, [getValues, processType, replace]);
 
   const calculateRates = (index: number) => {
     const values = form.getValues(`schedule_of_rates.${index}`);
