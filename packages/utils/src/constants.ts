@@ -85,13 +85,23 @@ export const WO_UNITS = {
   M_SQUARE: "m²",
   M_CUBE: "m³",
   MT: "MT",
+  KM_M_CUBE: "km/m³",
 } as const;
 
 export const unitOptions = [
   { value: WO_UNITS.M_SQUARE, label: "m² (Square Meter)" },
   { value: WO_UNITS.M_CUBE, label: "m³ (Cubic Meter)" },
   { value: WO_UNITS.MT, label: "MT (Metric Ton)" },
+  { value: WO_UNITS.KM_M_CUBE, label: "km/m³ (Per km per Cubic Meter)" },
 ];
+
+// Distance slabs a transportation SOR quantity is split into; their sum is
+// the activity's estimated quantity.
+export const TRANSPORT_SLABS = [
+  { key: "up_to_5_km", label: "Up to 5 KM" },
+  { key: "over_20_km", label: "More than 20 KM" },
+  { key: "over_40_km", label: "More than 40 KM (additional per km)" },
+] as const;
 
 export const GST_PERCENTAGE = 18;
 
@@ -104,35 +114,42 @@ export const DOCUMENT_EXTENSIONS = [".pdf"];
 // The one exception: site photos taken with the operator page camera.
 export const PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png"];
 
+// Every activity is billed in one fixed unit.
 export const allActivityOptions = [
   {
     value: WO_ACTIVITIES.clean_soil_area,
     label: "Cleaning Up Soil Area",
+    unit: WO_UNITS.M_SQUARE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL,
     label: "Lifting Oily Slush / Recovery of Oil",
+    unit: WO_UNITS.M_CUBE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL,
     label: "Excavation Oil Contaminated Soil",
+    unit: WO_UNITS.M_CUBE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
     label: "Transportation Contaminated Soil",
+    unit: WO_UNITS.KM_M_CUBE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND,
     label: "Refilling Excavated Oil Contaminated Soil Land",
+    unit: WO_UNITS.M_CUBE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL,
     label: "Bioremediation Oil Contaminated Soil",
+    unit: WO_UNITS.MT,
     isBioremediation: true,
   },
 ];
@@ -152,6 +169,7 @@ export default {
   PHOTO_EXTENSIONS,
   processTypeOptions,
   unitOptions,
+  TRANSPORT_SLABS,
   allActivityOptions,
   ACTIVITY_TYPE,
   ACTIVITY_PHASE,
