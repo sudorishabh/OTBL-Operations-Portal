@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import SiteActivities from "../site-details-dialog/site-activities";
 import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
+import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
+import RestorationContractorCard from "./restoration-contractor-card";
 import RestorationSummary from "./restoration-summary";
 import RestorationRatesTable, {
   RestorationRate,
@@ -71,7 +73,7 @@ const RestorationDialog = ({
         />
 
         <Tabs defaultValue='rates'>
-          <TabsList className='grid h-9 w-full grid-cols-2'>
+          <TabsList className='grid h-9 w-full grid-cols-3'>
             <TabsTrigger
               value='rates'
               className='text-xs'>
@@ -81,6 +83,11 @@ const RestorationDialog = ({
               value='estimate'
               className='text-xs'>
               Estimate/sub-WO
+            </TabsTrigger>
+            <TabsTrigger
+              value='expenses'
+              className='text-xs'>
+              Expenses
             </TabsTrigger>
           </TabsList>
 
@@ -101,6 +108,23 @@ const RestorationDialog = ({
               processType={WO_PROCESS.RESTORATION}
               phase='estimate_sub-wo'
               showPhaseTabs={false}
+            />
+          </TabsContent>
+
+          <TabsContent
+            value='expenses'
+            className='mt-4 space-y-4'>
+            <RestorationContractorCard
+              restoration={restoration}
+              officeId={workOrder.office_id}
+              workOrderId={workOrder.id}
+            />
+            <SiteExpensesSection
+              woSiteId={restoration.id}
+              officeId={workOrder.office_id}
+              processType={WO_PROCESS.RESTORATION}
+              splitByContractor
+              contractor={restoration.contractor}
             />
           </TabsContent>
         </Tabs>
