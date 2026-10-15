@@ -15,6 +15,13 @@
       "when": 1792053849375,
       "tag": "0001_add_documents_lists",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1792055862380,
+      "tag": "0002_add_parent_clients",
+      "breakpoints": true
     }
   ]
 }
