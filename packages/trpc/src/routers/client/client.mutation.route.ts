@@ -1,16 +1,114 @@
-import { eq } from "drizzle-orm";
-import { schema } from "@pkg/db";
+import { and, eq, ne } from "drizzle-orm";
+import { schema, type Database } from "@pkg/db";
 import { router } from "../../trpc";
 import { adminProcedure } from "../../middleware";
 import { clientSchemas } from "@pkg/schema";
-import { notFound, fromDatabaseError } from "../../errors";
+import { notFound, alreadyExists, fromDatabaseError } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 
-const { clientTable, clientContactTable } = schema;
+const { parentClientTable, clientTable, clientContactTable } = schema;
+
+async function assertParentClientNameAvailable(
+  db: Database,
+  name: string,
+  exceptId?: number,
+) {
+  const [duplicate] = await db
+    .select({ id: parentClientTable.id })
+    .from(parentClientTable)
+    .where(
+      exceptId
+        ? and(eq(parentClientTable.name, name), ne(parentClientTable.id, exceptId))
+        : eq(parentClientTable.name, name),
+    )
+    .limit(1);
+
+  if (duplicate) {
+    throw alreadyExists("Main client", name, {
+      userMessage: "A main client with this name already exists.",
+    });
+  }
+}
+
+async function assertParentClientExists(
+  db: Database,
+  parentClientId: number | null | undefined,
+) {
+  if (!parentClientId) return;
+
+  const [parent] = await db
+    .select({ id: parentClientTable.id })
+    .from(parentClientTable)
+    .where(eq(parentClientTable.id, parentClientId))
+    .limit(1);
+
+  if (!parent) {
+    throw notFound("Main client", parentClientId, {
+      userMessage: "The selected main client no longer exists.",
+    });
+  }
+}
 
 export const clientMutationRouter = router({
+  createParentClient: adminProcedure
+    .input(clientSchemas.createParentClientSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        await assertParentClientNameAvailable(ctx.db, input.name);
+
+        try {
+          const result = await ctx.db.insert(parentClientTable).values(input);
+
+          return { success: true, parentClientId: result[0].insertId };
+        } catch (error) {
+          throw fromDatabaseError(error, "Creating main client");
+        }
+      }),
+    ),
+
+  updateParentClient: adminProcedure
+    .input(clientSchemas.updateParentClientSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        await assertParentClientExists(ctx.db, input.id);
+        await assertParentClientNameAvailable(ctx.db, input.name, input.id);
+
+        try {
+          await ctx.db
+            .update(parentClientTable)
+            .set({ name: input.name })
+            .where(eq(parentClientTable.id, input.id));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Updating main client");
+        }
+      }),
+    ),
+
+  // Branches are kept; the foreign key ungroups them (ON DELETE SET NULL).
+  deleteParentClient: adminProcedure
+    .input(clientSchemas.deleteParentClientSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        await assertParentClientExists(ctx.db, input.parentClientId);
+
+        try {
+          await ctx.db
+            .delete(parentClientTable)
+            .where(eq(parentClientTable.id, input.parentClientId));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Deleting main client");
+        }
+      }),
+    ),
+
   createClient: adminProcedure.input(clientSchemas.createClientSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
+      await assertParentClientExists(ctx.db, input.parent_client_id);
+
       try {
         const result = await ctx.db.insert(clientTable).values(input);
 
@@ -28,6 +126,8 @@ export const clientMutationRouter = router({
     .input(clientSchemas.createClientWithContactsSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
+        await assertParentClientExists(ctx.db, input.client.parent_client_id);
+
         try {
           const clientResult = await ctx.db
             .insert(clientTable)
@@ -68,6 +168,8 @@ export const clientMutationRouter = router({
       if (existingClient.length === 0) {
         throw notFound("Client", id);
       }
+
+      await assertParentClientExists(ctx.db, rest.parent_client_id);
 
       try {
         await ctx.db
@@ -200,6 +302,8 @@ export const clientMutationRouter = router({
         if (existingClient.length === 0) {
           throw notFound("Client", clientId);
         }
+
+        await assertParentClientExists(ctx.db, client.parent_client_id);
 
         try {
           if (Object.keys(client).length > 0) {
