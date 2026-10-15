@@ -1,13 +1,19 @@
+import { WO_PROCESS, allActivityOptions } from "./constants";
+
 export type EffectiveWorkOrderStatus = "pending" | "completed" | "cancelled";
 
+// Only bioremediation records completion quantities.
 export const SOR_ACTIVITY_TO_COMPLETION_ACTIVITY: Record<string, string> = {
-  clean_soil_area: "clean_soil_area",
-  lifting_oily_slush_or_recovery_of_oil: "lifting_oil_slush",
-  excavation_oil_contaminated_soil: "excav_cont_soil",
-  transportation_contaminated_soil: "trans_cont_soil",
-  refilling_excavated_oil_contaminated_soil_land: "refill_excav_soil",
   bioremediation_oil_contaminated_soil: "biorem_cont_soil",
 };
+
+// Restoration records no quantities: its activities are done once the
+// restoration is marked complete.
+const RESTORATION_ACTIVITIES = new Set<string>(
+  allActivityOptions
+    .filter((option) => !option.isBioremediation)
+    .map((option) => option.value),
+);
 
 export function activityKey(name: string): string {
   const v = (name || "").trim().toLowerCase();
@@ -31,6 +37,8 @@ export interface ScheduleOfRateRow {
 }
 
 export interface SiteWithCompletions {
+  process_type?: string | null;
+  is_completed?: boolean | null;
   completions?: Array<{
     activity_name: string;
     estimated_quantity?: unknown;
@@ -54,13 +62,18 @@ export function computeSorFullyConsumed(
     {},
   );
 
+  const restorationCompleted = (sites || []).some(
+    (s) => s.process_type === WO_PROCESS.RESTORATION && !!s.is_completed,
+  );
+
   return scheduleOfRates.every((item) => {
+    const sorQty = toNumberSafe(item.estimated_quantity);
+    if (sorQty <= 0) return true;
+    if (RESTORATION_ACTIVITIES.has(item.activity)) return restorationCompleted;
+
     const completionActivity =
       SOR_ACTIVITY_TO_COMPLETION_ACTIVITY[item.activity] ?? item.activity;
     const usedQty = usedQtyByActivity[activityKey(completionActivity)] ?? 0;
-    const sorQty = toNumberSafe(item.estimated_quantity);
-
-    if (sorQty <= 0) return true;
     return usedQty + 1e-6 >= sorQty;
   });
 }
