@@ -18,6 +18,8 @@ import React, { useMemo, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import CustomButton from "@/components/shared/btn";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
+import DocumentsMenu from "@/components/shared/documents-menu";
+import { toDocuments, type StoredDocument } from "@/lib/documents";
 
 interface Props {
   clientId: number;
@@ -159,24 +161,25 @@ const StageLabel = ({ children }: { children: React.ReactNode }) => (
 );
 
 const DocumentLink = ({
-  href,
+  documents,
   tone,
 }: {
-  href: string;
+  documents: StoredDocument[];
   tone: "sky" | "emerald";
 }) => (
-  <a
-    href={href}
-    target='_blank'
-    rel='noreferrer'
-    onClick={(e) => e.stopPropagation()}
-    className={cn(
-      "inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline",
-      tone === "sky" ? "text-sky-600" : "text-emerald-600",
-    )}>
-    <ExternalLink className='h-3.5 w-3.5' />
-    Document
-  </a>
+  <DocumentsMenu
+    documents={documents}
+    align='start'>
+    <button
+      type='button'
+      className={cn(
+        "inline-flex cursor-pointer items-center gap-1 font-medium underline-offset-2 hover:underline",
+        tone === "sky" ? "text-sky-600" : "text-emerald-600",
+      )}>
+      <ExternalLink className='h-3.5 w-3.5' />
+      {documents.length === 1 ? "Document" : `${documents.length} documents`}
+    </button>
+  </DocumentsMenu>
 );
 
 // One step of the proposal to work order run. `connected` draws the thread
@@ -339,12 +342,10 @@ const ProposalRow = ({
             </div>
             <StageMeta>
               {submitted && <span>Submitted {submitted}</span>}
-              {proposal.document_key && (
-                <DocumentLink
-                  href={proposal.document_key}
-                  tone='sky'
-                />
-              )}
+              <DocumentLink
+                documents={toDocuments(proposal.documents)}
+                tone='sky'
+              />
               {workOrder && (
                 <button
                   type='button'
@@ -404,12 +405,10 @@ const ProposalRow = ({
                       Agreement {workOrder.agreement_number}
                     </span>
                   )}
-                  {workOrder.document_key && (
-                    <DocumentLink
-                      href={workOrder.document_key}
-                      tone='emerald'
-                    />
-                  )}
+                  <DocumentLink
+                    documents={toDocuments(workOrder.documents)}
+                    tone='emerald'
+                  />
                 </StageMeta>
               </>
             ) : (
