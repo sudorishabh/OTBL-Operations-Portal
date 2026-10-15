@@ -4,6 +4,7 @@ import {
   Info,
   Mail,
   MapPin,
+  Pencil,
   Plus,
   ReceiptText,
   UserCog,
@@ -95,6 +96,13 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
       dialog: "view-office",
       officeId: office.id.toString(),
       officeName: office.name,
+    });
+  };
+
+  const handleEditOfficeOpen = () => {
+    setParams({
+      dialog: "edit-office",
+      officeId: office.id.toString(),
     });
   };
 
@@ -273,6 +281,15 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
             variant='arrow'
             onClick={handleOfficeDetailsDialogOpen}
           />
+          {office.canManage && (
+            <CustomButton
+              text='Edit'
+              Icon={Pencil}
+              variant='outline'
+              onClick={handleEditOfficeOpen}
+              disableForViewer
+            />
+          )}
           {office.canManage && (
             <CustomButton
               text='Members'
