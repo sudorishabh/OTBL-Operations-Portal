@@ -206,16 +206,12 @@ const sharePointMutationRouterRecord = {
 
       try {
         const config = getSharePointConfig(ctx.appEnv);
-        console.log("config", config);
-        1;
         const service = createSharePointService(config);
-        console.log("service", service);
         const session = await service.createUploadSession(
           input.folderPath,
           input.fileName,
           input.conflictBehavior,
         );
-        console.log("session", session);
         return {
           success: true,
           ...session,
