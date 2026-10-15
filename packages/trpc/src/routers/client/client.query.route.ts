@@ -21,6 +21,7 @@ import { clientSchemas } from "@pkg/schema";
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { hasPhysicalSite } from "../../helper/restoration";
 import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
 
@@ -211,7 +212,10 @@ export const clientQueryRouter = router({
               .from(workOrderTable)
               .leftJoin(
                 workOrderSiteTable,
-                eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+                and(
+                  eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+                  hasPhysicalSite,
+                ),
               )
               .where(inArray(workOrderTable.client_id, ids))
               .groupBy(workOrderTable.client_id),
@@ -319,11 +323,14 @@ export const clientQueryRouter = router({
 
         if (workOrderIds.length > 0) {
           const woSites = await ctx.db
-            .select({ id: workOrderSiteTable.id })
+            .select({
+              id: workOrderSiteTable.id,
+              site_id: workOrderSiteTable.site_id,
+            })
             .from(workOrderSiteTable)
             .where(inArray(workOrderSiteTable.work_order_id, workOrderIds));
 
-          siteCount = woSites.length;
+          siteCount = woSites.filter((s) => s.site_id != null).length;
 
           const sors = await ctx.db
             .select({ total_cost: scheduleOfRatesTable.total_cost })

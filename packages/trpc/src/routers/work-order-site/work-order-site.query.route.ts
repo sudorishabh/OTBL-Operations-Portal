@@ -12,6 +12,7 @@ import {
 import { assertOfficeManager } from "../../helper/office-permissions";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { siteNameOrRestoration } from "../../helper/restoration";
 import { z } from "zod";
 import { fromDatabaseError, notFound } from "../../errors";
 
@@ -67,7 +68,7 @@ export const workOrderSiteQueryRouter = router({
               id: workOrderSiteOperatorUploadTable.id,
               work_order_site_id:
                 workOrderSiteOperatorUploadTable.work_order_site_id,
-              site_name: siteTable.name,
+              site_name: siteNameOrRestoration,
               description: workOrderSiteOperatorUploadTable.description,
               file_name: workOrderSiteOperatorUploadTable.file_name,
               document_url: workOrderSiteOperatorUploadTable.document_url,
@@ -83,7 +84,7 @@ export const workOrderSiteQueryRouter = router({
                 workOrderSiteTable.id,
               ),
             )
-            .innerJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+            .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
             .innerJoin(
               userTable,
               eq(
@@ -125,7 +126,7 @@ export const workOrderSiteQueryRouter = router({
             work_order_id: workOrderTable.id,
             wo_code: workOrderTable.code,
             wo_title: workOrderTable.title,
-            site_name: siteTable.name,
+            site_name: siteNameOrRestoration,
             site_address: siteTable.address,
             site_city: siteTable.city,
             site_state: siteTable.state,
@@ -142,10 +143,7 @@ export const workOrderSiteQueryRouter = router({
             workOrderTable,
             eq(workOrderSiteTable.work_order_id, workOrderTable.id),
           )
-          .innerJoin(
-            siteTable,
-            eq(workOrderSiteTable.site_id, siteTable.id),
-          )
+          .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
           .where(inArray(workOrderSiteTable.id, assignedIds))
           .orderBy(desc(workOrderSiteTable.date));
 
@@ -616,7 +614,7 @@ export const workOrderSiteQueryRouter = router({
               status: workOrderSiteTable.status,
               created_at: workOrderSiteTable.created_at,
               updated_at: workOrderSiteTable.updated_at,
-              site_name: siteTable.name,
+              site_name: siteNameOrRestoration,
               site_address: siteTable.address,
               site_city: siteTable.city,
               site_state: siteTable.state,

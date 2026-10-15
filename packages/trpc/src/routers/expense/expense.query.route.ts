@@ -9,6 +9,7 @@ import {
 } from "../../access-scope";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
+import { siteNameOrRestoration } from "../../helper/restoration";
 import { z } from "zod";
 
 const {
@@ -241,7 +242,7 @@ export const expenseQueryRouter = router({
               id: workOrderSiteExpenseTable.id,
               work_order_site_id: workOrderSiteExpenseTable.work_order_site_id,
               site_id: workOrderSiteTable.site_id,
-              site_name: siteTable.name,
+              site_name: siteNameOrRestoration,
               expense_type: workOrderSiteExpenseTable.expense_type,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
               contractor_name: contractorTable.name,
@@ -264,10 +265,7 @@ export const expenseQueryRouter = router({
                 workOrderSiteTable.id,
               ),
             )
-            .innerJoin(
-              siteTable,
-              eq(workOrderSiteTable.site_id, siteTable.id),
-            )
+            .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
             .leftJoin(
               contractorTable,
               eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),

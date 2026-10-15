@@ -22,6 +22,7 @@ const {
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { hasPhysicalSite, siteNameOrRestoration } from "../../helper/restoration";
 import { USER_ROLES } from "../../authorization";
 import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
@@ -389,9 +390,11 @@ export const workOrderQueryRouter = router({
             : eq(workOrderSiteTable.id, -1)
           : undefined;
 
-        const woSiteWhere = siteRowFilter
-          ? and(eq(workOrderSiteTable.work_order_id, id), siteRowFilter)
-          : eq(workOrderSiteTable.work_order_id, id);
+        const woSiteWhere = and(
+          eq(workOrderSiteTable.work_order_id, id),
+          hasPhysicalSite,
+          siteRowFilter,
+        );
 
         const [totalResult] = await ctx.db
           .select({ count: count() })
@@ -687,7 +690,8 @@ export const workOrderQueryRouter = router({
           .select({
             wo_site_id: workOrderSiteTable.id,
             site_id: siteTable.id,
-            site_name: siteTable.name,
+            site_name: siteNameOrRestoration,
+            process_type: workOrderSiteTable.process_type,
             site_address: siteTable.address,
             site_city: siteTable.city,
             site_state: siteTable.state,
@@ -933,6 +937,7 @@ export const workOrderQueryRouter = router({
               pincode: woSite.site_pincode,
             },
             wo_site_id: woSite.wo_site_id,
+            process_type: woSite.process_type,
             start_date: woSite.start_date,
             end_date: woSite.end_date,
             status: woSite.status,
@@ -973,7 +978,8 @@ export const workOrderQueryRouter = router({
           sites: sitesWithDetails,
           scheduleOfRates,
           stats: {
-            total_sites: sitesWithDetails.length,
+            total_sites: sitesWithDetails.filter((s) => s.site.id != null)
+              .length,
           },
           work_order_expense_summary: {
             total_expenses: woExpenseTotal,
