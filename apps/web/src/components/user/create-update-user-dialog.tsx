@@ -339,7 +339,7 @@ const CreateUpdateUserDialog = () => {
               Label='Contact Number'
               LabelIcon={Phone}
               type='tel'
-              placeholder='Enter contact number'
+              placeholder='98765 43210 or 011-23456789'
               optional
             />
 
