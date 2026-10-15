@@ -15,7 +15,7 @@ import { capitalFirstLetter, constants } from "@pkg/utils";
 import Input from "@/components/shared/input";
 import { format } from "date-fns";
 
-const { WO_PROCESS, allActivityOptions } = constants;
+const { allActivityOptions } = constants;
 
 const { createWorkOrderSiteSchema } = workOrderSchemas;
 import {
@@ -61,8 +61,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
     defaultValues: {
       work_order_id: workOrder.id,
       client_id: workOrder.client_id,
-      // Only bioremediation work happens at sites.
-      process_type: WO_PROCESS.BIOREMEDIATION,
       selected_activities: [],
       new_site: undefined,
     },
