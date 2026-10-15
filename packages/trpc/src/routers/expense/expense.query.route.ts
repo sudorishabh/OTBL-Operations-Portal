@@ -17,11 +17,6 @@ const {
   contractorTable,
   workOrderSiteTable,
   siteTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
   bioremediationContSoilTable,
 } = schema;
 
@@ -142,33 +137,18 @@ export const expenseQueryRouter = router({
           const exceededTotal = Number(exceededRows[0]?.total ?? 0);
           const regularTotal = grandTotal - exceededTotal;
 
-          const completionTables = [
-            cleaningUpSoilAreaTable,
-            liftingRecoveryOilSlushTable,
-            excavationContSoilTable,
-            transportationContSoilTable,
-            refillingExcavatedContSoilTable,
-            bioremediationContSoilTable,
-          ] as const;
-
-          const completionResults = await Promise.all(
-            completionTables.map((tbl) =>
-              ctx.db
-                .select({ total: sum((tbl as any).amount) })
-                .from(tbl as any)
-                .where(
-                  and(
-                    eq((tbl as any).work_order_site_id, work_order_site_id),
-                    eq((tbl as any).type, "completion"),
-                  ),
-                ),
-            ),
-          );
-
-          let incomeTotal = 0;
-          for (const result of completionResults) {
-            incomeTotal += Number(result[0]?.total ?? 0);
-          }
+          // Only bioremediation completion earns income; restoration tracks
+          // its expenses alone.
+          const [income] = await ctx.db
+            .select({ total: sum(bioremediationContSoilTable.amount) })
+            .from(bioremediationContSoilTable)
+            .where(
+              and(
+                eq(bioremediationContSoilTable.work_order_site_id, work_order_site_id),
+                eq(bioremediationContSoilTable.type, "completion"),
+              ),
+            );
+          const incomeTotal = Number(income?.total ?? 0);
 
           const activityRows = await ctx.db
             .select({

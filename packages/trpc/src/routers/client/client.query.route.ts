@@ -33,11 +33,6 @@ const {
   workOrderSiteTable,
   proposalTable,
   scheduleOfRatesTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
   bioremediationContSoilTable
 } = schema;
 
@@ -341,80 +336,19 @@ export const clientQueryRouter = router({
 
           if (woSites.length > 0) {
             const woSiteIds = woSites.map(s => s.id);
-            const [
-              cleanSoilAreaExp,
-              liftingOilExp,
-              excavSoilExp,
-              transSoilExp,
-              refillSoilExp,
-              bioremSoilExp,
-            ] = await Promise.all([
-              ctx.db
-                .select({ amount: cleaningUpSoilAreaTable.amount })
-                .from(cleaningUpSoilAreaTable)
-                .where(
-                  and(
-                    inArray(cleaningUpSoilAreaTable.work_order_site_id, woSiteIds),
-                    eq(cleaningUpSoilAreaTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: liftingRecoveryOilSlushTable.amount })
-                .from(liftingRecoveryOilSlushTable)
-                .where(
-                  and(
-                    inArray(liftingRecoveryOilSlushTable.work_order_site_id, woSiteIds),
-                    eq(liftingRecoveryOilSlushTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: excavationContSoilTable.amount })
-                .from(excavationContSoilTable)
-                .where(
-                  and(
-                    inArray(excavationContSoilTable.work_order_site_id, woSiteIds),
-                    eq(excavationContSoilTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: transportationContSoilTable.amount })
-                .from(transportationContSoilTable)
-                .where(
-                  and(
-                    inArray(transportationContSoilTable.work_order_site_id, woSiteIds),
-                    eq(transportationContSoilTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: refillingExcavatedContSoilTable.amount })
-                .from(refillingExcavatedContSoilTable)
-                .where(
-                  and(
-                    inArray(refillingExcavatedContSoilTable.work_order_site_id, woSiteIds),
-                    eq(refillingExcavatedContSoilTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: bioremediationContSoilTable.amount })
-                .from(bioremediationContSoilTable)
-                .where(
-                  and(
-                    inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
-                    eq(bioremediationContSoilTable.type, "completion" as any)
-                  )
-                ),
-            ]);
+            // Only bioremediation completion earns income; restoration
+            // tracks its expenses alone.
+            const bioremSoilExp = await ctx.db
+              .select({ amount: bioremediationContSoilTable.amount })
+              .from(bioremediationContSoilTable)
+              .where(
+                and(
+                  inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
+                  eq(bioremediationContSoilTable.type, "completion" as any)
+                )
+              );
 
-            const allAmounts = [
-              ...cleanSoilAreaExp,
-              ...liftingOilExp,
-              ...excavSoilExp,
-              ...transSoilExp,
-              ...refillSoilExp,
-              ...bioremSoilExp,
-            ];
-
-            totalExpenseAmount = allAmounts.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+            totalExpenseAmount = bioremSoilExp.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
           }
         }
 

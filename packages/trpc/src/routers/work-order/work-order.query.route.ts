@@ -37,11 +37,6 @@ const {
   workOrderSiteUserTable,
   userTable,
   scheduleOfRatesTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
   bioremediationContSoilTable,
   workOrderSiteExpenseTable,
 } = schema;
@@ -750,104 +745,24 @@ export const workOrderQueryRouter = router({
 
         const woSiteIds = woSites.map((s: any) => s.wo_site_id);
 
+        // Only bioremediation records completion quantities and income;
+        // restoration tracks its expenses alone.
         let allCompletions: any[] = [];
         if (woSiteIds.length > 0) {
-          const [
-            cleanSoilAreaExp,
-            liftingOilExp,
-            excavSoilExp,
-            transSoilExp,
-            refillSoilExp,
-            bioremSoilExp,
-          ] = await Promise.all([
-            ctx.db
-              .select()
-              .from(cleaningUpSoilAreaTable)
-              .where(
-                and(
-                  inArray(
-                    cleaningUpSoilAreaTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(cleaningUpSoilAreaTable.type, "completion" as any),
-                ),
+          const bioremSoilExp = await ctx.db
+            .select()
+            .from(bioremediationContSoilTable)
+            .where(
+              and(
+                inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
+                eq(bioremediationContSoilTable.type, "completion" as any),
               ),
-            ctx.db
-              .select()
-              .from(liftingRecoveryOilSlushTable)
-              .where(
-                and(
-                  inArray(
-                    liftingRecoveryOilSlushTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(liftingRecoveryOilSlushTable.type, "completion" as any),
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(excavationContSoilTable)
-              .where(
-                and(
-                  inArray(
-                    excavationContSoilTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(excavationContSoilTable.type, "completion" as any),
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(transportationContSoilTable)
-              .where(
-                and(
-                  inArray(
-                    transportationContSoilTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(transportationContSoilTable.type, "completion" as any),
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(refillingExcavatedContSoilTable)
-              .where(
-                and(
-                  inArray(
-                    refillingExcavatedContSoilTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(refillingExcavatedContSoilTable.type, "completion" as any),
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(bioremediationContSoilTable)
-              .where(
-                and(
-                  inArray(
-                    bioremediationContSoilTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(bioremediationContSoilTable.type, "completion" as any),
-                ),
-              ),
-          ]);
+            );
 
-          const mapCompletion = (items: any[], activityName: string) =>
-            items.map((item) => ({
-              ...item,
-              activity_name: activityName,
-            }));
-
-          allCompletions = [
-            ...mapCompletion(cleanSoilAreaExp, "clean_soil_area"),
-            ...mapCompletion(liftingOilExp, "lifting_oil_slush"),
-            ...mapCompletion(excavSoilExp, "excav_cont_soil"),
-            ...mapCompletion(transSoilExp, "trans_cont_soil"),
-            ...mapCompletion(refillSoilExp, "refill_excav_soil"),
-            ...mapCompletion(bioremSoilExp, "biorem_cont_soil"),
-          ];
+          allCompletions = bioremSoilExp.map((item: any) => ({
+            ...item,
+            activity_name: "biorem_cont_soil",
+          }));
         }
 
         type SiteExpenseAgg = {
