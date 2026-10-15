@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { constants } from "@pkg/utils";
+import { capitalFirstLetter, constants } from "@pkg/utils";
 import {
   Table,
   TableBody,
@@ -80,6 +80,7 @@ type ExpenseRecordGroup = {
   isExceeded: boolean;
   description: string;
   notes: string | null;
+  contractorId: number | null;
   contractorName: string | null;
   invoiceNumber: string | null;
   documents: StoredDocument[];
@@ -136,9 +137,18 @@ interface Props {
   woSiteId: number;
   officeId: number;
   processType?: string;
+  // Lists expenses under the contractor apart from the rest.
+  splitByContractor?: boolean;
+  contractor?: { id: number; name: string } | null;
 }
 
-const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
+const SiteExpensesSection = ({
+  woSiteId,
+  officeId,
+  processType,
+  splitByContractor = false,
+  contractor = null,
+}: Props) => {
   const utils = trpc.useUtils();
   const isViewer = useIsViewer();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -339,6 +349,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
           isExceeded: !!exp.is_exceeded,
           description: exp.description,
           notes: exp.notes ?? null,
+          contractorId: exp.contractor_id ?? null,
           contractorName: exp.contractor_name ?? null,
           invoiceNumber: exp.invoice_number ?? null,
           documents: toDocuments(exp.documents),
@@ -541,6 +552,75 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
       </TableRow>
     );
   };
+
+  const renderRecordsTable = (groups: ExpenseRecordGroup[]) => (
+    <Table>
+      <TableHeader>
+        <TableRow className='bg-gray-50/50 hover:bg-gray-50/50'>
+          <TableHead className='text-xs font-semibold text-gray-600 w-[110px] whitespace-nowrap'>Date</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Activity</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Type</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Description</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 text-center w-[90px] whitespace-nowrap'>Qty</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Contractor</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Invoice #</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 text-center w-[60px] whitespace-nowrap'>Doc</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 text-right whitespace-nowrap'>Amount (₹)</TableHead>
+          <TableHead className='w-[70px]' />
+        </TableRow>
+      </TableHeader>
+      <TableBody>{groups.map((g) => renderRecordRow(g))}</TableBody>
+    </Table>
+  );
+
+  // A records table in its own bordered box, for the contractor groups.
+  const renderRecordsBox = (groups: ExpenseRecordGroup[]) => (
+    <div className='overflow-x-auto rounded-md border border-gray-100'>
+      {renderRecordsTable(groups)}
+    </div>
+  );
+
+  const isUnderContractor = (group: ExpenseRecordGroup) =>
+    !!contractor && group.contractorId === contractor.id;
+  const contractorRecords = recordGroupsFlat.filter(isUnderContractor);
+  const otherRecords = recordGroupsFlat.filter((g) => !isUnderContractor(g));
+  const contractorTotal = contractor
+    ? (summary?.byContractor?.[String(contractor.id)] ?? 0)
+    : 0;
+
+  const renderContractorGroup = (
+    title: string,
+    total: number,
+    count: number,
+    content: React.ReactNode,
+  ) => (
+    <div className='space-y-2'>
+      <div className='flex items-center justify-between gap-2'>
+        <div className='flex min-w-0 items-center gap-2'>
+          <h4 className='truncate text-xs font-semibold text-gray-700'>
+            {title}
+          </h4>
+          {count > 0 && (
+            <Badge
+              variant='outline'
+              className='h-4 bg-gray-50 px-1.5 py-0 text-[10px]'>
+              {count}
+            </Badge>
+          )}
+        </div>
+        <span className='shrink-0 text-xs font-semibold tabular-nums text-gray-800'>
+          {formatCurrency(total)}
+        </span>
+      </div>
+      {content}
+    </div>
+  );
+
+  const emptyGroupText = (text: string) => (
+    <p className='rounded-md border border-dashed py-6 text-center text-xs text-gray-400'>
+      {text}
+    </p>
+  );
 
   return (
     <div className='space-y-4'>
@@ -771,6 +851,34 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
 
       {expensesQuery.isLoading && expensePage === 1 ? (
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
+      ) : splitByContractor ? (
+        <div className='space-y-5'>
+          {renderContractorGroup(
+            contractor
+              ? `Under ${capitalFirstLetter(contractor.name)}`
+              : "Under the contractor",
+            contractorTotal,
+            contractorRecords.length,
+            !contractor
+              ? emptyGroupText("Assign a contractor to record expenses under it.")
+              : contractorRecords.length > 0
+                ? renderRecordsBox(contractorRecords)
+                : emptyGroupText("No expenses under the contractor yet."),
+          )}
+          {renderContractorGroup(
+            "Not under the contractor",
+            expenseTotal - contractorTotal,
+            otherRecords.length,
+            otherRecords.length > 0
+              ? renderRecordsBox(otherRecords)
+              : emptyGroupText("No other expenses yet."),
+          )}
+          {expensesPagination && expensesPagination.total > expenses.length && (
+            <p className='text-xs text-gray-400'>
+              Showing {expenses.length} of {expensesPagination.total} entries
+            </p>
+          )}
+        </div>
       ) : recordGroupsFlat.length === 0 ? (
         <div className='text-center py-10 border border-dashed rounded-xl bg-gray-50/30'>
           <ReceiptIndianRupee className='w-8 h-8 text-gray-300 mx-auto mb-2' />
@@ -781,23 +889,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         </div>
       ) : (
         <div className='rounded-md border border-gray-100 overflow-x-auto'>
-          <Table>
-            <TableHeader>
-              <TableRow className='bg-gray-50/50 hover:bg-gray-50/50'>
-                <TableHead className='text-xs font-semibold text-gray-600 w-[110px] whitespace-nowrap'>Date</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Activity</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Type</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Description</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 text-center w-[90px] whitespace-nowrap'>Qty</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Contractor</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Invoice #</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 text-center w-[60px] whitespace-nowrap'>Doc</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 text-right whitespace-nowrap'>Amount (₹)</TableHead>
-                <TableHead className='w-[70px]' />
-              </TableRow>
-            </TableHeader>
-            <TableBody>{recordGroupsFlat.map((g) => renderRecordRow(g))}</TableBody>
-          </Table>
+          {renderRecordsTable(recordGroupsFlat)}
 
           <div className='flex items-center justify-between px-4 py-2.5 bg-gray-50 border-t text-xs'>
             <span className='text-gray-500'>
@@ -836,6 +928,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         editingExpense={editingExpense}
         activities={activityOptions}
         usedQtyByActivity={usedQtyByActivity}
+        contractor={contractor}
       />
 
       <AlertDialog
