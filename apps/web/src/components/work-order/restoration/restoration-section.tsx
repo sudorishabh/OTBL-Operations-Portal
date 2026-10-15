@@ -159,14 +159,14 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
               </div>
             </div>
             <div className='min-w-0'>
-              <div className={fieldLabelClass}>Contractors</div>
+              <div className={fieldLabelClass}>Vendors</div>
               <div
                 className='mt-0.5 truncate text-[13px] font-medium text-gray-700'
                 title={contractorNames}>
                 {contractorNames ? (
                   contractorNames
                 ) : (
-                  <span className='text-gray-400'>Not assigned yet</span>
+                  <span className='text-gray-400'>None yet</span>
                 )}
               </div>
             </div>

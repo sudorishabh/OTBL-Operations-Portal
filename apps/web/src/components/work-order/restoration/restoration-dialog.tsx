@@ -11,7 +11,6 @@ import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-sec
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import CompletionExpenseSummary from "../site-details-dialog/completion-expense-summary";
-import RestorationContractorsCard from "./restoration-contractors-card";
 import AddRestorationVendor from "./add-restoration-vendor";
 import RemoveRestorationVendor from "./remove-restoration-vendor";
 import RestorationSummary from "./restoration-summary";
@@ -119,10 +118,6 @@ const RestorationDialog = ({
                 usedQtyByActivity={usedQtyByActivity}
               />
             </section>
-            <RestorationContractorsCard
-              restoration={restoration}
-              workOrderId={workOrder.id}
-            />
             <SiteExpensesSection
               woSiteId={restoration.id}
               processType={WO_PROCESS.RESTORATION}

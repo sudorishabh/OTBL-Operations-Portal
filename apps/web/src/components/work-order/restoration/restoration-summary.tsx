@@ -60,13 +60,13 @@ const RestorationSummary = ({
         <Field label='Work order schedule'>
           {formatDateRange(workOrder.start_date, workOrder.end_date)}
         </Field>
-        <Field label='Contractors'>
+        <Field label='Vendors'>
           {restoration.contractors.length > 0 ? (
             restoration.contractors
               .map((contractor) => capitalFirstLetter(contractor.name))
               .join(", ")
           ) : (
-            <span className='text-gray-400'>Not assigned yet</span>
+            <span className='text-gray-400'>None yet</span>
           )}
         </Field>
       </div>
