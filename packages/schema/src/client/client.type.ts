@@ -2,6 +2,21 @@ import { z } from "zod";
 
 import * as clientSchemas from "./client.schema";
 
+export type createParentClientInput = z.infer<
+  typeof clientSchemas.createParentClientSchema
+>;
+
+export type updateParentClientInput = z.infer<
+  typeof clientSchemas.updateParentClientSchema
+>;
+
+export type parentClientType = {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type createClientInput = z.infer<
   typeof clientSchemas.createClientSchema
 >;
@@ -29,6 +44,7 @@ export type clientUsersType = {
 export type clientType = {
   address: string;
   id: number;
+  parent_client_id: number | null;
   name: string;
   status: "active" | "inactive";
   created_at: string;
