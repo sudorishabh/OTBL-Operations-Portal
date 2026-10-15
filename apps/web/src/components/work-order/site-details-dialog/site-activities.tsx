@@ -971,11 +971,14 @@ const SiteActivities = ({
   processType,
   phase,
   showPhaseTabs = true,
+  showSorAvailability = true,
 }: {
   woSiteId: number;
   processType: string | undefined;
   phase?: (typeof PHASES)[number];
   showPhaseTabs?: boolean;
+  // Off when the caller already shows the schedule of rates.
+  showSorAvailability?: boolean;
 }) => {
   const siteActivitiesQuery =
     trpc.workOrderSiteQuery.getSiteActivities.useQuery(
@@ -1063,7 +1066,8 @@ const SiteActivities = ({
 
   return (
     <div className='space-y-5'>
-      {siteActivitiesQuery.data?.some((a: any) => a.sor_estimated_quantity) && (
+      {showSorAvailability &&
+        siteActivitiesQuery.data?.some((a: any) => a.sor_estimated_quantity) && (
         <div className='rounded-lg border bg-gray-100/50 overflow-hidden'>
           <div className='px-3 py-1.5 border-b flex items-center gap-1.5 bg-slate-50/80'>
             <span className='text-[11px] font-semibold text-slate-600'>

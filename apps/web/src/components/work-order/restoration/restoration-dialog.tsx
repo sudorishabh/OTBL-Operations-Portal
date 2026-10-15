@@ -129,6 +129,7 @@ const RestorationDialog = ({
               processType={WO_PROCESS.RESTORATION}
               phase='completion'
               showPhaseTabs={false}
+              showSorAvailability={false}
             />
             <CompletionExpenseSummary woSiteId={restoration.id} />
           </TabsContent>
