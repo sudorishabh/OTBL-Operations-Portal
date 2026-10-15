@@ -21,7 +21,12 @@ import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
 import { cn } from "@/lib/utils";
 import { workOrderTypes } from "@pkg/schema";
-import { constants } from "@pkg/utils";
+import {
+  activityKey,
+  constants,
+  SOR_ACTIVITY_TO_COMPLETION_ACTIVITY,
+  toNumberSafe,
+} from "@pkg/utils";
 
 const { TRANSPORT_SLABS, allActivityOptions } = constants;
 
@@ -79,15 +84,6 @@ const EXPENSE_TYPE_LABELS_SOR: Record<string, string> = {
   miscellaneous: "Miscellaneous",
 };
 
-const SOR_ACTIVITY_TO_COMPLETION_ACTIVITY: Record<string, string> = {
-  clean_soil_area: "clean_soil_area",
-  lifting_oily_slush_or_recovery_of_oil: "lifting_oil_slush",
-  excavation_oil_contaminated_soil: "excav_cont_soil",
-  transportation_contaminated_soil: "trans_cont_soil",
-  refilling_excavated_oil_contaminated_soil_land: "refill_excav_soil",
-  bioremediation_oil_contaminated_soil: "biorem_cont_soil",
-};
-
 const formatCurrency = (amount: string | number) => {
   const val = Number(amount);
   if (isNaN(val)) return "₹0.00";
@@ -104,21 +100,12 @@ const formatActivityName = (name: string) => {
     .join(" ");
 };
 
-const activityKey = (name: string) => {
-  const v = (name || "").trim().toLowerCase();
-  return v
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/_+/g, "_");
-};
-
-const toNumberSafe = (val: unknown) => {
-  const n =
-    typeof val === "string"
-      ? Number(val.replace(/,/g, "").trim())
-      : Number(val);
-  return Number.isFinite(n) ? n : 0;
-};
+// Restoration records no completion quantities: its usage is in its
+// expenses, shown in the restoration dialog.
+const isRestorationActivity = (activity: string) =>
+  allActivityOptions.some(
+    (option) => option.value === activity && !option.isBioremediation,
+  );
 
 const formatQuantity = (value: unknown) =>
   toNumberSafe(value).toLocaleString("en-IN", { maximumFractionDigits: 2 });
@@ -548,7 +535,13 @@ const ScheduleOfRatesTable = ({
                           {formatQuantity(item.estimated_quantity)}
                         </TableCell>
                         <TableCell className={sorNumberClass}>
-                          {usedQty > 0 ? (
+                          {isRestorationActivity(item.activity) ? (
+                            <span
+                              className='text-gray-300'
+                              title='Tracked in the restoration expenses'>
+                              —
+                            </span>
+                          ) : usedQty > 0 ? (
                             formatQuantity(usedQty)
                           ) : (
                             <span className='text-gray-300'>0</span>
