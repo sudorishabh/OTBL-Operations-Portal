@@ -6,45 +6,59 @@ import { fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
 import { validators } from "@pkg/schema";
+import { constants } from "@pkg/utils";
 
 const {
   workOrderSiteExpenseTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
   bioremediationContSoilTable,
+  siteActivityTable,
+  scheduleOfRatesTable,
 } = schema;
 
-const activityTableByKey: Record<string, any> = {
-  clean_soil_area: cleaningUpSoilAreaTable,
-  lifting_oily_slush_or_recovery_of_oil: liftingRecoveryOilSlushTable,
-  excavation_oil_contaminated_soil: excavationContSoilTable,
-  transportation_contaminated_soil: transportationContSoilTable,
-  refilling_excavated_oil_contaminated_soil_land:
-    refillingExcavatedContSoilTable,
-  bioremediation_oil_contaminated_soil: bioremediationContSoilTable,
-};
+const { WO_ACTIVITIES, allActivityOptions } = constants;
 
+const RESTORATION_ACTIVITIES = new Set<string>(
+  allActivityOptions
+    .filter((option) => !option.isBioremediation)
+    .map((option) => option.value),
+);
+
+// The quantity an activity's expenses are measured against: bioremediation's
+// estimate, or for restoration, which has no estimate, its schedule of rates.
 async function getEstimateQtyForSite(
   ctx: any,
   siteId: number,
   activityKey: string,
 ): Promise<number | null> {
-  const table = activityTableByKey[activityKey];
-  if (!table) return null;
-  const rows = await ctx.db
-    .select()
-    .from(table)
+  if (activityKey === WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL) {
+    const [estimate] = await ctx.db
+      .select({ quantity: bioremediationContSoilTable.estimated_quantity })
+      .from(bioremediationContSoilTable)
+      .where(
+        and(
+          eq(bioremediationContSoilTable.work_order_site_id, siteId),
+          eq(bioremediationContSoilTable.type, "estimate_sub-wo"),
+        ),
+      );
+    return estimate ? parseFloat(estimate.quantity || "0") : null;
+  }
+
+  if (!RESTORATION_ACTIVITIES.has(activityKey)) return null;
+
+  const [rate] = await ctx.db
+    .select({ quantity: scheduleOfRatesTable.estimated_quantity })
+    .from(siteActivityTable)
+    .innerJoin(
+      scheduleOfRatesTable,
+      eq(siteActivityTable.schedule_of_rates_id, scheduleOfRatesTable.id),
+    )
     .where(
       and(
-        eq(table.work_order_site_id, siteId),
-        eq(table.type, "estimate_sub-wo"),
+        eq(siteActivityTable.work_order_site_id, siteId),
+        eq(siteActivityTable.activity, activityKey),
       ),
     );
-  if (rows.length === 0) return null;
-  return parseFloat(rows[0].estimated_quantity || "0");
+  return rate ? parseFloat(rate.quantity || "0") : null;
 }
 
 async function computeIsExceeded(

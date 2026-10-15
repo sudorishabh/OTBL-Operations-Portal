@@ -905,19 +905,12 @@ export const workOrderSiteQueryRouter = router({
 
               if (saEntries.length === 0) continue;
 
+              // Restoration has no estimate: its completion is what it used.
               const completion = saEntries.find((e: any) => e.type === "completion");
-              const estimate = saEntries.find(
-                (e: any) => e.type === "estimate_sub-wo",
-              );
-
-              const bestQty = parseFloat(
-                (completion || estimate)?.estimated_quantity || "0",
-              );
-              totalUsed += bestQty;
-
               const completionQty = parseFloat(
                 completion?.estimated_quantity || "0",
               );
+              totalUsed += completionQty;
               totalCompletion += completionQty;
             }
             utilizationMap.set(sorId, totalUsed);
