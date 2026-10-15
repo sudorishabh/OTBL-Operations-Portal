@@ -120,13 +120,13 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
         <div className='min-w-0'>
           <div className='flex flex-wrap items-center gap-2'>
             <h3 className='break-words font-semibold leading-tight text-gray-900'>
-              {capitalizeEachWord(office.name)}
+              {office.name.toUpperCase()}
             </h3>
             <span
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                 isActive
-                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-                  : "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
+                  ? "bg-emerald-100/60 text-emerald-800 "
+                  : "bg-slate-100 text-slate-800"
               }`}>
               <span
                 className={`size-1.5 rounded-full ${
@@ -192,7 +192,11 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
                       }${office.pincode ? ` – ${office.pincode}` : ""}`}
                     />
                     <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-                      <InfoRow icon={Mail} label='Email' value={office.email} />
+                      <InfoRow
+                        icon={Mail}
+                        label='Email'
+                        value={office.email}
+                      />
                       {office.gst_number ? (
                         <InfoRow
                           icon={ReceiptText}
@@ -268,7 +272,7 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
         </div>
 
         <div className='flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end'>
-          <span className='inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-gray-500 ring-1 ring-inset ring-gray-200'>
+          <span className='inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-gray-500 border border-gray-300'>
             <Building2 className='size-3.5 text-emerald-600' />
             <span className='font-semibold text-gray-700'>
               {office.siteCount}
