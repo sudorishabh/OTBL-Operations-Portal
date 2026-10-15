@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import { trpc } from "@/lib/trpc";
-import { capitalFirstLetter, getEffectiveWorkOrderStatus } from "@pkg/utils";
+import { constants, getEffectiveWorkOrderStatus } from "@pkg/utils";
 import { useRouter } from "next/navigation";
 import WorkOrderDetailsCard from "./work-order-details-card";
 import { File, FolderOpen, ReceiptIndianRupee, Rows3 } from "lucide-react";
@@ -15,6 +15,9 @@ import WorkOrderDetailsSkeleton from "../skeleton/work-order/work-order-details-
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import BioremediationSection from "./work-order-sites/bioremediation-section";
+import RestorationSection from "./restoration/restoration-section";
+
+const { WO_PROCESS } = constants;
 
 interface Props {
   workOrderId: string;
@@ -114,6 +117,15 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
       expenseSummary?.net_surplus ?? totalCompletionAmount - totalExpensesAgg,
   };
 
+  // Each process the work order covers gets its own section.
+  const processType = derivedWorkOrder.process_type;
+  const hasBioremediation =
+    processType === WO_PROCESS.BIOREMEDIATION ||
+    processType === WO_PROCESS.BIOREMEDIATION_RESTORATION;
+  const hasRestoration =
+    processType === WO_PROCESS.RESTORATION ||
+    processType === WO_PROCESS.BIOREMEDIATION_RESTORATION;
+
   return (
     <PageWrapper
       title={`${workOrderData.workOrder.code.toUpperCase()} - ${workOrderData.workOrder.title?.toUpperCase() || "Work Order"}`}
@@ -157,10 +169,16 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
           </div>
         )}
 
-        <BioremediationSection
-          workOrder={derivedWorkOrder}
-          scheduleOfRates={scheduleOfRates}
-        />
+        {hasBioremediation && (
+          <BioremediationSection
+            workOrder={derivedWorkOrder}
+            scheduleOfRates={scheduleOfRates}
+          />
+        )}
+
+        {hasRestoration && (
+          <RestorationSection scheduleOfRates={scheduleOfRates} />
+        )}
 
         <ScheduleOfRatesTable
           scheduleOfRates={scheduleOfRates}
