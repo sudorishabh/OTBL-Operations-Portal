@@ -67,6 +67,8 @@ import AddExpenseDialog, {
   ActivityOption,
   Expense,
 } from "./add-expense-dialog";
+import DocumentsMenu from "@/components/shared/documents-menu";
+import { toDocuments, type StoredDocument } from "@/lib/documents";
 
 type ExpenseRecordGroup = {
   key: string;
@@ -80,7 +82,7 @@ type ExpenseRecordGroup = {
   notes: string | null;
   contractorName: string | null;
   invoiceNumber: string | null;
-  documentUrl: string | null;
+  documents: StoredDocument[];
   ids: number[];
   items: { id: number; expense_type: string; amount: number }[];
   totalAmount: number;
@@ -125,7 +127,9 @@ const getExpenseRecordKey = (exp: Expense) =>
     exp.notes ?? "",
     exp.contractor_name ?? "",
     exp.invoice_number ?? "",
-    exp.document_url ?? "",
+    toDocuments(exp.documents)
+      .map((doc) => doc.url)
+      .join(","),
   ].join("||");
 
 interface Props {
@@ -337,7 +341,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
           notes: exp.notes ?? null,
           contractorName: exp.contractor_name ?? null,
           invoiceNumber: exp.invoice_number ?? null,
-          documentUrl: exp.document_url ?? null,
+          documents: toDocuments(exp.documents),
           ids: [],
           items: [],
           totalAmount: 0,
@@ -454,20 +458,32 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
           {group.invoiceNumber ?? <span className='text-gray-300'>—</span>}
         </TableCell>
         <TableCell className='py-2.5 text-center'>
-          {group.documentUrl ? (
+          {group.documents.length > 0 ? (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <a
-                    href={group.documentUrl}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors'>
-                    <ExternalLink className='w-3 h-3' />
-                  </a>
+                  <span className='inline-flex'>
+                    <DocumentsMenu
+                      documents={group.documents}
+                      align='center'>
+                      <button
+                        type='button'
+                        aria-label='View documents'
+                        className='relative inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors cursor-pointer'>
+                        <ExternalLink className='w-3 h-3' />
+                        {group.documents.length > 1 && (
+                          <span className='absolute -right-1.5 -top-1.5 flex min-w-3.5 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[9px] font-semibold leading-3.5 text-white'>
+                            {group.documents.length}
+                          </span>
+                        )}
+                      </button>
+                    </DocumentsMenu>
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side='top' className='text-[10px] px-2 py-1 bg-gray-900 text-white'>
-                  View Document
+                  {group.documents.length === 1
+                    ? "View Document"
+                    : `View ${group.documents.length} Documents`}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
