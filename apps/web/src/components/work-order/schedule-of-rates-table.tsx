@@ -135,9 +135,14 @@ const activityOrder = (activity: string) => {
   return index === -1 ? allActivityOptions.length : index;
 };
 
-const sorHeadClass = "h-10 px-4 text-xs font-medium text-gray-500";
-const sorNumberClass =
-  "px-4 py-3 text-right text-sm tabular-nums text-gray-600";
+// The table primitives add `sm:` padding and height, so these pin both sizes.
+const sorHeadClass =
+  "h-10 px-4 sm:h-10 sm:px-4 text-xs font-medium text-gray-500";
+const sorCellClass = "px-4 py-3 sm:px-4 sm:py-3";
+const sorNumberClass = cn(
+  sorCellClass,
+  "text-right text-sm tabular-nums text-gray-600",
+);
 
 const SiteSpendingCard = ({
   site,
@@ -518,7 +523,7 @@ const ScheduleOfRatesTable = ({
                           "border-gray-100 hover:bg-transparent",
                           slabs && "border-b-0",
                         )}>
-                        <TableCell className='px-4 py-3'>
+                        <TableCell className={sorCellClass}>
                           <p className='text-sm font-medium text-gray-900'>
                             {activityLabel(item.activity)}
                           </p>
@@ -534,7 +539,7 @@ const ScheduleOfRatesTable = ({
                             </p>
                           )}
                         </TableCell>
-                        <TableCell className='px-4 py-3'>
+                        <TableCell className={sorCellClass}>
                           <span className='rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700'>
                             {item.unit}
                           </span>
@@ -555,7 +560,11 @@ const ScheduleOfRatesTable = ({
                         <TableCell className={sorNumberClass}>
                           {formatCurrency(item.unit_rate_inc_gst)}
                         </TableCell>
-                        <TableCell className='px-4 py-3 text-right text-sm font-semibold tabular-nums text-gray-900'>
+                        <TableCell
+                          className={cn(
+                            sorCellClass,
+                            "text-right text-sm font-semibold tabular-nums text-gray-900",
+                          )}>
                           {formatCurrency(item.total_cost)}
                         </TableCell>
                       </TableRow>
@@ -571,24 +580,28 @@ const ScheduleOfRatesTable = ({
                                 "hover:bg-transparent",
                                 isLast ? "border-gray-100" : "border-b-0",
                               )}>
-                              <TableCell
-                                className={cn(
-                                  "relative py-1.5 pl-10 pr-4 text-xs text-gray-600 before:absolute before:inset-y-0 before:left-6 before:w-px before:bg-gray-200",
-                                  isLast && "pb-3",
-                                )}>
-                                {slab.label}
+                              <TableCell className='p-0 sm:p-0'>
+                                <div
+                                  className={cn(
+                                    "ml-6 border-l border-gray-200 py-1.5 pl-4 text-xs text-gray-600",
+                                    isLast && "mb-3",
+                                  )}>
+                                  {slab.label}
+                                </div>
                               </TableCell>
-                              <TableCell className='p-0' />
-                              <TableCell
-                                className={cn(
-                                  "px-4 py-1.5 text-right text-xs tabular-nums text-gray-600",
-                                  isLast && "pb-3",
-                                )}>
-                                {formatQuantity(slabs[slab.key])}
+                              <TableCell className='p-0 sm:p-0' />
+                              <TableCell className='p-0 sm:p-0'>
+                                <div
+                                  className={cn(
+                                    "px-4 py-1.5 text-right text-xs tabular-nums text-gray-600",
+                                    isLast && "mb-3",
+                                  )}>
+                                  {formatQuantity(slabs[slab.key])}
+                                </div>
                               </TableCell>
                               <TableCell
                                 colSpan={4}
-                                className='p-0'
+                                className='p-0 sm:p-0'
                               />
                             </TableRow>
                           );
@@ -601,10 +614,17 @@ const ScheduleOfRatesTable = ({
                 <TableRow className='hover:bg-gray-50'>
                   <TableCell
                     colSpan={6}
-                    className='px-4 py-3 text-right text-sm font-medium text-gray-700'>
+                    className={cn(
+                      sorCellClass,
+                      "text-right text-sm font-medium text-gray-700",
+                    )}>
                     SOR total (incl. GST)
                   </TableCell>
-                  <TableCell className='px-4 py-3 text-right text-base font-semibold tabular-nums text-emerald-700'>
+                  <TableCell
+                    className={cn(
+                      sorCellClass,
+                      "text-right text-base font-semibold tabular-nums text-emerald-700",
+                    )}>
                     {formatCurrency(grandTotal)}
                   </TableCell>
                 </TableRow>
