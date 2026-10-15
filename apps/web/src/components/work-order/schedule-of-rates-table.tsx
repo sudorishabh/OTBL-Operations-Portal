@@ -19,10 +19,11 @@ import {
 } from "lucide-react";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
+import { cn } from "@/lib/utils";
 import { workOrderTypes } from "@pkg/schema";
 import { constants } from "@pkg/utils";
 
-const { TRANSPORT_SLABS } = constants;
+const { TRANSPORT_SLABS, allActivityOptions } = constants;
 
 interface ScheduleOfRate {
   id: number;
@@ -119,30 +120,24 @@ const toNumberSafe = (val: unknown) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-// Transportation rows list their distance slabs; older rows only recorded a
-// distance.
-const TransportDetails = ({ item }: { item: ScheduleOfRate }) => {
-  const slabs = item.transportation_slabs;
-  if (slabs) {
-    return (
-      <ul className='mt-1 space-y-0.5 text-xs font-normal text-gray-500'>
-        {TRANSPORT_SLABS.map((slab) => (
-          <li key={slab.key}>
-            {slab.label}: {toNumberSafe(slabs[slab.key]).toLocaleString("en-IN")}
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  if (item.transportation_km) {
-    return (
-      <p className='mt-1 text-xs font-normal text-gray-500'>
-        {item.transportation_km} km
-      </p>
-    );
-  }
-  return null;
+const formatQuantity = (value: unknown) =>
+  toNumberSafe(value).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+
+const activityLabel = (activity: string) =>
+  allActivityOptions.find((option) => option.value === activity)?.label ??
+  formatActivityName(activity);
+
+// Rows follow the same activity order as the create work order form.
+const activityOrder = (activity: string) => {
+  const index = allActivityOptions.findIndex(
+    (option) => option.value === activity,
+  );
+  return index === -1 ? allActivityOptions.length : index;
 };
+
+const sorHeadClass = "h-10 px-4 text-xs font-medium text-gray-500";
+const sorNumberClass =
+  "px-4 py-3 text-right text-sm tabular-nums text-gray-600";
 
 const SiteSpendingCard = ({
   site,
@@ -405,6 +400,14 @@ const ScheduleOfRatesTable = ({
     0,
   );
 
+  const sortedRates = [...scheduleOfRates].sort(
+    (a, b) => activityOrder(a.activity) - activityOrder(b.activity),
+  );
+  const gstRates = new Set(
+    scheduleOfRates.map((item) => Number(item.gst_percentage)),
+  );
+  const gstLabel = gstRates.size === 1 ? ` (${[...gstRates][0]}%)` : "";
+
   const usedQtyByActivity = (sites || []).reduce<Record<string, number>>(
     (acc, s) => {
       for (const c of s.completions || []) {
@@ -476,93 +479,132 @@ const ScheduleOfRatesTable = ({
               </p>
             </div>
           </div>
-          <div className='overflow-hidden bg-white border-0 rounded-none'>
+          <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
             <Table>
               <TableHeader>
-                <TableRow className='bg-gray-50/50 hover:bg-gray-50/50 border-b'>
-                  <TableHead className='font-semibold text-gray-700 py-4'>
-                    Activity
-                  </TableHead>
-                  <TableHead className='font-semibold text-gray-700 text-center'>
-                    Unit
-                  </TableHead>
-                  <TableHead className='font-semibold text-gray-700 text-right'>
+                <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
+                  <TableHead className={sorHeadClass}>Activity</TableHead>
+                  <TableHead className={sorHeadClass}>Unit</TableHead>
+                  <TableHead className={cn(sorHeadClass, "text-right")}>
                     Est. Qty
                   </TableHead>
-                  <TableHead className='font-semibold text-gray-700 text-right'>
+                  <TableHead className={cn(sorHeadClass, "text-right")}>
                     Used Qty
                   </TableHead>
-                  <TableHead className='font-semibold text-gray-700 text-right'>
+                  <TableHead className={cn(sorHeadClass, "text-right")}>
                     RC Rate
                   </TableHead>
-                  <TableHead className='font-semibold text-gray-700 text-center'>
-                    GST
+                  <TableHead className={cn(sorHeadClass, "text-right")}>
+                    Rate + GST{gstLabel}
                   </TableHead>
-                  <TableHead className='font-semibold text-gray-700 text-right'>
-                    Rate (Inc. GST)
-                  </TableHead>
-                  <TableHead className='font-semibold text-gray-700 text-right'>
-                    Total Cost
+                  <TableHead className={cn(sorHeadClass, "text-right")}>
+                    Total
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scheduleOfRates.map((item) => {
+                {sortedRates.map((item) => {
                   const completionActivity =
                     SOR_ACTIVITY_TO_COMPLETION_ACTIVITY[item.activity] ??
                     item.activity;
                   const usedQty =
                     usedQtyByActivity[activityKey(completionActivity)] ?? 0;
+                  const slabs = item.transportation_slabs;
 
                   return (
-                    <TableRow
-                      key={item.id}
-                      className='hover:bg-blue-50/30 transition-colors border-b last:border-0'>
-                      <TableCell className='font-medium text-gray-800 p-4'>
-                        {formatActivityName(item.activity)}
-                        <TransportDetails item={item} />
-                      </TableCell>
-                      <TableCell className='text-center'>
-                        <Badge
-                          variant='outline'
-                          className='bg-gray-100 text-gray-600 font-normal'>
-                          {item.unit}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className='text-right font-mono text-gray-600'>
-                        {item.estimated_quantity}
-                      </TableCell>
-                      <TableCell className='text-right font-mono text-gray-600'>
-                        {usedQty > 0 ? (
-                          usedQty.toLocaleString("en-IN")
-                        ) : (
-                          <span className='text-gray-300'>0</span>
-                        )}
-                      </TableCell>
-                      <TableCell className='text-right font-mono text-gray-600'>
-                        {formatCurrency(item.rc_unit_rate)}
-                      </TableCell>
-                      <TableCell className='text-center font-mono text-gray-600'>
-                        {Number(item.gst_percentage)}%
-                      </TableCell>
-                      <TableCell className='text-right font-mono text-gray-600'>
-                        {formatCurrency(item.unit_rate_inc_gst)}
-                      </TableCell>
-                      <TableCell className='text-right font-semibold text-gray-800'>
-                        {formatCurrency(item.total_cost)}
-                      </TableCell>
-                    </TableRow>
+                    <React.Fragment key={item.id}>
+                      <TableRow
+                        className={cn(
+                          "border-gray-100 hover:bg-transparent",
+                          slabs && "border-b-0",
+                        )}>
+                        <TableCell className='px-4 py-3'>
+                          <p className='text-sm font-medium text-gray-900'>
+                            {activityLabel(item.activity)}
+                          </p>
+                          {slabs && (
+                            <p className='mt-0.5 text-xs text-gray-500'>
+                              Quantity is the total of the distance slabs.
+                            </p>
+                          )}
+                          {!slabs && toNumberSafe(item.transportation_km) > 0 && (
+                            <p className='mt-0.5 text-xs text-gray-500'>
+                              Distance: {formatQuantity(item.transportation_km)}{" "}
+                              km
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell className='px-4 py-3'>
+                          <span className='rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700'>
+                            {item.unit}
+                          </span>
+                        </TableCell>
+                        <TableCell className={sorNumberClass}>
+                          {formatQuantity(item.estimated_quantity)}
+                        </TableCell>
+                        <TableCell className={sorNumberClass}>
+                          {usedQty > 0 ? (
+                            formatQuantity(usedQty)
+                          ) : (
+                            <span className='text-gray-300'>0</span>
+                          )}
+                        </TableCell>
+                        <TableCell className={sorNumberClass}>
+                          {formatCurrency(item.rc_unit_rate)}
+                        </TableCell>
+                        <TableCell className={sorNumberClass}>
+                          {formatCurrency(item.unit_rate_inc_gst)}
+                        </TableCell>
+                        <TableCell className='px-4 py-3 text-right text-sm font-semibold tabular-nums text-gray-900'>
+                          {formatCurrency(item.total_cost)}
+                        </TableCell>
+                      </TableRow>
+
+                      {slabs &&
+                        TRANSPORT_SLABS.map((slab, slabIndex) => {
+                          const isLast =
+                            slabIndex === TRANSPORT_SLABS.length - 1;
+                          return (
+                            <TableRow
+                              key={slab.key}
+                              className={cn(
+                                "hover:bg-transparent",
+                                isLast ? "border-gray-100" : "border-b-0",
+                              )}>
+                              <TableCell
+                                className={cn(
+                                  "relative py-1.5 pl-10 pr-4 text-xs text-gray-600 before:absolute before:inset-y-0 before:left-6 before:w-px before:bg-gray-200",
+                                  isLast && "pb-3",
+                                )}>
+                                {slab.label}
+                              </TableCell>
+                              <TableCell className='p-0' />
+                              <TableCell
+                                className={cn(
+                                  "px-4 py-1.5 text-right text-xs tabular-nums text-gray-600",
+                                  isLast && "pb-3",
+                                )}>
+                                {formatQuantity(slabs[slab.key])}
+                              </TableCell>
+                              <TableCell
+                                colSpan={4}
+                                className='p-0'
+                              />
+                            </TableRow>
+                          );
+                        })}
+                    </React.Fragment>
                   );
                 })}
               </TableBody>
-              <TableFooter className='bg-slate-50 border-t-2 border-slate-100'>
-                <TableRow>
+              <TableFooter className='border-gray-200 bg-gray-50'>
+                <TableRow className='hover:bg-gray-50'>
                   <TableCell
-                    colSpan={7}
-                    className='text-right font-bold text-base text-gray-700 py-4'>
-                    SOR Grand Total
+                    colSpan={6}
+                    className='px-4 py-3 text-right text-sm font-medium text-gray-700'>
+                    SOR total (incl. GST)
                   </TableCell>
-                  <TableCell className='text-right font-bold text-lg text-emerald-700'>
+                  <TableCell className='px-4 py-3 text-right text-base font-semibold tabular-nums text-emerald-700'>
                     {formatCurrency(grandTotal)}
                   </TableCell>
                 </TableRow>
