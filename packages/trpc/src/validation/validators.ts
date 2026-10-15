@@ -46,14 +46,6 @@ export const optionalEmailValidator = z
   .optional()
   .or(z.literal(""));
 
-export const indianMobileValidator = z
-  .string({ message: "Mobile number is required" })
-  .trim()
-  .regex(
-    /^(\+91[\-\s]?)?[6-9]\d{9}$/,
-    "Please enter a valid Indian mobile number (10 digits starting with 6-9)"
-  );
-
 export const contactNumberValidator = z
   .string({ message: "Contact number is required" })
   .trim()
@@ -281,11 +273,6 @@ export const indianAddressFieldsValidator = z.object({
 export const contactFieldsValidator = z.object({
   email: emailValidator,
   contact_number: contactNumberValidator,
-});
-
-export const indianContactFieldsValidator = z.object({
-  email: emailValidator,
-  contact_number: indianMobileValidator,
 });
 
 export const paginationFieldsValidator = z.object({
