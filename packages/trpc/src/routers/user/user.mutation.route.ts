@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { hashPassword, USER_ROLES, verifyPassword } from "@pkg/utils/auth";
 import { adminProcedure, protectedProcedure } from "../../middleware";
@@ -76,6 +76,19 @@ export const userMutationRouter = router({
           throw forbidden("edit this user's profile", {
             userMessage: "You can only edit your own profile.",
           });
+        }
+
+        if (rest.email !== existingUser.email) {
+          const [emailOwner] = await ctx.db
+            .select({ id: userTable.id })
+            .from(userTable)
+            .where(and(eq(userTable.email, rest.email), ne(userTable.id, id)));
+
+          if (emailOwner) {
+            throw alreadyExists("User", rest.email, {
+              userMessage: "A user with this email already exists.",
+            });
+          }
         }
 
         const updateData: Record<string, any> = { ...rest };
