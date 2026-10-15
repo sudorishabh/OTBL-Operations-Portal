@@ -19,7 +19,7 @@ import { constants } from "@pkg/utils";
 
 const { MAX_DOCUMENTS } = constants;
 
-const getFileTypeStyle = (fileName: string) => {
+export const getFileTypeStyle = (fileName: string) => {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "pdf") {
     return { Icon: FileText, bg: "bg-red-50", text: "text-red-500" };
