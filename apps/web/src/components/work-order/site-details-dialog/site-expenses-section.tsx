@@ -140,6 +140,8 @@ interface Props {
   // Lists expenses under the contractor apart from the rest.
   splitByContractor?: boolean;
   contractor?: { id: number; name: string } | null;
+  // Off when the caller already shows estimated, used and left quantities.
+  showEstimateTable?: boolean;
 }
 
 const SiteExpensesSection = ({
@@ -148,6 +150,7 @@ const SiteExpensesSection = ({
   processType,
   splitByContractor = false,
   contractor = null,
+  showEstimateTable = true,
 }: Props) => {
   const utils = trpc.useUtils();
   const isViewer = useIsViewer();
@@ -174,11 +177,6 @@ const SiteExpensesSection = ({
   const siteActivitiesQuery = trpc.workOrderSiteQuery.getSiteActivities.useQuery(
     { work_order_site_id: woSiteId },
     { enabled: !!woSiteId },
-  );
-
-  const restorationDataQuery = trpc.workOrderSiteQuery.getRestorationData.useQuery(
-    { work_order_site_id: woSiteId },
-    { enabled: !!woSiteId && processType !== "bioremediation" },
   );
 
   const bioremediationDataQuery = trpc.workOrderSiteQuery.getBioremediationData.useQuery(
@@ -234,36 +232,11 @@ const SiteExpensesSection = ({
       }
       return null;
     }
-    const data = restorationDataQuery.data;
-    if (!data) return null;
-    let qty: any;
-    switch (activityKey) {
-      case "clean_up_oil_spill":
-      case "clean_soil_area":
-      case constants.WO_ACTIVITIES.clean_soil_area:
-        qty = data.cleaningUpSoilArea?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      case "lifting_oil_slush":
-      case constants.WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL:
-        qty = data.liftingRecoveryOilSlush?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      case "excav_cont_soil":
-      case constants.WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL:
-        qty = data.excavationContSoil?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      case "trans_cont_soil":
-      case "trnsprt_oil_slush":
-      case constants.WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL:
-        qty = data.transportationContSoil?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      case "refill_excav_soil":
-      case constants.WO_ACTIVITIES.REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND:
-        qty = data.refillingExcavatedContSoil?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      default:
-        return null;
-    }
-    return qty != null ? Number(qty) : null;
+    // Restoration has no estimate: its schedule of rates is the limit.
+    const sorQty = siteActivitiesQuery.data?.find(
+      (a: any) => a.activity === activityKey,
+    )?.sor_estimated_quantity;
+    return sorQty != null ? Number(sorQty) : null;
   };
 
   const activityOptions: ActivityOption[] = useMemo(() => {
@@ -274,7 +247,7 @@ const SiteExpensesSection = ({
       unit: a.unit ?? "Nos",
       estimateQty: getEstimateQty(a.activity),
     }));
-  }, [siteActivitiesQuery.data, restorationDataQuery.data, bioremediationDataQuery.data]);
+  }, [siteActivitiesQuery.data, bioremediationDataQuery.data]);
 
   const usedQtyByActivity = useMemo(() => {
     const byActivity = summaryQuery.data?.byActivity ?? {};
@@ -725,87 +698,89 @@ const SiteExpensesSection = ({
         </div>
       </div>
 
-      <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>
-        <div className='px-3 py-2 border-b bg-white flex items-center justify-between gap-3'>
-          <div className='min-w-0'>
-            <p className='text-[10px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap'>
-              Estimate Activities
-            </p>
-            <p className='text-[9px] text-slate-400 mt-0.5'>
-              Qty spending = used qty from expense records
-            </p>
+      {showEstimateTable && (
+        <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>
+          <div className='px-3 py-2 border-b bg-white flex items-center justify-between gap-3'>
+            <div className='min-w-0'>
+              <p className='text-[10px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap'>
+                Estimate Activities
+              </p>
+              <p className='text-[9px] text-slate-400 mt-0.5'>
+                Qty spending = used qty from expense records
+              </p>
+            </div>
+            <div className='text-[9px] text-slate-400 whitespace-nowrap'>
+              {siteActivitiesQuery.data?.length ? `${siteActivitiesQuery.data.length} activities` : ""}
+            </div>
           </div>
-          <div className='text-[9px] text-slate-400 whitespace-nowrap'>
-            {siteActivitiesQuery.data?.length ? `${siteActivitiesQuery.data.length} activities` : ""}
-          </div>
-        </div>
 
-        {siteActivitiesQuery.isLoading ? (
-          <div className='text-center py-4 text-gray-400 text-sm'>Loading...</div>
-        ) : !siteActivitiesQuery.data || siteActivitiesQuery.data.length === 0 ? (
-          <div className='text-center py-4 text-gray-400 text-sm'>No activities found.</div>
-        ) : (
-          <div className='bg-white overflow-x-auto'>
-            <Table>
-              <TableHeader>
-                <TableRow className='bg-gray-50/60 hover:bg-gray-50/60'>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap'>
-                    Activity
-                  </TableHead>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
-                    Est
-                  </TableHead>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
-                    Used
-                  </TableHead>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
-                    Left
-                  </TableHead>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap w-[70px]'>
-                    Unit
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {siteActivitiesQuery.data
-                  .map((a: any) => {
-                    const estQty = getEstimateQty(a.activity);
-                    if (estQty === null) return null;
-                    const usedQty = usedQtyByActivity[a.activity] ?? 0;
-                    const left = Math.max(0, estQty - usedQty);
-                    const exhausted = estQty > 0 && left <= 0;
-                    return (
-                      <TableRow
-                        key={a.id}
-                        className={exhausted ? "bg-orange-50/30 hover:bg-orange-50/40" : "hover:bg-blue-50/20"}>
-                        <TableCell className='py-2 text-xs text-gray-700 font-medium whitespace-nowrap'>
-                          {formatActivityLabel(a.activity)}
-                        </TableCell>
-                        <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
-                          {estQty}
-                        </TableCell>
-                        <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
-                          {usedQty}
-                        </TableCell>
-                        <TableCell className='py-2 text-xs text-right tabular-nums whitespace-nowrap'>
-                          {exhausted ? (
-                            <span className='text-orange-700 font-semibold'>0</span>
-                          ) : (
-                            <span className='text-emerald-700 font-semibold'>{left}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className='py-2 text-xs text-gray-500 whitespace-nowrap'>
-                          {a.unit ?? "Nos"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                  .filter(Boolean)}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
+          {siteActivitiesQuery.isLoading ? (
+            <div className='text-center py-4 text-gray-400 text-sm'>Loading...</div>
+          ) : !siteActivitiesQuery.data || siteActivitiesQuery.data.length === 0 ? (
+            <div className='text-center py-4 text-gray-400 text-sm'>No activities found.</div>
+          ) : (
+            <div className='bg-white overflow-x-auto'>
+              <Table>
+                <TableHeader>
+                  <TableRow className='bg-gray-50/60 hover:bg-gray-50/60'>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap'>
+                      Activity
+                    </TableHead>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
+                      Est
+                    </TableHead>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
+                      Used
+                    </TableHead>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
+                      Left
+                    </TableHead>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap w-[70px]'>
+                      Unit
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {siteActivitiesQuery.data
+                    .map((a: any) => {
+                      const estQty = getEstimateQty(a.activity);
+                      if (estQty === null) return null;
+                      const usedQty = usedQtyByActivity[a.activity] ?? 0;
+                      const left = Math.max(0, estQty - usedQty);
+                      const exhausted = estQty > 0 && left <= 0;
+                      return (
+                        <TableRow
+                          key={a.id}
+                          className={exhausted ? "bg-orange-50/30 hover:bg-orange-50/40" : "hover:bg-blue-50/20"}>
+                          <TableCell className='py-2 text-xs text-gray-700 font-medium whitespace-nowrap'>
+                            {formatActivityLabel(a.activity)}
+                          </TableCell>
+                          <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
+                            {estQty}
+                          </TableCell>
+                          <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
+                            {usedQty}
+                          </TableCell>
+                          <TableCell className='py-2 text-xs text-right tabular-nums whitespace-nowrap'>
+                            {exhausted ? (
+                              <span className='text-orange-700 font-semibold'>0</span>
+                            ) : (
+                              <span className='text-emerald-700 font-semibold'>{left}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className='py-2 text-xs text-gray-500 whitespace-nowrap'>
+                            {a.unit ?? "Nos"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                    .filter(Boolean)}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
         <div className='flex items-center gap-2'>
