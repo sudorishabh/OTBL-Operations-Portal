@@ -95,6 +95,9 @@ export const unitOptions = [
 
 export const GST_PERCENTAGE = 18;
 
+// Most documents a user can upload at once, or attach to one record.
+export const MAX_DOCUMENTS = 10;
+
 export const allActivityOptions = [
   {
     value: WO_ACTIVITIES.clean_soil_area,
@@ -138,6 +141,7 @@ export default {
   WO_ACTIVITIES,
   WO_UNITS,
   GST_PERCENTAGE,
+  MAX_DOCUMENTS,
   processTypeOptions,
   unitOptions,
   allActivityOptions,
