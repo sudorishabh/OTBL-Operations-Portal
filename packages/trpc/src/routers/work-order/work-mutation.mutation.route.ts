@@ -51,6 +51,19 @@ export const workOrderMutationRouter = router({
           });
         }
 
+        // A proposal has at most one work order.
+        const [existingWorkOrder] = await ctx.db
+          .select({ id: workOrderTable.id })
+          .from(workOrderTable)
+          .where(eq(workOrderTable.proposal_id, input.proposal_id))
+          .limit(1);
+
+        if (existingWorkOrder) {
+          throw alreadyExists("Work order", undefined, {
+            userMessage: "This proposal already has a work order.",
+          });
+        }
+
         const proposal = existingProposal[0]!;
         const officeId = proposal.office_id;
 
@@ -81,29 +94,34 @@ export const workOrderMutationRouter = router({
         };
 
         try {
-          const workOrderResult = await ctx.db
-            .insert(workOrderTable)
-            .values(workOrderData);
+          // One transaction, so a failed SOR insert leaves no work order behind.
+          const workOrderId = await ctx.db.transaction(async (tx) => {
+            const workOrderResult = await tx
+              .insert(workOrderTable)
+              .values(workOrderData);
 
-          const workOrderId = workOrderResult[0].insertId;
+            const workOrderId = workOrderResult[0].insertId;
 
-          if (input.schedule_of_rates && input.schedule_of_rates.length > 0) {
-            const scheduleOfRatesData = input.schedule_of_rates.map((sor: any) => ({
-              work_order_id: workOrderId,
-              activity: sor.activity.name,
-              unit: sor.unit,
-              estimated_quantity: sor.estimated_quantity.toString(),
-              rc_unit_rate: sor.rc_unit_rate.toString(),
-              gst_percentage: sor.gst_percentage.toString(),
-              unit_rate_inc_gst: sor.unit_rate_inc_gst.toString(),
-              total_cost: sor.total_cost.toString(),
-              transportation_km: sor.transportation_km?.toString() || null,
-            }));
+            if (input.schedule_of_rates.length > 0) {
+              const scheduleOfRatesData = input.schedule_of_rates.map(
+                (sor) => ({
+                  work_order_id: workOrderId,
+                  activity: sor.activity.name,
+                  unit: sor.unit,
+                  estimated_quantity: sor.estimated_quantity.toString(),
+                  rc_unit_rate: sor.rc_unit_rate.toString(),
+                  gst_percentage: sor.gst_percentage.toString(),
+                  unit_rate_inc_gst: sor.unit_rate_inc_gst.toString(),
+                  total_cost: sor.total_cost.toString(),
+                  transportation_slabs: sor.transportation_slabs ?? null,
+                }),
+              );
 
-            await ctx.db
-              .insert(scheduleOfRatesTable)
-              .values(scheduleOfRatesData);
-          }
+              await tx.insert(scheduleOfRatesTable).values(scheduleOfRatesData);
+            }
+
+            return workOrderId;
+          });
 
           return {
             success: true,

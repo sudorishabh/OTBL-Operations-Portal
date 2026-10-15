@@ -10,6 +10,9 @@ import {
   dateValidator,
 } from "../validators";
 import { createSiteSchema } from "../site/site.schema";
+import { constants } from "@pkg/utils";
+
+const { WO_ACTIVITIES, allActivityOptions } = constants;
 
 export const activityTypeEnum = z.enum(["insitu", "exsitu"]);
 
@@ -43,22 +46,64 @@ export const woActivitySchemaWithId = woActivitySchema.extend({
   schedule_of_rate_id: positiveIntValidator,
 });
 
-export const scheduleOfRateSchema = z.object({
-  activity: woActivitySchema,
-  unit: z
-    .string()
-    .min(1, "Unit is required")
-    .max(10, "Unit cannot exceed 10 characters"),
-  estimated_quantity: z.number().gt(0, "Quantity must be greater than zero"),
-  rc_unit_rate: z.number().gt(0, "Rate must be greater than zero"),
-  gst_percentage: z.number().min(1, "Min 1%"),
-  unit_rate_inc_gst: z.number().min(0, "Rate cannot be negative"),
-  total_cost: z.number().min(0, "Total cost cannot be negative"),
-  transportation_km: z
-    .number()
-    .min(0, "Distance cannot be negative")
-    .optional(),
+const slabQuantityValidator = z.number().min(0, "Quantity cannot be negative");
+
+// Transported quantity per distance slab (see TRANSPORT_SLABS).
+export const transportationSlabsSchema = z.object({
+  up_to_5_km: slabQuantityValidator,
+  over_20_km: slabQuantityValidator,
+  over_40_km: slabQuantityValidator,
 });
+
+export const scheduleOfRateSchema = z
+  .object({
+    activity: woActivitySchema,
+    unit: z
+      .string()
+      .min(1, "Unit is required")
+      .max(10, "Unit cannot exceed 10 characters"),
+    estimated_quantity: z.number().gt(0, "Quantity must be greater than zero"),
+    rc_unit_rate: z.number().gt(0, "Rate must be greater than zero"),
+    gst_percentage: z.number().min(1, "Min 1%"),
+    unit_rate_inc_gst: z.number().min(0, "Rate cannot be negative"),
+    total_cost: z.number().min(0, "Total cost cannot be negative"),
+    transportation_slabs: transportationSlabsSchema.optional(),
+  })
+  .superRefine((sor, ctx) => {
+    const fixedUnit = allActivityOptions.find(
+      (option) => option.value === sor.activity.name,
+    )?.unit;
+    if (fixedUnit && sor.unit !== fixedUnit) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["unit"],
+        message: `Unit must be ${fixedUnit}`,
+      });
+    }
+
+    if (sor.activity.name !== WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL) {
+      return;
+    }
+    if (!sor.transportation_slabs) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["transportation_slabs"],
+        message: "Enter the quantity for each distance slab",
+      });
+      return;
+    }
+    const slabTotal = Object.values(sor.transportation_slabs).reduce(
+      (sum, qty) => sum + qty,
+      0,
+    );
+    if (Math.abs(slabTotal - sor.estimated_quantity) > 0.005) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["estimated_quantity"],
+        message: "Quantity must equal the sum of the distance slabs",
+      });
+    }
+  });
 
 export const baseWorkOrderSchema = z.object({
   code: codeValidator,

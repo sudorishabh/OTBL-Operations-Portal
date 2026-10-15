@@ -20,6 +20,12 @@ export type StoredDocumentRow = {
   name?: string | null;
 };
 
+// Transported quantity per distance slab on a transportation SOR row.
+export type TransportationSlabsRow = Record<
+  (typeof constants.TRANSPORT_SLABS)[number]["key"],
+  number
+>;
+
 const { ROLES, STATUS, PROPOSAL_STATUS, WORK_ORDER_STATUS } = constants;
 
 export const userTable = mysqlTable(
@@ -282,10 +288,14 @@ export const scheduleOfRatesTable = mysqlTable("schedule_of_rates", {
     precision: 20,
     scale: 2,
   }).notNull(),
+  // Legacy distance; new transportation rows record their slabs instead.
   transportation_km: decimal("transportation_km", {
     precision: 10,
     scale: 2,
   }),
+  transportation_slabs: json(
+    "transportation_slabs",
+  ).$type<TransportationSlabsRow>(),
   created_at: timestamp("created_at").notNull().defaultNow(),
 
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
