@@ -47,7 +47,6 @@ const createSiteDocumentSchema = z.object({
     "estimate",
     "completion",
     "measurement_sheet",
-    "bills",
     "completion_certificate",
   ]),
 });
