@@ -24,6 +24,9 @@ import * as workOrderTypes from "./work-order/work-order.type";
 import * as siteActivitySchemas from "./site-activity/site-activity.schema";
 import * as siteActivityTypes from "./site-activity/site-activity.type";
 
+import * as vendorSchemas from "./vendor/vendor.schema";
+import * as vendorTypes from "./vendor/vendor.type";
+
 import * as validators from "./validators";
 
 export {
@@ -44,5 +47,7 @@ export {
   workOrderTypes,
   siteActivitySchemas,
   siteActivityTypes,
+  vendorSchemas,
+  vendorTypes,
   validators,
 };

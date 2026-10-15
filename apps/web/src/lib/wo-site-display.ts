@@ -1,4 +1,5 @@
 import { differenceInCalendarDays, format } from "date-fns";
+import { constants } from "@pkg/utils";
 
 export type SiteStatus = "pending" | "completed" | "cancelled";
 
@@ -8,6 +9,15 @@ export const STATUS_STYLES: Record<SiteStatus, string> = {
   cancelled: "bg-rose-50 text-rose-700",
   pending: "bg-gray-100 text-gray-600",
 };
+
+/** Where the work happens; the restoration row has no site. */
+export const workLocation = (
+  processType: string | null | undefined,
+  address: string,
+) =>
+  processType === constants.WO_PROCESS.RESTORATION
+    ? "Across the whole work order"
+    : address || "Location not set";
 
 export const toDate = (value: string | Date | null | undefined) => {
   if (!value) return null;

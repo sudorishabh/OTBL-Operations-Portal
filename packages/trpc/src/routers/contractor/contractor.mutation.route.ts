@@ -2,57 +2,35 @@ import { eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { assertCanAccessOffice, getAccessScope } from "../../access-scope";
 import { fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { vendorSchemas } from "@pkg/schema";
 import { z } from "zod";
+import { assertCanManageVendors, assertCanUseVendors } from "./vendor-access";
 
 const { contractorTable } = schema;
 
-const createContractorSchema = z.object({
-  office_id: z.number().positive(),
-  name: z.string().min(1, "Name is required").max(255),
-  contact_number: z.string().max(15).optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  address: z.string().max(500).optional(),
-  gst_number: z.string().max(15).optional(),
-  pan_number: z.string().max(10).optional(),
-});
-
-const updateContractorSchema = z.object({
-  id: z.number().positive(),
-  name: z.string().min(1).max(255).optional(),
-  contact_number: z.string().max(15).optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  address: z.string().max(500).optional(),
-  gst_number: z.string().max(15).optional(),
-  pan_number: z.string().max(10).optional(),
-  status: z.enum(["active", "inactive"]).optional(),
-});
+// Optional text: blank clears it, and a field left out stays as it is.
+const optionalText = (value: string | undefined) =>
+  value === undefined ? undefined : value.trim() || null;
 
 export const contractorMutationRouter = router({
   createContractor: protectedProcedure
-    .input(createContractorSchema)
+    .input(vendorSchemas.createVendorSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessOffice(ctx.db, scope, input.office_id);
+        await assertCanUseVendors(ctx);
 
         try {
           const [created] = await ctx.db
             .insert(contractorTable)
             .values({
-              office_id: input.office_id,
-              name: input.name,
-              contact_number: input.contact_number ?? null,
-              email: input.email || null,
-              address: input.address ?? null,
-              gst_number: input.gst_number ?? null,
-              pan_number: input.pan_number ?? null,
+              name: input.name.trim(),
+              contact_number: optionalText(input.contact_number) ?? null,
+              email: optionalText(input.email) ?? null,
+              address: optionalText(input.address) ?? null,
+              gst_number: optionalText(input.gst_number) ?? null,
+              pan_number: optionalText(input.pan_number) ?? null,
             })
             .$returningId();
 
@@ -64,17 +42,19 @@ export const contractorMutationRouter = router({
 
           return { success: true, id: created.id };
         } catch (error) {
-          if (error && typeof error === "object" && "errorCode" in error) throw error;
+          if (error && typeof error === "object" && "errorCode" in error)
+            throw error;
           throw fromDatabaseError(error, "Creating contractor");
         }
       }),
     ),
 
   updateContractor: protectedProcedure
-    .input(updateContractorSchema)
+    .input(vendorSchemas.updateVendorSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const { id, ...updateData } = input;
+        const { id, name, status } = input;
+        assertCanManageVendors(ctx);
 
         const existing = await ctx.db
           .select()
@@ -85,19 +65,17 @@ export const contractorMutationRouter = router({
           throw notFound("Contractor", id);
         }
 
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessOffice(ctx.db, scope, existing[0]!.office_id);
-
         try {
           await ctx.db
             .update(contractorTable)
             .set({
-              ...updateData,
-              email: updateData.email || null,
+              name: name?.trim(),
+              status,
+              contact_number: optionalText(input.contact_number),
+              email: optionalText(input.email),
+              address: optionalText(input.address),
+              gst_number: optionalText(input.gst_number),
+              pan_number: optionalText(input.pan_number),
             })
             .where(eq(contractorTable.id, id));
 
@@ -112,6 +90,8 @@ export const contractorMutationRouter = router({
     .input(z.object({ id: z.number().positive() }))
     .mutation(
       handleMutation(async ({ input, ctx }) => {
+        assertCanManageVendors(ctx);
+
         const existing = await ctx.db
           .select()
           .from(contractorTable)
@@ -120,13 +100,6 @@ export const contractorMutationRouter = router({
         if (existing.length === 0) {
           throw notFound("Contractor", input.id);
         }
-
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessOffice(ctx.db, scope, existing[0]!.office_id);
 
         try {
           await ctx.db

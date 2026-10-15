@@ -229,7 +229,6 @@ export const createWorkOrderSiteSchema = z.object({
   site_id: positiveIntValidator.optional(),
   date: dateValidator,
   end_date: dateValidator,
-  process_type: z.string().min(1, "Process type is required"),
   selected_activities: z.array(woActivitySchemaWithId).optional(),
   new_site: createSiteSchema.optional(),
 });

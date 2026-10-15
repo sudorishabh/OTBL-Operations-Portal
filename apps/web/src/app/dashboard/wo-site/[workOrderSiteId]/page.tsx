@@ -23,6 +23,7 @@ import {
   formatDateRange,
   scheduleNote,
   statusOf,
+  workLocation,
 } from "@/lib/wo-site-display";
 import { capitalFirstLetter, constants } from "@pkg/utils";
 import { format } from "date-fns";
@@ -267,9 +268,10 @@ export default function WoSiteOperatorUploadPage() {
     siteDetails.date,
     siteDetails.end_date,
   );
-  const address =
-    [site?.address, site?.city, site?.state].filter(Boolean).join(", ") ||
-    "Location not set";
+  const address = workLocation(
+    siteDetails.process_type,
+    [site?.address, site?.city, site?.state].filter(Boolean).join(", "),
+  );
   const extras = [
     workOrder?.area ? { label: "Area", value: workOrder.area } : null,
     siteDetails.process_type

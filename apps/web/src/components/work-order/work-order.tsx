@@ -1,67 +1,32 @@
 "use client";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import { trpc } from "@/lib/trpc";
-import { capitalFirstLetter, getEffectiveWorkOrderStatus } from "@pkg/utils";
+import { constants, getEffectiveWorkOrderStatus } from "@pkg/utils";
 import { useRouter } from "next/navigation";
 import WorkOrderDetailsCard from "./work-order-details-card";
-import {
-  File,
-  FolderOpen,
-  Plus,
-  ReceiptIndianRupee,
-  Rows3,
-} from "lucide-react";
+import { File, FolderOpen, ReceiptIndianRupee, Rows3 } from "lucide-react";
 import ScheduleOfRatesTable from "./schedule-of-rates-table";
-import CreateWorkOrderSiteDialog from "./create-wo-site/create-wo-site-dialog";
-import SiteDetailDialog from "./site-details-dialog/site-details-dialog";
 import WorkOrderExpensesDialog from "./work-order-expenses-dialog";
 import { WorkOrderOperatorUploadsDialog } from "./work-order-operator-uploads-dialog";
 import useHandleParams from "@/hooks/useHandleParams";
 import CustomButton from "@/components/shared/btn";
-import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import WorkOrderDetailsSkeleton from "../skeleton/work-order/work-order-details-skeleton";
-import WorkOrderSitesSkeleton from "../skeleton/work-order/work-order-sites-skeleton";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { LayoutGrid, List } from "lucide-react";
-import SitesTable from "./work-order-sites/wo-sites-table";
-import WOSitesCard from "./work-order-sites/wo-sites-card";
-import toast from "react-hot-toast";
+import BioremediationSection from "./work-order-sites/bioremediation-section";
+import RestorationSection from "./restoration/restoration-section";
+
+const { WO_PROCESS } = constants;
 
 interface Props {
   workOrderId: string;
   from: "list" | "client";
 }
 
-interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
-}
-
-const normalizeSiteStatus = (
-  input: unknown,
-): "pending" | "completed" | "cancelled" => {
-  const v = String(input ?? "")
-    .trim()
-    .toLowerCase();
-  if (v === "completed") return "completed";
-  if (v === "cancelled" || v === "canceled") return "cancelled";
-  return "pending";
-};
-
 const WorkOrder = ({ workOrderId, from }: Props) => {
   const router = useRouter();
-  const { setParam, setParams } = useHandleParams();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sitesList, setSitesList] = useState<any[]>([]);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
-  const [viewMode, setViewMode] = useState<"card" | "table">("card");
-  const sitesQueryLimit = 12;
+  const { setParam } = useHandleParams();
 
   const {
     data: workOrderData,
@@ -73,82 +38,12 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
     { enabled: !!workOrderId },
   );
 
-  const {
-    data: sitesData,
-    isLoading: isSitesQueryLoading,
-    dataUpdatedAt: sitesDataUpdatedAt,
-    isError: isSitesQueryError,
-    error: sitesQueryError,
-  } = trpc.workOrderQuery.getWorkOrderSites.useQuery({
-    id: Number(workOrderId),
-    page: currentPage,
-    limit: sitesQueryLimit,
-  });
-
   const { data: woOperatorUploads = [] } =
     trpc.workOrderSiteQuery.getOperatorUploadsByWorkOrder.useQuery(
       { work_order_id: Number(workOrderId) },
       { enabled: !!workOrderId },
     );
   const woOperatorUploadsCount = woOperatorUploads.length;
-
-  const { sites: fetchedSites, pagination: fetchedPagination } = sitesData || {
-    sites: [],
-    pagination: {
-      page: 1,
-      limit: sitesQueryLimit,
-      total: 0,
-      totalPages: 1,
-      hasMore: false,
-    },
-  };
-
-  const isFetchingMore = isSitesQueryLoading && currentPage > 1;
-
-  useEffect(() => {
-    if (
-      !isSitesQueryLoading &&
-      fetchedSites &&
-      fetchedPagination?.page === currentPage
-    ) {
-      const mappedSites = fetchedSites.map((s: any) => ({
-        id: s.site_id,
-        wo_site_id: s.id,
-        name: s.site_name,
-        address: s.site_address,
-        city: s.site_city,
-        state: s.site_state,
-        pincode: s.site_pincode,
-        start_date:
-          s.start_date && !isNaN(new Date(s.start_date).getTime())
-            ? new Date(s.start_date).toISOString()
-            : new Date().toISOString(),
-        end_date:
-          s.end_date && !isNaN(new Date(s.end_date).getTime())
-            ? new Date(s.end_date).toISOString()
-            : new Date().toISOString(),
-        status:
-          s.is_completed === true ? "completed" : normalizeSiteStatus(s.status),
-        client_id: workOrderData?.workOrder?.client_id,
-        work_order_id: workOrderData?.workOrder?.id,
-        activity_type: s.activity_type,
-        metric_ton: s.metric_ton,
-        metric_ton_rate: s.metric_ton_rate,
-        budget_amount: s.budget_amount,
-        total_completion_amount: s.total_completion_amount,
-        created_at: s.created_at,
-        users: s.users,
-        measurement_sheets: s.measurement_sheets,
-      }));
-
-      if (currentPage === 1) {
-        setSitesList(mappedSites);
-      } else {
-        setSitesList((prev) => [...prev, ...mappedSites]);
-      }
-      setPagination(fetchedPagination);
-    }
-  }, [sitesDataUpdatedAt, currentPage]);
 
   const workOrder = workOrderData?.workOrder;
   const sites = workOrderData?.sites ?? [];
@@ -169,8 +64,6 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
     );
     return { ...workOrder, status: effective };
   }, [workOrder, scheduleOfRates, sites]);
-
-  const isWorkOrderCompleted = derivedWorkOrder?.status === "completed";
 
   if (isWorkOrderQueryLoading) return <WorkOrderDetailsSkeleton />;
 
@@ -209,8 +102,11 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
 
   const statsForComponent = {
     totalSites: stats.total_sites || 0,
+    // The restoration row has no site, so it isn't counted as one.
     completedSites:
-      (sites || []).filter((s: any) => s.is_completed === true)?.length || 0,
+      (sites || []).filter(
+        (s: any) => s.site?.id != null && s.is_completed === true,
+      )?.length || 0,
     totalBudgetAmount: totalBudgetAmount,
     totalCompletionAmount: totalCompletionAmount,
     budgetUtilization:
@@ -224,24 +120,14 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
       expenseSummary?.net_surplus ?? totalCompletionAmount - totalExpensesAgg,
   };
 
-  const handleCrateSiteDialog = () => {
-    if (isWorkOrderCompleted) {
-      toast.error("Work order is completed. You can't add more sites.");
-      return;
-    }
-    setParam("dialog", "create-wo-site");
-  };
-
-  const handleSiteDetails = (siteId: string) => {
-    setParams({
-      dialog: "site-details",
-      "wo-site-id": siteId,
-    });
-  };
-
-  const handleLoadMore = () => {
-    setCurrentPage((prev) => prev + 1);
-  };
+  // Each process the work order covers gets its own section.
+  const processType = derivedWorkOrder.process_type;
+  const hasBioremediation =
+    processType === WO_PROCESS.BIOREMEDIATION ||
+    processType === WO_PROCESS.BIOREMEDIATION_RESTORATION;
+  const hasRestoration =
+    processType === WO_PROCESS.RESTORATION ||
+    processType === WO_PROCESS.BIOREMEDIATION_RESTORATION;
 
   return (
     <PageWrapper
@@ -261,120 +147,43 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
           expenseSummary={expenseSummary}
         />
 
-        {isSitesQueryLoading ? (
-          <WorkOrderSitesSkeleton />
-        ) : isSitesQueryError ? (
-          <Error
-            variant='inline'
-            message={sitesQueryError.message || "Failed to load sites"}
-          />
-        ) : (
-          <div className='rounded-lg border bg-white p-6'>
-            <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4'>
-              <div className='flex flex-wrap items-center gap-3'>
-                <h2 className='text-md font-semibold'>
-                  Work Order Sites ({pagination?.total || 0})
-                </h2>
-                <Tabs
-                  value={viewMode}
-                  onValueChange={(val) => setViewMode(val as "card" | "table")}
-                  className='mr-2'>
-                  <TabsList className='grid w-36 grid-cols-2 h-8'>
-                    <TabsTrigger
-                      value='card'
-                      className='gap-2 text-xs text-gray-800'>
-                      <LayoutGrid className='size-3.5 text-gray-500' />
-                      Card
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value='table'
-                      className='gap-2 text-xs text-gray-800'>
-                      <List className='size-3.5 text-gray-500' />
-                      Table
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-              {workOrderData?.scheduleOfRates &&
-                workOrderData?.scheduleOfRates.length > 0 && (
-                  <div className='flex flex-wrap gap-2'>
-                    <CustomButton
-                      text='View Schedule of Rates'
-                      variant='outline'
-                      Icon={Rows3}
-                      onClick={() => setParam("dialog", "schedule-of-rates")}
-                    />
-                    <CustomButton
-                      text='View All Expenses'
-                      variant='outline'
-                      Icon={ReceiptIndianRupee}
-                      onClick={() => setParam("dialog", "all-expenses")}
-                    />
-                    {woOperatorUploadsCount > 0 && (
-                      <CustomButton
-                        text={`Operator Uploads (${woOperatorUploadsCount})`}
-                        variant='outline'
-                        Icon={FolderOpen}
-                        onClick={() => setParam("dialog", "operator-uploads")}
-                      />
-                    )}
-                    <CustomButton
-                      variant='primary'
-                      Icon={Plus}
-                      text='Create Site'
-                      onClick={handleCrateSiteDialog}
-                      disabled={isWorkOrderCompleted}
-                      disableForViewer
-                    />
-                  </div>
-                )}
-            </div>
-
-            {sitesList.length > 0 ? (
-              <div className='relative'>
-                <Tabs
-                  value={viewMode}
-                  className='w-full'>
-                  <TabsContent value='card'>
-                    <WOSitesCard
-                      sites={sitesList}
-                      handleSiteDetails={handleSiteDetails}
-                    />
-                  </TabsContent>
-                  <TabsContent value='table'>
-                    <SitesTable
-                      sites={sitesList}
-                      onSiteClick={handleSiteDetails}
-                    />
-                  </TabsContent>
-                </Tabs>
-                {isFetchingMore && <WorkOrderSitesSkeleton />}
-                {!isFetchingMore && pagination?.hasMore && (
-                  <div className='flex justify-center mt-4'>
-                    <LoadMoreBtn
-                      onClick={handleLoadMore}
-                      loading={false}
-                    />
-                  </div>
-                )}
-                <div className='flex justify-between items-center px-4 py-2 text-xs text-muted-foreground border-t mt-4'>
-                  <span>
-                    Showing {sitesList.length} of{" "}
-                    {pagination?.total || sitesList.length} sites
-                  </span>
-                  {pagination && pagination.totalPages > 1 && (
-                    <span>
-                      Page {pagination.page} of {pagination.totalPages}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className='text-center text-xs py-8 text-gray-500'>
-                No sites added yet. Click &quot;Add Site&quot; to get started.
-              </div>
+        {scheduleOfRates.length > 0 && (
+          <div className='flex flex-wrap justify-end gap-2'>
+            <CustomButton
+              text='View Schedule of Rates'
+              variant='outline'
+              Icon={Rows3}
+              onClick={() => setParam("dialog", "schedule-of-rates")}
+            />
+            <CustomButton
+              text='View All Expenses'
+              variant='outline'
+              Icon={ReceiptIndianRupee}
+              onClick={() => setParam("dialog", "all-expenses")}
+            />
+            {woOperatorUploadsCount > 0 && (
+              <CustomButton
+                text={`Operator Uploads (${woOperatorUploadsCount})`}
+                variant='outline'
+                Icon={FolderOpen}
+                onClick={() => setParam("dialog", "operator-uploads")}
+              />
             )}
           </div>
+        )}
+
+        {hasBioremediation && (
+          <BioremediationSection
+            workOrder={derivedWorkOrder}
+            scheduleOfRates={scheduleOfRates}
+          />
+        )}
+
+        {hasRestoration && (
+          <RestorationSection
+            workOrder={derivedWorkOrder}
+            scheduleOfRates={scheduleOfRates}
+          />
         )}
 
         <ScheduleOfRatesTable
@@ -382,11 +191,6 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
           sites={sites}
           expenseSummary={expenseSummary}
         />
-        <CreateWorkOrderSiteDialog
-          workOrder={derivedWorkOrder}
-          scheduleOfRates={scheduleOfRates}
-        />
-        <SiteDetailDialog />
         <WorkOrderExpensesDialog
           workOrderId={Number(workOrderId)}
           workOrderCode={workOrderData.workOrder.code}

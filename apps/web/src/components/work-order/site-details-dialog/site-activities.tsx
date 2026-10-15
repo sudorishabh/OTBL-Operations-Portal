@@ -7,22 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FlaskConical,
   Building2,
-  Trash2,
-  ExternalLink,
-  FileText,
-  X,
   Receipt,
   BarChart3,
   Rows3,
-  ReceiptIndianRupee,
   Pencil,
   AlertTriangle,
 } from "lucide-react";
-import DeferredFilePicker from "@/components/shared/deferred-file-picker";
 import DocumentsField from "@/components/shared/documents-field";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import {
   Table,
@@ -39,7 +32,6 @@ type DocType =
   | "estimate"
   | "completion"
   | "estimate_sub-wo"
-  | "bills"
   | "completion_certificate";
 
 const PHASES: DocType[] = ["estimate_sub-wo", "completion"];
@@ -48,7 +40,6 @@ const PHASE_LABELS: Record<string, string> = {
   estimate: "Estimate",
   completion: "Completion",
   "estimate_sub-wo": "Estimate / Sub-WO",
-  bills: "Bills",
   completion_certificate: "Completion Certificate",
 };
 
@@ -141,7 +132,6 @@ const PhaseForm = ({
 
   // Files waiting to upload, keyed by document type (sub_wo, estimate, ...).
   const [pendingDocs, setPendingDocs] = useState<Record<string, File[]>>({});
-  const [billFiles, setBillFiles] = useState<File[]>([]);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
   const {
@@ -197,26 +187,6 @@ const PhaseForm = ({
         return;
       }
 
-      const expenseTotal =
-        phase === "completion"
-          ? (expensesByActivity[activity.activity]?.totalQuantity ?? 0)
-          : 0;
-      if (!isBioremediation && phase === "completion" && expenseTotal > 0) {
-        const rate = parseFloat(activity.rate || "0");
-        const autoAmount = (expenseTotal * rate).toFixed(2);
-        const saved = getActivityData(
-          activity.activity,
-          phase,
-          isBioremediation,
-        );
-        newFormData[activity.activity] = {
-          estimated_quantity: expenseTotal.toFixed(2),
-          amount: autoAmount,
-          transportation_km: saved?.transportation_km?.toString() || "",
-        };
-        return;
-      }
-
       const data = getActivityData(activity.activity, phase, isBioremediation);
       if (data) {
         newFormData[activity.activity] = {
@@ -239,7 +209,6 @@ const PhaseForm = ({
     getActivityData,
     isBioremediation,
     totalOilZappingQty,
-    expensesByActivity,
   ]);
 
   const handleChange = (
@@ -268,35 +237,6 @@ const PhaseForm = ({
     });
   };
 
-  const saveRestoration =
-    trpc.workOrderSiteMutation.saveRestorationPhase.useMutation({
-      onSuccess: () => {
-        toast.success("All phase activities saved successfully.");
-        utils.workOrderSiteQuery.getRestorationData.invalidate();
-        utils.workOrderSiteQuery.getSiteActivities.invalidate({
-          work_order_site_id: woSiteId,
-        });
-        utils.workOrderSiteQuery.getSiteDocuments.invalidate();
-        utils.expenseQuery.getExpenseSummary.invalidate({
-          work_order_site_id: woSiteId,
-        });
-        utils.expenseQuery.getExpenses.invalidate({
-          work_order_site_id: woSiteId,
-        });
-        setPendingDocs({});
-        setBillFiles([]);
-        resetUpload();
-        setIsEditMode(false);
-      },
-      onError: (err: any) => {
-        const message =
-          err instanceof Error
-            ? err.message
-            : "Failed to save the data. Please try again.";
-        toast.error(`Failed to save: ${message}`);
-      },
-    });
-
   const saveContaminatedSoil =
     trpc.workOrderSiteMutation.saveContaminatedSoil.useMutation({
       onSuccess: () => {
@@ -313,7 +253,6 @@ const PhaseForm = ({
           work_order_site_id: woSiteId,
         });
         setPendingDocs({});
-        setBillFiles([]);
         resetUpload();
         setIsEditMode(false);
       },
@@ -398,11 +337,7 @@ const PhaseForm = ({
     }
 
     // Each uploaded file is saved as its own site document of that type.
-    const uploadsByType: [string, File[]][] = [
-      ...Object.entries(pendingDocs),
-      ["bills", billFiles],
-    ];
-    for (const [type, files] of uploadsByType) {
+    for (const [type, files] of Object.entries(pendingDocs)) {
       if (files.length === 0) continue;
 
       setUploadingType(type);
@@ -445,60 +380,10 @@ const PhaseForm = ({
           });
         }
       }
-    } else {
-      const payload: any = {
-        ...commonData,
-        phase: phase as any,
-      };
-
-      activities.forEach((activity) => {
-        const data = formData[activity.activity];
-        if (!data) return;
-
-        let fieldName = "";
-        switch (activity.activity) {
-          case "clean_up_oil_spill":
-          case "clean_soil_area":
-          case constants.WO_ACTIVITIES.clean_soil_area:
-            fieldName = "clean_soil_area";
-            break;
-          case "lifting_oil_slush":
-          case constants.WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL:
-            fieldName = "lifting_oil_slush";
-            break;
-          case "excav_cont_soil":
-          case constants.WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL:
-            fieldName = "excav_cont_soil";
-            break;
-          case "trans_cont_soil":
-          case "trnsprt_oil_slush":
-          case constants.WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL:
-            fieldName = "trans_cont_soil";
-            break;
-          case "refill_excav_soil":
-          case constants.WO_ACTIVITIES
-            .REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND:
-            fieldName = "refill_excav_soil";
-            break;
-        }
-
-        if (fieldName) {
-          payload[fieldName] = {
-            estimated_quantity: data.estimated_quantity,
-            amount: data.amount || undefined,
-            transportation_km: data.transportation_km || undefined,
-          };
-        }
-      });
-
-      saveRestoration.mutate(payload);
     }
   };
 
-  const isLoading =
-    saveRestoration.isPending ||
-    saveContaminatedSoil.isPending ||
-    isFileUploading;
+  const isLoading = saveContaminatedSoil.isPending || isFileUploading;
 
   const renderDocumentSection = (type: string) => {
     const savedDocs = siteDocuments?.filter((d) => d.type === type) ?? [];
@@ -554,118 +439,17 @@ const PhaseForm = ({
             </div>
           </div>
         ) : phase === "completion" ? (
-          <div className='space-y-4'>
-            <div className='space-y-1.5'>
-              <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
-                Completion Certificate
-              </span>
-              {renderDocumentSection("completion_certificate")}
-            </div>
-
-            <div className='rounded-xl border border-slate-200/80 bg-slate-50/50 p-3'>
-              <div className='flex items-center justify-between mb-2.5'>
-                <div className='flex items-center gap-2'>
-                  <ReceiptIndianRupee className='size-3.5 text-slate-400' />
-                  <h4 className='text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
-                    Bills
-                  </h4>
-                  {(siteDocuments?.filter((d) => d.type === "bills").length ||
-                    0) > 0 && (
-                    <span className='text-[9px] font-bold bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full'>
-                      {siteDocuments?.filter((d) => d.type === "bills").length}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {(siteDocuments?.filter((d) => d.type === "bills").length || 0) >
-                0 && (
-                <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3'>
-                  {siteDocuments
-                    ?.filter((d) => d.type === "bills")
-                    .map((doc, index) => (
-                      <div
-                        key={doc.id}
-                        className='group flex items-center gap-2.5 bg-white p-2 rounded-lg border border-slate-200/70 hover:border-slate-300 transition-all'>
-                        <div className='flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 text-blue-500 text-[10px] font-bold shrink-0'>
-                          {index + 1}
-                        </div>
-                        <a
-                          href={doc.document_url}
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          className='text-[11px] font-medium text-gray-600 truncate hover:text-blue-600 flex items-center gap-1 transition-colors flex-1 min-w-0'>
-                          Bill Document {index + 1}
-                          <ExternalLink className='size-3 shrink-0 opacity-50' />
-                        </a>
-                        <Button
-                          size='sm'
-                          variant='ghost'
-                          onClick={() =>
-                            confirm("Delete this bill?") &&
-                            deleteDocumentMutation.mutate({ id: doc.id })
-                          }
-                          className='h-6 w-6 p-0 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0'>
-                          <Trash2 className='size-3' />
-                        </Button>
-                      </div>
-                    ))}
-                </div>
-              )}
-
-              <DeferredFilePicker
-                label='Add Bills'
-                onFileSelect={(f) => f && setBillFiles((prev) => [...prev, f])}
-                selectedFile={null}
-                multiple
-                fileCount={billFiles.length}
-                isUploading={isFileUploading}
-                uploadProgress={progress}
-                className='bg-white h-9 rounded-lg'
-              />
-
-              {billFiles.length > 0 && (
-                <div className='mt-2 space-y-1.5'>
-                  <span className='text-[9px] font-semibold text-amber-600 uppercase tracking-wider'>
-                    Pending Upload ({billFiles.length})
-                  </span>
-                  {billFiles.map((f, i) => (
-                    <div
-                      key={i}
-                      className='flex items-center justify-between bg-amber-50/60 px-2.5 py-1.5 rounded-lg border border-amber-200/60'>
-                      <div className='flex items-center gap-2 min-w-0'>
-                        <div className='w-5 h-5 rounded bg-amber-100 flex items-center justify-center'>
-                          <FileText className='size-3 text-amber-600' />
-                        </div>
-                        <span className='text-[10px] text-slate-600 truncate'>
-                          {f.name}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() =>
-                          setBillFiles((prev) =>
-                            prev.filter((_, idx) => idx !== i),
-                          )
-                        }
-                        className='text-red-400 hover:text-red-600 p-0.5 rounded hover:bg-red-50 transition-colors shrink-0'>
-                        <X className='size-3' />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className='space-y-1.5'>
+            <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
+              Completion Certificate
+            </span>
+            {renderDocumentSection("completion_certificate")}
           </div>
         ) : (
           renderDocumentSection(phase)
         )}
       </div>
 
-      {(() => {
-        const hasTransportActivity = activities.some(
-          (a) => a.activity === "trans_cont_soil",
-        );
-        return (
           <div className='rounded-xl border bg-gray-100/50 overflow-hidden'>
             <div className='overflow-x-auto'>
             <Table className='w-full text-xs'>
@@ -683,15 +467,9 @@ const PhaseForm = ({
                   <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
                     Est. Qty
                   </TableHead>
-                  <TableHead
-                    className={`px-2 py-3 text-center ${hasTransportActivity ? "" : ""} w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider`}>
+                  <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
                     Amount
                   </TableHead>
-                  {hasTransportActivity && (
-                    <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
-                      Transport (KM)
-                    </TableHead>
-                  )}
                 </TableRow>
               </TableHeader>
               <TableBody className='divide-y'>
@@ -701,9 +479,6 @@ const PhaseForm = ({
                     amount: "",
                     transportation_km: "",
                   };
-
-                  const isTransportActivity =
-                    activity.activity === "trans_cont_soil";
 
                   const isBioremActivity =
                     isBioremediation &&
@@ -722,34 +497,21 @@ const PhaseForm = ({
                       ? expensesByActivity[activity.activity]
                       : undefined;
 
-                  const isAutoFilledFromExpenses =
-                    !isBioremediation &&
-                    phase === "completion" &&
-                    !!expenseSummary &&
-                    expenseSummary.totalQuantity > 0;
-
-                  const estimatePhaseData =
-                    isBioremActivity || isAutoFilledFromExpenses
-                      ? getActivityData(
+                  // Bioremediation is measured against its estimate.
+                  const estimateQty = isBioremActivity
+                    ? parseFloat(
+                        getActivityData(
                           activity.activity,
-                          "estimate_sub-wo" as DocType,
+                          "estimate_sub-wo",
                           isBioremediation,
-                        )
-                      : undefined;
-                  const estimateQty = parseFloat(
-                    estimatePhaseData?.estimated_quantity?.toString() || "0",
-                  );
+                        )?.estimated_quantity?.toString() || "0",
+                      )
+                    : 0;
                   const exceededQty =
                     isAutoFilledFromZapping && estimateQty > 0
                       ? totalOilZappingQty - estimateQty
                       : 0;
-                  const expenseQty = expenseSummary?.totalQuantity ?? 0;
-                  const expenseExceededQty =
-                    isAutoFilledFromExpenses && estimateQty > 0
-                      ? expenseQty - estimateQty
-                      : 0;
-
-                  const expenseColSpan = hasTransportActivity ? 6 : 5;
+                  const expenseColSpan = 5;
 
                   return (
                     <React.Fragment key={activity.id}>
@@ -776,13 +538,9 @@ const PhaseForm = ({
                               e.target.value,
                             )
                           }
-                          readOnly={
-                            isAutoFilledFromZapping ||
-                            isAutoFilledFromExpenses ||
-                            isReadOnly
-                          }
+                          readOnly={isAutoFilledFromZapping || isReadOnly}
                           className={`h-10 w-full border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 text-center text-xs placeholder:text-slate-300 ${
-                            isAutoFilledFromZapping || isAutoFilledFromExpenses
+                            isAutoFilledFromZapping
                               ? "bg-blue-50/60 text-blue-700 font-semibold cursor-default"
                               : isReadOnly
                                 ? "bg-slate-50/60 text-slate-600 cursor-default"
@@ -794,38 +552,6 @@ const PhaseForm = ({
                               : "0.00"
                           }
                         />
-                        {isAutoFilledFromExpenses && (
-                          <div className='px-2 py-1.5 flex flex-col gap-1 text-xs border-t border-blue-100 bg-blue-50/40'>
-                            <div className='flex justify-between text-blue-600'>
-                              <span className='opacity-70'>
-                                From expenses:
-                              </span>
-                              <span className='font-medium'>
-                                {expenseQty.toFixed(2)}
-                              </span>
-                            </div>
-                            {estimateQty > 0 && (
-                              <div className='flex justify-between text-slate-500'>
-                                <span className='opacity-70'>
-                                  Estimate qty:
-                                </span>
-                                <span className='font-medium'>
-                                  {estimateQty.toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-                            {expenseExceededQty > 0 && (
-                              <div className='flex justify-between border-t border-red-200/60 pt-1 mt-0.5'>
-                                <span className='font-semibold text-red-600'>
-                                  Exceeded:
-                                </span>
-                                <span className='text-red-600 font-bold'>
-                                  +{expenseExceededQty.toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
                         {isAutoFilledFromZapping && (
                           <div className='px-2 py-1.5 flex flex-col gap-1 text-xs border-t border-blue-100 bg-blue-50/40'>
                             <div className='flex justify-between text-blue-600'>
@@ -867,29 +593,6 @@ const PhaseForm = ({
                           placeholder='0.00'
                         />
                       </TableCell>
-                      {hasTransportActivity && (
-                        <TableCell className='p-0'>
-                          {isTransportActivity ? (
-                            <Input
-                              value={currentData.transportation_km}
-                              onChange={(e) =>
-                                handleChange(
-                                  activity.activity,
-                                  "transportation_km",
-                                  e.target.value,
-                                )
-                              }
-                              readOnly={isReadOnly}
-                              className={`h-10 w-full border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 text-center text-xs placeholder:text-slate-300 ${isReadOnly ? "bg-slate-50/60 text-slate-600 cursor-default" : "bg-transparent"}`}
-                              placeholder='0.00'
-                            />
-                          ) : (
-                            <div className='flex items-center justify-center h-10 text-slate-300'>
-                              —
-                            </div>
-                          )}
-                        </TableCell>
-                      )}
                     </TableRow>
                     {expenseSummary && expenseSummary.count > 0 && (
                       <TableRow className='bg-slate-50/60 hover:bg-slate-50/60'>
@@ -927,8 +630,6 @@ const PhaseForm = ({
             </Table>
             </div>
           </div>
-        );
-      })()}
 
       <div className='flex justify-end gap-2 pt-1'>
         {isReadOnly ? (
@@ -983,12 +684,6 @@ const SiteActivities = ({
       { enabled: !!woSiteId },
     );
 
-  const restorationDataQuery =
-    trpc.workOrderSiteQuery.getRestorationData.useQuery(
-      { work_order_site_id: woSiteId },
-      { enabled: !!woSiteId },
-    );
-
   const bioremediationDataQuery =
     trpc.workOrderSiteQuery.getBioremediationData.useQuery(
       { work_order_site_id: woSiteId },
@@ -1002,61 +697,22 @@ const SiteActivities = ({
 
   const getActivityData = useCallback(
     (activityKey: string, phase: DocType, isBioremediation: boolean) => {
-      if (isBioremediation) {
-        if (!bioremediationDataQuery.data) return undefined;
-        const data = bioremediationDataQuery.data;
-        if (
-          activityKey === "biorem_cont_soil" ||
-          activityKey ===
-            constants.WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL
-        ) {
-          const activityType =
-            phase === "completion" ? "completion" : "estimate_sub-wo";
-          return data.contaminatedSoil.find(
-            (item: any) => item.type === activityType,
-          );
-        }
-        return undefined;
-      } else {
-        if (!restorationDataQuery.data) return undefined;
-        const data = restorationDataQuery.data;
+      const data = bioremediationDataQuery.data;
+      if (!isBioremediation || !data) return undefined;
+      if (
+        activityKey === "biorem_cont_soil" ||
+        activityKey ===
+          constants.WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL
+      ) {
         const activityType =
           phase === "completion" ? "completion" : "estimate_sub-wo";
-        switch (activityKey) {
-          case "clean_up_oil_spill":
-          case "clean_soil_area":
-          case constants.WO_ACTIVITIES.clean_soil_area:
-            return data.cleaningUpSoilArea.find(
-              (item: any) => item.type === activityType,
-            );
-          case "lifting_oil_slush":
-          case constants.WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL:
-            return data.liftingRecoveryOilSlush.find(
-              (item: any) => item.type === activityType,
-            );
-          case "excav_cont_soil":
-          case constants.WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL:
-            return data.excavationContSoil.find(
-              (item: any) => item.type === activityType,
-            );
-          case "trans_cont_soil":
-          case "trnsprt_oil_slush":
-          case constants.WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL:
-            return data.transportationContSoil.find(
-              (item: any) => item.type === activityType,
-            );
-          case "refill_excav_soil":
-          case constants.WO_ACTIVITIES
-            .REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND:
-            return data.refillingExcavatedContSoil.find(
-              (item: any) => item.type === activityType,
-            );
-          default:
-            return undefined;
-        }
+        return data.contaminatedSoil.find(
+          (item: any) => item.type === activityType,
+        );
       }
+      return undefined;
     },
-    [bioremediationDataQuery.data, restorationDataQuery.data],
+    [bioremediationDataQuery.data],
   );
 
   return (
@@ -1068,7 +724,7 @@ const SiteActivities = ({
               SOR availability
             </span>
             <span className='text-[10px] text-slate-400 truncate'>
-              (estimates + completions across sites)
+              (used across the work order)
             </span>
           </div>
           <div
@@ -1174,9 +830,7 @@ const SiteActivities = ({
             <div className='flex items-center gap-3'>
               <div>
                 <h3 className='text-sm font-bold text-gray-800'>
-                  {processType === "bioremediation"
-                    ? "Bioremediation Data"
-                    : "Restoration Data"}
+                  Bioremediation Data
                 </h3>
                 <p className='text-[10px] text-slate-400'>
                   {showPhaseTabs

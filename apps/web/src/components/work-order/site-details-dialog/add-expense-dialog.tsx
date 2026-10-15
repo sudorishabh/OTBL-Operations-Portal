@@ -41,6 +41,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
+import { capitalFirstLetter } from "@pkg/utils";
+import { cn } from "@/lib/utils";
 
 export const EXPENSE_TYPE_LABELS: Record<string, string> = {
   contractor_payment: "Contractor Payment",
@@ -114,11 +116,18 @@ interface Props {
   onClose: () => void;
   onSuccess?: () => void;
   workOrderSiteId: number;
-  officeId: number;
   editingExpense?: Expense | null;
   activities?: ActivityOption[];
   usedQtyByActivity?: Record<string, number>;
+  // The contractors the work is ordered to; an expense can be recorded under
+  // one of them.
+  contractors?: { id: number; name: string }[];
+  // The contractor a new expense starts under.
+  defaultContractorId?: number | null;
 }
+
+// "Expense under" value for an expense under none of the contractors.
+const NOT_UNDER = "none";
 
 const newItem = (): ExpenseItem => ({
   id: Math.random().toString(36).slice(2),
@@ -138,16 +147,19 @@ const AddExpenseDialog = ({
   onClose,
   onSuccess,
   workOrderSiteId,
-  officeId,
   editingExpense,
   activities = [],
   usedQtyByActivity = {},
+  contractors = [],
+  defaultContractorId = null,
 }: Props) => {
   const utils = trpc.useUtils();
 
   const [items, setItems] = useState<ExpenseItem[]>([newItem()]);
 
   const [contractorId, setContractorId] = useState<string>("");
+  // A contractor id, NOT_UNDER, or "" until chosen.
+  const [underId, setUnderId] = useState("");
   const [selectedActivityKey, setSelectedActivityKey] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
   const [description, setDescription] = useState("");
@@ -168,7 +180,19 @@ const AddExpenseDialog = ({
   const [isSavingMulti, setIsSavingMulti] = useState(false);
 
   const isEditing = !!editingExpense;
+  const underContractor =
+    contractors.find((c) => String(c.id) === underId) ?? null;
+  const isUnderContractor = !!underContractor;
   const hasContractorPayment = items.some((i) => i.expense_type === "contractor_payment");
+
+  // Under a contractor every item carries it; otherwise only a contractor
+  // payment names one.
+  const contractorIdFor = (type: ExpenseTypeSelection) => {
+    if (underContractor) return underContractor.id;
+    return type === "contractor_payment" && contractorId
+      ? Number(contractorId)
+      : null;
+  };
 
   const sharePointUpload = useSharePointUpload({
     folderPath: `/WorkOrders/Sites/${workOrderSiteId}/Expenses`,
@@ -189,6 +213,12 @@ const AddExpenseDialog = ({
         amount: editingExpense.amount,
       }]);
       setContractorId(editingExpense.contractor_id ? String(editingExpense.contractor_id) : "");
+      const under = contractors.find(
+        (c) => c.id === editingExpense.contractor_id,
+      );
+      setUnderId(
+        under ? String(under.id) : contractors.length > 0 ? NOT_UNDER : "",
+      );
       setSelectedActivityKey(editingExpense.activity_key ?? "");
       setQuantity(editingExpense.quantity ?? "");
       setDescription(editingExpense.description);
@@ -200,6 +230,14 @@ const AddExpenseDialog = ({
     } else {
       setItems([newItem()]);
       setContractorId("");
+      // With one contractor it is the likely choice; with several, ask.
+      setUnderId(
+        defaultContractorId
+          ? String(defaultContractorId)
+          : contractors.length === 1
+            ? String(contractors[0]!.id)
+            : "",
+      );
       setSelectedActivityKey("");
       setQuantity("");
       setDescription("");
@@ -248,14 +286,17 @@ const AddExpenseDialog = ({
   const totalAmount = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
 
   const contractorsQuery = trpc.contractorQuery.getContractors.useQuery(
-    { office_id: officeId },
-    { enabled: open && !!officeId },
+    {},
+    { enabled: open },
   );
-  const contractors = contractorsQuery.data?.contractors ?? [];
+  // Inactive vendors can't take new expenses, but an edit keeps its own.
+  const vendors = (contractorsQuery.data?.contractors ?? []).filter(
+    (c: any) => c.status === "active" || String(c.id) === contractorId,
+  );
 
   const createContractorMutation = trpc.contractorMutation.createContractor.useMutation({
     onSuccess: (data: any) => {
-      utils.contractorQuery.getContractors.invalidate({ office_id: officeId });
+      utils.contractorQuery.invalidate();
       setContractorId(String(data.id));
       setShowAddContractor(false);
       setNewContractorName("");
@@ -284,7 +325,6 @@ const AddExpenseDialog = ({
       return;
     }
     createContractorMutation.mutate({
-      office_id: officeId,
       name: newContractorName.trim(),
       contact_number: newContractorContact.trim() || undefined,
       gst_number: newContractorGst.trim() || undefined,
@@ -292,6 +332,10 @@ const AddExpenseDialog = ({
   };
 
   const handleSubmit = async () => {
+    if (contractors.length > 0 && !underId) {
+      toast.error("Choose which vendor this expense is under");
+      return;
+    }
     if (activities.length > 0 && !selectedActivityKey) {
       toast.error("Please select an activity");
       return;
@@ -339,10 +383,7 @@ const AddExpenseDialog = ({
       updateExpenseMutation.mutate({
         id: editingExpense.id,
         expense_type: resolveExpenseType(item.expense_type),
-        contractor_id:
-          item.expense_type === "contractor_payment" && contractorId
-            ? Number(contractorId)
-            : null,
+        contractor_id: contractorIdFor(item.expense_type),
         amount: item.amount,
         ...sharedPayload,
       });
@@ -356,10 +397,7 @@ const AddExpenseDialog = ({
           createExpenseMutation.mutateAsync({
             work_order_site_id: workOrderSiteId,
             expense_type: resolveExpenseType(item.expense_type),
-            contractor_id:
-              item.expense_type === "contractor_payment" && contractorId
-                ? Number(contractorId)
-                : null,
+            contractor_id: contractorIdFor(item.expense_type),
             amount: item.amount,
             ...sharedPayload,
           }),
@@ -429,6 +467,50 @@ const AddExpenseDialog = ({
         )}
 
         <div className='flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0'>
+
+          {contractors.length > 0 && (
+            <div className='space-y-1.5'>
+              <Label className='text-xs font-medium text-gray-700'>
+                Expense under <span className='text-red-500'>*</span>
+              </Label>
+              <div
+                role='radiogroup'
+                aria-label='Expense under'
+                className='grid grid-cols-2 gap-2'>
+                {[
+                  ...contractors.map((c) => ({
+                    value: String(c.id),
+                    label: `Under ${capitalFirstLetter(c.name)}`,
+                    Icon: HardHat,
+                  })),
+                  {
+                    value: NOT_UNDER,
+                    label: "Not under a vendor",
+                    Icon: MoreHorizontal,
+                  },
+                ].map(({ value, label, Icon }) => (
+                  <button
+                    key={value}
+                    type='button'
+                    role='radio'
+                    aria-checked={underId === value}
+                    onClick={() => {
+                      setUnderId(value);
+                      setContractorId("");
+                    }}
+                    className={cn(
+                      "flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors",
+                      underId === value
+                        ? "border-blue-300 bg-blue-50 text-blue-700"
+                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
+                    )}>
+                    <Icon className='size-3.5 shrink-0' />
+                    <span className='truncate'>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {activities.length > 0 && (
             <div className='space-y-1.5'>
@@ -558,7 +640,7 @@ const AddExpenseDialog = ({
             )}
           </div>
 
-          {hasContractorPayment && (
+          {hasContractorPayment && !isUnderContractor && (
             <div className='space-y-2 border border-blue-100 rounded-lg p-3 bg-blue-50/30'>
               <Label className='text-xs font-medium text-gray-700 flex items-center gap-1.5'>
                 <HardHat className='w-3 h-3 text-blue-500' />
@@ -571,10 +653,10 @@ const AddExpenseDialog = ({
                       <SelectValue placeholder='Select contractor...' />
                     </SelectTrigger>
                     <SelectContent>
-                      {contractors.length === 0 && (
+                      {vendors.length === 0 && (
                         <div className='px-3 py-2 text-xs text-gray-400'>No contractors yet</div>
                       )}
-                      {contractors.map((c: any) => (
+                      {vendors.map((c: any) => (
                         <SelectItem key={c.id} value={String(c.id)} className='text-sm'>
                           {c.name}
                           {c.gst_number && <span className='text-gray-400 ml-1'>· {c.gst_number}</span>}

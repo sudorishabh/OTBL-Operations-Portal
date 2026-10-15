@@ -17,6 +17,8 @@ import { proposalMutationRouter } from "./routers/proposal/proposal.mutation.rou
 import { proposalQueryRouter } from "./routers/proposal/proposal.query.route";
 import { contractorQueryRouter } from "./routers/contractor/contractor.query.route";
 import { contractorMutationRouter } from "./routers/contractor/contractor.mutation.route";
+import { restorationQueryRouter } from "./routers/restoration/restoration.query.route";
+import { restorationMutationRouter } from "./routers/restoration/restoration.mutation.route";
 import { expenseQueryRouter } from "./routers/expense/expense.query.route";
 import { expenseMutationRouter } from "./routers/expense/expense.mutation.route";
 import { sharePointQueryRouter } from "./routers/sharepoint/sharepoint.query.route";
@@ -55,6 +57,9 @@ export const appRouter = router({
 
   contractorQuery: contractorQueryRouter,
   contractorMutation: contractorMutationRouter,
+
+  restorationQuery: restorationQueryRouter,
+  restorationMutation: restorationMutationRouter,
 
   expenseQuery: expenseQueryRouter,
   expenseMutation: expenseMutationRouter,

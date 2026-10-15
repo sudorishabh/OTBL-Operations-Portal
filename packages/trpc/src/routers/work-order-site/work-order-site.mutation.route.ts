@@ -10,7 +10,12 @@ import {
 import { assertOfficeManager } from "../../helper/office-permissions";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
-import { fromDatabaseError, notFound, validationError } from "../../errors";
+import {
+  businessRule,
+  fromDatabaseError,
+  notFound,
+  validationError,
+} from "../../errors";
 import { constants } from "@pkg/utils";
 import { validators } from "@pkg/schema";
 import {
@@ -42,7 +47,6 @@ const createSiteDocumentSchema = z.object({
     "estimate",
     "completion",
     "measurement_sheet",
-    "bills",
     "completion_certificate",
   ]),
 });
@@ -104,19 +108,6 @@ const saveBioremediationPhaseSchema = z.object({
     .optional(),
 });
 
-const saveRestorationPhaseSchema = z.object({
-  work_order_site_id: z.number().positive(),
-  phase: z.enum(["estimate_sub-wo", "completion"]),
-  document_url: z.string().optional(),
-  sub_wo_document_url: z.string().optional(),
-  estimate_document_url: z.string().optional(),
-  clean_soil_area: saveActivityDataSchema.optional(),
-  lifting_oil_slush: saveActivityDataSchema.optional(),
-  excav_cont_soil: saveActivityDataSchema.optional(),
-  trans_cont_soil: saveActivityDataSchema.optional(),
-  refill_excav_soil: saveActivityDataSchema.optional(),
-});
-
 const {
   siteActivityTable,
   workOrderTable,
@@ -128,11 +119,6 @@ const {
   bioremediationContSoilTable,
   bioSampleTable,
   bioOilZappingTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
 } = schema;
 
 export const workOrderSiteMutationRouter = router({
@@ -427,6 +413,21 @@ export const workOrderSiteMutationRouter = router({
   createSiteDocument: publicProcedure.input(createSiteDocumentSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       const { work_order_site_id, document_url, document_id, type } = input;
+
+      // Sub-WO and estimate documents belong to an estimate, which
+      // restoration doesn't have.
+      if (type === "sub_wo" || type === "estimate") {
+        const [woSite] = await ctx.db
+          .select({ process_type: workOrderSiteTable.process_type })
+          .from(workOrderSiteTable)
+          .where(eq(workOrderSiteTable.id, work_order_site_id));
+
+        if (woSite?.process_type === constants.WO_PROCESS.RESTORATION) {
+          throw businessRule(
+            "Restoration has no estimate, so it takes no sub-WO or estimate documents.",
+          );
+        }
+      }
 
       try {
         const [result] = await ctx.db.insert(workOrderSiteDocsTable).values({
@@ -911,164 +912,4 @@ export const workOrderSiteMutationRouter = router({
       }),
     ),
 
-  saveRestorationPhase: publicProcedure
-    .input(saveRestorationPhaseSchema)
-    .mutation(
-      handleMutation(async ({ input, ctx }) => {
-        const {
-          work_order_site_id,
-          phase,
-          document_url,
-          sub_wo_document_url,
-          estimate_document_url,
-          clean_soil_area,
-          lifting_oil_slush,
-          excav_cont_soil,
-          trans_cont_soil,
-          refill_excav_soil,
-        } = input;
-
-        const upsertDoc = async (tx: any, url: string, type: string) => {
-          const existingDoc = await tx
-            .select()
-            .from(workOrderSiteDocsTable)
-            .where(
-              and(
-                eq(
-                  workOrderSiteDocsTable.work_order_site_id,
-                  work_order_site_id,
-                ),
-                eq(workOrderSiteDocsTable.type, type as any),
-              ),
-            );
-
-          if (existingDoc.length > 0) {
-            await tx
-              .update(workOrderSiteDocsTable)
-              .set({ document_url: url })
-              .where(eq(workOrderSiteDocsTable.id, existingDoc[0]!.id));
-          } else {
-            await tx.insert(workOrderSiteDocsTable).values({
-              work_order_site_id,
-              type: type as any,
-              document_url: url,
-            });
-          }
-        };
-
-        const upsertActivity = async (
-          tx: any,
-          table: any,
-          data: SaveActivityData | undefined,
-          activityName: string,
-        ) => {
-          if (!data) return;
-
-          const sa = await tx
-            .select()
-            .from(siteActivityTable)
-            .where(
-              and(
-                eq(siteActivityTable.work_order_site_id, work_order_site_id),
-                eq(siteActivityTable.activity, activityName),
-              ),
-            );
-
-          const siteActivityId = sa[0]?.id;
-
-          const activityType =
-            phase === "completion" ? "completion" : "estimate_sub-wo";
-
-          const existing = await tx
-            .select()
-            .from(table)
-            .where(
-              and(
-                eq(table.work_order_site_id, work_order_site_id),
-                eq(table.type, activityType),
-              ),
-            );
-
-          if (existing.length > 0) {
-            await tx
-              .update(table)
-              .set({
-                estimated_quantity: data.estimated_quantity,
-                amount: data.amount,
-                transportation_km: data.transportation_km,
-                site_activity_id: siteActivityId,
-              })
-              .where(eq(table.id, existing[0]!.id));
-          } else {
-            await tx.insert(table).values({
-              work_order_site_id,
-              site_activity_id: siteActivityId,
-              type: activityType,
-              estimated_quantity: data.estimated_quantity,
-              amount: data.amount,
-              transportation_km: data.transportation_km,
-            });
-          }
-        };
-
-        try {
-          await ctx.db.transaction(async (tx: any) => {
-            if (document_url && phase !== "estimate_sub-wo") {
-              await upsertDoc(tx, document_url, phase);
-            }
-            if (sub_wo_document_url) {
-              await upsertDoc(tx, sub_wo_document_url, "sub_wo");
-            }
-            if (estimate_document_url) {
-              await upsertDoc(tx, estimate_document_url, "estimate");
-            }
-
-            await upsertActivity(
-              tx,
-              cleaningUpSoilAreaTable,
-              clean_soil_area,
-              "clean_soil_area",
-            );
-            await upsertActivity(
-              tx,
-              liftingRecoveryOilSlushTable,
-              lifting_oil_slush,
-              "lifting_oily_slush_or_recovery_of_oil",
-            );
-            await upsertActivity(
-              tx,
-              excavationContSoilTable,
-              excav_cont_soil,
-              "excavation_oil_contaminated_soil",
-            );
-            await upsertActivity(
-              tx,
-              transportationContSoilTable,
-              trans_cont_soil,
-              "transportation_contaminated_soil",
-            );
-            await upsertActivity(
-              tx,
-              refillingExcavatedContSoilTable,
-              refill_excav_soil,
-              "refilling_excavated_oil_contaminated_soil_land",
-            );
-
-            if (phase === "completion") {
-              await tx
-                .update(workOrderSiteTable)
-                .set({ is_completed: true })
-                .where(eq(workOrderSiteTable.id, work_order_site_id));
-            }
-          });
-
-          return {
-            success: true,
-            message: "Restoration phase data saved successfully",
-          };
-        } catch (error) {
-          throw fromDatabaseError(error, "Saving restoration phase data");
-        }
-      }),
-    ),
 });

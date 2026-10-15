@@ -13,6 +13,10 @@ import {
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { assertOfficeManager } from "../../helper/office-permissions";
+import {
+  coversRestoration,
+  createRestorationRow,
+} from "../restoration/restoration-row";
 
 const {
   workOrderTable,
@@ -118,6 +122,16 @@ export const workOrderMutationRouter = router({
               );
 
               await tx.insert(scheduleOfRatesTable).values(scheduleOfRatesData);
+            }
+
+            // Restoration has no sites, so its one row is set up right away.
+            if (coversRestoration(input.process_type)) {
+              await createRestorationRow(tx, {
+                id: workOrderId,
+                client_id: input.client_id,
+                start_date: workOrderData.start_date,
+                end_date: workOrderData.end_date,
+              });
             }
 
             return workOrderId;
@@ -234,6 +248,22 @@ export const workOrderMutationRouter = router({
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         return await ctx.db.transaction(async (tx: any) => {
+          const [workOrder] = await tx
+            .select({ process_type: workOrderTable.process_type })
+            .from(workOrderTable)
+            .where(eq(workOrderTable.id, input.work_order_id));
+
+          if (!workOrder) {
+            throw notFound("Work order", input.work_order_id);
+          }
+
+          // Sites are only for bioremediation; restoration has none.
+          if (workOrder.process_type === constants.WO_PROCESS.RESTORATION) {
+            throw businessRule(
+              "Restoration work orders don't have sites. Only bioremediation work is done at sites.",
+            );
+          }
+
           let siteId = input.site_id;
 
           if (!siteId && input.new_site) {
@@ -294,7 +324,7 @@ export const workOrderMutationRouter = router({
               site_id: siteId,
               date: input.date,
               end_date: input.end_date,
-              process_type: input.process_type,
+              process_type: constants.WO_PROCESS.BIOREMEDIATION,
               status: "pending",
             });
 

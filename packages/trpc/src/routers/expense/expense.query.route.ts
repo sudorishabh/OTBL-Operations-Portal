@@ -9,6 +9,7 @@ import {
 } from "../../access-scope";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
+import { siteNameOrRestoration } from "../../helper/restoration";
 import { z } from "zod";
 
 const {
@@ -16,11 +17,6 @@ const {
   contractorTable,
   workOrderSiteTable,
   siteTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
   bioremediationContSoilTable,
 } = schema;
 
@@ -141,33 +137,18 @@ export const expenseQueryRouter = router({
           const exceededTotal = Number(exceededRows[0]?.total ?? 0);
           const regularTotal = grandTotal - exceededTotal;
 
-          const completionTables = [
-            cleaningUpSoilAreaTable,
-            liftingRecoveryOilSlushTable,
-            excavationContSoilTable,
-            transportationContSoilTable,
-            refillingExcavatedContSoilTable,
-            bioremediationContSoilTable,
-          ] as const;
-
-          const completionResults = await Promise.all(
-            completionTables.map((tbl) =>
-              ctx.db
-                .select({ total: sum((tbl as any).amount) })
-                .from(tbl as any)
-                .where(
-                  and(
-                    eq((tbl as any).work_order_site_id, work_order_site_id),
-                    eq((tbl as any).type, "completion"),
-                  ),
-                ),
-            ),
-          );
-
-          let incomeTotal = 0;
-          for (const result of completionResults) {
-            incomeTotal += Number(result[0]?.total ?? 0);
-          }
+          // Only bioremediation completion earns income; restoration tracks
+          // its expenses alone.
+          const [income] = await ctx.db
+            .select({ total: sum(bioremediationContSoilTable.amount) })
+            .from(bioremediationContSoilTable)
+            .where(
+              and(
+                eq(bioremediationContSoilTable.work_order_site_id, work_order_site_id),
+                eq(bioremediationContSoilTable.type, "completion"),
+              ),
+            );
+          const incomeTotal = Number(income?.total ?? 0);
 
           const activityRows = await ctx.db
             .select({
@@ -187,8 +168,16 @@ export const expenseQueryRouter = router({
 
           const byActivity: Record<string, { totalAmount: number; exceededAmount: number; totalQuantity: number; count: number }> = {};
           const seenForQty = new Set<string>();
+          // Totals per contractor id; expenses under none are keyed "none".
+          const byContractor: Record<string, number> = {};
 
           for (const row of activityRows) {
+            const contractorKey = row.contractor_id
+              ? String(row.contractor_id)
+              : "none";
+            byContractor[contractorKey] =
+              (byContractor[contractorKey] ?? 0) + Number(row.amount || 0);
+
             if (!row.activity_key) continue;
             if (!byActivity[row.activity_key]) {
               byActivity[row.activity_key] = { totalAmount: 0, exceededAmount: 0, totalQuantity: 0, count: 0 };
@@ -217,7 +206,15 @@ export const expenseQueryRouter = router({
             }
           }
 
-          return { byType, grandTotal, regularTotal, exceededTotal, incomeTotal, byActivity };
+          return {
+            byType,
+            grandTotal,
+            regularTotal,
+            exceededTotal,
+            incomeTotal,
+            byActivity,
+            byContractor,
+          };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching expense summary");
         }
@@ -241,7 +238,7 @@ export const expenseQueryRouter = router({
               id: workOrderSiteExpenseTable.id,
               work_order_site_id: workOrderSiteExpenseTable.work_order_site_id,
               site_id: workOrderSiteTable.site_id,
-              site_name: siteTable.name,
+              site_name: siteNameOrRestoration,
               expense_type: workOrderSiteExpenseTable.expense_type,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
               contractor_name: contractorTable.name,
@@ -264,10 +261,7 @@ export const expenseQueryRouter = router({
                 workOrderSiteTable.id,
               ),
             )
-            .innerJoin(
-              siteTable,
-              eq(workOrderSiteTable.site_id, siteTable.id),
-            )
+            .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
             .leftJoin(
               contractorTable,
               eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),

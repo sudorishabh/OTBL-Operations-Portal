@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { constants } from "@pkg/utils";
+import { capitalFirstLetter, constants } from "@pkg/utils";
 import {
   Table,
   TableBody,
@@ -56,10 +56,13 @@ import {
   ExternalLink,
   ReceiptIndianRupee,
   AlertTriangle,
+  ChevronRight,
+  CornerDownRight,
 } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
+import { cn } from "@/lib/utils";
 import { useIsViewer } from "@/contexts/AuthContext";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import AddExpenseDialog, {
@@ -80,6 +83,7 @@ type ExpenseRecordGroup = {
   isExceeded: boolean;
   description: string;
   notes: string | null;
+  contractorId: number | null;
   contractorName: string | null;
   invoiceNumber: string | null;
   documents: StoredDocument[];
@@ -134,11 +138,30 @@ const getExpenseRecordKey = (exp: Expense) =>
 
 interface Props {
   woSiteId: number;
-  officeId: number;
   processType?: string;
+  // Lists the expenses under each vendor apart from the rest.
+  splitByContractor?: boolean;
+  contractors?: { id: number; name: string }[];
+  // Off when the caller already shows estimated, used and left quantities.
+  showEstimateTable?: boolean;
+  // Off to drop the income, expenses and net P&L cards.
+  showSummaryCards?: boolean;
+  // Extra buttons beside Add Expense.
+  headerActions?: React.ReactNode;
+  // Shown on a vendor with no expenses, such as a button to remove it.
+  emptyVendorActions?: (vendor: { id: number; name: string }) => React.ReactNode;
 }
 
-const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
+const SiteExpensesSection = ({
+  woSiteId,
+  processType,
+  splitByContractor = false,
+  contractors = [],
+  showEstimateTable = true,
+  showSummaryCards = true,
+  headerActions,
+  emptyVendorActions,
+}: Props) => {
   const utils = trpc.useUtils();
   const isViewer = useIsViewer();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -146,6 +169,9 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
   const [deletingGroupIds, setDeletingGroupIds] = useState<number[] | null>(null);
   const [activityFilter, setActivityFilter] = useState<string>("__all__");
   const [breakdownGroup, setBreakdownGroup] = useState<ExpenseRecordGroup | null>(null);
+  // The vendor a new expense starts under, when added from its group.
+  const [addUnderId, setAddUnderId] = useState<number | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const [expensePage, setExpensePage] = useState(1);
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
@@ -164,11 +190,6 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
   const siteActivitiesQuery = trpc.workOrderSiteQuery.getSiteActivities.useQuery(
     { work_order_site_id: woSiteId },
     { enabled: !!woSiteId },
-  );
-
-  const restorationDataQuery = trpc.workOrderSiteQuery.getRestorationData.useQuery(
-    { work_order_site_id: woSiteId },
-    { enabled: !!woSiteId && processType !== "bioremediation" },
   );
 
   const bioremediationDataQuery = trpc.workOrderSiteQuery.getBioremediationData.useQuery(
@@ -224,36 +245,11 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
       }
       return null;
     }
-    const data = restorationDataQuery.data;
-    if (!data) return null;
-    let qty: any;
-    switch (activityKey) {
-      case "clean_up_oil_spill":
-      case "clean_soil_area":
-      case constants.WO_ACTIVITIES.clean_soil_area:
-        qty = data.cleaningUpSoilArea?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      case "lifting_oil_slush":
-      case constants.WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL:
-        qty = data.liftingRecoveryOilSlush?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      case "excav_cont_soil":
-      case constants.WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL:
-        qty = data.excavationContSoil?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      case "trans_cont_soil":
-      case "trnsprt_oil_slush":
-      case constants.WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL:
-        qty = data.transportationContSoil?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      case "refill_excav_soil":
-      case constants.WO_ACTIVITIES.REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND:
-        qty = data.refillingExcavatedContSoil?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        break;
-      default:
-        return null;
-    }
-    return qty != null ? Number(qty) : null;
+    // Restoration has no estimate: its schedule of rates is the limit.
+    const sorQty = siteActivitiesQuery.data?.find(
+      (a: any) => a.activity === activityKey,
+    )?.sor_estimated_quantity;
+    return sorQty != null ? Number(sorQty) : null;
   };
 
   const activityOptions: ActivityOption[] = useMemo(() => {
@@ -264,7 +260,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
       unit: a.unit ?? "Nos",
       estimateQty: getEstimateQty(a.activity),
     }));
-  }, [siteActivitiesQuery.data, restorationDataQuery.data, bioremediationDataQuery.data]);
+  }, [siteActivitiesQuery.data, bioremediationDataQuery.data]);
 
   const usedQtyByActivity = useMemo(() => {
     const byActivity = summaryQuery.data?.byActivity ?? {};
@@ -296,6 +292,13 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingExpense(null);
+    setAddUnderId(null);
+  };
+
+  const openAddExpense = (underId: number | null = null) => {
+    setEditingExpense(null);
+    setAddUnderId(underId);
+    setDialogOpen(true);
   };
 
   const confirmDelete = async () => {
@@ -339,6 +342,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
           isExceeded: !!exp.is_exceeded,
           description: exp.description,
           notes: exp.notes ?? null,
+          contractorId: exp.contractor_id ?? null,
           contractorName: exp.contractor_name ?? null,
           invoiceNumber: exp.invoice_number ?? null,
           documents: toDocuments(exp.documents),
@@ -386,7 +390,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
     return groups.filter((g) => g.activityKey === filterKey);
   }, [activityGroups, groupedRecordsByActivity, activityFilter]);
 
-  const renderRecordRow = (group: ExpenseRecordGroup) => {
+  const renderRecordRow = (group: ExpenseRecordGroup, showVendor = true) => {
     const isExceeded = group.isExceeded;
     const uniqueTypes = Array.from(new Set(group.items.map((i) => i.expense_type)));
     const primaryExpenseForEdit: Expense | undefined =
@@ -451,9 +455,11 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
           )}
           {group.unit ? <span className='text-gray-400 ml-1'>{group.unit}</span> : null}
         </TableCell>
-        <TableCell className='py-2.5 text-xs text-gray-600'>
-          {group.contractorName ?? <span className='text-gray-300'>—</span>}
-        </TableCell>
+        {showVendor && (
+          <TableCell className='py-2.5 text-xs text-gray-600'>
+            {group.contractorName ?? <span className='text-gray-300'>—</span>}
+          </TableCell>
+        )}
         <TableCell className='py-2.5 text-xs text-gray-500'>
           {group.invoiceNumber ?? <span className='text-gray-300'>—</span>}
         </TableCell>
@@ -542,6 +548,118 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
     );
   };
 
+  const renderRecordsTable = (groups: ExpenseRecordGroup[], showVendor = true) => (
+    <Table>
+      <TableHeader>
+        <TableRow className='bg-gray-50/50 hover:bg-gray-50/50'>
+          <TableHead className='text-xs font-semibold text-gray-600 w-[110px] whitespace-nowrap'>Date</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Activity</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Type</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Description</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 text-center w-[90px] whitespace-nowrap'>Qty</TableHead>
+          {showVendor && (
+            <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Contractor</TableHead>
+          )}
+          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Invoice #</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 text-center w-[60px] whitespace-nowrap'>Doc</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 text-right whitespace-nowrap'>Amount (₹)</TableHead>
+          <TableHead className='w-[70px]' />
+        </TableRow>
+      </TableHeader>
+      <TableBody>{groups.map((g) => renderRecordRow(g, showVendor))}</TableBody>
+    </Table>
+  );
+
+  // A records table for the vendor groups, scrolling sideways when narrow.
+  const renderRecordsBox = (groups: ExpenseRecordGroup[], showVendor = true) => (
+    <div className='overflow-x-auto'>
+      {renderRecordsTable(groups, showVendor)}
+    </div>
+  );
+
+  const contractorIds = new Set(contractors.map((c) => c.id));
+  const recordsUnder = (contractorId: number) =>
+    recordGroupsFlat.filter((g) => g.contractorId === contractorId);
+  // Expenses under none of the vendors, including contractor payments to
+  // vendors that aren't one.
+  const otherRecords = recordGroupsFlat.filter(
+    (g) => g.contractorId === null || !contractorIds.has(g.contractorId),
+  );
+  const totalUnder = (contractorId: number): number =>
+    summary?.byContractor?.[String(contractorId)] ?? 0;
+  const contractorsTotal = contractors.reduce(
+    (sum, c) => sum + totalUnder(c.id),
+    0,
+  );
+
+  const toggleGroup = (key: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  // A vendor's expenses, opened and closed by the arrow beside its name.
+  const renderVendorGroup = ({
+    groupKey,
+    Icon,
+    title,
+    total,
+    count,
+    content,
+    actions,
+  }: {
+    groupKey: string;
+    Icon: React.ElementType;
+    title: string;
+    total: number;
+    count: number;
+    content: React.ReactNode;
+    actions?: React.ReactNode;
+  }) => {
+    const isOpen = !collapsedGroups.has(groupKey);
+    return (
+      <div key={groupKey}>
+        <div className='flex items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-50'>
+          <button
+            type='button'
+            onClick={() => toggleGroup(groupKey)}
+            aria-expanded={isOpen}
+            className='flex min-w-0 flex-1 items-center gap-2 text-left'>
+            <ChevronRight
+              className={cn(
+                "size-4 shrink-0 text-gray-400 transition-transform",
+                isOpen && "rotate-90",
+              )}
+            />
+            <Icon className='size-3.5 shrink-0 text-purple-600' />
+            <span className='truncate text-sm font-semibold text-gray-800'>{title}</span>
+            <span className='shrink-0 rounded-full bg-gray-100 px-1.5 text-[10px] font-medium leading-4 text-gray-600'>
+              {count}
+            </span>
+          </button>
+          {actions}
+          <span className='shrink-0 text-sm font-semibold tabular-nums text-gray-800'>
+            {formatCurrency(total)}
+          </span>
+        </div>
+        {isOpen && (
+          <div className='flex gap-2 pb-1 pl-1'>
+            <CornerDownRight className='mt-1 size-4 shrink-0 text-purple-300' />
+            <div className='min-w-0 flex-1'>{content}</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const emptyGroupText = (text: string) => (
+    <p className='py-1 text-xs text-gray-400'>
+      {text}
+    </p>
+  );
+
   return (
     <div className='space-y-4'>
       <Dialog open={!!breakdownGroup} onOpenChange={(v) => !v && setBreakdownGroup(null)}>
@@ -591,145 +709,148 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         </DialogContent>
       </Dialog>
 
-      <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
-        <div className='rounded-lg border bg-emerald-50/60 border-emerald-100 p-2.5'>
-          <div className='flex items-center gap-1 mb-0.5'>
-            <TrendingUp className='w-2.5 h-2.5 text-emerald-600' />
-            <span className='text-[10px] font-semibold text-emerald-600 uppercase tracking-wider'>
-              Income Earned
-            </span>
+      {showSummaryCards && (
+        <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
+          <div className='rounded-lg border bg-emerald-50/60 border-emerald-100 p-2.5'>
+            <div className='flex items-center gap-1 mb-0.5'>
+              <TrendingUp className='w-2.5 h-2.5 text-emerald-600' />
+              <span className='text-[10px] font-semibold text-emerald-600 uppercase tracking-wider'>
+                Income Earned
+              </span>
+            </div>
+            <p className='text-sm font-bold text-emerald-700 leading-tight'>
+              {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(incomeTotal)}
+            </p>
+            <p className='text-[8px] text-emerald-600 mt-0.5'>From completed activities</p>
           </div>
-          <p className='text-sm font-bold text-emerald-700 leading-tight'>
-            {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(incomeTotal)}
-          </p>
-          <p className='text-[8px] text-emerald-600 mt-0.5'>From completed activities</p>
-        </div>
 
-        <div className='rounded-lg border border-gray-100 p-2.5 space-y-1'>
-          <div className='flex items-center gap-1'>
-            <TrendingDown className='w-2.5 h-2.5 text-gray-500' />
-            <span className='text-[10px] font-semibold text-gray-500 uppercase tracking-wider'>
-              Total Expenses
-            </span>
+          <div className='rounded-lg border border-gray-100 p-2.5 space-y-1'>
+            <div className='flex items-center gap-1'>
+              <TrendingDown className='w-2.5 h-2.5 text-gray-500' />
+              <span className='text-[10px] font-semibold text-gray-500 uppercase tracking-wider'>
+                Total Expenses
+              </span>
+            </div>
+            <p className='text-sm font-bold text-gray-800 leading-tight'>
+              {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(expenseTotal)}
+            </p>
+            {exceededTotal > 0 && (
+              <div className='flex flex-col gap-0.5 pt-1 border-t border-gray-100'>
+                <span className='text-[8px] text-gray-400'>
+                  Regular: {formatCurrency(regularTotal)}
+                </span>
+                <span className='text-[8px] text-orange-600 font-semibold flex items-center gap-1'>
+                  <AlertTriangle className='w-2 h-2' />
+                  Exceeded: {formatCurrency(exceededTotal)}
+                </span>
+              </div>
+            )}
           </div>
-          <p className='text-sm font-bold text-gray-800 leading-tight'>
-            {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(expenseTotal)}
-          </p>
-          {exceededTotal > 0 && (
-            <div className='flex flex-col gap-0.5 pt-1 border-t border-gray-100'>
-              <span className='text-[8px] text-gray-400'>
-                Regular: {formatCurrency(regularTotal)}
+
+          <div
+            className={`rounded-lg border p-2.5 ${netPL >= 0 ? "bg-emerald-50/60 border-emerald-100" : "bg-orange-50/60 border-orange-100"}`}>
+            <div className='flex items-center gap-1 mb-0.5'>
+              <Minus className={`w-2.5 h-2.5 ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
+              <span className={`text-[10px] font-semibold uppercase tracking-wider ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`}>
+                Net P&amp;L
               </span>
-              <span className='text-[8px] text-orange-600 font-semibold flex items-center gap-1'>
-                <AlertTriangle className='w-2 h-2' />
-                Exceeded: {formatCurrency(exceededTotal)}
-              </span>
+            </div>
+            <p className={`text-sm font-bold leading-tight ${netPL >= 0 ? "text-emerald-700" : "text-orange-700"}`}>
+              {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(Math.abs(netPL))}
+            </p>
+            <p className={`text-[8px] mt-0.5 ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`}>
+              {netPL >= 0 ? "Surplus" : "Deficit"}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {showEstimateTable && (
+        <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>
+          <div className='px-3 py-2 border-b bg-white flex items-center justify-between gap-3'>
+            <div className='min-w-0'>
+              <p className='text-[10px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap'>
+                Estimate Activities
+              </p>
+              <p className='text-[9px] text-slate-400 mt-0.5'>
+                Qty spending = used qty from expense records
+              </p>
+            </div>
+            <div className='text-[9px] text-slate-400 whitespace-nowrap'>
+              {siteActivitiesQuery.data?.length ? `${siteActivitiesQuery.data.length} activities` : ""}
+            </div>
+          </div>
+
+          {siteActivitiesQuery.isLoading ? (
+            <div className='text-center py-4 text-gray-400 text-sm'>Loading...</div>
+          ) : !siteActivitiesQuery.data || siteActivitiesQuery.data.length === 0 ? (
+            <div className='text-center py-4 text-gray-400 text-sm'>No activities found.</div>
+          ) : (
+            <div className='bg-white overflow-x-auto'>
+              <Table>
+                <TableHeader>
+                  <TableRow className='bg-gray-50/60 hover:bg-gray-50/60'>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap'>
+                      Activity
+                    </TableHead>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
+                      Est
+                    </TableHead>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
+                      Used
+                    </TableHead>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
+                      Left
+                    </TableHead>
+                    <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap w-[70px]'>
+                      Unit
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {siteActivitiesQuery.data
+                    .map((a: any) => {
+                      const estQty = getEstimateQty(a.activity);
+                      if (estQty === null) return null;
+                      const usedQty = usedQtyByActivity[a.activity] ?? 0;
+                      const left = Math.max(0, estQty - usedQty);
+                      const exhausted = estQty > 0 && left <= 0;
+                      return (
+                        <TableRow
+                          key={a.id}
+                          className={exhausted ? "bg-orange-50/30 hover:bg-orange-50/40" : "hover:bg-blue-50/20"}>
+                          <TableCell className='py-2 text-xs text-gray-700 font-medium whitespace-nowrap'>
+                            {formatActivityLabel(a.activity)}
+                          </TableCell>
+                          <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
+                            {estQty}
+                          </TableCell>
+                          <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
+                            {usedQty}
+                          </TableCell>
+                          <TableCell className='py-2 text-xs text-right tabular-nums whitespace-nowrap'>
+                            {exhausted ? (
+                              <span className='text-orange-700 font-semibold'>0</span>
+                            ) : (
+                              <span className='text-emerald-700 font-semibold'>{left}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className='py-2 text-xs text-gray-500 whitespace-nowrap'>
+                            {a.unit ?? "Nos"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                    .filter(Boolean)}
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>
-
-        <div
-          className={`rounded-lg border p-2.5 ${netPL >= 0 ? "bg-emerald-50/60 border-emerald-100" : "bg-orange-50/60 border-orange-100"}`}>
-          <div className='flex items-center gap-1 mb-0.5'>
-            <Minus className={`w-2.5 h-2.5 ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
-            <span className={`text-[10px] font-semibold uppercase tracking-wider ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`}>
-              Net P&amp;L
-            </span>
-          </div>
-          <p className={`text-sm font-bold leading-tight ${netPL >= 0 ? "text-emerald-700" : "text-orange-700"}`}>
-            {summaryQuery.isLoading ? <span className='text-gray-400'>—</span> : formatCurrency(Math.abs(netPL))}
-          </p>
-          <p className={`text-[8px] mt-0.5 ${netPL >= 0 ? "text-emerald-600" : "text-orange-600"}`}>
-            {netPL >= 0 ? "Surplus" : "Deficit"}
-          </p>
-        </div>
-      </div>
-
-      <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>
-        <div className='px-3 py-2 border-b bg-white flex items-center justify-between gap-3'>
-          <div className='min-w-0'>
-            <p className='text-[10px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap'>
-              Estimate Activities
-            </p>
-            <p className='text-[9px] text-slate-400 mt-0.5'>
-              Qty spending = used qty from expense records
-            </p>
-          </div>
-          <div className='text-[9px] text-slate-400 whitespace-nowrap'>
-            {siteActivitiesQuery.data?.length ? `${siteActivitiesQuery.data.length} activities` : ""}
-          </div>
-        </div>
-
-        {siteActivitiesQuery.isLoading ? (
-          <div className='text-center py-4 text-gray-400 text-sm'>Loading...</div>
-        ) : !siteActivitiesQuery.data || siteActivitiesQuery.data.length === 0 ? (
-          <div className='text-center py-4 text-gray-400 text-sm'>No activities found.</div>
-        ) : (
-          <div className='bg-white overflow-x-auto'>
-            <Table>
-              <TableHeader>
-                <TableRow className='bg-gray-50/60 hover:bg-gray-50/60'>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap'>
-                    Activity
-                  </TableHead>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
-                    Est
-                  </TableHead>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
-                    Used
-                  </TableHead>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
-                    Left
-                  </TableHead>
-                  <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap w-[70px]'>
-                    Unit
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {siteActivitiesQuery.data
-                  .map((a: any) => {
-                    const estQty = getEstimateQty(a.activity);
-                    if (estQty === null) return null;
-                    const usedQty = usedQtyByActivity[a.activity] ?? 0;
-                    const left = Math.max(0, estQty - usedQty);
-                    const exhausted = estQty > 0 && left <= 0;
-                    return (
-                      <TableRow
-                        key={a.id}
-                        className={exhausted ? "bg-orange-50/30 hover:bg-orange-50/40" : "hover:bg-blue-50/20"}>
-                        <TableCell className='py-2 text-xs text-gray-700 font-medium whitespace-nowrap'>
-                          {formatActivityLabel(a.activity)}
-                        </TableCell>
-                        <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
-                          {estQty}
-                        </TableCell>
-                        <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
-                          {usedQty}
-                        </TableCell>
-                        <TableCell className='py-2 text-xs text-right tabular-nums whitespace-nowrap'>
-                          {exhausted ? (
-                            <span className='text-orange-700 font-semibold'>0</span>
-                          ) : (
-                            <span className='text-emerald-700 font-semibold'>{left}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className='py-2 text-xs text-gray-500 whitespace-nowrap'>
-                          {a.unit ?? "Nos"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                  .filter(Boolean)}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
+      )}
 
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
         <div className='flex items-center gap-2'>
-          <ReceiptIndianRupee className='w-4 h-4 text-gray-400' />
           <h3 className='text-sm font-semibold text-gray-700 whitespace-nowrap'>Expense List</h3>
           {expenses.length > 0 && (
             <Badge variant='outline' className='text-[10px] px-1.5 py-0 h-4 bg-gray-50'>
@@ -758,11 +879,12 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
               ))}
             </SelectContent>
           </Select>
+          {headerActions}
           <CustomButton
             text='Add Expense'
             variant='primary'
             Icon={Plus}
-            onClick={() => { setEditingExpense(null); setDialogOpen(true); }}
+            onClick={() => openAddExpense()}
             className='h-8 text-xs'
             disableForViewer
           />
@@ -771,6 +893,58 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
 
       {expensesQuery.isLoading && expensePage === 1 ? (
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
+      ) : splitByContractor ? (
+        <div className='space-y-1'>
+          {contractors.length === 0 &&
+            emptyGroupText("No vendors yet. Add a vendor to record expenses under it.")}
+          {contractors.map((c) => {
+            const name = capitalFirstLetter(c.name);
+            const records = recordsUnder(c.id);
+            const hasExpenses = records.length > 0 || totalUnder(c.id) > 0;
+            return renderVendorGroup({
+              groupKey: `vendor-${c.id}`,
+              Icon: HardHat,
+              title: name,
+              total: totalUnder(c.id),
+              count: records.length,
+              content:
+                records.length > 0
+                  ? renderRecordsBox(records, false)
+                  : emptyGroupText(`No expenses under ${name} yet.`),
+              actions: (
+                <div className='flex shrink-0 items-center gap-1'>
+                  <button
+                    type='button'
+                    title={`Add expense under ${name}`}
+                    aria-label={`Add expense under ${name}`}
+                    onClick={() => openAddExpense(c.id)}
+                    disabled={isViewer}
+                    className='inline-flex h-7 items-center gap-1 rounded-md bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40'>
+                    <Plus className='size-3.5' />
+                    Add expense
+                  </button>
+                  {!hasExpenses && emptyVendorActions?.(c)}
+                </div>
+              ),
+            });
+          })}
+          {renderVendorGroup({
+            groupKey: "not-under-vendor",
+            Icon: ReceiptIndianRupee,
+            title: "Not under a vendor",
+            total: expenseTotal - contractorsTotal,
+            count: otherRecords.length,
+            content:
+              otherRecords.length > 0
+                ? renderRecordsBox(otherRecords)
+                : emptyGroupText("No other expenses yet."),
+          })}
+          {expensesPagination && expensesPagination.total > expenses.length && (
+            <p className='text-xs text-gray-400'>
+              Showing {expenses.length} of {expensesPagination.total} entries
+            </p>
+          )}
+        </div>
       ) : recordGroupsFlat.length === 0 ? (
         <div className='text-center py-10 border border-dashed rounded-xl bg-gray-50/30'>
           <ReceiptIndianRupee className='w-8 h-8 text-gray-300 mx-auto mb-2' />
@@ -781,23 +955,7 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         </div>
       ) : (
         <div className='rounded-md border border-gray-100 overflow-x-auto'>
-          <Table>
-            <TableHeader>
-              <TableRow className='bg-gray-50/50 hover:bg-gray-50/50'>
-                <TableHead className='text-xs font-semibold text-gray-600 w-[110px] whitespace-nowrap'>Date</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Activity</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Type</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Description</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 text-center w-[90px] whitespace-nowrap'>Qty</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Contractor</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Invoice #</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 text-center w-[60px] whitespace-nowrap'>Doc</TableHead>
-                <TableHead className='text-xs font-semibold text-gray-600 text-right whitespace-nowrap'>Amount (₹)</TableHead>
-                <TableHead className='w-[70px]' />
-              </TableRow>
-            </TableHeader>
-            <TableBody>{recordGroupsFlat.map((g) => renderRecordRow(g))}</TableBody>
-          </Table>
+          {renderRecordsTable(recordGroupsFlat)}
 
           <div className='flex items-center justify-between px-4 py-2.5 bg-gray-50 border-t text-xs'>
             <span className='text-gray-500'>
@@ -832,10 +990,11 @@ const SiteExpensesSection = ({ woSiteId, officeId, processType }: Props) => {
         onClose={handleCloseDialog}
         onSuccess={resetExpenseList}
         workOrderSiteId={woSiteId}
-        officeId={officeId}
         editingExpense={editingExpense}
         activities={activityOptions}
         usedQtyByActivity={usedQtyByActivity}
+        contractors={contractors}
+        defaultContractorId={addUnderId}
       />
 
       <AlertDialog

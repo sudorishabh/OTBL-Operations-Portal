@@ -12,6 +12,7 @@ import {
   scheduleNote,
   statusOf,
   toDate,
+  workLocation,
 } from "@/lib/wo-site-display";
 import {
   CheckCircle2,
@@ -56,10 +57,12 @@ const byUrgency = (a: AssignedSite, b: AssignedSite) => {
 
 const SiteCard = ({ site }: { site: AssignedSite }) => {
   const note = scheduleNote(site.status, site.start_date, site.end_date);
-  const location =
+  const location = workLocation(
+    site.process_type,
     [site.site_city, site.site_state].filter(Boolean).join(", ") ||
-    site.site_address ||
-    "Location not set";
+      site.site_address ||
+      "",
+  );
   const hasUploads = site.uploads_count > 0;
 
   return (

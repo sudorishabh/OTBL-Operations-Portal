@@ -12,11 +12,6 @@ import type { AccessScope } from "../../access-scope";
 const {
   workOrderSiteTable,
   scheduleOfRatesTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
   bioremediationContSoilTable,
 } = schema;
 
@@ -93,88 +88,17 @@ async function fetchCompletionsByWoSiteId(
 
   if (woSiteIds.length === 0) return result;
 
-  const [
-    cleanSoilAreaExp,
-    liftingOilExp,
-    excavSoilExp,
-    transSoilExp,
-    refillSoilExp,
-    bioremSoilExp,
-  ] = await Promise.all([
-    db
-      .select()
-      .from(cleaningUpSoilAreaTable)
-      .where(
-        and(
-          inArray(cleaningUpSoilAreaTable.work_order_site_id, woSiteIds),
-          eq(cleaningUpSoilAreaTable.type, "completion" as any),
-        ),
+  // Only bioremediation records completion quantities.
+  const bioremSoilExp = await db
+    .select()
+    .from(bioremediationContSoilTable)
+    .where(
+      and(
+        inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
+        eq(bioremediationContSoilTable.type, "completion" as any),
       ),
-    db
-      .select()
-      .from(liftingRecoveryOilSlushTable)
-      .where(
-        and(
-          inArray(liftingRecoveryOilSlushTable.work_order_site_id, woSiteIds),
-          eq(liftingRecoveryOilSlushTable.type, "completion" as any),
-        ),
-      ),
-    db
-      .select()
-      .from(excavationContSoilTable)
-      .where(
-        and(
-          inArray(excavationContSoilTable.work_order_site_id, woSiteIds),
-          eq(excavationContSoilTable.type, "completion" as any),
-        ),
-      ),
-    db
-      .select()
-      .from(transportationContSoilTable)
-      .where(
-        and(
-          inArray(transportationContSoilTable.work_order_site_id, woSiteIds),
-          eq(transportationContSoilTable.type, "completion" as any),
-        ),
-      ),
-    db
-      .select()
-      .from(refillingExcavatedContSoilTable)
-      .where(
-        and(
-          inArray(
-            refillingExcavatedContSoilTable.work_order_site_id,
-            woSiteIds,
-          ),
-          eq(refillingExcavatedContSoilTable.type, "completion" as any),
-        ),
-      ),
-    db
-      .select()
-      .from(bioremediationContSoilTable)
-      .where(
-        and(
-          inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
-          eq(bioremediationContSoilTable.type, "completion" as any),
-        ),
-      ),
-  ]);
+    );
 
-  for (const item of cleanSoilAreaExp) {
-    push(item.work_order_site_id, "clean_soil_area", item.estimated_quantity);
-  }
-  for (const item of liftingOilExp) {
-    push(item.work_order_site_id, "lifting_oil_slush", item.estimated_quantity);
-  }
-  for (const item of excavSoilExp) {
-    push(item.work_order_site_id, "excav_cont_soil", item.estimated_quantity);
-  }
-  for (const item of transSoilExp) {
-    push(item.work_order_site_id, "trans_cont_soil", item.estimated_quantity);
-  }
-  for (const item of refillSoilExp) {
-    push(item.work_order_site_id, "refill_excav_soil", item.estimated_quantity);
-  }
   for (const item of bioremSoilExp) {
     push(item.work_order_site_id, "biorem_cont_soil", item.estimated_quantity);
   }
@@ -196,9 +120,14 @@ export async function batchEffectiveWorkOrderStatuses(
     .select({
       wo_site_id: workOrderSiteTable.id,
       work_order_id: workOrderSiteTable.work_order_id,
+      process_type: workOrderSiteTable.process_type,
+      is_completed: workOrderSiteTable.is_completed,
     })
     .from(workOrderSiteTable)
     .where(inArray(workOrderSiteTable.work_order_id, woIds));
+
+  // Restoration counts as done by being marked complete, not by quantities.
+  const siteById = new Map(allWoSites.map((s) => [nId(s.wo_site_id), s]));
 
   const sitesByWo = new Map<number, { wo_site_id: number }[]>();
   for (const s of allWoSites) {
@@ -257,6 +186,8 @@ export async function batchEffectiveWorkOrderStatuses(
     if (!Number.isFinite(rid)) continue;
     const allowed = allowedByWo.get(rid) ?? [];
     const sites: SiteWithCompletions[] = allowed.map((woSiteId) => ({
+      process_type: siteById.get(woSiteId)?.process_type,
+      is_completed: siteById.get(woSiteId)?.is_completed,
       completions: completionsBySite.get(woSiteId) ?? [],
     }));
     const sor = sorByWo.get(rid) ?? [];
