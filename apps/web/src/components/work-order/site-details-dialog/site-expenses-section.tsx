@@ -570,9 +570,9 @@ const SiteExpensesSection = ({
     </Table>
   );
 
-  // A records table in its own bordered box, for the vendor groups.
+  // A records table for the vendor groups, scrolling sideways when narrow.
   const renderRecordsBox = (groups: ExpenseRecordGroup[], showVendor = true) => (
-    <div className='overflow-x-auto rounded-md border border-gray-100'>
+    <div className='overflow-x-auto'>
       {renderRecordsTable(groups, showVendor)}
     </div>
   );
@@ -620,8 +620,8 @@ const SiteExpensesSection = ({
   }) => {
     const isOpen = !collapsedGroups.has(groupKey);
     return (
-      <div key={groupKey} className='rounded-lg border border-gray-200 bg-white'>
-        <div className='flex items-center gap-2 px-3 py-2'>
+      <div key={groupKey}>
+        <div className='flex items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-50'>
           <button
             type='button'
             onClick={() => toggleGroup(groupKey)}
@@ -635,9 +635,9 @@ const SiteExpensesSection = ({
             />
             <Icon className='size-3.5 shrink-0 text-purple-600' />
             <span className='truncate text-sm font-semibold text-gray-800'>{title}</span>
-            <Badge variant='outline' className='h-4 shrink-0 bg-gray-50 px-1.5 py-0 text-[10px]'>
+            <span className='shrink-0 rounded-full bg-gray-100 px-1.5 text-[10px] font-medium leading-4 text-gray-600'>
               {count}
-            </Badge>
+            </span>
           </button>
           <span className='shrink-0 text-sm font-semibold tabular-nums text-gray-800'>
             {formatCurrency(total)}
@@ -645,8 +645,8 @@ const SiteExpensesSection = ({
           {actions}
         </div>
         {isOpen && (
-          <div className='flex gap-2 border-t border-gray-100 px-3 py-3'>
-            <CornerDownRight className='mt-1.5 size-4 shrink-0 text-purple-300' />
+          <div className='flex gap-2 pb-1 pl-1'>
+            <CornerDownRight className='mt-1 size-4 shrink-0 text-purple-300' />
             <div className='min-w-0 flex-1'>{content}</div>
           </div>
         )}
@@ -655,7 +655,7 @@ const SiteExpensesSection = ({
   };
 
   const emptyGroupText = (text: string) => (
-    <p className='rounded-md border border-dashed py-6 text-center text-xs text-gray-400'>
+    <p className='py-1 text-xs text-gray-400'>
       {text}
     </p>
   );
@@ -895,7 +895,7 @@ const SiteExpensesSection = ({
       {expensesQuery.isLoading && expensePage === 1 ? (
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
       ) : splitByContractor ? (
-        <div className='space-y-3'>
+        <div className='space-y-1'>
           {contractors.length === 0 &&
             emptyGroupText("No vendors yet. Add a vendor to record expenses under it.")}
           {contractors.map((c) => {
