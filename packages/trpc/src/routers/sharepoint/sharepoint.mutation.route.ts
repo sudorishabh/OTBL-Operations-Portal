@@ -2,6 +2,7 @@ import { router } from "../../trpc";
 import { protectedProcedure, operatorProcedure } from "../../middleware";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod";
+import { constants } from "@pkg/utils";
 import {
   getSharePointConfig,
   isSharePointConfigured,
@@ -41,22 +42,7 @@ const createUploadSessionSchema = z.object({
     .default("replace"),
 });
 
-const ALLOWED_EXTENSIONS = [
-  ".pdf",
-  ".doc",
-  ".docx",
-  ".xls",
-  ".xlsx",
-  ".ppt",
-  ".pptx",
-  ".csv",
-  ".txt",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".zip",
-];
+const { DOCUMENT_EXTENSIONS, PHOTO_EXTENSIONS } = constants;
 
 const assertSafePath = (value: string, fieldName: string) => {
   if (value.includes("..") || value.includes("//") || /[<>:|?*]/.test(value)) {
@@ -71,19 +57,29 @@ const getExtension = (fileName: string) => {
   return idx >= 0 ? fileName.slice(idx).toLowerCase() : "";
 };
 
+// Uploads are PDF only; camera photos saved to a site's operator uploads
+// folder are the one exception.
+const assertAllowedFileType = (fileName: string, folderPath: string) => {
+  const allowed = /\/OperatorUploads\/?$/.test(folderPath)
+    ? [...DOCUMENT_EXTENSIONS, ...PHOTO_EXTENSIONS]
+    : DOCUMENT_EXTENSIONS;
+  const ext = getExtension(fileName);
+
+  if (!allowed.includes(ext)) {
+    throw validationError("File type not allowed", [
+      {
+        field: "fileName",
+        message: `Only ${allowed.join(", ")} files can be uploaded here.`,
+      },
+    ]);
+  }
+};
+
 const sharePointMutationRouterRecord = {
   uploadFile: protectedProcedure
     .input(uploadFileSchema)
     .mutation(async ({ input, ctx }) => {
-      const ext = getExtension(input.fileName);
-      if (!ALLOWED_EXTENSIONS.includes(ext)) {
-        throw validationError("File type not allowed", [
-          {
-            field: "fileName",
-            message: `"${ext}" files are not permitted. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
-          },
-        ]);
-      }
+      assertAllowedFileType(input.fileName, input.folderPath);
       assertSafePath(input.fileName, "fileName");
       assertSafePath(input.folderPath, "folderPath");
 
@@ -197,6 +193,8 @@ const sharePointMutationRouterRecord = {
   createUploadSession: protectedProcedure
     .input(createUploadSessionSchema)
     .mutation(async ({ input, ctx }) => {
+      assertAllowedFileType(input.fileName, input.folderPath);
+
       if (!isSharePointConfigured(ctx.appEnv)) {
         throw createServiceUnavailableError("SharePoint", {
           userMessage:
