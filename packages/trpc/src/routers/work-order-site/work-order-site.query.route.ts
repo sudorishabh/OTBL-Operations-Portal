@@ -41,11 +41,6 @@ const {
   bioremediationContSoilTable,
   bioSampleTable,
   bioOilZappingTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
 } = schema;
 
 export const workOrderSiteQueryRouter = router({
@@ -764,46 +759,7 @@ export const workOrderSiteQueryRouter = router({
 
           const siteIds = relatedSites.map((s: any) => s.id);
 
-          const [q1, q2, q3, q4, q5, q6] = await Promise.all([
-            ctx.db
-              .select()
-              .from(cleaningUpSoilAreaTable)
-              .where(
-                inArray(cleaningUpSoilAreaTable.work_order_site_id, siteIds),
-              ),
-            ctx.db
-              .select()
-              .from(liftingRecoveryOilSlushTable)
-              .where(
-                inArray(
-                  liftingRecoveryOilSlushTable.work_order_site_id,
-                  siteIds,
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(excavationContSoilTable)
-              .where(
-                inArray(excavationContSoilTable.work_order_site_id, siteIds),
-              ),
-            ctx.db
-              .select()
-              .from(transportationContSoilTable)
-              .where(
-                inArray(
-                  transportationContSoilTable.work_order_site_id,
-                  siteIds,
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(refillingExcavatedContSoilTable)
-              .where(
-                inArray(
-                  refillingExcavatedContSoilTable.work_order_site_id,
-                  siteIds,
-                ),
-              ),
+          const [bioremEntries, allOilZappingEntries] = await Promise.all([
             ctx.db
               .select()
               .from(bioremediationContSoilTable)
@@ -813,39 +769,11 @@ export const workOrderSiteQueryRouter = router({
                   siteIds,
                 ),
               ),
+            ctx.db
+              .select()
+              .from(bioOilZappingTable)
+              .where(inArray(bioOilZappingTable.work_order_site_id, siteIds)),
           ]);
-
-          const entriesByTable = [
-            {
-              entries: q1,
-              name: "clean_soil_area",
-            },
-            {
-              entries: q2,
-              name: "lifting_oily_slush_or_recovery_of_oil",
-            },
-            {
-              entries: q3,
-              name: "excavation_oil_contaminated_soil",
-            },
-            {
-              entries: q4,
-              name: "transportation_contaminated_soil",
-            },
-            {
-              entries: q5,
-              name: "refilling_excavated_oil_contaminated_soil_land",
-            },
-            {
-              entries: q6,
-              name: "bioremediation_oil_contaminated_soil",
-            },
-          ];
-
-          const allOilZappingEntries = await ctx.db
-            .select()
-            .from(bioOilZappingTable)
-            .where(inArray(bioOilZappingTable.work_order_site_id, siteIds));
 
           const oilZappingBySite = new Map<number, number>();
           for (const entry of allOilZappingEntries) {
@@ -868,50 +796,24 @@ export const workOrderSiteQueryRouter = router({
               .where(eq(siteActivityTable.schedule_of_rates_id, sorId));
 
             for (const sa of relatedSaEntries) {
-              const isBioremActivity =
-                sa.activity === "bioremediation_oil_contaminated_soil";
+              // Only bioremediation records quantities; restoration tracks
+              // its expenses alone.
+              if (sa.activity !== "bioremediation_oil_contaminated_soil") {
+                continue;
+              }
 
-              if (isBioremActivity) {
-                const siteOilZappingQty =
-                  oilZappingBySite.get(sa.work_order_site_id) || 0;
-                totalUsed += siteOilZappingQty;
-
-                const bioremEntries = entriesByTable
-                  .find((t) => t.name === "bioremediation_oil_contaminated_soil")
-                  ?.entries.filter(
-                    (e: any) =>
-                      e.work_order_site_id === sa.work_order_site_id &&
-                      e.type === "completion",
-                  ) || [];
-                const bioremCompletionQty = bioremEntries.reduce(
+              totalUsed += oilZappingBySite.get(sa.work_order_site_id) || 0;
+              totalCompletion += bioremEntries
+                .filter(
+                  (e: any) =>
+                    e.work_order_site_id === sa.work_order_site_id &&
+                    e.type === "completion",
+                )
+                .reduce(
                   (sum: number, e: any) =>
                     sum + parseFloat(e.estimated_quantity || "0"),
                   0,
                 );
-                totalCompletion += bioremCompletionQty;
-                continue;
-              }
-
-              const saEntries: any[] = [];
-              for (const table of entriesByTable) {
-                const matched = table.entries.filter(
-                  (e: any) =>
-                    e.site_activity_id === sa.id ||
-                    (e.work_order_site_id === sa.work_order_site_id &&
-                      table.name === sa.activity),
-                );
-                saEntries.push(...matched);
-              }
-
-              if (saEntries.length === 0) continue;
-
-              // Restoration has no estimate: its completion is what it used.
-              const completion = saEntries.find((e: any) => e.type === "completion");
-              const completionQty = parseFloat(
-                completion?.estimated_quantity || "0",
-              );
-              totalUsed += completionQty;
-              totalCompletion += completionQty;
             }
             utilizationMap.set(sorId, totalUsed);
             completionUtilizationMap.set(sorId, totalCompletion);
@@ -1018,84 +920,4 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
-  getRestorationData: protectedProcedure
-    .input(
-      z.object({
-        work_order_site_id: z.number().positive(),
-      }),
-    )
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        const { work_order_site_id } = input;
-
-        try {
-          const scope = await getAccessScope(
-            ctx.db,
-            Number(ctx.user!.sub),
-            ctx.user!.role,
-          );
-          await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
-
-          const cleaningUpSoilArea = await ctx.db
-            .select()
-            .from(cleaningUpSoilAreaTable)
-            .where(
-              eq(
-                cleaningUpSoilAreaTable.work_order_site_id,
-                work_order_site_id,
-              ),
-            );
-
-          const liftingRecoveryOilSlush = await ctx.db
-            .select()
-            .from(liftingRecoveryOilSlushTable)
-            .where(
-              eq(
-                liftingRecoveryOilSlushTable.work_order_site_id,
-                work_order_site_id,
-              ),
-            );
-
-          const excavationContSoil = await ctx.db
-            .select()
-            .from(excavationContSoilTable)
-            .where(
-              eq(
-                excavationContSoilTable.work_order_site_id,
-                work_order_site_id,
-              ),
-            );
-
-          const transportationContSoil = await ctx.db
-            .select()
-            .from(transportationContSoilTable)
-            .where(
-              eq(
-                transportationContSoilTable.work_order_site_id,
-                work_order_site_id,
-              ),
-            );
-
-          const refillingExcavatedContSoil = await ctx.db
-            .select()
-            .from(refillingExcavatedContSoilTable)
-            .where(
-              eq(
-                refillingExcavatedContSoilTable.work_order_site_id,
-                work_order_site_id,
-              ),
-            );
-
-          return {
-            cleaningUpSoilArea,
-            liftingRecoveryOilSlush,
-            excavationContSoil,
-            transportationContSoil,
-            refillingExcavatedContSoil,
-          };
-        } catch (error) {
-          throw fromDatabaseError(error, "Fetching restoration data");
-        }
-      }),
-    ),
 });

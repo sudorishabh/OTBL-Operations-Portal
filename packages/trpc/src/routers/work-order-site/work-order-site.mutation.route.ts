@@ -108,16 +108,6 @@ const saveBioremediationPhaseSchema = z.object({
     .optional(),
 });
 
-// Restoration has no estimate: only its completion quantities are saved.
-const saveRestorationCompletionSchema = z.object({
-  work_order_site_id: z.number().positive(),
-  clean_soil_area: saveActivityDataSchema.optional(),
-  lifting_oil_slush: saveActivityDataSchema.optional(),
-  excav_cont_soil: saveActivityDataSchema.optional(),
-  trans_cont_soil: saveActivityDataSchema.optional(),
-  refill_excav_soil: saveActivityDataSchema.optional(),
-});
-
 const {
   siteActivityTable,
   workOrderTable,
@@ -129,11 +119,6 @@ const {
   bioremediationContSoilTable,
   bioSampleTable,
   bioOilZappingTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
 } = schema;
 
 export const workOrderSiteMutationRouter = router({
@@ -927,117 +912,4 @@ export const workOrderSiteMutationRouter = router({
       }),
     ),
 
-  saveRestorationCompletion: protectedProcedure
-    .input(saveRestorationCompletionSchema)
-    .mutation(
-      handleMutation(async ({ input, ctx }) => {
-        const { work_order_site_id } = input;
-
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
-
-        const [restoration] = await ctx.db
-          .select({ process_type: workOrderSiteTable.process_type })
-          .from(workOrderSiteTable)
-          .where(eq(workOrderSiteTable.id, work_order_site_id));
-
-        if (restoration?.process_type !== constants.WO_PROCESS.RESTORATION) {
-          throw notFound("Restoration", work_order_site_id);
-        }
-
-        const upsertCompletion = async (
-          tx: any,
-          table: any,
-          data: SaveActivityData | undefined,
-          activityName: string,
-        ) => {
-          if (!data) return;
-
-          const [siteActivity] = await tx
-            .select({ id: siteActivityTable.id })
-            .from(siteActivityTable)
-            .where(
-              and(
-                eq(siteActivityTable.work_order_site_id, work_order_site_id),
-                eq(siteActivityTable.activity, activityName),
-              ),
-            );
-
-          const values = {
-            site_activity_id: siteActivity?.id,
-            estimated_quantity: data.estimated_quantity,
-            amount: data.amount,
-            transportation_km: data.transportation_km,
-          };
-
-          const [existing] = await tx
-            .select({ id: table.id })
-            .from(table)
-            .where(
-              and(
-                eq(table.work_order_site_id, work_order_site_id),
-                eq(table.type, "completion"),
-              ),
-            );
-
-          if (existing) {
-            await tx.update(table).set(values).where(eq(table.id, existing.id));
-          } else {
-            await tx
-              .insert(table)
-              .values({ work_order_site_id, type: "completion", ...values });
-          }
-        };
-
-        const { WO_ACTIVITIES } = constants;
-
-        try {
-          await ctx.db.transaction(async (tx: any) => {
-            await upsertCompletion(
-              tx,
-              cleaningUpSoilAreaTable,
-              input.clean_soil_area,
-              WO_ACTIVITIES.clean_soil_area,
-            );
-            await upsertCompletion(
-              tx,
-              liftingRecoveryOilSlushTable,
-              input.lifting_oil_slush,
-              WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL,
-            );
-            await upsertCompletion(
-              tx,
-              excavationContSoilTable,
-              input.excav_cont_soil,
-              WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL,
-            );
-            await upsertCompletion(
-              tx,
-              transportationContSoilTable,
-              input.trans_cont_soil,
-              WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
-            );
-            await upsertCompletion(
-              tx,
-              refillingExcavatedContSoilTable,
-              input.refill_excav_soil,
-              WO_ACTIVITIES.REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND,
-            );
-
-            await tx
-              .update(workOrderSiteTable)
-              .set({ is_completed: true })
-              .where(eq(workOrderSiteTable.id, work_order_site_id));
-          });
-
-          return { success: true, message: "Restoration completion saved" };
-        } catch (error) {
-          throw fromDatabaseError(error, "Saving restoration completion");
-        }
-      }),
-    ),
 });
