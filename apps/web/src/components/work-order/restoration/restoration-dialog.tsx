@@ -1,10 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import { Rows3 } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import DialogWindow from "@/components/shared/dialog-window";
-import CollapsiblePreview from "@/components/shared/collapsible-preview";
 import useHandleParams from "@/hooks/useHandleParams";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import SiteActivities from "../site-details-dialog/site-activities";
@@ -15,9 +13,8 @@ import CompletionExpenseSummary from "../site-details-dialog/completion-expense-
 import AddRestorationVendor from "./add-restoration-vendor";
 import RemoveRestorationVendor from "./remove-restoration-vendor";
 import RestorationSummary from "./restoration-summary";
-import RestorationRatesTable, {
-  RestorationRate,
-} from "./restoration-rates-table";
+import RestorationRatesSection from "./restoration-rates-section";
+import type { RestorationRate } from "./restoration-rates-table";
 import type { Restoration } from "./restoration-section";
 
 const { WO_PROCESS } = constants;
@@ -39,19 +36,6 @@ const RestorationDialog = ({
   const { getParam, setParam, deleteParams } = useHandleParams();
   const isOpen = getParam("dialog") === "restoration";
   const [isFullScreen, setIsFullScreen] = useState(false);
-
-  const expenseSummaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery(
-    { work_order_site_id: restoration.id },
-    { enabled: isOpen },
-  );
-  const byActivity: Record<string, { totalQuantity: number }> =
-    expenseSummaryQuery.data?.byActivity ?? {};
-  const usedQtyByActivity = Object.fromEntries(
-    Object.entries(byActivity).map(([activity, totals]) => [
-      activity,
-      totals.totalQuantity,
-    ]),
-  );
 
   const operatorUploadsQuery =
     trpc.workOrderSiteQuery.getOperatorUploads.useQuery(
@@ -106,22 +90,11 @@ const RestorationDialog = ({
           <TabsContent
             value='expenses'
             className='mt-4 space-y-5'>
-            <section className='space-y-2'>
-              <div className='flex items-center gap-2'>
-                <Rows3 className='size-4 text-gray-400' />
-                <h3 className='text-sm font-semibold text-gray-700'>
-                  Schedule of Rates
-                </h3>
-              </div>
-              <CollapsiblePreview
-                expandLabel={`Show all ${rates.length} activities`}>
-                <RestorationRatesTable
-                  rates={rates}
-                  estimatedTotal={estimatedTotal}
-                  usedQtyByActivity={usedQtyByActivity}
-                />
-              </CollapsiblePreview>
-            </section>
+            <RestorationRatesSection
+              restorationId={restoration.id}
+              rates={rates}
+              estimatedTotal={estimatedTotal}
+            />
             <SiteExpensesSection
               woSiteId={restoration.id}
               processType={WO_PROCESS.RESTORATION}
