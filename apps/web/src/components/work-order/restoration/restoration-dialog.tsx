@@ -13,6 +13,7 @@ import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import CompletionExpenseSummary from "../site-details-dialog/completion-expense-summary";
 import RestorationContractorsCard from "./restoration-contractors-card";
 import AddRestorationVendor from "./add-restoration-vendor";
+import RemoveRestorationVendor from "./remove-restoration-vendor";
 import RestorationSummary from "./restoration-summary";
 import RestorationRatesTable, {
   RestorationRate,
@@ -134,6 +135,13 @@ const RestorationDialog = ({
                   workOrderId={workOrder.id}
                 />
               }
+              emptyVendorActions={(vendor) => (
+                <RemoveRestorationVendor
+                  restorationId={restoration.id}
+                  workOrderId={workOrder.id}
+                  vendor={vendor}
+                />
+              )}
             />
           </TabsContent>
 

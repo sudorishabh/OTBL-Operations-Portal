@@ -146,6 +146,8 @@ interface Props {
   showEstimateTable?: boolean;
   // Extra buttons beside Add Expense.
   headerActions?: React.ReactNode;
+  // Shown on a vendor with no expenses, such as a button to remove it.
+  emptyVendorActions?: (vendor: { id: number; name: string }) => React.ReactNode;
 }
 
 const SiteExpensesSection = ({
@@ -155,6 +157,7 @@ const SiteExpensesSection = ({
   contractors = [],
   showEstimateTable = true,
   headerActions,
+  emptyVendorActions,
 }: Props) => {
   const utils = trpc.useUtils();
   const isViewer = useIsViewer();
@@ -893,6 +896,7 @@ const SiteExpensesSection = ({
           {contractors.map((c) => {
             const name = capitalFirstLetter(c.name);
             const records = recordsUnder(c.id);
+            const hasExpenses = records.length > 0 || totalUnder(c.id) > 0;
             return renderVendorGroup({
               groupKey: `vendor-${c.id}`,
               Icon: HardHat,
@@ -904,15 +908,18 @@ const SiteExpensesSection = ({
                   ? renderRecordsBox(records, false)
                   : emptyGroupText(`No expenses under ${name} yet.`),
               actions: (
-                <button
-                  type='button'
-                  title={`Add an expense under ${name}`}
-                  aria-label={`Add an expense under ${name}`}
-                  onClick={() => openAddExpense(c.id)}
-                  disabled={isViewer}
-                  className='shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-30'>
-                  <Plus className='size-3.5' />
-                </button>
+                <div className='flex shrink-0 items-center'>
+                  <button
+                    type='button'
+                    title={`Add an expense under ${name}`}
+                    aria-label={`Add an expense under ${name}`}
+                    onClick={() => openAddExpense(c.id)}
+                    disabled={isViewer}
+                    className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-30'>
+                    <Plus className='size-3.5' />
+                  </button>
+                  {!hasExpenses && emptyVendorActions?.(c)}
+                </div>
               ),
             });
           })}
