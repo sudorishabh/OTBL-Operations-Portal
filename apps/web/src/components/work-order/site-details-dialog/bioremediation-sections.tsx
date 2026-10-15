@@ -33,8 +33,14 @@ import {
   Droplet,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import DeferredFilePicker from "@/components/shared/deferred-file-picker";
+import DocumentsField from "@/components/shared/documents-field";
+import DocumentsMenu from "@/components/shared/documents-menu";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
+import {
+  toDocuments,
+  toStoredDocument,
+  type StoredDocument,
+} from "@/lib/documents";
 import { format } from "date-fns";
 
 const BioSampleForm = ({
@@ -47,7 +53,7 @@ const BioSampleForm = ({
   const utils = trpc.useUtils();
   const [tphValue, setTphValue] = useState("");
   const [applicationMonth, setApplicationMonth] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
 
   const MONTHS = Array.from({ length: 30 }, (_, i) => {
     const n = i + 1;
@@ -61,12 +67,13 @@ const BioSampleForm = ({
   });
 
   const {
-    uploadFile,
+    uploadFiles,
     isUploading,
     progress,
     reset: resetUpload,
   } = useSharePointUpload({
     folderPath: `/WorkOrders/Sites/${woSiteId}/BioSamples`,
+    conflictBehavior: "rename",
   });
 
   const createMutation = trpc.workOrderSiteMutation.createBioSample.useMutation(
@@ -76,7 +83,7 @@ const BioSampleForm = ({
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
         setTphValue("");
         setApplicationMonth("");
-        setFile(null);
+        setFiles([]);
         resetUpload();
         onSuccess();
       },
@@ -91,8 +98,8 @@ const BioSampleForm = ({
   );
 
   const handleSubmit = async () => {
-    if (!file) {
-      toast.error("Please upload a TPH document");
+    if (files.length === 0) {
+      toast.error("Please upload at least one TPH document");
       return;
     }
     if (!tphValue) {
@@ -105,11 +112,11 @@ const BioSampleForm = ({
     }
 
     try {
-      const result = await uploadFile(file);
-      if (result) {
+      const uploaded = await uploadFiles(files);
+      if (uploaded) {
         createMutation.mutate({
           work_order_site_id: woSiteId,
-          tph_document_url: result.webUrl,
+          documents: uploaded.map(toStoredDocument),
           tph_value: tphValue.replace(",", "."),
           application_month: applicationMonth,
         });
@@ -125,13 +132,12 @@ const BioSampleForm = ({
     <div className='grid gap-4 py-4'>
       <div className='grid grid-cols-1 gap-4'>
         <div>
-          <DeferredFilePicker
-            label='TPH Document'
-            selectedFile={file}
-            onFileSelect={setFile}
+          <DocumentsField
+            label='TPH Documents'
+            files={files}
+            onFilesChange={setFiles}
             isUploading={isUploading}
-            uploadProgress={progress}
-            className='bg-white'
+            progress={progress}
           />
         </div>
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
@@ -201,7 +207,7 @@ const OilZappingForm = ({
 }) => {
   const utils = trpc.useUtils();
   const [estimatedQuantity, setEstimatedQuantity] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
 
   const bioremediationDataQuery =
     trpc.workOrderSiteQuery.getBioremediationData.useQuery(
@@ -228,12 +234,13 @@ const OilZappingForm = ({
   const remaining = Math.max(0, estimateLimit - currentTotal);
 
   const {
-    uploadFile,
+    uploadFiles,
     isUploading,
     progress,
     reset: resetUpload,
   } = useSharePointUpload({
     folderPath: `/WorkOrders/Sites/${woSiteId}/OilZapping`,
+    conflictBehavior: "rename",
   });
 
   const createMutation =
@@ -242,7 +249,7 @@ const OilZappingForm = ({
         toast.success("Oil zapping entry added successfully");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
         setEstimatedQuantity("");
-        setFile(null);
+        setFiles([]);
         resetUpload();
         onSuccess();
       },
@@ -256,8 +263,8 @@ const OilZappingForm = ({
     });
 
   const handleSubmit = async () => {
-    if (!file) {
-      toast.error("Please upload a document");
+    if (files.length === 0) {
+      toast.error("Please upload at least one document");
       return;
     }
 
@@ -278,8 +285,8 @@ const OilZappingForm = ({
     }
 
     try {
-      const result = await uploadFile(file);
-      if (result) {
+      const uploaded = await uploadFiles(files);
+      if (uploaded) {
         const cappedQty = Math.min(enteredQty, remaining);
         if (cappedQty < enteredQty) {
           toast(
@@ -288,7 +295,7 @@ const OilZappingForm = ({
         }
         createMutation.mutate({
           work_order_site_id: woSiteId,
-          document_url: result.webUrl,
+          documents: uploaded.map(toStoredDocument),
           estimated_quantity: cappedQty.toFixed(2),
         });
       }
@@ -303,13 +310,12 @@ const OilZappingForm = ({
     <div className='grid gap-4 py-4'>
       <div className='grid grid-cols-1 gap-4'>
         <div>
-          <DeferredFilePicker
-            label='Zapping Document'
-            selectedFile={file}
-            onFileSelect={setFile}
+          <DocumentsField
+            label='Zapping Documents'
+            files={files}
+            onFilesChange={setFiles}
             isUploading={isUploading}
-            uploadProgress={progress}
-            className='bg-white'
+            progress={progress}
           />
         </div>
         <div>
@@ -365,7 +371,7 @@ interface CombinedItem {
   application_month?: string;
   created_at: string;
   tph_value?: string;
-  tph_document_url?: string;
+  documents: StoredDocument[];
   original: any;
 }
 
@@ -450,24 +456,21 @@ const CombinedList = ({
                     : item.estimated_quantity || "-"}
                 </TableCell>
                 <TableCell className='text-center'>
-                  {item.type === "bio" && item.tph_document_url ? (
-                    <a
-                      href={item.tph_document_url}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 hover:underline transition-colors justify-center'>
-                      <FileText className='w-3.5 h-3.5' />
-                      <span className='truncate max-w-[100px]'>View Doc</span>
-                    </a>
-                  ) : item.type === "oil" && item.original.document_url ? (
-                    <a
-                      href={item.original.document_url}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 hover:underline transition-colors justify-center'>
-                      <FileText className='w-3.5 h-3.5' />
-                      <span className='truncate max-w-[100px]'>View Doc</span>
-                    </a>
+                  {item.documents.length > 0 ? (
+                    <DocumentsMenu
+                      documents={item.documents}
+                      align='center'>
+                      <button
+                        type='button'
+                        className='inline-flex cursor-pointer items-center gap-1.5 text-blue-600 hover:text-blue-800 hover:underline transition-colors justify-center'>
+                        <FileText className='w-3.5 h-3.5' />
+                        <span className='truncate max-w-[100px]'>
+                          {item.documents.length === 1
+                            ? "View Doc"
+                            : `${item.documents.length} Docs`}
+                        </span>
+                      </button>
+                    </DocumentsMenu>
                   ) : (
                     <span className='text-slate-300'>-</span>
                   )}
@@ -569,7 +572,7 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
       application_month: item.application_month,
       created_at: item.created_at,
       tph_value: item.tph_value,
-      tph_document_url: item.tph_document_url,
+      documents: toDocuments(item.documents),
       original: item,
     })),
     ...oilZapping.map((item: any) => ({
@@ -577,6 +580,7 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
       type: "oil" as const,
       estimated_quantity: item.estimated_quantity,
       created_at: item.created_at,
+      documents: toDocuments(item.documents),
       original: item,
     })),
   ].sort(
