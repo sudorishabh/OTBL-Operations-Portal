@@ -13,6 +13,10 @@ import {
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { assertOfficeManager } from "../../helper/office-permissions";
+import {
+  coversRestoration,
+  createRestorationRow,
+} from "../restoration/restoration-row";
 
 const {
   workOrderTable,
@@ -118,6 +122,16 @@ export const workOrderMutationRouter = router({
               );
 
               await tx.insert(scheduleOfRatesTable).values(scheduleOfRatesData);
+            }
+
+            // Restoration has no sites, so its one row is set up right away.
+            if (coversRestoration(input.process_type)) {
+              await createRestorationRow(tx, {
+                id: workOrderId,
+                client_id: input.client_id,
+                start_date: workOrderData.start_date,
+                end_date: workOrderData.end_date,
+              });
             }
 
             return workOrderId;
