@@ -141,6 +141,8 @@ interface Props {
   contractors?: { id: number; name: string }[];
   // Off when the caller already shows estimated, used and left quantities.
   showEstimateTable?: boolean;
+  // Extra buttons beside Add Expense.
+  headerActions?: React.ReactNode;
 }
 
 const SiteExpensesSection = ({
@@ -149,6 +151,7 @@ const SiteExpensesSection = ({
   splitByContractor = false,
   contractors = [],
   showEstimateTable = true,
+  headerActions,
 }: Props) => {
   const utils = trpc.useUtils();
   const isViewer = useIsViewer();
@@ -818,6 +821,7 @@ const SiteExpensesSection = ({
               ))}
             </SelectContent>
           </Select>
+          {headerActions}
           <CustomButton
             text='Add Expense'
             variant='primary'

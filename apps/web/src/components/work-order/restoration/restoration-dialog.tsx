@@ -12,6 +12,7 @@ import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import CompletionExpenseSummary from "../site-details-dialog/completion-expense-summary";
 import RestorationContractorsCard from "./restoration-contractors-card";
+import AddRestorationVendor from "./add-restoration-vendor";
 import RestorationSummary from "./restoration-summary";
 import RestorationRatesTable, {
   RestorationRate,
@@ -127,6 +128,12 @@ const RestorationDialog = ({
               splitByContractor
               contractors={restoration.contractors}
               showEstimateTable={false}
+              headerActions={
+                <AddRestorationVendor
+                  restoration={restoration}
+                  workOrderId={workOrder.id}
+                />
+              }
             />
           </TabsContent>
 
