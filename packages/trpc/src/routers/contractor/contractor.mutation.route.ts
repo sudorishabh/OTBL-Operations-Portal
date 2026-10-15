@@ -5,9 +5,14 @@ import { protectedProcedure } from "../../core";
 import { assertCanAccessOffice, getAccessScope } from "../../access-scope";
 import { fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { assertOfficeManager } from "../../helper/office-permissions";
 import { z } from "zod";
 
 const { contractorTable } = schema;
+
+// Optional text: blank clears it, and a field left out stays as it is.
+const optionalText = (value: string | undefined) =>
+  value === undefined ? undefined : value.trim() || null;
 
 const createContractorSchema = z.object({
   office_id: z.number().positive(),
@@ -47,12 +52,12 @@ export const contractorMutationRouter = router({
             .insert(contractorTable)
             .values({
               office_id: input.office_id,
-              name: input.name,
-              contact_number: input.contact_number ?? null,
-              email: input.email || null,
-              address: input.address ?? null,
-              gst_number: input.gst_number ?? null,
-              pan_number: input.pan_number ?? null,
+              name: input.name.trim(),
+              contact_number: optionalText(input.contact_number) ?? null,
+              email: optionalText(input.email) ?? null,
+              address: optionalText(input.address) ?? null,
+              gst_number: optionalText(input.gst_number) ?? null,
+              pan_number: optionalText(input.pan_number) ?? null,
             })
             .$returningId();
 
@@ -74,7 +79,7 @@ export const contractorMutationRouter = router({
     .input(updateContractorSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const { id, ...updateData } = input;
+        const { id, name, status } = input;
 
         const existing = await ctx.db
           .select()
@@ -91,13 +96,19 @@ export const contractorMutationRouter = router({
           ctx.user!.role,
         );
         await assertCanAccessOffice(ctx.db, scope, existing[0]!.office_id);
+        await assertOfficeManager(ctx, existing[0]!.office_id);
 
         try {
           await ctx.db
             .update(contractorTable)
             .set({
-              ...updateData,
-              email: updateData.email || null,
+              name: name?.trim(),
+              status,
+              contact_number: optionalText(input.contact_number),
+              email: optionalText(input.email),
+              address: optionalText(input.address),
+              gst_number: optionalText(input.gst_number),
+              pan_number: optionalText(input.pan_number),
             })
             .where(eq(contractorTable.id, id));
 
@@ -127,6 +138,7 @@ export const contractorMutationRouter = router({
           ctx.user!.role,
         );
         await assertCanAccessOffice(ctx.db, scope, existing[0]!.office_id);
+        await assertOfficeManager(ctx, existing[0]!.office_id);
 
         try {
           await ctx.db
