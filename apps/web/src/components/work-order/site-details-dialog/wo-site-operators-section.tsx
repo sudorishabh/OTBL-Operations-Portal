@@ -11,6 +11,8 @@ import WoSiteOperatorsDialog from "./wo-site-operators-dialog";
 
 type Props = {
   woSiteId: number;
+  // What the operators work on, as named in the copy.
+  subject?: string;
 };
 
 type AssignedOperator = {
@@ -19,7 +21,10 @@ type AssignedOperator = {
   email: string | null;
 };
 
-const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
+const WoSiteOperatorsSection: React.FC<Props> = ({
+  woSiteId,
+  subject = "work order site",
+}) => {
   const isManager = useIsManager();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -59,8 +64,8 @@ const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
       </div>
 
       <p className='mb-3 text-[11px] text-muted-foreground'>
-        Only the operators assigned here can upload documents to this work order
-        site.
+        Only the operators assigned here can upload documents to this{" "}
+        {subject}.
       </p>
 
       {isLoading ? (
@@ -76,7 +81,7 @@ const WoSiteOperatorsSection: React.FC<Props> = ({ woSiteId }) => {
         <p className='text-xs text-muted-foreground'>
           No operators assigned yet. Use{" "}
           <span className='font-medium'>Manage operators</span> to assign Site
-          Operators to this work order site.
+          Operators to this {subject}.
         </p>
       ) : (
         <div className='flex flex-wrap gap-2'>

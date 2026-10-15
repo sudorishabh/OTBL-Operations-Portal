@@ -21,17 +21,20 @@ interface Props {
   siteName?: string;
   uploads: UploadRow[];
   isLoading?: boolean;
+  // The `dialog` param of the dialog this one opens over.
+  parentDialog?: string;
 }
 
 export function SiteOperatorUploadsDialog({
   siteName,
   uploads,
   isLoading = false,
+  parentDialog = "site-details",
 }: Props) {
   const { getParam, deleteParam } = useHandleParams();
 
   const open =
-    getParam("dialog") === "site-details" &&
+    getParam("dialog") === parentDialog &&
     getParam("site-dialog") === "operator-uploads";
 
   const rows = useMemo(() => {
@@ -78,7 +81,7 @@ export function SiteOperatorUploadsDialog({
       isLoading={isLoading}>
       {rows.length === 0 && !isLoading ? (
         <p className='text-sm text-muted-foreground py-6 text-center'>
-          No operator documents uploaded yet for this site.
+          No operator documents uploaded yet.
         </p>
       ) : (
         <ScrollArea className='h-[min(420px,55vh)] pr-3'>
