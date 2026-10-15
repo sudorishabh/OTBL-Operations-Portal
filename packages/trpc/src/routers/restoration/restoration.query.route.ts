@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -8,7 +8,8 @@ import { handleQuery } from "../../helper/typed-handler";
 import { z } from "zod";
 import { restorationRowWhere } from "./restoration-row";
 
-const { workOrderSiteTable, contractorTable } = schema;
+const { workOrderSiteTable, workOrderSiteContractorTable, contractorTable } =
+  schema;
 
 export const restorationQueryRouter = router({
   // The work order's restoration row, or null until it is set up.
@@ -54,6 +55,27 @@ export const restorationQueryRouter = router({
             return null;
           }
 
+          // Every vendor the restoration is ordered to, in the order assigned.
+          const contractors = await ctx.db
+            .select({
+              id: contractorTable.id,
+              name: contractorTable.name,
+              contact_number: contractorTable.contact_number,
+              email: contractorTable.email,
+              gst_number: contractorTable.gst_number,
+              status: contractorTable.status,
+            })
+            .from(workOrderSiteContractorTable)
+            .innerJoin(
+              contractorTable,
+              eq(
+                workOrderSiteContractorTable.contractor_id,
+                contractorTable.id,
+              ),
+            )
+            .where(eq(workOrderSiteContractorTable.work_order_site_id, row.id))
+            .orderBy(asc(workOrderSiteContractorTable.id));
+
           return {
             id: row.id,
             status: row.status,
@@ -68,6 +90,7 @@ export const restorationQueryRouter = router({
                     gst_number: row.contractor_gst_number,
                   }
                 : null,
+            contractors,
           };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching restoration");
