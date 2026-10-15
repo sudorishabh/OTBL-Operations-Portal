@@ -102,8 +102,11 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
 
   const statsForComponent = {
     totalSites: stats.total_sites || 0,
+    // The restoration row has no site, so it isn't counted as one.
     completedSites:
-      (sites || []).filter((s: any) => s.is_completed === true)?.length || 0,
+      (sites || []).filter(
+        (s: any) => s.site?.id != null && s.is_completed === true,
+      )?.length || 0,
     totalBudgetAmount: totalBudgetAmount,
     totalCompletionAmount: totalCompletionAmount,
     budgetUtilization:
