@@ -5,7 +5,6 @@ import { trpc } from "@/lib/trpc";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import SiteActivities from "../site-details-dialog/site-activities";
 import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
@@ -13,6 +12,7 @@ import CompletionExpenseSummary from "../site-details-dialog/completion-expense-
 import AddRestorationVendor from "./add-restoration-vendor";
 import RemoveRestorationVendor from "./remove-restoration-vendor";
 import RestorationSummary from "./restoration-summary";
+import RestorationCompletion from "./restoration-completion";
 import RestorationRatesSection from "./restoration-rates-section";
 import type { RestorationRate } from "./restoration-rates-table";
 import type { Restoration } from "./restoration-section";
@@ -124,12 +124,9 @@ const RestorationDialog = ({
           <TabsContent
             value='completion'
             className='mt-4'>
-            <SiteActivities
-              woSiteId={restoration.id}
-              processType={WO_PROCESS.RESTORATION}
-              phase='completion'
-              showPhaseTabs={false}
-              showSorAvailability={false}
+            <RestorationCompletion
+              restoration={restoration}
+              workOrderId={workOrder.id}
             />
             <CompletionExpenseSummary woSiteId={restoration.id} />
           </TabsContent>
