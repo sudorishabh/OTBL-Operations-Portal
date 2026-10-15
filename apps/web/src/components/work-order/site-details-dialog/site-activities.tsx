@@ -269,9 +269,9 @@ const PhaseForm = ({
   };
 
   const saveRestoration =
-    trpc.workOrderSiteMutation.saveRestorationPhase.useMutation({
+    trpc.workOrderSiteMutation.saveRestorationCompletion.useMutation({
       onSuccess: () => {
-        toast.success("All phase activities saved successfully.");
+        toast.success("Restoration completion saved.");
         utils.workOrderSiteQuery.getRestorationData.invalidate();
         utils.workOrderSiteQuery.getSiteActivities.invalidate({
           work_order_site_id: woSiteId,
@@ -446,10 +446,8 @@ const PhaseForm = ({
         }
       }
     } else {
-      const payload: any = {
-        ...commonData,
-        phase: phase as any,
-      };
+      // Restoration has no estimate, so only its completion is saved.
+      const payload: any = { work_order_site_id: woSiteId };
 
       activities.forEach((activity) => {
         const data = formData[activity.activity];
@@ -728,17 +726,19 @@ const PhaseForm = ({
                     !!expenseSummary &&
                     expenseSummary.totalQuantity > 0;
 
-                  const estimatePhaseData =
-                    isBioremActivity || isAutoFilledFromExpenses
-                      ? getActivityData(
+                  // Bioremediation is measured against its estimate,
+                  // restoration against the schedule of rates.
+                  const estimateQty = isBioremActivity
+                    ? parseFloat(
+                        getActivityData(
                           activity.activity,
-                          "estimate_sub-wo" as DocType,
+                          "estimate_sub-wo",
                           isBioremediation,
-                        )
-                      : undefined;
-                  const estimateQty = parseFloat(
-                    estimatePhaseData?.estimated_quantity?.toString() || "0",
-                  );
+                        )?.estimated_quantity?.toString() || "0",
+                      )
+                    : isAutoFilledFromExpenses
+                      ? parseFloat(activity.sor_estimated_quantity || "0")
+                      : 0;
                   const exceededQty =
                     isAutoFilledFromZapping && estimateQty > 0
                       ? totalOilZappingQty - estimateQty
@@ -807,7 +807,7 @@ const PhaseForm = ({
                             {estimateQty > 0 && (
                               <div className='flex justify-between text-slate-500'>
                                 <span className='opacity-70'>
-                                  Estimate qty:
+                                  SOR qty:
                                 </span>
                                 <span className='font-medium'>
                                   {estimateQty.toFixed(2)}
@@ -1018,10 +1018,12 @@ const SiteActivities = ({
         }
         return undefined;
       } else {
-        if (!restorationDataQuery.data) return undefined;
+        // Restoration only has completion data.
+        if (!restorationDataQuery.data || phase !== "completion") {
+          return undefined;
+        }
         const data = restorationDataQuery.data;
-        const activityType =
-          phase === "completion" ? "completion" : "estimate_sub-wo";
+        const activityType = "completion";
         switch (activityKey) {
           case "clean_up_oil_spill":
           case "clean_soil_area":
@@ -1068,7 +1070,7 @@ const SiteActivities = ({
               SOR availability
             </span>
             <span className='text-[10px] text-slate-400 truncate'>
-              (estimates + completions across sites)
+              (used across the work order)
             </span>
           </div>
           <div

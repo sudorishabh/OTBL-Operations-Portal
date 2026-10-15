@@ -104,12 +104,9 @@ const saveBioremediationPhaseSchema = z.object({
     .optional(),
 });
 
-const saveRestorationPhaseSchema = z.object({
+// Restoration has no estimate: only its completion quantities are saved.
+const saveRestorationCompletionSchema = z.object({
   work_order_site_id: z.number().positive(),
-  phase: z.enum(["estimate_sub-wo", "completion"]),
-  document_url: z.string().optional(),
-  sub_wo_document_url: z.string().optional(),
-  estimate_document_url: z.string().optional(),
   clean_soil_area: saveActivityDataSchema.optional(),
   lifting_oil_slush: saveActivityDataSchema.optional(),
   excav_cont_soil: saveActivityDataSchema.optional(),
@@ -911,52 +908,29 @@ export const workOrderSiteMutationRouter = router({
       }),
     ),
 
-  saveRestorationPhase: publicProcedure
-    .input(saveRestorationPhaseSchema)
+  saveRestorationCompletion: protectedProcedure
+    .input(saveRestorationCompletionSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const {
-          work_order_site_id,
-          phase,
-          document_url,
-          sub_wo_document_url,
-          estimate_document_url,
-          clean_soil_area,
-          lifting_oil_slush,
-          excav_cont_soil,
-          trans_cont_soil,
-          refill_excav_soil,
-        } = input;
+        const { work_order_site_id } = input;
 
-        const upsertDoc = async (tx: any, url: string, type: string) => {
-          const existingDoc = await tx
-            .select()
-            .from(workOrderSiteDocsTable)
-            .where(
-              and(
-                eq(
-                  workOrderSiteDocsTable.work_order_site_id,
-                  work_order_site_id,
-                ),
-                eq(workOrderSiteDocsTable.type, type as any),
-              ),
-            );
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
 
-          if (existingDoc.length > 0) {
-            await tx
-              .update(workOrderSiteDocsTable)
-              .set({ document_url: url })
-              .where(eq(workOrderSiteDocsTable.id, existingDoc[0]!.id));
-          } else {
-            await tx.insert(workOrderSiteDocsTable).values({
-              work_order_site_id,
-              type: type as any,
-              document_url: url,
-            });
-          }
-        };
+        const [restoration] = await ctx.db
+          .select({ process_type: workOrderSiteTable.process_type })
+          .from(workOrderSiteTable)
+          .where(eq(workOrderSiteTable.id, work_order_site_id));
 
-        const upsertActivity = async (
+        if (restoration?.process_type !== constants.WO_PROCESS.RESTORATION) {
+          throw notFound("Restoration", work_order_site_id);
+        }
+
+        const upsertCompletion = async (
           tx: any,
           table: any,
           data: SaveActivityData | undefined,
@@ -964,8 +938,8 @@ export const workOrderSiteMutationRouter = router({
         ) => {
           if (!data) return;
 
-          const sa = await tx
-            .select()
+          const [siteActivity] = await tx
+            .select({ id: siteActivityTable.id })
             .from(siteActivityTable)
             .where(
               and(
@@ -974,100 +948,76 @@ export const workOrderSiteMutationRouter = router({
               ),
             );
 
-          const siteActivityId = sa[0]?.id;
+          const values = {
+            site_activity_id: siteActivity?.id,
+            estimated_quantity: data.estimated_quantity,
+            amount: data.amount,
+            transportation_km: data.transportation_km,
+          };
 
-          const activityType =
-            phase === "completion" ? "completion" : "estimate_sub-wo";
-
-          const existing = await tx
-            .select()
+          const [existing] = await tx
+            .select({ id: table.id })
             .from(table)
             .where(
               and(
                 eq(table.work_order_site_id, work_order_site_id),
-                eq(table.type, activityType),
+                eq(table.type, "completion"),
               ),
             );
 
-          if (existing.length > 0) {
-            await tx
-              .update(table)
-              .set({
-                estimated_quantity: data.estimated_quantity,
-                amount: data.amount,
-                transportation_km: data.transportation_km,
-                site_activity_id: siteActivityId,
-              })
-              .where(eq(table.id, existing[0]!.id));
+          if (existing) {
+            await tx.update(table).set(values).where(eq(table.id, existing.id));
           } else {
-            await tx.insert(table).values({
-              work_order_site_id,
-              site_activity_id: siteActivityId,
-              type: activityType,
-              estimated_quantity: data.estimated_quantity,
-              amount: data.amount,
-              transportation_km: data.transportation_km,
-            });
+            await tx
+              .insert(table)
+              .values({ work_order_site_id, type: "completion", ...values });
           }
         };
 
+        const { WO_ACTIVITIES } = constants;
+
         try {
           await ctx.db.transaction(async (tx: any) => {
-            if (document_url && phase !== "estimate_sub-wo") {
-              await upsertDoc(tx, document_url, phase);
-            }
-            if (sub_wo_document_url) {
-              await upsertDoc(tx, sub_wo_document_url, "sub_wo");
-            }
-            if (estimate_document_url) {
-              await upsertDoc(tx, estimate_document_url, "estimate");
-            }
-
-            await upsertActivity(
+            await upsertCompletion(
               tx,
               cleaningUpSoilAreaTable,
-              clean_soil_area,
-              "clean_soil_area",
+              input.clean_soil_area,
+              WO_ACTIVITIES.clean_soil_area,
             );
-            await upsertActivity(
+            await upsertCompletion(
               tx,
               liftingRecoveryOilSlushTable,
-              lifting_oil_slush,
-              "lifting_oily_slush_or_recovery_of_oil",
+              input.lifting_oil_slush,
+              WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL,
             );
-            await upsertActivity(
+            await upsertCompletion(
               tx,
               excavationContSoilTable,
-              excav_cont_soil,
-              "excavation_oil_contaminated_soil",
+              input.excav_cont_soil,
+              WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL,
             );
-            await upsertActivity(
+            await upsertCompletion(
               tx,
               transportationContSoilTable,
-              trans_cont_soil,
-              "transportation_contaminated_soil",
+              input.trans_cont_soil,
+              WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
             );
-            await upsertActivity(
+            await upsertCompletion(
               tx,
               refillingExcavatedContSoilTable,
-              refill_excav_soil,
-              "refilling_excavated_oil_contaminated_soil_land",
+              input.refill_excav_soil,
+              WO_ACTIVITIES.REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND,
             );
 
-            if (phase === "completion") {
-              await tx
-                .update(workOrderSiteTable)
-                .set({ is_completed: true })
-                .where(eq(workOrderSiteTable.id, work_order_site_id));
-            }
+            await tx
+              .update(workOrderSiteTable)
+              .set({ is_completed: true })
+              .where(eq(workOrderSiteTable.id, work_order_site_id));
           });
 
-          return {
-            success: true,
-            message: "Restoration phase data saved successfully",
-          };
+          return { success: true, message: "Restoration completion saved" };
         } catch (error) {
-          throw fromDatabaseError(error, "Saving restoration phase data");
+          throw fromDatabaseError(error, "Saving restoration completion");
         }
       }),
     ),
