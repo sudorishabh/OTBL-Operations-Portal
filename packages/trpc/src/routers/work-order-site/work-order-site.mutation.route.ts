@@ -10,7 +10,12 @@ import {
 import { assertOfficeManager } from "../../helper/office-permissions";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
-import { fromDatabaseError, notFound, validationError } from "../../errors";
+import {
+  businessRule,
+  fromDatabaseError,
+  notFound,
+  validationError,
+} from "../../errors";
 import { constants } from "@pkg/utils";
 import { validators } from "@pkg/schema";
 import {
@@ -424,6 +429,21 @@ export const workOrderSiteMutationRouter = router({
   createSiteDocument: publicProcedure.input(createSiteDocumentSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       const { work_order_site_id, document_url, document_id, type } = input;
+
+      // Sub-WO and estimate documents belong to an estimate, which
+      // restoration doesn't have.
+      if (type === "sub_wo" || type === "estimate") {
+        const [woSite] = await ctx.db
+          .select({ process_type: workOrderSiteTable.process_type })
+          .from(workOrderSiteTable)
+          .where(eq(workOrderSiteTable.id, work_order_site_id));
+
+        if (woSite?.process_type === constants.WO_PROCESS.RESTORATION) {
+          throw businessRule(
+            "Restoration has no estimate, so it takes no sub-WO or estimate documents.",
+          );
+        }
+      }
 
       try {
         const [result] = await ctx.db.insert(workOrderSiteDocsTable).values({
