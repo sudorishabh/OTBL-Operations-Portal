@@ -117,6 +117,12 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
       );
     }
 
+    const contractorNames = restoration.contractors
+      .map((contractor: { name: string }) =>
+        capitalFirstLetter(contractor.name),
+      )
+      .join(", ");
+
     return (
       <>
         <button
@@ -153,10 +159,12 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
               </div>
             </div>
             <div className='min-w-0'>
-              <div className={fieldLabelClass}>Contractor</div>
-              <div className='mt-0.5 truncate text-[13px] font-medium text-gray-700'>
-                {restoration.contractor ? (
-                  capitalFirstLetter(restoration.contractor.name)
+              <div className={fieldLabelClass}>Contractors</div>
+              <div
+                className='mt-0.5 truncate text-[13px] font-medium text-gray-700'
+                title={contractorNames}>
+                {contractorNames ? (
+                  contractorNames
                 ) : (
                   <span className='text-gray-400'>Not assigned yet</span>
                 )}
