@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { LayoutGrid, List, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { FlaskConical, LayoutGrid, List, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import useHandleParams from "@/hooks/useHandleParams";
 import CustomButton from "@/components/shared/btn";
@@ -9,6 +10,7 @@ import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import Error from "@/components/shared/error";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import WorkOrderSitesSkeleton from "@/components/skeleton/work-order/work-order-sites-skeleton";
+import ProcessSectionHeader, { PROCESS_TONES } from "../process-section-header";
 import CreateWorkOrderSiteDialog from "../create-wo-site/create-wo-site-dialog";
 import SiteDetailDialog from "../site-details-dialog/site-details-dialog";
 import SitesTable from "./wo-sites-table";
@@ -148,33 +150,37 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
     );
   }
 
+  const siteCount = pagination?.total || 0;
+
   return (
-    <div className='rounded-lg border bg-white p-6'>
-      <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4'>
-        <div className='flex flex-wrap items-center gap-3'>
-          <h2 className='text-md font-semibold'>
-            Work Order Sites ({pagination?.total || 0})
-          </h2>
-          <Tabs
-            value={viewMode}
-            onValueChange={(val) => setViewMode(val as "card" | "table")}
-            className='mr-2'>
-            <TabsList className='grid w-36 grid-cols-2 h-8'>
-              <TabsTrigger
-                value='card'
-                className='gap-2 text-xs text-gray-800'>
-                <LayoutGrid className='size-3.5 text-gray-500' />
-                Card
-              </TabsTrigger>
-              <TabsTrigger
-                value='table'
-                className='gap-2 text-xs text-gray-800'>
-                <List className='size-3.5 text-gray-500' />
-                Table
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+    <section
+      className={cn(
+        "rounded-lg border border-l-[3px] bg-white p-6",
+        PROCESS_TONES.bioremediation.section,
+      )}>
+      <ProcessSectionHeader
+        Icon={FlaskConical}
+        tone='bioremediation'
+        title='Bioremediation'
+        description={`Done at sites, ${siteCount} ${siteCount === 1 ? "site" : "sites"} added so far.`}>
+        <Tabs
+          value={viewMode}
+          onValueChange={(val) => setViewMode(val as "card" | "table")}>
+          <TabsList className='grid w-36 grid-cols-2 h-8'>
+            <TabsTrigger
+              value='card'
+              className='gap-2 text-xs text-gray-800'>
+              <LayoutGrid className='size-3.5 text-gray-500' />
+              Card
+            </TabsTrigger>
+            <TabsTrigger
+              value='table'
+              className='gap-2 text-xs text-gray-800'>
+              <List className='size-3.5 text-gray-500' />
+              Table
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         {scheduleOfRates.length > 0 && (
           <CustomButton
             variant='primary'
@@ -185,7 +191,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
             disableForViewer
           />
         )}
-      </div>
+      </ProcessSectionHeader>
 
       {sitesList.length > 0 ? (
         <div className='relative'>
@@ -237,7 +243,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
         scheduleOfRates={scheduleOfRates}
       />
       <SiteDetailDialog />
-    </div>
+    </section>
   );
 };
 
