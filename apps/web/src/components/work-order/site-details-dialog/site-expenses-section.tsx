@@ -639,10 +639,10 @@ const SiteExpensesSection = ({
               {count}
             </span>
           </button>
+          {actions}
           <span className='shrink-0 text-sm font-semibold tabular-nums text-gray-800'>
             {formatCurrency(total)}
           </span>
-          {actions}
         </div>
         {isOpen && (
           <div className='flex gap-2 pb-1 pl-1'>
@@ -913,15 +913,16 @@ const SiteExpensesSection = ({
                   ? renderRecordsBox(records, false)
                   : emptyGroupText(`No expenses under ${name} yet.`),
               actions: (
-                <div className='flex shrink-0 items-center'>
+                <div className='flex shrink-0 items-center gap-1'>
                   <button
                     type='button'
-                    title={`Add an expense under ${name}`}
-                    aria-label={`Add an expense under ${name}`}
+                    title={`Add expense under ${name}`}
+                    aria-label={`Add expense under ${name}`}
                     onClick={() => openAddExpense(c.id)}
                     disabled={isViewer}
-                    className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-30'>
+                    className='inline-flex h-7 items-center gap-1 rounded-md bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40'>
                     <Plus className='size-3.5' />
+                    Add expense
                   </button>
                   {!hasExpenses && emptyVendorActions?.(c)}
                 </div>
