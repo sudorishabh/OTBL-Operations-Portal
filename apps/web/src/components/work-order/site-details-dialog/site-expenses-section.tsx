@@ -344,10 +344,10 @@ const SiteExpensesSection = ({
         <TableRow
           onClick={toggle}
           className={cn(
-            "cursor-pointer border-gray-100",
+            "cursor-pointer border-gray-200/70",
             isOpen && "border-transparent",
-            isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-gray-50/80",
-            isOpen && !isExceeded && "bg-gray-50/80",
+            isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-gray-100/70",
+            isOpen && !isExceeded && "bg-gray-100/70",
           )}>
           <TableCell className={cn(cellClass, "whitespace-nowrap text-xs tabular-nums text-gray-600")}>
             <button
@@ -466,8 +466,8 @@ const SiteExpensesSection = ({
         {isOpen && (
           <TableRow
             className={cn(
-              "border-gray-100 hover:bg-transparent",
-              isExceeded ? "bg-orange-50/40" : "bg-gray-50/80",
+              "border-gray-200/70 hover:bg-transparent",
+              isExceeded ? "bg-orange-50/40" : "bg-gray-100/70",
             )}>
             <TableCell colSpan={columnCount} className='px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1'>
               <dl className='grid grid-cols-2 gap-x-6 gap-y-3 pl-5 sm:grid-cols-4'>
@@ -534,7 +534,7 @@ const SiteExpensesSection = ({
   const renderRecordsTable = (rows: ExpenseRecord[], showVendor = true) => (
     <Table>
       <TableHeader>
-        <TableRow className='border-gray-100 hover:bg-transparent'>
+        <TableRow className='border-gray-200/70 hover:bg-transparent'>
           <TableHead className={cn(headClass, "w-[110px]")}>Start date</TableHead>
           <TableHead className={cn(headClass, "w-[90px]")}>End date</TableHead>
           <TableHead className={headClass}>Expense</TableHead>
@@ -553,7 +553,7 @@ const SiteExpensesSection = ({
 
   // A records table for the vendor groups, scrolling sideways when narrow.
   const renderRecordsBox = (rows: ExpenseRecord[], showVendor = true) => (
-    <div className='overflow-x-auto'>
+    <div className='overflow-x-auto rounded-lg bg-gray-50'>
       {renderRecordsTable(rows, showVendor)}
     </div>
   );
@@ -888,7 +888,7 @@ const SiteExpensesSection = ({
           </p>
         </div>
       ) : (
-        <div className='rounded-md border border-gray-100 overflow-x-auto'>
+        <div className='rounded-lg bg-gray-50 overflow-x-auto'>
           {renderRecordsTable(records)}
 
           <div className='flex items-center justify-between px-4 py-2.5 bg-gray-50 border-t text-xs'>
