@@ -26,11 +26,10 @@ import {
 } from "@/components/ui/table";
 import CustomButton from "@/components/shared/btn";
 
-type DocType = "sub_wo" | "estimate" | "completion" | "estimate_sub-wo";
+type DocType = "estimate" | "completion" | "estimate_sub-wo";
 
 const PHASES: DocType[] = ["estimate_sub-wo", "completion"];
 const PHASE_LABELS: Record<string, string> = {
-  sub_wo: "Sub WO",
   estimate: "Estimate",
   completion: "Completion",
   "estimate_sub-wo": "Estimate / Sub-WO",
@@ -123,7 +122,7 @@ const PhaseForm = ({
     [expenseSummaryQuery.data?.byActivity],
   );
 
-  // Files waiting to upload, keyed by document type (sub_wo, estimate, ...).
+  // Files waiting to upload, keyed by document type (estimate, ...).
   const [pendingDocs, setPendingDocs] = useState<Record<string, File[]>>({});
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
@@ -134,7 +133,7 @@ const PhaseForm = ({
     reset: resetUpload,
   } = useSharePointUpload({
     folderPath: `/WorkOrders/Sites/${woSiteId}/${phase}`,
-    // Sub WO and Estimate share this folder; never overwrite each other.
+    // Never overwrite an earlier upload that has the same file name.
     conflictBehavior: "rename",
   });
 
@@ -315,8 +314,8 @@ const PhaseForm = ({
       (pendingDocs[type]?.length ?? 0);
 
     if (phase === "estimate_sub-wo") {
-      if (documentCount("sub_wo") === 0 || documentCount("estimate") === 0) {
-        toast.error("Please upload both Sub WO and Estimate documents.");
+      if (documentCount("estimate") === 0) {
+        toast.error("Please upload the Estimate document.");
         return;
       }
     } else if (phase === "completion") {
@@ -421,19 +420,11 @@ const PhaseForm = ({
           </div>
 
           {phase === "estimate_sub-wo" ? (
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-              <div className='space-y-1.5'>
-                <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
-                  Sub WO
-                </span>
-                {renderDocumentSection("sub_wo")}
-              </div>
-              <div className='space-y-1.5'>
-                <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
-                  Estimate
-                </span>
-                {renderDocumentSection("estimate")}
-              </div>
+            <div className='space-y-1.5'>
+              <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
+                Estimate
+              </span>
+              {renderDocumentSection("estimate")}
             </div>
           ) : (
             renderDocumentSection(phase)
