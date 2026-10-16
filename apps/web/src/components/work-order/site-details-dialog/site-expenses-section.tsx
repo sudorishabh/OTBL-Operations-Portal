@@ -235,6 +235,10 @@ const SiteExpensesSection = ({
         const qty = data.contaminatedSoil?.find((i: any) => i.type === estimateType)?.estimated_quantity;
         return qty != null ? Number(qty) : null;
       }
+      if (activityKey === constants.OIL_ZAPPER.KEY) {
+        const qty = data.contaminatedSoil?.find((i: any) => i.type === estimateType)?.oil_zapper_quantity;
+        return qty != null ? Number(qty) : null;
+      }
       return null;
     }
     // Restoration has no estimate: its schedule of rates is the limit.
@@ -246,13 +250,23 @@ const SiteExpensesSection = ({
 
   const activityOptions: ActivityOption[] = useMemo(() => {
     if (!siteActivitiesQuery.data) return [];
-    return siteActivitiesQuery.data.map((a: any) => ({
+    const options: ActivityOption[] = siteActivitiesQuery.data.map((a: any) => ({
       key: a.activity,
       label: formatActivityLabel(a.activity),
       unit: a.unit ?? "Nos",
       estimateQty: getEstimateQty(a.activity),
     }));
-  }, [siteActivitiesQuery.data, bioremediationDataQuery.data]);
+    // Bioremediation also spends the oil zapper planned with its estimate.
+    if (isBioremediation) {
+      options.push({
+        key: constants.OIL_ZAPPER.KEY,
+        label: constants.OIL_ZAPPER.LABEL,
+        unit: constants.OIL_ZAPPER.UNIT,
+        estimateQty: getEstimateQty(constants.OIL_ZAPPER.KEY),
+      });
+    }
+    return options;
+  }, [siteActivitiesQuery.data, bioremediationDataQuery.data, isBioremediation]);
 
   const usedQtyByActivity = useMemo(() => {
     const byActivity = summaryQuery.data?.byActivity ?? {};
@@ -776,19 +790,19 @@ const SiteExpensesSection = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {siteActivitiesQuery.data
-                    .map((a: any) => {
-                      const estQty = getEstimateQty(a.activity);
+                  {activityOptions
+                    .map((a) => {
+                      const estQty = a.estimateQty;
                       if (estQty === null) return null;
-                      const usedQty = usedQtyByActivity[a.activity] ?? 0;
+                      const usedQty = usedQtyByActivity[a.key] ?? 0;
                       const left = Math.max(0, estQty - usedQty);
                       const exhausted = estQty > 0 && left <= 0;
                       return (
                         <TableRow
-                          key={a.id}
+                          key={a.key}
                           className={exhausted ? "bg-orange-50/30 hover:bg-orange-50/40" : "hover:bg-blue-50/20"}>
                           <TableCell className='py-2 text-xs text-gray-700 font-medium whitespace-nowrap'>
-                            {formatActivityLabel(a.activity)}
+                            {a.label}
                           </TableCell>
                           <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
                             {estQty}
