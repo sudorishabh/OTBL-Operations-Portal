@@ -625,8 +625,9 @@ const SiteExpensesSection = ({
             {formatCurrency(total)}
           </span>
         </div>
+        {/* Indented so the table starts in line with the vendor's name. */}
         {isOpen && (
-          <div className='flex gap-2 pb-1 pl-1'>
+          <div className='flex gap-2 pb-1 pl-6'>
             <CornerDownRight className='mt-1 size-4 shrink-0 text-purple-300' />
             <div className='min-w-0 flex-1'>{content}</div>
           </div>
