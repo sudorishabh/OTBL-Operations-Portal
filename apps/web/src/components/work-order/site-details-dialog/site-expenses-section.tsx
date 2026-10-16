@@ -470,7 +470,7 @@ const SiteExpensesSection = ({
             )}>
             <TableCell colSpan={columnCount} className='px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1'>
               <dl className='grid grid-cols-2 gap-x-6 gap-y-3 pl-5 sm:grid-cols-4'>
-                <Detail label='Description' className='col-span-2 sm:col-span-4'>
+                <Detail label='Title' className='col-span-2 sm:col-span-4'>
                   <span className='whitespace-pre-wrap break-words'>{record.title}</span>
                 </Detail>
                 <Detail label='Under'>{record.contractorName ?? "Miscellaneous"}</Detail>

@@ -170,7 +170,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder='Search description, contractor, invoice…'
+              placeholder='Search title, contractor, invoice…'
               className='h-9 pl-8 text-xs'
             />
           </div>
@@ -225,7 +225,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                   Amount
                 </TableHead>
                 <TableHead className='h-9 px-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
-                  Description
+                  Title
                 </TableHead>
                 <TableHead className='h-9 px-3 text-center text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
                   Doc

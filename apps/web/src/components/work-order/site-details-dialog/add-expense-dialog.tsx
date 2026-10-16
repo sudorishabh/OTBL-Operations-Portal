@@ -291,7 +291,7 @@ const AddExpenseDialog = ({
       toast.error("Enter a valid amount");
       return;
     }
-    if (!title.trim()) { toast.error("Description is required"); return; }
+    if (!title.trim()) { toast.error("Title is required"); return; }
     if (!startDate || !endDate) {
       toast.error("Start and end dates are required");
       return;
@@ -642,10 +642,10 @@ const AddExpenseDialog = ({
 
           <div className='space-y-1.5'>
             <Label className='text-xs font-medium text-gray-700'>
-              Description <span className='text-red-500'>*</span>
+              Title <span className='text-red-500'>*</span>
             </Label>
             <Input
-              placeholder='e.g. Excavation work, Labour charges...'
+              placeholder='e.g. Excavation labour for week 2'
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className='h-9 text-sm'
