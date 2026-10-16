@@ -484,6 +484,11 @@ export const bioremediationContSoilTable = mysqlTable("biorem_cont_soil", {
     precision: 10,
     scale: 2,
   }),
+  // Planned oil zapper, in kg, for the estimated soil.
+  oil_zapper_quantity: decimal("oil_zapper_quantity", {
+    precision: 20,
+    scale: 2,
+  }),
   type: varchar("type", {
     enum: ["estimate_sub-wo", "completion"],
     length: 255,

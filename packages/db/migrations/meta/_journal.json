@@ -92,6 +92,13 @@
       "when": 1792132531483,
       "tag": "0012_rename_expense_description_to_title",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1792148221354,
+      "tag": "0013_oil_zapper_quantity",
+      "breakpoints": true
     }
   ]
 }

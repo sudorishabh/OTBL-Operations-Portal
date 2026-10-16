@@ -107,6 +107,15 @@ export const TRANSPORT_SLABS = [
 // stored as the bio sample whose application month is this label.
 export const ZERO_DAY_SAMPLE = "Zero Day";
 
+// The oil zapper applied at a bioremediation site. Its planned quantity is set
+// with the site's estimate, and expenses are logged against it like an
+// activity.
+export const OIL_ZAPPER = {
+  KEY: "oil_zapper",
+  LABEL: "Oil Zapper",
+  UNIT: "kg",
+} as const;
+
 export const GST_PERCENTAGE = 18;
 
 // Most documents a user can upload at once, or attach to one record.
@@ -175,6 +184,7 @@ export default {
   unitOptions,
   TRANSPORT_SLABS,
   ZERO_DAY_SAMPLE,
+  OIL_ZAPPER,
   allActivityOptions,
   ACTIVITY_TYPE,
   ACTIVITY_PHASE,

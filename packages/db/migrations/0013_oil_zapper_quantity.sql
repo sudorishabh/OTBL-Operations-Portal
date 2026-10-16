@@ -1,0 +1,1 @@
+ALTER TABLE `biorem_cont_soil` ADD `oil_zapper_quantity` decimal(20,2);
