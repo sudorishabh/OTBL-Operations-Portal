@@ -2,11 +2,12 @@
 import React from "react";
 import DialogWindow from "@/components/shared/dialog-window";
 import { trpc } from "@/lib/trpc";
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, constants } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import SiteDetailsCard from "./site-details-card";
 import SiteActivities from "./site-activities";
 import SiteExpensesSection from "./site-expenses-section";
+import { BioremediationSections } from "./bioremediation-sections";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -24,6 +25,8 @@ const SiteDetailDialog = () => {
     );
 
   const siteDetails = siteDetailsQuery.data;
+  const isBioremediation =
+    siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
 
   const dialogTitle = siteDetails?.site?.name
     ? capitalFirstLetter(siteDetails.site.name)
@@ -97,10 +100,15 @@ const SiteDetailDialog = () => {
             value='expenses'
             className='mt-4'>
             {woSiteId > 0 && siteDetails ? (
-              <SiteExpensesSection
-                woSiteId={woSiteId}
-                processType={siteDetails?.process_type}
-              />
+              <div className='space-y-6'>
+                <SiteExpensesSection
+                  woSiteId={woSiteId}
+                  processType={siteDetails?.process_type}
+                />
+                {isBioremediation && (
+                  <BioremediationSections woSiteId={woSiteId} />
+                )}
+              </div>
             ) : (
               <div className='text-center py-8 text-gray-400 text-sm'>
                 Loading site details...

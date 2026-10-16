@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { constants } from "@pkg/utils";
-import { BioremediationSections } from "./bioremediation-sections";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FlaskConical,
@@ -838,10 +837,6 @@ const SiteActivities = ({
           </div>
         )}
       </div>
-
-      {processType === "bioremediation" && (
-        <BioremediationSections woSiteId={woSiteId} />
-      )}
     </div>
   );
 };
