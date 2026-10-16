@@ -993,7 +993,7 @@ const SiteExpensesSection = ({
         editingExpense={editingExpense}
         activities={activityOptions}
         usedQtyByActivity={usedQtyByActivity}
-        contractors={contractors}
+        contractors={splitByContractor ? contractors : undefined}
         defaultContractorId={addUnderId}
       />
 
