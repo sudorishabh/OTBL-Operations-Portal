@@ -203,7 +203,6 @@ const AddExpenseDialog = ({
   const qtyExceedsRemaining =
     !isExceededMode && !!selectedActivityKey && !!quantity &&
     remainingQty !== null && enteredQty > remainingQty;
-  const showQuantity = !!selectedActivityKey && !isExceededMode;
   const qtyUnit = selectedActivity?.unit ?? "Nos";
 
   const contractorsQuery = trpc.contractorQuery.getContractors.useQuery(
@@ -282,10 +281,10 @@ const AddExpenseDialog = ({
       return;
     }
 
-    if (selectedActivityKey && !isExceededMode && quantity) {
+    if (selectedActivityKey && quantity) {
       const q = parseFloat(quantity);
       if (isNaN(q) || q < 0) { toast.error("Quantity must be a positive number"); return; }
-      if (remainingQty !== null && q > remainingQty) {
+      if (!isExceededMode && remainingQty !== null && q > remainingQty) {
         toast.error(`Only ${formatQty(remainingQty)} ${qtyUnit} left on this activity`);
         return;
       }
@@ -454,11 +453,7 @@ const AddExpenseDialog = ({
 
           {activities.length > 0 && (
             <div className='space-y-1.5'>
-              <div
-                className={cn(
-                  "grid grid-cols-1 gap-3",
-                  showQuantity && "sm:grid-cols-[1fr_11rem]",
-                )}>
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-[1fr_11rem]'>
                 <div className='space-y-1.5'>
                   <Label className='text-xs font-medium text-gray-700'>
                     Activity <span className='text-red-500'>*</span>
@@ -482,29 +477,32 @@ const AddExpenseDialog = ({
                   </Select>
                 </div>
 
-                {showQuantity && (
-                  <div className='space-y-1.5'>
-                    <Label className='text-xs font-medium text-gray-700'>
-                      Quantity <span className='text-gray-400'>(optional)</span>
-                    </Label>
-                    <div className='relative'>
-                      <Input
-                        type='number' min='0' step='0.01' placeholder='0.00'
-                        value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                        aria-invalid={qtyExceedsRemaining || undefined}
-                        className='h-9 pr-12 text-sm'
-                      />
+                {/* Always in place; it opens once an activity is chosen. */}
+                <div className='space-y-1.5'>
+                  <Label className='text-xs font-medium text-gray-700'>
+                    Quantity <span className='text-gray-400'>(optional)</span>
+                  </Label>
+                  <div className='relative'>
+                    <Input
+                      type='number' min='0' step='0.01' placeholder='0.00'
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      disabled={!selectedActivityKey}
+                      title={selectedActivityKey ? undefined : "Select an activity first"}
+                      aria-invalid={qtyExceedsRemaining || undefined}
+                      className='h-9 pr-12 text-sm'
+                    />
+                    {selectedActivity && (
                       <span className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400'>
                         {qtyUnit}
                       </span>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
 
               {/* A quantity is used up from the activity's estimate. */}
-              {showQuantity && remainingQty !== null && estimateQty !== null && (
+              {selectedActivityKey && !isExceededMode && remainingQty !== null && estimateQty !== null && (
                 <p
                   className={cn(
                     "text-xs",
