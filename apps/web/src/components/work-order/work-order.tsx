@@ -114,7 +114,6 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
         ? (totalCompletionAmount / totalBudgetAmount) * 100
         : 0,
     totalExpenses: totalExpensesAgg,
-    expenseByType: expenseSummary?.by_type ?? {},
     expenseEntryCount: expenseSummary?.expense_entry_count ?? 0,
     netSurplus:
       expenseSummary?.net_surplus ?? totalCompletionAmount - totalExpensesAgg,

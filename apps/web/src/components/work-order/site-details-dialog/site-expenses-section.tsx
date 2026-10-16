@@ -25,13 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -49,10 +42,6 @@ import {
   TrendingDown,
   Minus,
   HardHat,
-  Users,
-  Package,
-  Wrench,
-  MoreHorizontal,
   ExternalLink,
   ReceiptIndianRupee,
   AlertTriangle,
@@ -66,15 +55,14 @@ import { cn } from "@/lib/utils";
 import { useIsViewer } from "@/contexts/AuthContext";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import AddExpenseDialog, {
-  EXPENSE_TYPE_LABELS,
   ActivityOption,
   Expense,
 } from "./add-expense-dialog";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { toDocuments, type StoredDocument } from "@/lib/documents";
 
-type ExpenseRecordGroup = {
-  key: string;
+type ExpenseRecord = {
+  id: number;
   activityKey: string | null;
   activityLabel: string;
   unit: string | null;
@@ -87,25 +75,7 @@ type ExpenseRecordGroup = {
   contractorName: string | null;
   invoiceNumber: string | null;
   documents: StoredDocument[];
-  ids: number[];
-  items: { id: number; expense_type: string; amount: number }[];
-  totalAmount: number;
-};
-
-const EXPENSE_TYPE_ICONS: Record<string, React.ElementType> = {
-  contractor_payment: HardHat,
-  labour: Users,
-  material: Package,
-  equipment: Wrench,
-  miscellaneous: MoreHorizontal,
-};
-
-const EXPENSE_TYPE_COLORS: Record<string, string> = {
-  contractor_payment: "bg-blue-50 text-blue-700 border-blue-200",
-  labour: "bg-orange-50 text-orange-700 border-orange-200",
-  material: "bg-purple-50 text-purple-700 border-purple-200",
-  equipment: "bg-cyan-50 text-cyan-700 border-cyan-200",
-  miscellaneous: "bg-gray-50 text-gray-700 border-gray-200",
+  amount: number;
 };
 
 const formatCurrency = (value: number) =>
@@ -120,21 +90,6 @@ const formatActivityLabel = (key: string) =>
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
-
-const getExpenseRecordKey = (exp: Expense) =>
-  [
-    exp.activity_key ?? "__none__",
-    String(exp.expense_date),
-    exp.quantity ?? "",
-    String(!!exp.is_exceeded),
-    exp.description ?? "",
-    exp.notes ?? "",
-    exp.contractor_name ?? "",
-    exp.invoice_number ?? "",
-    toDocuments(exp.documents)
-      .map((doc) => doc.url)
-      .join(","),
-  ].join("||");
 
 interface Props {
   woSiteId: number;
@@ -166,9 +121,8 @@ const SiteExpensesSection = ({
   const isViewer = useIsViewer();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [deletingGroupIds, setDeletingGroupIds] = useState<number[] | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [activityFilter, setActivityFilter] = useState<string>("__all__");
-  const [breakdownGroup, setBreakdownGroup] = useState<ExpenseRecordGroup | null>(null);
   // The vendor a new expense starts under, when added from its group.
   const [addUnderId, setAddUnderId] = useState<number | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -269,21 +223,6 @@ const SiteExpensesSection = ({
     );
   }, [summaryQuery.data?.byActivity]);
 
-  const { groupedExpenses, activityGroups } = useMemo(() => {
-    const groups: Record<string, Expense[]> = {};
-    for (const exp of expenses) {
-      const key = exp.activity_key ?? "__none__";
-      if (!groups[key]) groups[key] = [];
-      groups[key]!.push(exp);
-    }
-    const orderedKeys: string[] = [];
-    for (const a of activityOptions) {
-      if (groups[a.key]) orderedKeys.push(a.key);
-    }
-    if (groups["__none__"]) orderedKeys.push("__none__");
-    return { groupedExpenses: groups, activityGroups: orderedKeys };
-  }, [expenses, activityOptions]);
-
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
     setDialogOpen(true);
@@ -302,130 +241,70 @@ const SiteExpensesSection = ({
   };
 
   const confirmDelete = async () => {
-    if (!deletingGroupIds || deletingGroupIds.length === 0) return;
+    if (deletingId === null) return;
     try {
-      await Promise.all(deletingGroupIds.map((id) => deleteExpenseMutation.mutateAsync({ id })));
+      await deleteExpenseMutation.mutateAsync({ id: deletingId });
       resetExpenseList();
       await utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: woSiteId });
       await utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: woSiteId });
-      toast.success("Expense record deleted");
+      toast.success("Expense deleted");
     } catch (e: any) {
-      toast.error(e?.message || "Failed to delete expense record");
+      toast.error(e?.message || "Failed to delete expense");
     } finally {
-      setDeletingGroupIds(null);
+      setDeletingId(null);
     }
   };
 
-  const groupedRecordsByActivity = useMemo(() => {
-    const activityLabelByKey: Record<string, { label: string; unit: string | null }> = {};
+  // Newest first, narrowed to the chosen activity.
+  const records = useMemo(() => {
+    const activityMetaByKey: Record<string, { label: string; unit: string | null }> = {};
     for (const a of activityOptions) {
-      activityLabelByKey[a.key] = { label: a.label, unit: a.unit ?? null };
+      activityMetaByKey[a.key] = { label: a.label, unit: a.unit ?? null };
     }
 
-    const recordMap: Record<string, ExpenseRecordGroup> = {};
-    for (const exp of expenses) {
+    const all = expenses.map((exp): ExpenseRecord => {
       const activityKey = exp.activity_key ?? null;
       const activityMeta = activityKey
-        ? (activityLabelByKey[activityKey] ?? { label: formatActivityLabel(activityKey), unit: null })
+        ? (activityMetaByKey[activityKey] ?? { label: formatActivityLabel(activityKey), unit: null })
         : { label: "Other / Unlinked Expenses", unit: null };
-
-      const recordKey = getExpenseRecordKey(exp);
-
-      if (!recordMap[recordKey]) {
-        recordMap[recordKey] = {
-          key: recordKey,
-          activityKey,
-          activityLabel: activityMeta.label,
-          unit: activityMeta.unit,
-          expenseDate: exp.expense_date,
-          quantity: exp.quantity ?? null,
-          isExceeded: !!exp.is_exceeded,
-          description: exp.description,
-          notes: exp.notes ?? null,
-          contractorId: exp.contractor_id ?? null,
-          contractorName: exp.contractor_name ?? null,
-          invoiceNumber: exp.invoice_number ?? null,
-          documents: toDocuments(exp.documents),
-          ids: [],
-          items: [],
-          totalAmount: 0,
-        };
-      }
-
-      recordMap[recordKey]!.ids.push(exp.id);
-      recordMap[recordKey]!.items.push({
+      return {
         id: exp.id,
-        expense_type: exp.expense_type,
+        activityKey,
+        activityLabel: activityMeta.label,
+        unit: activityMeta.unit,
+        expenseDate: exp.expense_date,
+        quantity: exp.quantity ?? null,
+        isExceeded: !!exp.is_exceeded,
+        description: exp.description,
+        notes: exp.notes ?? null,
+        contractorId: exp.contractor_id ?? null,
+        contractorName: exp.contractor_name ?? null,
+        invoiceNumber: exp.invoice_number ?? null,
+        documents: toDocuments(exp.documents),
         amount: Number(exp.amount),
-      });
-      recordMap[recordKey]!.totalAmount += Number(exp.amount);
-    }
+      };
+    });
+    all.sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
 
-    const byActivity: Record<string, ExpenseRecordGroup[]> = {};
-    for (const group of Object.values(recordMap)) {
-      const k = group.activityKey ?? "__none__";
-      if (!byActivity[k]) byActivity[k] = [];
-      byActivity[k]!.push(group);
-    }
-
-    for (const k of Object.keys(byActivity)) {
-      byActivity[k]!.sort((a, b) => {
-        const da = new Date(a.expenseDate).getTime();
-        const db = new Date(b.expenseDate).getTime();
-        return db - da;
-      });
-    }
-
-    return byActivity;
-  }, [expenses, activityOptions]);
-
-  const recordGroupsFlat = useMemo(() => {
-    const groups: ExpenseRecordGroup[] = [];
-    for (const k of activityGroups) {
-      groups.push(...(groupedRecordsByActivity[k] ?? []));
-    }
-    groups.sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
-    if (activityFilter === "__all__") return groups;
+    if (activityFilter === "__all__") return all;
     const filterKey = activityFilter === "__none__" ? null : activityFilter;
-    return groups.filter((g) => g.activityKey === filterKey);
-  }, [activityGroups, groupedRecordsByActivity, activityFilter]);
+    return all.filter((r) => r.activityKey === filterKey);
+  }, [expenses, activityOptions, activityFilter]);
 
-  const renderRecordRow = (group: ExpenseRecordGroup, showVendor = true) => {
-    const isExceeded = group.isExceeded;
-    const uniqueTypes = Array.from(new Set(group.items.map((i) => i.expense_type)));
-    const primaryExpenseForEdit: Expense | undefined =
-      expenses.find((e) => e.id === group.ids[0]) ?? expenses.find((e) => group.ids.includes(e.id));
+  const renderRecordRow = (record: ExpenseRecord, showVendor = true) => {
+    const { isExceeded } = record;
+    const expense = expenses.find((e) => e.id === record.id);
 
     return (
       <TableRow
-        key={group.key}
-        onClick={() => setBreakdownGroup(group)}
-        role='button'
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") setBreakdownGroup(group);
-        }}
+        key={record.id}
         className={`transition-colors ${isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-blue-50/20"}`}>
         <TableCell className='text-xs text-gray-600 py-2.5'>
-          {format(new Date(group.expenseDate), "dd MMM yyyy")}
+          {format(new Date(record.expenseDate), "dd MMM yyyy")}
         </TableCell>
         <TableCell className='py-2.5'>
-          <span className='text-xs text-gray-800 font-medium'>{group.activityLabel}</span>
-        </TableCell>
-        <TableCell className='py-2.5'>
-          <div className='flex flex-wrap gap-1.5'>
-            {uniqueTypes.map((t) => {
-              const Icon = EXPENSE_TYPE_ICONS[t] ?? MoreHorizontal;
-              return (
-                <Badge
-                  key={t}
-                  variant='outline'
-                  className={`text-[10px] px-2 py-0.5 flex items-center gap-1 w-fit ${EXPENSE_TYPE_COLORS[t] ?? ""}`}>
-                  <Icon className='w-2.5 h-2.5' />
-                  {EXPENSE_TYPE_LABELS[t] ?? t}
-                </Badge>
-              );
-            })}
+          <div className='flex flex-wrap items-center gap-1.5'>
+            <span className='text-xs text-gray-800 font-medium'>{record.activityLabel}</span>
             {isExceeded && (
               <Badge
                 variant='outline'
@@ -435,51 +314,46 @@ const SiteExpensesSection = ({
               </Badge>
             )}
           </div>
-          {group.ids.length > 1 && (
-            <div className='text-[10px] text-gray-400 mt-1'>
-              {group.ids.length} expense items
-            </div>
-          )}
         </TableCell>
         <TableCell className='py-2.5'>
           <div className='flex flex-col'>
-            <span className='text-xs text-gray-800 font-medium'>{group.description}</span>
-            {group.notes && <span className='text-[10px] text-gray-400 line-clamp-1'>{group.notes}</span>}
+            <span className='text-xs text-gray-800 font-medium'>{record.description}</span>
+            {record.notes && <span className='text-[10px] text-gray-400 line-clamp-1'>{record.notes}</span>}
           </div>
         </TableCell>
         <TableCell className='py-2.5 text-xs text-gray-600 text-center tabular-nums'>
-          {group.quantity ? (
-            <span className='font-medium'>{Number(group.quantity)}</span>
+          {record.quantity ? (
+            <span className='font-medium'>{Number(record.quantity)}</span>
           ) : (
             <span className='text-gray-300'>—</span>
           )}
-          {group.unit ? <span className='text-gray-400 ml-1'>{group.unit}</span> : null}
+          {record.unit ? <span className='text-gray-400 ml-1'>{record.unit}</span> : null}
         </TableCell>
         {showVendor && (
           <TableCell className='py-2.5 text-xs text-gray-600'>
-            {group.contractorName ?? <span className='text-gray-300'>—</span>}
+            {record.contractorName ?? <span className='text-gray-300'>—</span>}
           </TableCell>
         )}
         <TableCell className='py-2.5 text-xs text-gray-500'>
-          {group.invoiceNumber ?? <span className='text-gray-300'>—</span>}
+          {record.invoiceNumber ?? <span className='text-gray-300'>—</span>}
         </TableCell>
         <TableCell className='py-2.5 text-center'>
-          {group.documents.length > 0 ? (
+          {record.documents.length > 0 ? (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className='inline-flex'>
                     <DocumentsMenu
-                      documents={group.documents}
+                      documents={record.documents}
                       align='center'>
                       <button
                         type='button'
                         aria-label='View documents'
                         className='relative inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors cursor-pointer'>
                         <ExternalLink className='w-3 h-3' />
-                        {group.documents.length > 1 && (
+                        {record.documents.length > 1 && (
                           <span className='absolute -right-1.5 -top-1.5 flex min-w-3.5 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[9px] font-semibold leading-3.5 text-white'>
-                            {group.documents.length}
+                            {record.documents.length}
                           </span>
                         )}
                       </button>
@@ -487,9 +361,9 @@ const SiteExpensesSection = ({
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side='top' className='text-[10px] px-2 py-1 bg-gray-900 text-white'>
-                  {group.documents.length === 1
+                  {record.documents.length === 1
                     ? "View Document"
-                    : `View ${group.documents.length} Documents`}
+                    : `View ${record.documents.length} Documents`}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -499,7 +373,7 @@ const SiteExpensesSection = ({
         </TableCell>
         <TableCell className='py-2.5 text-right'>
           <span className={`text-sm font-semibold ${isExceeded ? "text-orange-700" : "text-red-700"}`}>
-            {formatCurrency(group.totalAmount)}
+            {formatCurrency(record.amount)}
           </span>
         </TableCell>
         <TableCell className='py-2.5'>
@@ -509,11 +383,8 @@ const SiteExpensesSection = ({
                 <TooltipTrigger asChild>
                   <button
                     type='button'
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (primaryExpenseForEdit) handleEdit(primaryExpenseForEdit);
-                    }}
-                    disabled={isViewer || !primaryExpenseForEdit}
+                    onClick={() => expense && handleEdit(expense)}
+                    disabled={isViewer || !expense}
                     className='p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-30'>
                     <Pencil className='w-3 h-3' />
                   </button>
@@ -528,10 +399,7 @@ const SiteExpensesSection = ({
                 <TooltipTrigger asChild>
                   <button
                     type='button'
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeletingGroupIds(group.ids);
-                    }}
+                    onClick={() => setDeletingId(record.id)}
                     disabled={isViewer}
                     className='p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed'>
                     <Trash2 className='w-3 h-3' />
@@ -548,13 +416,12 @@ const SiteExpensesSection = ({
     );
   };
 
-  const renderRecordsTable = (groups: ExpenseRecordGroup[], showVendor = true) => (
+  const renderRecordsTable = (rows: ExpenseRecord[], showVendor = true) => (
     <Table>
       <TableHeader>
         <TableRow className='bg-gray-50/50 hover:bg-gray-50/50'>
           <TableHead className='text-xs font-semibold text-gray-600 w-[110px] whitespace-nowrap'>Date</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Activity</TableHead>
-          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Type</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Description</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 text-center w-[90px] whitespace-nowrap'>Qty</TableHead>
           {showVendor && (
@@ -566,24 +433,24 @@ const SiteExpensesSection = ({
           <TableHead className='w-[70px]' />
         </TableRow>
       </TableHeader>
-      <TableBody>{groups.map((g) => renderRecordRow(g, showVendor))}</TableBody>
+      <TableBody>{rows.map((r) => renderRecordRow(r, showVendor))}</TableBody>
     </Table>
   );
 
   // A records table for the vendor groups, scrolling sideways when narrow.
-  const renderRecordsBox = (groups: ExpenseRecordGroup[], showVendor = true) => (
+  const renderRecordsBox = (rows: ExpenseRecord[], showVendor = true) => (
     <div className='overflow-x-auto'>
-      {renderRecordsTable(groups, showVendor)}
+      {renderRecordsTable(rows, showVendor)}
     </div>
   );
 
   const contractorIds = new Set(contractors.map((c) => c.id));
   const recordsUnder = (contractorId: number) =>
-    recordGroupsFlat.filter((g) => g.contractorId === contractorId);
+    records.filter((r) => r.contractorId === contractorId);
   // Expenses under none of the vendors, including contractor payments to
   // vendors that aren't one.
-  const otherRecords = recordGroupsFlat.filter(
-    (g) => g.contractorId === null || !contractorIds.has(g.contractorId),
+  const otherRecords = records.filter(
+    (r) => r.contractorId === null || !contractorIds.has(r.contractorId),
   );
   const totalUnder = (contractorId: number): number =>
     summary?.byContractor?.[String(contractorId)] ?? 0;
@@ -662,53 +529,6 @@ const SiteExpensesSection = ({
 
   return (
     <div className='space-y-4'>
-      <Dialog open={!!breakdownGroup} onOpenChange={(v) => !v && setBreakdownGroup(null)}>
-        <DialogContent className='max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Expense breakdown</DialogTitle>
-            <DialogDescription>
-              {breakdownGroup?.activityLabel ? `${breakdownGroup.activityLabel} · ` : ""}
-              {breakdownGroup?.expenseDate ? format(new Date(breakdownGroup.expenseDate), "dd MMM yyyy") : ""}
-            </DialogDescription>
-          </DialogHeader>
-          {breakdownGroup && (
-            <div className='space-y-3'>
-              <div className='rounded-md border overflow-hidden'>
-                <Table>
-                  <TableHeader>
-                    <TableRow className='bg-gray-50/60 hover:bg-gray-50/60'>
-                      <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Type</TableHead>
-                      <TableHead className='text-xs font-semibold text-gray-600 text-right whitespace-nowrap'>Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {breakdownGroup.items.map((item) => (
-                      <TableRow key={item.id} className='hover:bg-transparent'>
-                        <TableCell className='py-2 text-xs text-gray-700'>
-                          {EXPENSE_TYPE_LABELS[item.expense_type] ?? item.expense_type}
-                        </TableCell>
-                        <TableCell className='py-2 text-xs text-right tabular-nums font-semibold text-gray-800'>
-                          {formatCurrency(item.amount)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className='flex items-center justify-between text-xs'>
-                <span className='text-gray-500'>
-                  {breakdownGroup.items.length} item{breakdownGroup.items.length !== 1 ? "s" : ""}
-                </span>
-                <span className='font-semibold text-gray-900'>
-                  Total: {formatCurrency(breakdownGroup.totalAmount)}
-                </span>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
       {showSummaryCards && (
         <div className='grid grid-cols-1 sm:grid-cols-3 gap-2'>
           <div className='rounded-lg border bg-emerald-50/60 border-emerald-100 p-2.5'>
@@ -945,7 +765,7 @@ const SiteExpensesSection = ({
             </p>
           )}
         </div>
-      ) : recordGroupsFlat.length === 0 ? (
+      ) : records.length === 0 ? (
         <div className='text-center py-10 border border-dashed rounded-xl bg-gray-50/30'>
           <ReceiptIndianRupee className='w-8 h-8 text-gray-300 mx-auto mb-2' />
           <p className='text-sm text-gray-500 font-medium'>No expenses yet</p>
@@ -955,11 +775,11 @@ const SiteExpensesSection = ({
         </div>
       ) : (
         <div className='rounded-md border border-gray-100 overflow-x-auto'>
-          {renderRecordsTable(recordGroupsFlat)}
+          {renderRecordsTable(records)}
 
           <div className='flex items-center justify-between px-4 py-2.5 bg-gray-50 border-t text-xs'>
             <span className='text-gray-500'>
-              {recordGroupsFlat.length} record{recordGroupsFlat.length !== 1 ? "s" : ""}
+              {records.length} record{records.length !== 1 ? "s" : ""}
               {expensesPagination && expensesPagination.total > expenses.length && (
                 <span className='text-gray-400 ml-1'>
                   (showing {expenses.length} of {expensesPagination.total} entries)
@@ -998,13 +818,13 @@ const SiteExpensesSection = ({
       />
 
       <AlertDialog
-        open={deletingGroupIds !== null}
-        onOpenChange={(v) => !v && setDeletingGroupIds(null)}>
+        open={deletingId !== null}
+        onOpenChange={(v) => !v && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Expense?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the expense record (all its expense items). This action cannot be undone.
+              This will permanently remove this expense. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

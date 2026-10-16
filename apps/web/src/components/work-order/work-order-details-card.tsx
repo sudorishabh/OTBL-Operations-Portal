@@ -47,7 +47,6 @@ interface Props {
     totalCompletionAmount: number;
     budgetUtilization: number;
     totalExpenses?: number;
-    expenseByType?: Record<string, number>;
     expenseEntryCount?: number;
     netSurplus?: number;
   };
@@ -55,20 +54,11 @@ interface Props {
     total_expenses: number;
     exceeded_total?: number;
     regular_total?: number;
-    by_type: Record<string, number>;
     expense_entry_count: number;
     total_income: number;
     net_surplus: number;
   } | null;
 }
-
-const EXPENSE_TYPE_SHORT: Record<string, string> = {
-  contractor_payment: "Contractor",
-  labour: "Labour",
-  material: "Material",
-  equipment: "Equipment",
-  miscellaneous: "Misc.",
-};
 
 const STATUS_STYLES: Record<string, string> = {
   completed: "bg-green-100 text-green-800 border-green-200",
@@ -148,8 +138,6 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
   const profitMargin = income > 0 ? (profit / income) * 100 : 0;
   const expenseRecords =
     expenseSummary?.expense_entry_count ?? stats.expenseEntryCount ?? 0;
-  const hasExpenseBreakdown =
-    !!expenseSummary && Object.keys(expenseSummary.by_type).length > 0;
 
   const startDate =
     workOrder.start_date && !isNaN(new Date(workOrder.start_date).getTime())
@@ -293,23 +281,6 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
           hintClass={isProfit ? "text-emerald-600/70" : "text-rose-600/70"}
         />
       </div>
-
-      {hasExpenseBreakdown && (
-        <div className='flex flex-wrap items-center gap-1.5 border-b border-gray-200 bg-slate-50/60 px-4 py-2'>
-          <span className='text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500'>
-            By category
-          </span>
-          {Object.entries(expenseSummary!.by_type).map(([type, amt]) => (
-            <Badge
-              key={type}
-              variant='outline'
-              className='bg-white text-[12px] font-normal'>
-              {EXPENSE_TYPE_SHORT[type] ?? type}: ₹
-              {Number(amt).toLocaleString("en-IN")}
-            </Badge>
-          ))}
-        </div>
-      )}
 
       {/* Details */}
       <div className='grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-3 sm:grid-cols-4 xl:grid-cols-7'>
