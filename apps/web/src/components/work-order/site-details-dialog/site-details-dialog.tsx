@@ -2,12 +2,11 @@
 import React from "react";
 import DialogWindow from "@/components/shared/dialog-window";
 import { trpc } from "@/lib/trpc";
-import { capitalFirstLetter, constants } from "@pkg/utils";
+import { capitalFirstLetter } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import SiteDetailsCard from "./site-details-card";
 import SiteActivities from "./site-activities";
 import SiteExpensesSection from "./site-expenses-section";
-import SiteMobilization from "./site-mobilization";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import CompletionExpenseSummary from "./completion-expense-summary";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
@@ -26,8 +25,6 @@ const SiteDetailDialog = () => {
     );
 
   const siteDetails = siteDetailsQuery.data;
-  const isBioremediation =
-    siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
 
   const dialogTitle = siteDetails?.site?.name
     ? capitalFirstLetter(siteDetails.site.name)
@@ -73,20 +70,12 @@ const SiteDetailDialog = () => {
         {woSiteId > 0 && <WoSiteOperatorsSection woSiteId={woSiteId} />}
 
         <Tabs defaultValue='estimate'>
-          <TabsList
-            className={`w-full grid h-9 ${isBioremediation ? "grid-cols-4" : "grid-cols-3"}`}>
+          <TabsList className='w-full grid grid-cols-3 h-9'>
             <TabsTrigger
               value='estimate'
               className='text-xs'>
               Estimate/sub-WO
             </TabsTrigger>
-            {isBioremediation && (
-              <TabsTrigger
-                value='mobilization'
-                className='text-xs'>
-                Mobilization
-              </TabsTrigger>
-            )}
             <TabsTrigger
               value='expenses'
               className='text-xs'>
@@ -109,14 +98,6 @@ const SiteDetailDialog = () => {
               showPhaseTabs={false}
             />
           </TabsContent>
-
-          {isBioremediation && (
-            <TabsContent
-              value='mobilization'
-              className='mt-4'>
-              <SiteMobilization woSiteId={woSiteId} />
-            </TabsContent>
-          )}
 
           <TabsContent
             value='expenses'

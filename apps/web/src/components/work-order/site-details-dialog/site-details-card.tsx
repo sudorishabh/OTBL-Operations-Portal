@@ -30,6 +30,7 @@ import toast from "react-hot-toast";
 import DeferredFilePicker from "@/components/shared/deferred-file-picker";
 import CustomButton from "@/components/shared/btn";
 import { useIsViewer } from "@/contexts/AuthContext";
+import SiteMobilization from "./site-mobilization";
 
 const InfoCard = ({
   icon: Icon,
@@ -194,6 +195,9 @@ const SiteDetailsCard = ({
     )?.label ||
     siteDetails?.process_type ||
     "N/A";
+  const isBioremediation =
+    siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
+
   return (
     <div className='bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-5 border'>
       <div className='flex flex-wrap items-center justify-between mb-4 gap-2'>
@@ -263,6 +267,12 @@ const SiteDetailsCard = ({
           </div>
         </div>
       </div>
+
+      {isBioremediation && siteDetails?.id && (
+        <div className='mt-4 pt-4 border-t border-gray-200/50'>
+          <SiteMobilization woSiteId={siteDetails.id} />
+        </div>
+      )}
 
       <div className='mt-4 pt-4 border-t border-gray-200/50'>
         <div className='flex items-center gap-2 mb-3'>

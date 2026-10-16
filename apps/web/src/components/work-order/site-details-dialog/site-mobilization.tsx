@@ -1,6 +1,13 @@
 "use client";
 import React, { useState } from "react";
-import { FileText, FlaskConical, Loader2, Trash2, Upload } from "lucide-react";
+import {
+  FileText,
+  FlaskConical,
+  Loader2,
+  Trash2,
+  Truck,
+  Upload,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { constants } from "@pkg/utils";
@@ -87,12 +94,15 @@ const MobilizationDocuments = ({ woSiteId }: Props) => {
   };
 
   return (
-    <div className='space-y-3 rounded-xl border border-slate-200 bg-gray-100/50 p-4'>
+    <div className='space-y-3'>
       <div>
-        <h4 className='text-sm font-semibold text-gray-800'>
-          Mobilization documents
-        </h4>
-        <p className='text-xs text-gray-500'>
+        <div className='flex items-center gap-2'>
+          <Truck className='w-3.5 h-3.5 text-emerald-500' />
+          <span className='text-xs font-medium text-gray-700'>
+            Mobilization Documents
+          </span>
+        </div>
+        <p className='mt-0.5 text-[10px] text-gray-400'>
           Records of the team and equipment moving onto the site.
         </p>
       </div>
@@ -212,12 +222,15 @@ const ZeroDaySample = ({ woSiteId }: Props) => {
   const isSaving = isUploading || createSample.isPending;
 
   return (
-    <div className='space-y-3 rounded-xl border border-slate-200 bg-gray-100/50 p-4'>
+    <div className='space-y-3'>
       <div>
-        <h4 className='text-sm font-semibold text-gray-800'>
-          Zero day bio sample
-        </h4>
-        <p className='text-xs text-gray-500'>
+        <div className='flex items-center gap-2'>
+          <FlaskConical className='w-3.5 h-3.5 text-emerald-500' />
+          <span className='text-xs font-medium text-gray-700'>
+            Zero Day Bio Sample
+          </span>
+        </div>
+        <p className='mt-0.5 text-[10px] text-gray-400'>
           Taken before the first application, as the site's baseline TPH.
         </p>
       </div>
@@ -305,9 +318,10 @@ const ZeroDaySample = ({ woSiteId }: Props) => {
   );
 };
 
-// What happens at a bioremediation site before the first application.
+// What happens at a bioremediation site before the first application, shown
+// in the site information card.
 const SiteMobilization = ({ woSiteId }: Props) => (
-  <div className='space-y-4'>
+  <div className='grid grid-cols-1 gap-5 md:grid-cols-2'>
     <MobilizationDocuments woSiteId={woSiteId} />
     <ZeroDaySample woSiteId={woSiteId} />
   </div>

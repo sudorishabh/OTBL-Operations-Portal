@@ -563,7 +563,7 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
     );
   }
 
-  // The zero day sample lives in the mobilization tab.
+  // The zero day sample lives in the site information card.
   const bioSamples = (bioremediationDataQuery.data?.bioSamples || []).filter(
     (item: any) => item.application_month !== constants.ZERO_DAY_SAMPLE,
   );
