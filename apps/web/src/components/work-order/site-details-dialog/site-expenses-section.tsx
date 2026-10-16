@@ -284,6 +284,7 @@ const SiteExpensesSection = ({
       resetExpenseList();
       await utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: woSiteId });
       await utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: woSiteId });
+      utils.restorationQuery.getRestoration.invalidate();
       toast.success("Expense deleted");
     } catch (e: any) {
       toast.error(e?.message || "Failed to delete expense");

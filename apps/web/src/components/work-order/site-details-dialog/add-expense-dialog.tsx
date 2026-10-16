@@ -250,6 +250,8 @@ const AddExpenseDialog = ({
   const handleSaved = (message: string) => {
     utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: workOrderSiteId });
     utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: workOrderSiteId });
+    // Using up the schedule of rates completes a restoration, or reopens it.
+    utils.restorationQuery.getRestoration.invalidate();
     toast.success(message);
     onSuccess?.();
     onClose();

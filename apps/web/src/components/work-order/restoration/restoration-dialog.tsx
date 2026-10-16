@@ -71,10 +71,7 @@ const RestorationDialog = ({
           subject='restoration'
         />
 
-        <RestorationCompletion
-          restoration={restoration}
-          workOrderId={workOrder.id}
-        />
+        <RestorationCompletion restoration={restoration} />
 
         {rates.length > 0 && (
           <RestorationRatesSection
