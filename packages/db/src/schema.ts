@@ -568,8 +568,8 @@ export const contractorTable = mysqlTable(
   (table) => [index("contractor_name_idx").on(table.name)],
 );
 
-// The vendors a work order site's work is ordered to; restoration can have
-// several.
+// The vendors a work order site's work is ordered to; restoration and
+// bioremediation sites can each have several.
 export const workOrderSiteContractorTable = mysqlTable(
   "wo_site_contractors",
   {
