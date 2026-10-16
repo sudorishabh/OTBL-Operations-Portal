@@ -79,7 +79,6 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
       if (!q) return true;
       const hay = [
         e.description,
-        e.notes,
         e.contractor_name,
         e.invoice_number,
         e.site_name,

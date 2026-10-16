@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
@@ -57,7 +56,6 @@ export interface Expense {
   amount: string;
   expense_date: string | Date;
   invoice_number: string | null;
-  notes: string | null;
   documents: StoredDocument[] | null;
 }
 
@@ -106,7 +104,6 @@ const AddExpenseDialog = ({
   const [description, setDescription] = useState("");
   const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [notes, setNotes] = useState("");
 
   const [files, setFiles] = useState<File[]>([]);
   // Saved documents in edit mode. Removing one only detaches it: expenses
@@ -153,7 +150,6 @@ const AddExpenseDialog = ({
       setDescription(editingExpense.description);
       setExpenseDate(format(new Date(editingExpense.expense_date), "yyyy-MM-dd"));
       setInvoiceNumber(editingExpense.invoice_number ?? "");
-      setNotes(editingExpense.notes ?? "");
       setSavedDocuments(toDocuments(editingExpense.documents));
       setFiles([]);
     } else {
@@ -172,7 +168,6 @@ const AddExpenseDialog = ({
       setDescription("");
       setExpenseDate(format(new Date(), "yyyy-MM-dd"));
       setInvoiceNumber("");
-      setNotes("");
       resetDocumentState();
     }
     setShowAddContractor(false);
@@ -293,7 +288,6 @@ const AddExpenseDialog = ({
       amount,
       expense_date: new Date(expenseDate).toISOString(),
       invoice_number: invoiceNumber.trim() || null,
-      notes: notes.trim() || null,
       documents,
     };
 
@@ -574,18 +568,6 @@ const AddExpenseDialog = ({
               type='date' value={expenseDate}
               onChange={(e) => setExpenseDate(e.target.value)}
               className='h-9 text-sm sm:w-1/2'
-            />
-          </div>
-
-          <div className='space-y-1.5'>
-            <Label className='text-xs font-medium text-gray-700'>
-              Notes <span className='text-gray-400'>(optional)</span>
-            </Label>
-            <Textarea
-              placeholder='Any additional notes...'
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className='text-sm resize-none h-16'
             />
           </div>
 

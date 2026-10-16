@@ -70,7 +70,6 @@ type ExpenseRecord = {
   quantity: string | null;
   isExceeded: boolean;
   description: string;
-  notes: string | null;
   contractorId: number | null;
   contractorName: string | null;
   invoiceNumber: string | null;
@@ -276,7 +275,6 @@ const SiteExpensesSection = ({
         quantity: exp.quantity ?? null,
         isExceeded: !!exp.is_exceeded,
         description: exp.description,
-        notes: exp.notes ?? null,
         contractorId: exp.contractor_id ?? null,
         contractorName: exp.contractor_name ?? null,
         invoiceNumber: exp.invoice_number ?? null,
@@ -316,10 +314,7 @@ const SiteExpensesSection = ({
           </div>
         </TableCell>
         <TableCell className='py-2.5'>
-          <div className='flex flex-col'>
-            <span className='text-xs text-gray-800 font-medium'>{record.description}</span>
-            {record.notes && <span className='text-[10px] text-gray-400 line-clamp-1'>{record.notes}</span>}
-          </div>
+          <span className='text-xs text-gray-800 font-medium'>{record.description}</span>
         </TableCell>
         <TableCell className='py-2.5 text-xs text-gray-600 text-center tabular-nums'>
           {record.quantity ? (

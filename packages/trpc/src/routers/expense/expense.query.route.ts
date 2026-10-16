@@ -67,7 +67,6 @@ export const expenseQueryRouter = router({
               amount: workOrderSiteExpenseTable.amount,
               expense_date: workOrderSiteExpenseTable.expense_date,
               invoice_number: workOrderSiteExpenseTable.invoice_number,
-              notes: workOrderSiteExpenseTable.notes,
               documents: workOrderSiteExpenseTable.documents,
               created_by: workOrderSiteExpenseTable.created_by,
               created_at: workOrderSiteExpenseTable.created_at,
@@ -213,7 +212,6 @@ export const expenseQueryRouter = router({
               amount: workOrderSiteExpenseTable.amount,
               expense_date: workOrderSiteExpenseTable.expense_date,
               invoice_number: workOrderSiteExpenseTable.invoice_number,
-              notes: workOrderSiteExpenseTable.notes,
               documents: workOrderSiteExpenseTable.documents,
               created_at: workOrderSiteExpenseTable.created_at,
             })

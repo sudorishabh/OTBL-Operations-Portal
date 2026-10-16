@@ -603,7 +603,6 @@ export const workOrderSiteExpenseTable = mysqlTable(
     amount: decimal("amount", { precision: 20, scale: 2 }).notNull(),
     expense_date: timestamp("expense_date").notNull(),
     invoice_number: varchar("invoice_number", { length: 100 }),
-    notes: text("notes"),
     activity_key: varchar("activity_key", { length: 100 }),
     quantity: decimal("quantity", { precision: 20, scale: 4 }),
     is_exceeded: tinyint("is_exceeded").notNull().default(0),

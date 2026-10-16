@@ -1,0 +1,1 @@
+ALTER TABLE `wo_site_expenses` DROP COLUMN `notes`;

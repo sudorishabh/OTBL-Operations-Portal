@@ -110,7 +110,6 @@ const createExpenseSchema = z.object({
     }),
   expense_date: z.string().min(1, "Date is required"),
   invoice_number: z.string().max(100).optional().nullable(),
-  notes: z.string().optional().nullable(),
   documents: validators.optionalDocumentsValidator.optional(),
 });
 
@@ -129,7 +128,6 @@ const updateExpenseSchema = z.object({
     .optional(),
   expense_date: z.string().optional(),
   invoice_number: z.string().max(100).optional().nullable(),
-  notes: z.string().optional().nullable(),
   documents: validators.optionalDocumentsValidator.optional(),
 });
 
@@ -162,7 +160,6 @@ export const expenseMutationRouter = router({
               amount: input.amount,
               expense_date: new Date(input.expense_date),
               invoice_number: input.invoice_number ?? null,
-              notes: input.notes ?? null,
               documents: input.documents ?? [],
               // Legacy single-document columns, kept until they are dropped.
               document_url: input.documents?.[0]?.url ?? null,
@@ -229,7 +226,6 @@ export const expenseMutationRouter = router({
           if (updateData.amount !== undefined) setData.amount = updateData.amount;
           if (updateData.expense_date !== undefined) setData.expense_date = new Date(updateData.expense_date);
           if (updateData.invoice_number !== undefined) setData.invoice_number = updateData.invoice_number;
-          if (updateData.notes !== undefined) setData.notes = updateData.notes;
           if (updateData.documents !== undefined) {
             setData.documents = updateData.documents;
             setData.document_url = updateData.documents[0]?.url ?? null;
