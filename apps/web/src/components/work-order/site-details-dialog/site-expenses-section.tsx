@@ -444,8 +444,8 @@ const SiteExpensesSection = ({
   const contractorIds = new Set(contractors.map((c) => c.id));
   const recordsUnder = (contractorId: number) =>
     records.filter((r) => r.contractorId === contractorId);
-  // Expenses under none of the vendors, including contractor payments to
-  // vendors that aren't one.
+  // Miscellaneous: expenses under none of the site's vendors, including older
+  // ones linked to a vendor that isn't one of them.
   const otherRecords = records.filter(
     (r) => r.contractorId === null || !contractorIds.has(r.contractorId),
   );
@@ -748,13 +748,13 @@ const SiteExpensesSection = ({
           {renderVendorGroup({
             groupKey: "not-under-vendor",
             Icon: ReceiptIndianRupee,
-            title: "Not under a vendor",
+            title: "Miscellaneous",
             total: expenseTotal - contractorsTotal,
             count: otherRecords.length,
             content:
               otherRecords.length > 0
                 ? renderRecordsBox(otherRecords)
-                : emptyGroupText("No other expenses yet."),
+                : emptyGroupText("No miscellaneous expenses yet."),
           })}
           {expensesPagination && expensesPagination.total > expenses.length && (
             <p className='text-xs text-gray-400'>
