@@ -244,6 +244,11 @@ const PhaseForm = ({
       onSuccess: () => {
         toast.success("Bioremediation data saved.");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
+        // A new oil zapper plan can complete or reopen the site.
+        utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({
+          work_order_site_id: woSiteId,
+        });
+        utils.workOrderQuery.getWorkOrderDetails.invalidate();
         utils.workOrderSiteQuery.getSiteActivities.invalidate({
           work_order_site_id: woSiteId,
         });

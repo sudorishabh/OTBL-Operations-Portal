@@ -58,6 +58,7 @@ interface WorkOrderSiteDetails {
   id: number;
   end_date: string;
   status: "pending" | "completed" | "cancelled";
+  is_completed?: boolean;
   client_id: number;
   work_order_id: number;
   site_id: number;
@@ -199,6 +200,12 @@ const SiteDetailsCard = ({
     "N/A";
   const isBioremediation =
     siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
+  // A site completes once its expenses use up the planned oil zapper; only
+  // then is its completion certificate taken.
+  const status = siteDetails?.is_completed
+    ? "completed"
+    : (siteDetails?.status ?? "pending");
+  const showCertificate = !!siteDetails?.id && !!siteDetails.is_completed;
 
   return (
     <div className='bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-5 border'>
@@ -222,8 +229,8 @@ const SiteDetailsCard = ({
             </button>
           )}
           <Badge
-            className={`text-[10px] border ${getStatusColor(siteDetails?.status ?? "pending")}`}>
-            {capitalFirstLetter(siteDetails?.status ?? "pending")}
+            className={`text-[10px] border ${getStatusColor(status)}`}>
+            {capitalFirstLetter(status)}
           </Badge>
         </div>
       </div>
@@ -283,7 +290,8 @@ const SiteDetailsCard = ({
         </div>
       )}
 
-      <div className='mt-4 pt-4 border-t border-gray-200/50 grid grid-cols-1 gap-5 md:grid-cols-2'>
+      <div
+        className={`mt-4 pt-4 border-t border-gray-200/50 grid grid-cols-1 gap-5 ${showCertificate ? "md:grid-cols-2" : ""}`}>
         <div className='min-w-0'>
           <div className='mb-3'>
             <div className='flex items-center gap-2'>
@@ -439,8 +447,8 @@ const SiteDetailsCard = ({
           )}
         </div>
 
-        {siteDetails?.id && (
-          <SiteCompletionCertificate woSiteId={siteDetails.id} />
+        {showCertificate && (
+          <SiteCompletionCertificate woSiteId={siteDetails!.id} />
         )}
       </div>
 
