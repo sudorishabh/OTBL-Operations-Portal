@@ -259,6 +259,11 @@ const SiteExpensesSection = ({
     return options;
   }, [siteActivitiesQuery.data, bioremediationDataQuery.data, isBioremediation]);
 
+  // Only activities with an estimated quantity are tracked against it.
+  const estimatedActivities = activityOptions.filter(
+    (a): a is ActivityOption & { estimateQty: number } => a.estimateQty !== null,
+  );
+
   const usedQtyByActivity = useMemo(() => {
     const byActivity = summaryQuery.data?.byActivity ?? {};
     return Object.fromEntries(
@@ -685,7 +690,8 @@ const SiteExpensesSection = ({
 
   return (
     <div className='space-y-4'>
-      {showEstimateTable && (
+      {/* Hidden until the estimate gives an activity a quantity. */}
+      {showEstimateTable && estimatedActivities.length > 0 && (
         <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>
           <div className='px-3 py-2 border-b bg-white flex items-center justify-between gap-3'>
             <div className='min-w-0'>
@@ -697,75 +703,66 @@ const SiteExpensesSection = ({
               </p>
             </div>
             <div className='text-[9px] text-slate-400 whitespace-nowrap'>
-              {siteActivitiesQuery.data?.length ? `${siteActivitiesQuery.data.length} activities` : ""}
+              {estimatedActivities.length} {estimatedActivities.length === 1 ? "activity" : "activities"}
             </div>
           </div>
 
-          {siteActivitiesQuery.isLoading ? (
-            <div className='text-center py-4 text-gray-400 text-sm'>Loading...</div>
-          ) : !siteActivitiesQuery.data || siteActivitiesQuery.data.length === 0 ? (
-            <div className='text-center py-4 text-gray-400 text-sm'>No activities found.</div>
-          ) : (
-            <div className='bg-white overflow-x-auto'>
-              <Table>
-                <TableHeader>
-                  <TableRow className='bg-gray-50/60 hover:bg-gray-50/60'>
-                    <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap'>
-                      Activity
-                    </TableHead>
-                    <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
-                      Est
-                    </TableHead>
-                    <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
-                      Used
-                    </TableHead>
-                    <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
-                      Left
-                    </TableHead>
-                    <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap w-[70px]'>
-                      Unit
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {activityOptions
-                    .map((a) => {
-                      const estQty = a.estimateQty;
-                      if (estQty === null) return null;
-                      const usedQty = usedQtyByActivity[a.key] ?? 0;
-                      const left = Math.max(0, estQty - usedQty);
-                      const exhausted = estQty > 0 && left <= 0;
-                      return (
-                        <TableRow
-                          key={a.key}
-                          className={exhausted ? "bg-orange-50/30 hover:bg-orange-50/40" : "hover:bg-blue-50/20"}>
-                          <TableCell className='py-2 text-xs text-gray-700 font-medium whitespace-nowrap'>
-                            {a.label}
-                          </TableCell>
-                          <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
-                            {estQty}
-                          </TableCell>
-                          <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
-                            {usedQty}
-                          </TableCell>
-                          <TableCell className='py-2 text-xs text-right tabular-nums whitespace-nowrap'>
-                            {exhausted ? (
-                              <span className='text-orange-700 font-semibold'>0</span>
-                            ) : (
-                              <span className='text-emerald-700 font-semibold'>{left}</span>
-                            )}
-                          </TableCell>
-                          <TableCell className='py-2 text-xs text-gray-500 whitespace-nowrap'>
-                            {a.unit ?? "Nos"}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                    .filter(Boolean)}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <div className='bg-white overflow-x-auto'>
+            <Table>
+              <TableHeader>
+                <TableRow className='bg-gray-50/60 hover:bg-gray-50/60'>
+                  <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap'>
+                    Activity
+                  </TableHead>
+                  <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
+                    Est
+                  </TableHead>
+                  <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
+                    Used
+                  </TableHead>
+                  <TableHead className='text-[10px] font-semibold text-gray-600 text-right whitespace-nowrap w-[90px]'>
+                    Left
+                  </TableHead>
+                  <TableHead className='text-[10px] font-semibold text-gray-600 whitespace-nowrap w-[70px]'>
+                    Unit
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {estimatedActivities.map((a) => {
+                  const estQty = a.estimateQty;
+                  const usedQty = usedQtyByActivity[a.key] ?? 0;
+                  const left = Math.max(0, estQty - usedQty);
+                  const exhausted = estQty > 0 && left <= 0;
+                  return (
+                    <TableRow
+                      key={a.key}
+                      className={exhausted ? "bg-orange-50/30 hover:bg-orange-50/40" : "hover:bg-blue-50/20"}>
+                      <TableCell className='py-2 text-xs text-gray-700 font-medium whitespace-nowrap'>
+                        {a.label}
+                      </TableCell>
+                      <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
+                        {estQty}
+                      </TableCell>
+                      <TableCell className='py-2 text-xs text-gray-600 text-right tabular-nums whitespace-nowrap'>
+                        {usedQty}
+                      </TableCell>
+                      <TableCell className='py-2 text-xs text-right tabular-nums whitespace-nowrap'>
+                        {exhausted ? (
+                          <span className='text-orange-700 font-semibold'>0</span>
+                        ) : (
+                          <span className='text-emerald-700 font-semibold'>{left}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className='py-2 text-xs text-gray-500 whitespace-nowrap'>
+                        {a.unit ?? "Nos"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 
