@@ -31,7 +31,7 @@ import {
   Paperclip,
   AlertTriangle,
   HardHat,
-  MoreHorizontal,
+  ReceiptIndianRupee,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
@@ -325,6 +325,59 @@ const AddExpenseDialog = ({
     updateExpenseMutation.isPending ||
     isUploadingDoc;
 
+  // One "Expense under" choice, drawn as a radio row.
+  const renderUnderOption = ({
+    value,
+    label,
+    Icon,
+    hint,
+    bordered = false,
+  }: {
+    value: string;
+    label: string;
+    Icon: React.ElementType;
+    hint?: string;
+    bordered?: boolean;
+  }) => {
+    const checked = underId === value;
+    return (
+      <button
+        key={value}
+        type='button'
+        role='radio'
+        aria-checked={checked}
+        onClick={() => setUnderId(value)}
+        className={cn(
+          "flex w-full min-w-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors",
+          checked
+            ? "bg-blue-50 font-medium text-blue-700"
+            : "text-gray-700 hover:bg-gray-50",
+          bordered &&
+            cn("rounded-lg border", checked ? "border-blue-200" : "border-gray-200"),
+        )}>
+        <span
+          className={cn(
+            "flex size-4 shrink-0 items-center justify-center rounded-full border",
+            checked ? "border-blue-600" : "border-gray-300",
+          )}>
+          {checked && <span className='size-2 rounded-full bg-blue-600' />}
+        </span>
+        <Icon
+          className={cn(
+            "size-3.5 shrink-0",
+            checked ? "text-blue-600" : "text-gray-400",
+          )}
+        />
+        <span className='truncate'>{label}</span>
+        {hint && (
+          <span className='ml-auto shrink-0 text-xs font-normal text-gray-400'>
+            {hint}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className='w-full sm:max-w-2xl flex flex-col gap-0 p-0 overflow-hidden max-h-[92dvh]'>
@@ -371,57 +424,30 @@ const AddExpenseDialog = ({
               <Label className='text-xs font-medium text-gray-700'>
                 Expense under <span className='text-red-500'>*</span>
               </Label>
-              {/* A list rather than a grid, so any number of vendors scrolls
-                  inside a fixed height. */}
               <div
                 role='radiogroup'
                 aria-label='Expense under'
-                className='max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200'>
-                {[
-                  ...siteVendors.map((c) => ({
-                    value: String(c.id),
-                    label: capitalFirstLetter(c.name),
-                    Icon: HardHat,
-                  })),
-                  {
+                className='space-y-2'>
+                {/* Two columns that scroll inside a fixed height, however
+                    many vendors there are. */}
+                <div className='grid max-h-40 grid-cols-1 gap-0.5 overflow-y-auto rounded-lg border border-gray-200 p-1 sm:grid-cols-2'>
+                  {siteVendors.map((c) =>
+                    renderUnderOption({
+                      value: String(c.id),
+                      label: capitalFirstLetter(c.name),
+                      Icon: HardHat,
+                    }),
+                  )}
+                </div>
+                <div className='sm:w-1/2'>
+                  {renderUnderOption({
                     value: NOT_UNDER,
-                    label: "Not under a vendor",
-                    Icon: MoreHorizontal,
-                  },
-                ].map(({ value, label, Icon }) => {
-                  const checked = underId === value;
-                  return (
-                    <button
-                      key={value}
-                      type='button'
-                      role='radio'
-                      aria-checked={checked}
-                      onClick={() => setUnderId(value)}
-                      className={cn(
-                        "flex w-full min-w-0 items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
-                        checked
-                          ? "bg-blue-50 font-medium text-blue-700"
-                          : "text-gray-700 hover:bg-gray-50",
-                      )}>
-                      <span
-                        className={cn(
-                          "flex size-4 shrink-0 items-center justify-center rounded-full border",
-                          checked ? "border-blue-600" : "border-gray-300",
-                        )}>
-                        {checked && (
-                          <span className='size-2 rounded-full bg-blue-600' />
-                        )}
-                      </span>
-                      <Icon
-                        className={cn(
-                          "size-3.5 shrink-0",
-                          checked ? "text-blue-600" : "text-gray-400",
-                        )}
-                      />
-                      <span className='truncate'>{label}</span>
-                    </button>
-                  );
-                })}
+                    label: "Miscellaneous",
+                    Icon: ReceiptIndianRupee,
+                    hint: "Not under a vendor",
+                    bordered: true,
+                  })}
+                </div>
               </div>
             </div>
           )}
