@@ -31,6 +31,7 @@ import CustomButton from "@/components/shared/btn";
 import { useIsViewer } from "@/contexts/AuthContext";
 import { MobilizationDocuments, ZeroDaySample } from "./site-mobilization";
 import SiteSorAvailability from "./site-sor-availability";
+import WoSiteOperatorsSection from "./wo-site-operators-section";
 import SiteCompletionCertificate from "./site-completion-certificate";
 
 interface WorkOrderSiteDetails {
@@ -230,6 +231,12 @@ const SiteDetailsCard = ({
           </Badge>
         </div>
       </div>
+
+      {siteDetails?.id && (
+        <div className='mt-4'>
+          <WoSiteOperatorsSection woSiteId={siteDetails.id} />
+        </div>
+      )}
 
       {siteDetails?.id && (
         <SiteSorAvailability

@@ -8,7 +8,6 @@ import SiteDetailsCard from "./site-details-card";
 import SiteActivities from "./site-activities";
 import SiteExpensesSection from "./site-expenses-section";
 import { BioremediationSections } from "./bioremediation-sections";
-import WoSiteOperatorsSection from "./wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calculator, Receipt } from "lucide-react";
@@ -73,8 +72,6 @@ const SiteDetailDialog = () => {
             setParam("site-dialog", "operator-uploads")
           }
         />
-
-        {woSiteId > 0 && <WoSiteOperatorsSection woSiteId={woSiteId} />}
 
         <Tabs defaultValue='estimate'>
           <TabsList className='grid w-full sm:w-64 grid-cols-2 h-8'>
