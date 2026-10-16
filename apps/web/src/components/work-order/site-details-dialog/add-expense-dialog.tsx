@@ -429,7 +429,7 @@ const AddExpenseDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className='max-w-lg w-full flex flex-col gap-0 p-0 overflow-hidden max-h-[92dvh]'>
+      <DialogContent className='w-full sm:max-w-2xl flex flex-col gap-0 p-0 overflow-hidden max-h-[92dvh]'>
 
         <DialogHeader
           className={`shrink-0 px-6 pt-5 pb-4 border-b ${isExceededMode ? "bg-orange-50" : ""}`}>
@@ -473,14 +473,16 @@ const AddExpenseDialog = ({
               <Label className='text-xs font-medium text-gray-700'>
                 Expense under <span className='text-red-500'>*</span>
               </Label>
+              {/* A list rather than a grid, so any number of vendors scrolls
+                  inside a fixed height. */}
               <div
                 role='radiogroup'
                 aria-label='Expense under'
-                className='grid grid-cols-2 gap-2'>
+                className='max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200'>
                 {[
                   ...contractors.map((c) => ({
                     value: String(c.id),
-                    label: `Under ${capitalFirstLetter(c.name)}`,
+                    label: capitalFirstLetter(c.name),
                     Icon: HardHat,
                   })),
                   {
@@ -488,26 +490,43 @@ const AddExpenseDialog = ({
                     label: "Not under a vendor",
                     Icon: MoreHorizontal,
                   },
-                ].map(({ value, label, Icon }) => (
-                  <button
-                    key={value}
-                    type='button'
-                    role='radio'
-                    aria-checked={underId === value}
-                    onClick={() => {
-                      setUnderId(value);
-                      setContractorId("");
-                    }}
-                    className={cn(
-                      "flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors",
-                      underId === value
-                        ? "border-blue-300 bg-blue-50 text-blue-700"
-                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
-                    )}>
-                    <Icon className='size-3.5 shrink-0' />
-                    <span className='truncate'>{label}</span>
-                  </button>
-                ))}
+                ].map(({ value, label, Icon }) => {
+                  const checked = underId === value;
+                  return (
+                    <button
+                      key={value}
+                      type='button'
+                      role='radio'
+                      aria-checked={checked}
+                      onClick={() => {
+                        setUnderId(value);
+                        setContractorId("");
+                      }}
+                      className={cn(
+                        "flex w-full min-w-0 items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
+                        checked
+                          ? "bg-blue-50 font-medium text-blue-700"
+                          : "text-gray-700 hover:bg-gray-50",
+                      )}>
+                      <span
+                        className={cn(
+                          "flex size-4 shrink-0 items-center justify-center rounded-full border",
+                          checked ? "border-blue-600" : "border-gray-300",
+                        )}>
+                        {checked && (
+                          <span className='size-2 rounded-full bg-blue-600' />
+                        )}
+                      </span>
+                      <Icon
+                        className={cn(
+                          "size-3.5 shrink-0",
+                          checked ? "text-blue-600" : "text-gray-400",
+                        )}
+                      />
+                      <span className='truncate'>{label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -523,7 +542,7 @@ const AddExpenseDialog = ({
                   setSelectedActivityKey(v);
                   setQuantity("");
                 }}>
-                <SelectTrigger className='h-9 text-sm'>
+                <SelectTrigger className='h-9 w-full text-sm'>
                   <SelectValue placeholder='Select activity this expense belongs to...' />
                 </SelectTrigger>
                 <SelectContent>
