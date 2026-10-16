@@ -71,6 +71,11 @@ const RestorationDialog = ({
           subject='restoration'
         />
 
+        <RestorationCompletion
+          restoration={restoration}
+          workOrderId={workOrder.id}
+        />
+
         {rates.length > 0 && (
           <RestorationRatesSection
             restorationId={restoration.id}
@@ -99,12 +104,6 @@ const RestorationDialog = ({
               vendor={vendor}
             />
           )}
-        />
-
-        {/* The last step: the certificate, then marking it complete. */}
-        <RestorationCompletion
-          restoration={restoration}
-          workOrderId={workOrder.id}
         />
       </div>
 
