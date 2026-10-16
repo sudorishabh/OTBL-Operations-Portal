@@ -171,15 +171,15 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
           </div>
         )}
 
-        {hasBioremediation && (
-          <BioremediationSection
+        {hasRestoration && (
+          <RestorationSection
             workOrder={derivedWorkOrder}
             scheduleOfRates={scheduleOfRates}
           />
         )}
 
-        {hasRestoration && (
-          <RestorationSection
+        {hasBioremediation && (
+          <BioremediationSection
             workOrder={derivedWorkOrder}
             scheduleOfRates={scheduleOfRates}
           />
