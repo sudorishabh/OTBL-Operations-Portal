@@ -42,10 +42,15 @@ const formatName = (name: string) => {
     .join(" ");
 };
 
+const isBioremActivityKey = (key: string) =>
+  key === "biorem_cont_soil" ||
+  key === constants.WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL;
+
 interface ActivityData {
   estimated_quantity: string;
   amount: string;
   transportation_km: string;
+  oil_zapper_quantity: string;
 }
 
 const PhaseForm = ({
@@ -78,6 +83,7 @@ const PhaseForm = ({
         estimated_quantity: string | number;
         amount: string | number | null;
         transportation_km: string | number | null;
+        oil_zapper_quantity?: string | number | null;
       }
     | undefined;
   siteDocuments:
@@ -92,6 +98,8 @@ const PhaseForm = ({
 }) => {
   const utils = trpc.useUtils();
   const isBioremediation = processType === "bioremediation";
+  // The estimate also plans how much oil zapper the bioremediation soil needs.
+  const showOilZapper = isBioremediation && phase === "estimate_sub-wo";
 
   const totalOilZappingQty = React.useMemo(() => {
     if (!isBioremediation || !oilZappingData) return 0;
@@ -175,6 +183,7 @@ const PhaseForm = ({
           estimated_quantity: totalOilZappingQty.toFixed(2),
           amount: autoAmount,
           transportation_km: "",
+          oil_zapper_quantity: "",
         };
         return;
       }
@@ -185,12 +194,14 @@ const PhaseForm = ({
           estimated_quantity: data.estimated_quantity?.toString() || "",
           amount: data.amount?.toString() || "",
           transportation_km: data.transportation_km?.toString() || "",
+          oil_zapper_quantity: data.oil_zapper_quantity?.toString() || "",
         };
       } else {
         newFormData[activity.activity] = {
           estimated_quantity: "",
           amount: "",
           transportation_km: "",
+          oil_zapper_quantity: "",
         };
       }
     });
@@ -270,6 +281,18 @@ const PhaseForm = ({
       toast.error(
         `Please fill in the Estimated Quantity for: ${missingFieldActivities.join(", ")}`,
       );
+      return;
+    }
+
+    if (
+      showOilZapper &&
+      activities.some(
+        (activity) =>
+          isBioremActivityKey(activity.activity) &&
+          !formData[activity.activity]?.oil_zapper_quantity?.trim(),
+      )
+    ) {
+      toast.error("Please fill in the Oil Zapper quantity.");
       return;
     }
 
@@ -371,6 +394,9 @@ const PhaseForm = ({
               estimated_quantity: data.estimated_quantity,
               amount: data.amount || undefined,
               transportation_km: data.transportation_km || undefined,
+              oil_zapper_quantity: showOilZapper
+                ? data.oil_zapper_quantity || undefined
+                : undefined,
             },
           });
         }
@@ -449,6 +475,11 @@ const PhaseForm = ({
                   <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
                     Est. Qty
                   </TableHead>
+                  {showOilZapper && (
+                    <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
+                      {constants.OIL_ZAPPER.LABEL} ({constants.OIL_ZAPPER.UNIT})
+                    </TableHead>
+                  )}
                   <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
                     Amount
                   </TableHead>
@@ -460,6 +491,7 @@ const PhaseForm = ({
                     estimated_quantity: "",
                     amount: "",
                     transportation_km: "",
+                    oil_zapper_quantity: "",
                   };
 
                   const isBioremActivity =
@@ -493,7 +525,7 @@ const PhaseForm = ({
                     isAutoFilledFromZapping && estimateQty > 0
                       ? totalOilZappingQty - estimateQty
                       : 0;
-                  const expenseColSpan = 5;
+                  const expenseColSpan = showOilZapper ? 6 : 5;
 
                   return (
                     <React.Fragment key={activity.id}>
@@ -567,6 +599,34 @@ const PhaseForm = ({
                           </div>
                         )}
                       </TableCell>
+                      {showOilZapper && (
+                        <TableCell className='p-0'>
+                          {isBioremActivity ? (
+                            <Input
+                              inputMode='decimal'
+                              value={currentData.oil_zapper_quantity}
+                              onChange={(e) =>
+                                handleChange(
+                                  activity.activity,
+                                  "oil_zapper_quantity",
+                                  e.target.value,
+                                )
+                              }
+                              readOnly={isReadOnly}
+                              className={`h-10 w-full border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 text-center text-xs placeholder:text-slate-300 ${
+                                isReadOnly
+                                  ? "bg-slate-50/60 text-slate-600 cursor-default"
+                                  : "bg-transparent"
+                              }`}
+                              placeholder='0.00'
+                            />
+                          ) : (
+                            <span className='block text-center text-slate-300'>
+                              —
+                            </span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className='p-0'>
                         <Input
                           value={currentData.amount}
