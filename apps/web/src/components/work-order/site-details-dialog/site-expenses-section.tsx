@@ -12,12 +12,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -42,7 +36,7 @@ import {
   TrendingDown,
   Minus,
   HardHat,
-  ExternalLink,
+  Paperclip,
   ReceiptIndianRupee,
   AlertTriangle,
   ChevronRight,
@@ -84,6 +78,14 @@ const formatCurrency = (value: number) =>
     currency: "INR",
     maximumFractionDigits: 2,
   }).format(value);
+
+const formatQty = (value: number) =>
+  new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
+
+// Tighter than the table defaults, so a record takes one compact row.
+const headClass =
+  "h-9 px-3 sm:h-9 sm:px-3 text-xs font-medium text-gray-500 whitespace-nowrap";
+const cellClass = "px-3 py-2.5 sm:px-3 sm:py-2.5";
 
 const formatActivityLabel = (key: string) =>
   key
@@ -294,119 +296,101 @@ const SiteExpensesSection = ({
   const renderRecordRow = (record: ExpenseRecord, showVendor = true) => {
     const { isExceeded } = record;
     const expense = expenses.find((e) => e.id === record.id);
+    const documentCount = record.documents.length;
 
     return (
       <TableRow
         key={record.id}
-        className={`transition-colors ${isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-blue-50/20"}`}>
-        <TableCell className='text-xs text-gray-600 py-2.5 whitespace-nowrap'>
+        className={cn(
+          "border-gray-100",
+          isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-gray-50/80",
+        )}>
+        <TableCell className={cn(cellClass, "whitespace-nowrap text-xs tabular-nums text-gray-600")}>
           {formatDateRange(record.startDate, record.endDate)}
         </TableCell>
-        <TableCell className='py-2.5'>
-          <div className='flex flex-wrap items-center gap-1.5'>
-            <span className='text-xs text-gray-800 font-medium'>{record.activityLabel}</span>
+        {/* What was spent on, and against which activity. */}
+        <TableCell className={cn(cellClass, "min-w-48")}>
+          <p className='text-sm font-medium text-gray-900'>{record.description}</p>
+          <p className='mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500'>
+            <span>{record.activityLabel}</span>
             {isExceeded && (
-              <Badge
-                variant='outline'
-                className='text-[10px] px-2 py-0.5 flex items-center gap-1 w-fit bg-orange-50 text-orange-700 border-orange-200'>
-                <AlertTriangle className='w-2.5 h-2.5' />
+              <span className='inline-flex items-center gap-1 font-medium text-orange-600'>
+                <AlertTriangle className='size-3' />
                 Exceeded
-              </Badge>
+              </span>
             )}
-          </div>
+          </p>
         </TableCell>
-        <TableCell className='py-2.5'>
-          <span className='text-xs text-gray-800 font-medium'>{record.description}</span>
-        </TableCell>
-        <TableCell className='py-2.5 text-xs text-gray-600 text-center tabular-nums'>
+        <TableCell className={cn(cellClass, "whitespace-nowrap text-right text-xs tabular-nums")}>
           {record.quantity ? (
-            <span className='font-medium'>{Number(record.quantity)}</span>
+            <>
+              <span className='font-medium text-gray-800'>
+                {formatQty(Number(record.quantity))}
+              </span>
+              {record.unit && <span className='ml-1 text-gray-400'>{record.unit}</span>}
+            </>
           ) : (
             <span className='text-gray-300'>—</span>
           )}
-          {record.unit ? <span className='text-gray-400 ml-1'>{record.unit}</span> : null}
         </TableCell>
         {showVendor && (
-          <TableCell className='py-2.5 text-xs text-gray-600'>
+          <TableCell className={cn(cellClass, "text-xs text-gray-600")}>
             {record.contractorName ?? <span className='text-gray-300'>—</span>}
           </TableCell>
         )}
-        <TableCell className='py-2.5 text-xs text-gray-500'>
-          {record.invoiceNumber ?? <span className='text-gray-300'>—</span>}
+        {/* The invoice number with its documents beside it. */}
+        <TableCell className={cn(cellClass, "text-xs text-gray-600")}>
+          <div className='flex items-center gap-1.5'>
+            {record.invoiceNumber ? (
+              <span className='truncate'>{record.invoiceNumber}</span>
+            ) : (
+              documentCount === 0 && <span className='text-gray-300'>—</span>
+            )}
+            {documentCount > 0 && (
+              <DocumentsMenu documents={record.documents}>
+                <button
+                  type='button'
+                  aria-label={documentCount === 1 ? "View document" : `View ${documentCount} documents`}
+                  title={documentCount === 1 ? "View document" : `View ${documentCount} documents`}
+                  className='inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-blue-600 transition-colors hover:bg-blue-50'>
+                  <Paperclip className='size-3.5' />
+                  {documentCount > 1 && (
+                    <span className='text-[11px] font-medium tabular-nums'>{documentCount}</span>
+                  )}
+                </button>
+              </DocumentsMenu>
+            )}
+          </div>
         </TableCell>
-        <TableCell className='py-2.5 text-center'>
-          {record.documents.length > 0 ? (
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className='inline-flex'>
-                    <DocumentsMenu
-                      documents={record.documents}
-                      align='center'>
-                      <button
-                        type='button'
-                        aria-label='View documents'
-                        className='relative inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors cursor-pointer'>
-                        <ExternalLink className='w-3 h-3' />
-                        {record.documents.length > 1 && (
-                          <span className='absolute -right-1.5 -top-1.5 flex min-w-3.5 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[9px] font-semibold leading-3.5 text-white'>
-                            {record.documents.length}
-                          </span>
-                        )}
-                      </button>
-                    </DocumentsMenu>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side='top' className='text-[10px] px-2 py-1 bg-gray-900 text-white'>
-                  {record.documents.length === 1
-                    ? "View Document"
-                    : `View ${record.documents.length} Documents`}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
-            <span className='text-gray-300 text-xs'>—</span>
-          )}
-        </TableCell>
-        <TableCell className='py-2.5 text-right'>
-          <span className={`text-sm font-semibold ${isExceeded ? "text-orange-700" : "text-red-700"}`}>
+        <TableCell className={cn(cellClass, "whitespace-nowrap text-right")}>
+          <span
+            className={cn(
+              "text-sm font-semibold tabular-nums",
+              isExceeded ? "text-orange-700" : "text-gray-900",
+            )}>
             {formatCurrency(record.amount)}
           </span>
         </TableCell>
-        <TableCell className='py-2.5'>
-          <div className='flex items-center justify-end gap-1'>
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type='button'
-                    onClick={() => expense && handleEdit(expense)}
-                    disabled={isViewer || !expense}
-                    className='p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-30'>
-                    <Pencil className='w-3 h-3' />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side='top' className='text-[10px] px-2 py-1 bg-gray-900 text-white'>
-                  Edit
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type='button'
-                    onClick={() => setDeletingId(record.id)}
-                    disabled={isViewer}
-                    className='p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed'>
-                    <Trash2 className='w-3 h-3' />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side='top' className='text-[10px] px-2 py-1 bg-gray-900 text-white'>
-                  Delete
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+        <TableCell className={cn(cellClass, "w-px whitespace-nowrap")}>
+          <div className='flex items-center justify-end gap-0.5'>
+            <button
+              type='button'
+              aria-label='Edit expense'
+              title='Edit'
+              onClick={() => expense && handleEdit(expense)}
+              disabled={isViewer || !expense}
+              className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30'>
+              <Pencil className='size-3.5' />
+            </button>
+            <button
+              type='button'
+              aria-label='Delete expense'
+              title='Delete'
+              onClick={() => setDeletingId(record.id)}
+              disabled={isViewer}
+              className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30'>
+              <Trash2 className='size-3.5' />
+            </button>
           </div>
         </TableCell>
       </TableRow>
@@ -416,18 +400,16 @@ const SiteExpensesSection = ({
   const renderRecordsTable = (rows: ExpenseRecord[], showVendor = true) => (
     <Table>
       <TableHeader>
-        <TableRow className='bg-gray-50/50 hover:bg-gray-50/50'>
-          <TableHead className='text-xs font-semibold text-gray-600 w-[130px] whitespace-nowrap'>Dates</TableHead>
-          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Activity</TableHead>
-          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Description</TableHead>
-          <TableHead className='text-xs font-semibold text-gray-600 text-center w-[90px] whitespace-nowrap'>Qty</TableHead>
-          {showVendor && (
-            <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Contractor</TableHead>
-          )}
-          <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Invoice #</TableHead>
-          <TableHead className='text-xs font-semibold text-gray-600 text-center w-[60px] whitespace-nowrap'>Doc</TableHead>
-          <TableHead className='text-xs font-semibold text-gray-600 text-right whitespace-nowrap'>Amount (₹)</TableHead>
-          <TableHead className='w-[70px]' />
+        <TableRow className='border-gray-100 hover:bg-transparent'>
+          <TableHead className={cn(headClass, "w-[120px]")}>Dates</TableHead>
+          <TableHead className={headClass}>Expense</TableHead>
+          <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
+          {showVendor && <TableHead className={headClass}>Contractor</TableHead>}
+          <TableHead className={cn(headClass, "w-[150px]")}>Invoice</TableHead>
+          <TableHead className={cn(headClass, "w-[130px] text-right")}>Amount</TableHead>
+          <TableHead className={cn(headClass, "w-px")}>
+            <span className='sr-only'>Actions</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>{rows.map((r) => renderRecordRow(r, showVendor))}</TableBody>
