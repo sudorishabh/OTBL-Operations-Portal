@@ -160,8 +160,9 @@ const SiteExpensesSection = ({
   // The expense whose full details are open under its row.
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [activityFilter, setActivityFilter] = useState<string>("__all__");
-  // The vendor a new expense starts under, when added from its group.
-  const [addUnderId, setAddUnderId] = useState<number | null>(null);
+  // What a new expense starts under, when added from a vendor or from
+  // Miscellaneous.
+  const [addUnder, setAddUnder] = useState<number | "miscellaneous" | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const [expensePage, setExpensePage] = useState(1);
@@ -268,12 +269,12 @@ const SiteExpensesSection = ({
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingExpense(null);
-    setAddUnderId(null);
+    setAddUnder(null);
   };
 
-  const openAddExpense = (underId: number | null = null) => {
+  const openAddExpense = (under: number | "miscellaneous" | null = null) => {
     setEditingExpense(null);
-    setAddUnderId(underId);
+    setAddUnder(under);
     setDialogOpen(true);
   };
 
@@ -631,6 +632,43 @@ const SiteExpensesSection = ({
     );
   };
 
+  // Heads the vendor expenses and the miscellaneous ones, each with its total.
+  const renderSectionHeader = ({
+    title,
+    meta,
+    total,
+    action,
+  }: {
+    title: string;
+    meta: string;
+    total: number;
+    action?: React.ReactNode;
+  }) => (
+    <div className='flex items-center gap-2 border-b border-gray-200 pb-1.5'>
+      <h4 className='text-[13px] font-semibold text-gray-800'>{title}</h4>
+      <span className='text-xs text-gray-400'>{meta}</span>
+      <div className='ml-auto flex items-center gap-2'>
+        {action}
+        <span className='text-sm font-semibold tabular-nums text-gray-900'>
+          {formatCurrency(total)}
+        </span>
+      </div>
+    </div>
+  );
+
+  const renderAddExpenseButton = (label: string, onClick: () => void) => (
+    <button
+      type='button'
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      disabled={isViewer}
+      className='inline-flex h-7 items-center gap-1 rounded-md bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40'>
+      <Plus className='size-3.5' />
+      Add expense
+    </button>
+  );
+
   const emptyGroupText = (text: string) => (
     <p className='py-1 text-xs text-gray-400'>
       {text}
@@ -824,51 +862,57 @@ const SiteExpensesSection = ({
       {expensesQuery.isLoading && expensePage === 1 ? (
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
       ) : splitByContractor ? (
-        <div className='space-y-1'>
-          {contractors.length === 0 &&
-            emptyGroupText("No vendors yet. Add a vendor to record expenses under it.")}
-          {contractors.map((c) => {
-            const name = capitalFirstLetter(c.name);
-            const records = recordsUnder(c.id);
-            const hasExpenses = records.length > 0 || totalUnder(c.id) > 0;
-            return renderVendorGroup({
-              groupKey: `vendor-${c.id}`,
-              Icon: HardHat,
-              title: name,
-              total: totalUnder(c.id),
-              count: records.length,
-              content:
-                records.length > 0
-                  ? renderRecordsBox(records, false)
-                  : emptyGroupText(`No expenses under ${name} yet.`),
-              actions: (
-                <div className='flex shrink-0 items-center gap-1'>
-                  <button
-                    type='button'
-                    title={`Add expense under ${name}`}
-                    aria-label={`Add expense under ${name}`}
-                    onClick={() => openAddExpense(c.id)}
-                    disabled={isViewer}
-                    className='inline-flex h-7 items-center gap-1 rounded-md bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40'>
-                    <Plus className='size-3.5' />
-                    Add expense
-                  </button>
-                  {!hasExpenses && emptyVendorActions?.(c)}
-                </div>
+        <div className='space-y-6'>
+          {/* Expenses under the site's vendors, a group for each. */}
+          <section className='space-y-1'>
+            {renderSectionHeader({
+              title: "Vendor expenses",
+              meta: `${contractors.length} vendor${contractors.length !== 1 ? "s" : ""}`,
+              total: contractorsTotal,
+            })}
+            {contractors.length === 0 &&
+              emptyGroupText("No vendors yet. Add a vendor to record expenses under it.")}
+            {contractors.map((c) => {
+              const name = capitalFirstLetter(c.name);
+              const records = recordsUnder(c.id);
+              const hasExpenses = records.length > 0 || totalUnder(c.id) > 0;
+              return renderVendorGroup({
+                groupKey: `vendor-${c.id}`,
+                Icon: HardHat,
+                title: name,
+                total: totalUnder(c.id),
+                count: records.length,
+                content:
+                  records.length > 0
+                    ? renderRecordsBox(records, false)
+                    : emptyGroupText(`No expenses under ${name} yet.`),
+                actions: (
+                  <div className='flex shrink-0 items-center gap-1'>
+                    {renderAddExpenseButton(`Add expense under ${name}`, () =>
+                      openAddExpense(c.id),
+                    )}
+                    {!hasExpenses && emptyVendorActions?.(c)}
+                  </div>
+                ),
+              });
+            })}
+          </section>
+
+          {/* Expenses under no vendor. */}
+          <section className='space-y-2'>
+            {renderSectionHeader({
+              title: "Miscellaneous",
+              meta: `${otherRecords.length} expense${otherRecords.length !== 1 ? "s" : ""}`,
+              total: expenseTotal - contractorsTotal,
+              action: renderAddExpenseButton("Add a miscellaneous expense", () =>
+                openAddExpense("miscellaneous"),
               ),
-            });
-          })}
-          {renderVendorGroup({
-            groupKey: "not-under-vendor",
-            Icon: ReceiptIndianRupee,
-            title: "Miscellaneous",
-            total: expenseTotal - contractorsTotal,
-            count: otherRecords.length,
-            content:
-              otherRecords.length > 0
-                ? renderRecordsBox(otherRecords)
-                : emptyGroupText("No miscellaneous expenses yet."),
-          })}
+            })}
+            {otherRecords.length > 0
+              ? renderRecordsBox(otherRecords)
+              : emptyGroupText("No miscellaneous expenses yet.")}
+          </section>
+
           {expensesPagination && expensesPagination.total > expenses.length && (
             <p className='text-xs text-gray-400'>
               Showing {expenses.length} of {expensesPagination.total} entries
@@ -924,7 +968,8 @@ const SiteExpensesSection = ({
         activities={activityOptions}
         usedQtyByActivity={usedQtyByActivity}
         contractors={splitByContractor ? contractors : undefined}
-        defaultContractorId={addUnderId}
+        defaultContractorId={typeof addUnder === "number" ? addUnder : null}
+        startsMiscellaneous={addUnder === "miscellaneous"}
       />
 
       <AlertDialog
