@@ -441,24 +441,12 @@ const PhaseForm = ({
 
   return (
     <div className='space-y-5'>
-      {phase !== "completion" && (
-        <div className='rounded-xl border border-slate-200 bg-gray-100/50 p-4'>
-          <div className='mb-3'>
-            <h4 className='text-[11px] font-semibold text-slate-600 uppercase tracking-wider'>
-              Required Documents
-            </h4>
-          </div>
-
-          {phase === "estimate_sub-wo" ? (
-            <div className='space-y-1.5'>
-              <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
-                Estimate
-              </span>
-              {renderDocumentSection("estimate")}
-            </div>
-          ) : (
-            renderDocumentSection(phase)
-          )}
+      {phase === "estimate_sub-wo" && (
+        <div className='space-y-1.5'>
+          <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
+            Estimate Document
+          </span>
+          {renderDocumentSection("estimate")}
         </div>
       )}
 
