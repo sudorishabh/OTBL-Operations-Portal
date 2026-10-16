@@ -607,6 +607,7 @@ export const workOrderSiteQueryRouter = router({
               end_date: workOrderSiteTable.end_date,
               process_type: workOrderSiteTable.process_type,
               status: workOrderSiteTable.status,
+              is_completed: workOrderSiteTable.is_completed,
               created_at: workOrderSiteTable.created_at,
               updated_at: workOrderSiteTable.updated_at,
               site_name: siteNameOrRestoration,
@@ -655,6 +656,7 @@ export const workOrderSiteQueryRouter = router({
             end_date: woSite.end_date,
             process_type: woSite.process_type,
             status: woSite.status,
+            is_completed: woSite.is_completed,
             created_at: woSite.created_at,
             updated_at: woSite.updated_at,
             site: {

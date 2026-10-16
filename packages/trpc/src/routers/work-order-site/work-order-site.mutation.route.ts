@@ -23,6 +23,7 @@ import {
   isSharePointConfigured,
 } from "../sharepoint/sharepoint.config";
 import { createSharePointService } from "../sharepoint/sharepoint.service";
+import { syncBioremediationCompletion } from "./bioremediation-completion";
 
 const createSiteActivitySchema = z.object({
   work_order_site_id: z.number().positive(),
@@ -589,6 +590,9 @@ export const workOrderSiteMutationRouter = router({
               .update(workOrderSiteTable)
               .set({ is_completed: true })
               .where(eq(workOrderSiteTable.id, work_order_site_id));
+          } else {
+            // A new oil zapper plan can complete or reopen the site.
+            await syncBioremediationCompletion(ctx.db, work_order_site_id);
           }
 
           return { success: true, message: "Contaminated Soil saved" };

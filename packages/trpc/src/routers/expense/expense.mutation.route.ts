@@ -8,6 +8,7 @@ import { z } from "zod";
 import { validators } from "@pkg/schema";
 import { constants } from "@pkg/utils";
 import { syncRestorationCompletion } from "../restoration/restoration-row";
+import { syncBioremediationCompletion } from "../work-order-site/bioremediation-completion";
 
 const {
   workOrderSiteTable,
@@ -108,6 +109,13 @@ async function computeIsExceeded(
 
   const existingTotal = Number(rows[0]?.total ?? 0);
   return existingTotal + newQty > estimateQty + 0.001;
+}
+
+// Expenses complete a restoration by using up its schedule of rates, and a
+// bioremediation site by using up its planned oil zapper.
+async function syncSiteCompletion(ctx: any, siteId: number) {
+  await syncRestorationCompletion(ctx.db, siteId);
+  await syncBioremediationCompletion(ctx.db, siteId);
 }
 
 // A restoration's miscellaneous expense, under none of its vendors, uses up
@@ -231,7 +239,7 @@ export const expenseMutationRouter = router({
             });
           }
 
-          await syncRestorationCompletion(ctx.db, input.work_order_site_id);
+          await syncSiteCompletion(ctx, input.work_order_site_id);
 
           return { success: true, id: created.id };
         } catch (error) {
@@ -310,7 +318,7 @@ export const expenseMutationRouter = router({
             .set(setData)
             .where(eq(workOrderSiteExpenseTable.id, id));
 
-          await syncRestorationCompletion(ctx.db, prev.work_order_site_id);
+          await syncSiteCompletion(ctx, prev.work_order_site_id);
 
           return { success: true };
         } catch (error) {
@@ -337,7 +345,7 @@ export const expenseMutationRouter = router({
             .delete(workOrderSiteExpenseTable)
             .where(eq(workOrderSiteExpenseTable.id, input.id));
 
-          await syncRestorationCompletion(ctx.db, existing[0]!.work_order_site_id);
+          await syncSiteCompletion(ctx, existing[0]!.work_order_site_id);
 
           return { success: true };
         } catch (error) {
