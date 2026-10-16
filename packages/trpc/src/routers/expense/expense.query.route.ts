@@ -141,21 +141,15 @@ export const expenseQueryRouter = router({
           const activityRows = await ctx.db
             .select({
               activity_key: workOrderSiteExpenseTable.activity_key,
-              expense_date: workOrderSiteExpenseTable.expense_date,
               quantity: workOrderSiteExpenseTable.quantity,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
-              description: workOrderSiteExpenseTable.description,
-              notes: workOrderSiteExpenseTable.notes,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
-              invoice_number: workOrderSiteExpenseTable.invoice_number,
-              documents: workOrderSiteExpenseTable.documents,
               amount: workOrderSiteExpenseTable.amount,
             })
             .from(workOrderSiteExpenseTable)
             .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id));
 
           const byActivity: Record<string, { totalAmount: number; exceededAmount: number; totalQuantity: number; count: number }> = {};
-          const seenForQty = new Set<string>();
           // Totals per contractor id; expenses under none are keyed "none".
           const byContractor: Record<string, number> = {};
 
@@ -174,24 +168,8 @@ export const expenseQueryRouter = router({
             byActivity[row.activity_key]!.totalAmount += amt;
             if (row.is_exceeded) byActivity[row.activity_key]!.exceededAmount += amt;
             byActivity[row.activity_key]!.count += 1;
-
-            if (row.quantity) {
-              const qtyKey = [
-                row.activity_key,
-                String(row.expense_date),
-                row.quantity,
-                String(!!row.is_exceeded),
-                row.description ?? "",
-                row.notes ?? "",
-                String(row.contractor_id ?? ""),
-                row.invoice_number ?? "",
-                (row.documents ?? []).map((doc) => doc.url).join(","),
-              ].join("||");
-              if (!seenForQty.has(qtyKey)) {
-                seenForQty.add(qtyKey);
-                byActivity[row.activity_key]!.totalQuantity += Number(row.quantity || 0);
-              }
-            }
+            // Each expense's quantity is used up from its activity.
+            byActivity[row.activity_key]!.totalQuantity += Number(row.quantity || 0);
           }
 
           return {
