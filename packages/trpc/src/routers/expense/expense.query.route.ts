@@ -15,6 +15,7 @@ import { z } from "zod";
 const {
   workOrderSiteExpenseTable,
   contractorTable,
+  userTable,
   workOrderSiteTable,
   siteTable,
   bioremediationContSoilTable,
@@ -70,6 +71,7 @@ export const expenseQueryRouter = router({
               invoice_number: workOrderSiteExpenseTable.invoice_number,
               documents: workOrderSiteExpenseTable.documents,
               created_by: workOrderSiteExpenseTable.created_by,
+              created_by_name: userTable.name,
               created_at: workOrderSiteExpenseTable.created_at,
               updated_at: workOrderSiteExpenseTable.updated_at,
             })
@@ -78,6 +80,7 @@ export const expenseQueryRouter = router({
               contractorTable,
               eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
             )
+            .leftJoin(userTable, eq(workOrderSiteExpenseTable.created_by, userTable.id))
             .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id))
             .orderBy(desc(workOrderSiteExpenseTable.start_date), desc(workOrderSiteExpenseTable.created_at))
             .limit(limit)
