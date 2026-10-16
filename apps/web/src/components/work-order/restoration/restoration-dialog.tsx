@@ -85,7 +85,10 @@ const RestorationDialog = ({
           subject='restoration'
         />
 
-        <RestorationCompletion restoration={restoration} />
+        {/* The certificate only comes in once the restoration is complete. */}
+        {restoration.is_completed && (
+          <RestorationCompletion restoration={restoration} />
+        )}
 
         {rates.length > 0 && (
           <RestorationRatesSection
