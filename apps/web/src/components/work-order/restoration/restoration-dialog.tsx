@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import DialogWindow from "@/components/shared/dialog-window";
@@ -57,6 +58,19 @@ const RestorationDialog = ({
       isFullScreen={isFullScreen}
       onToggleFullScreen={() => setIsFullScreen((v) => !v)}>
       <div className='space-y-5 py-3'>
+        {/* Set on its own once expenses use up the schedule of rates. */}
+        {restoration.is_completed && (
+          <div
+            role='status'
+            className='flex items-center gap-2.5 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800'>
+            <CheckCircle2 className='size-4 shrink-0 text-emerald-600' />
+            <p>
+              <span className='font-semibold'>Restoration complete.</span>{" "}
+              Recorded expenses have used up every schedule of rates quantity.
+            </p>
+          </div>
+        )}
+
         <RestorationSummary
           workOrder={workOrder}
           restoration={restoration}
