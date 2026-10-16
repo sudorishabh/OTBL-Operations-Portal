@@ -596,24 +596,15 @@ export const workOrderSiteExpenseTable = mysqlTable(
     work_order_site_id: int("work_order_site_id")
       .notNull()
       .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
-    expense_type: varchar("expense_type", {
-      length: 50,
-      enum: [
-        "contractor_payment",
-        "labour",
-        "material",
-        "equipment",
-        "miscellaneous",
-      ],
-    }).notNull(),
     contractor_id: int("contractor_id").references(() => contractorTable.id, {
       onDelete: "set null",
     }),
-    description: varchar("description", { length: 500 }).notNull(),
+    title: varchar("title", { length: 500 }).notNull(),
     amount: decimal("amount", { precision: 20, scale: 2 }).notNull(),
-    expense_date: timestamp("expense_date").notNull(),
+    // The days the expense covers; one day when they match.
+    start_date: timestamp("start_date").notNull(),
+    end_date: timestamp("end_date").notNull(),
     invoice_number: varchar("invoice_number", { length: 100 }),
-    notes: text("notes"),
     activity_key: varchar("activity_key", { length: 100 }),
     quantity: decimal("quantity", { precision: 20, scale: 4 }),
     is_exceeded: tinyint("is_exceeded").notNull().default(0),
@@ -629,7 +620,6 @@ export const workOrderSiteExpenseTable = mysqlTable(
   (table) => [
     index("expense_wo_site_idx").on(table.work_order_site_id),
     index("expense_contractor_idx").on(table.contractor_id),
-    index("expense_type_idx").on(table.expense_type),
-    index("expense_date_idx").on(table.expense_date),
+    index("expense_start_date_idx").on(table.start_date),
   ],
 );

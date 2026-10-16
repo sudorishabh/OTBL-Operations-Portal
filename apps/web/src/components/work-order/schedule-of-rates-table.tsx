@@ -57,14 +57,12 @@ interface SiteWithCompletions {
   };
   wo_site_id?: number;
   total_expenses?: string;
-  expense_by_type?: Record<string, number>;
   expense_entry_count?: number;
   completions?: SiteCompletion[];
 }
 
 interface WorkOrderExpenseSummary {
   total_expenses: number;
-  by_type: Record<string, number>;
   expense_entry_count: number;
   total_income: number;
   net_surplus: number;
@@ -75,14 +73,6 @@ interface Props {
   sites: SiteWithCompletions[];
   expenseSummary?: WorkOrderExpenseSummary | null;
 }
-
-const EXPENSE_TYPE_LABELS_SOR: Record<string, string> = {
-  contractor_payment: "Contractor payment",
-  labour: "Labour",
-  material: "Material",
-  equipment: "Equipment",
-  miscellaneous: "Miscellaneous",
-};
 
 const formatCurrency = (amount: string | number) => {
   const val = Number(amount);
@@ -139,11 +129,9 @@ const SiteSpendingCard = ({
   index: number;
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [expenseExpanded, setExpenseExpanded] = useState(false);
   const completions = site.completions || [];
   const hasCompletions = completions.length > 0;
   const expenseTotal = Number(site.total_expenses || 0);
-  const expenseByType = site.expense_by_type || {};
   const expenseCount = site.expense_entry_count ?? 0;
   const hasExpenses = expenseTotal > 0 || expenseCount > 0;
 
@@ -295,75 +283,23 @@ const SiteSpendingCard = ({
       )}
 
       {hasExpenses && (
-        <div className='border-t border-rose-100/80 bg-rose-50/20'>
-          <button
-            type='button'
-            onClick={() => setExpenseExpanded(!expenseExpanded)}
-            className='w-full flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-rose-50/50 transition-colors'>
-            <div className='flex items-center gap-2'>
-              <ReceiptIndianRupee className='w-3.5 h-3.5 text-rose-500' />
-              <span className='text-xs font-semibold text-rose-800'>
-                Site expenses
-              </span>
-              {expenseCount > 0 && (
-                <Badge
-                  variant='outline'
-                  className='text-[10px] bg-white text-rose-700 border-rose-200'>
-                  {expenseCount} record{expenseCount !== 1 ? "s" : ""}
-                </Badge>
-              )}
-            </div>
-            <div className='flex items-center gap-2'>
-              <span className='text-xs font-bold text-rose-700'>
-                {formatCurrency(expenseTotal)}
-              </span>
-              {expenseExpanded ? (
-                <ChevronDown className='w-4 h-4 text-rose-400' />
-              ) : (
-                <ChevronRight className='w-4 h-4 text-rose-400' />
-              )}
-            </div>
-          </button>
-          {expenseExpanded && Object.keys(expenseByType).length > 0 && (
-            <div className='px-4 pb-3 pt-0'>
-              <Table>
-                <TableHeader>
-                  <TableRow className='bg-rose-50/60 hover:bg-rose-50/60'>
-                    <TableHead className='text-[10px] font-semibold text-rose-700 uppercase py-2 pl-10'>
-                      Category
-                    </TableHead>
-                    <TableHead className='text-[10px] font-semibold text-rose-700 uppercase text-right py-2 pr-4'>
-                      Amount
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(expenseByType).map(([type, amt]) => (
-                    <TableRow
-                      key={type}
-                      className='border-b border-rose-100/50 last:border-0'>
-                      <TableCell className='py-2 pl-10 text-xs text-gray-700'>
-                        {EXPENSE_TYPE_LABELS_SOR[type] ?? type}
-                      </TableCell>
-                      <TableCell className='py-2 text-right text-xs font-semibold text-rose-800 pr-4'>
-                        {formatCurrency(amt)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-                <TableFooter className='bg-rose-50/50'>
-                  <TableRow>
-                    <TableCell className='text-right text-xs font-bold text-rose-900 py-2'>
-                      Expense total
-                    </TableCell>
-                    <TableCell className='text-right text-xs font-bold text-rose-800 pr-4 py-2'>
-                      {formatCurrency(expenseTotal)}
-                    </TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
-            </div>
-          )}
+        <div className='flex items-center justify-between border-t border-rose-100/80 bg-rose-50/20 px-4 py-2.5'>
+          <div className='flex items-center gap-2'>
+            <ReceiptIndianRupee className='w-3.5 h-3.5 text-rose-500' />
+            <span className='text-xs font-semibold text-rose-800'>
+              Site expenses
+            </span>
+            {expenseCount > 0 && (
+              <Badge
+                variant='outline'
+                className='text-[10px] bg-white text-rose-700 border-rose-200'>
+                {expenseCount} record{expenseCount !== 1 ? "s" : ""}
+              </Badge>
+            )}
+          </div>
+          <span className='text-xs font-bold text-rose-700'>
+            {formatCurrency(expenseTotal)}
+          </span>
         </div>
       )}
     </div>
@@ -649,7 +585,7 @@ const ScheduleOfRatesTable = ({
               const isProfit = profit >= 0;
               return (
             <div className='rounded-lg border border-rose-100 bg-linear-to-r from-rose-50/40 to-slate-50 p-4 mb-2'>
-              <div className='grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4'>
+              <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
                 <div>
                   <span className='text-[10px] uppercase tracking-wider text-slate-500 font-semibold block'>
                     Income (SOR total)
@@ -686,26 +622,6 @@ const ScheduleOfRatesTable = ({
                   </p>
                 </div>
               </div>
-              {Object.keys(expenseSummary.by_type).length > 0 && (
-                <div>
-                  <span className='text-[10px] uppercase tracking-wider text-slate-500 font-semibold block mb-2'>
-                    By category (work order)
-                  </span>
-                  <div className='flex flex-wrap gap-2'>
-                    {Object.entries(expenseSummary.by_type).map(
-                      ([type, amt]) => (
-                        <Badge
-                          key={type}
-                          variant='outline'
-                          className='text-[11px] bg-white border-rose-200 text-rose-800'>
-                          {EXPENSE_TYPE_LABELS_SOR[type] ?? type}:{" "}
-                          {formatCurrency(amt)}
-                        </Badge>
-                      ),
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
               );
             })()}

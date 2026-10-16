@@ -1,14 +1,13 @@
 "use client";
 import React, { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
-import CompletionExpenseSummary from "../site-details-dialog/completion-expense-summary";
 import AddRestorationVendor from "./add-restoration-vendor";
 import RemoveRestorationVendor from "./remove-restoration-vendor";
 import RestorationSummary from "./restoration-summary";
@@ -59,6 +58,19 @@ const RestorationDialog = ({
       isFullScreen={isFullScreen}
       onToggleFullScreen={() => setIsFullScreen((v) => !v)}>
       <div className='space-y-5 py-3'>
+        {/* Set on its own once expenses use up the schedule of rates. */}
+        {restoration.is_completed && (
+          <div
+            role='status'
+            className='flex items-center gap-2.5 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800'>
+            <CheckCircle2 className='size-4 shrink-0 text-emerald-600' />
+            <p>
+              <span className='font-semibold'>Restoration complete.</span>{" "}
+              Recorded expenses have used up every schedule of rates quantity.
+            </p>
+          </div>
+        )}
+
         <RestorationSummary
           workOrder={workOrder}
           restoration={restoration}
@@ -73,6 +85,11 @@ const RestorationDialog = ({
           subject='restoration'
         />
 
+        {/* The certificate only comes in once the restoration is complete. */}
+        {restoration.is_completed && (
+          <RestorationCompletion restoration={restoration} />
+        )}
+
         {rates.length > 0 && (
           <RestorationRatesSection
             restorationId={restoration.id}
@@ -81,56 +98,27 @@ const RestorationDialog = ({
           />
         )}
 
-        <Tabs defaultValue='expenses'>
-          <TabsList className='grid h-8 w-52 grid-cols-2'>
-            <TabsTrigger
-              value='expenses'
-              className='px-3 text-xs'>
-              Expenses
-            </TabsTrigger>
-            <TabsTrigger
-              value='completion'
-              className='px-3 text-xs'>
-              Completion
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent
-            value='expenses'
-            className='mt-4 space-y-5'>
-            <SiteExpensesSection
-              woSiteId={restoration.id}
-              processType={WO_PROCESS.RESTORATION}
-              splitByContractor
-              contractors={restoration.contractors}
-              showEstimateTable={false}
-              showSummaryCards={false}
-              headerActions={
-                <AddRestorationVendor
-                  restoration={restoration}
-                  workOrderId={workOrder.id}
-                />
-              }
-              emptyVendorActions={(vendor) => (
-                <RemoveRestorationVendor
-                  restorationId={restoration.id}
-                  workOrderId={workOrder.id}
-                  vendor={vendor}
-                />
-              )}
-            />
-          </TabsContent>
-
-          <TabsContent
-            value='completion'
-            className='mt-4'>
-            <RestorationCompletion
+        <SiteExpensesSection
+          woSiteId={restoration.id}
+          processType={WO_PROCESS.RESTORATION}
+          splitByContractor
+          contractors={restoration.contractors}
+          showEstimateTable={false}
+          showSummaryCards={false}
+          headerActions={
+            <AddRestorationVendor
               restoration={restoration}
               workOrderId={workOrder.id}
             />
-            <CompletionExpenseSummary woSiteId={restoration.id} />
-          </TabsContent>
-        </Tabs>
+          }
+          emptyVendorActions={(vendor) => (
+            <RemoveRestorationVendor
+              restorationId={restoration.id}
+              workOrderId={workOrder.id}
+              vendor={vendor}
+            />
+          )}
+        />
       </div>
 
       {isOpen && (

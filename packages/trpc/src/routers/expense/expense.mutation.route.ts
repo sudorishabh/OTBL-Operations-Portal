@@ -2,20 +2,22 @@ import { and, eq, ne, sum } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { fromDatabaseError, notFound } from "../../errors";
+import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
 import { validators } from "@pkg/schema";
 import { constants } from "@pkg/utils";
+import { syncRestorationCompletion } from "../restoration/restoration-row";
 
 const {
+  workOrderSiteTable,
   workOrderSiteExpenseTable,
   bioremediationContSoilTable,
   siteActivityTable,
   scheduleOfRatesTable,
 } = schema;
 
-const { WO_ACTIVITIES, allActivityOptions } = constants;
+const { WO_ACTIVITIES, WO_PROCESS, allActivityOptions } = constants;
 
 const RESTORATION_ACTIVITIES = new Set<string>(
   allActivityOptions
@@ -95,59 +97,88 @@ async function computeIsExceeded(
   return existingTotal + newQty > estimateQty + 0.001;
 }
 
-const expenseTypeEnum = z.enum([
-  "contractor_payment",
-  "labour",
-  "material",
-  "equipment",
-  "miscellaneous",
-]);
+// A restoration's miscellaneous expense, under none of its vendors, uses up
+// no activity quantity, so it may not carry one.
+async function assertQuantityAllowed(
+  ctx: any,
+  siteId: number,
+  contractorId: number | null | undefined,
+  quantity: string | null | undefined,
+) {
+  if (contractorId || !quantity || !(parseFloat(quantity) > 0)) return;
+
+  const [site] = await ctx.db
+    .select({ process_type: workOrderSiteTable.process_type })
+    .from(workOrderSiteTable)
+    .where(eq(workOrderSiteTable.id, siteId));
+  if (site?.process_type === WO_PROCESS.RESTORATION) {
+    throw businessRule(
+      "Miscellaneous expenses don't record a quantity. Choose a vendor to deduct one.",
+    );
+  }
+}
+
+// An expense can't end before it starts.
+const endsOnOrAfterStart = (value: { start_date?: string; end_date?: string }) =>
+  !value.start_date ||
+  !value.end_date ||
+  new Date(value.end_date).getTime() >= new Date(value.start_date).getTime();
+
+const endDateIssue = {
+  message: "End date can't be before the start date",
+  path: ["end_date"],
+};
 
 const createExpenseSchema = z.object({
   work_order_site_id: z.number().positive(),
-  expense_type: expenseTypeEnum,
   contractor_id: z.number().positive().optional().nullable(),
   activity_key: z.string().max(100).optional().nullable(),
   quantity: z.string().optional().nullable(),
   is_exceeded: z.boolean().optional().default(false),
-  description: z.string().min(1, "Description is required").max(500),
+  title: z.string().min(1, "Title is required").max(500),
   amount: z
     .string()
     .min(1, "Amount is required")
     .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
       message: "Amount must be a positive number",
     }),
-  expense_date: z.string().min(1, "Date is required"),
+  start_date: z.string().min(1, "Start date is required"),
+  end_date: z.string().min(1, "End date is required"),
   invoice_number: z.string().max(100).optional().nullable(),
-  notes: z.string().optional().nullable(),
   documents: validators.optionalDocumentsValidator.optional(),
-});
+}).refine(endsOnOrAfterStart, endDateIssue);
 
 const updateExpenseSchema = z.object({
   id: z.number().positive(),
-  expense_type: expenseTypeEnum.optional(),
   contractor_id: z.number().positive().optional().nullable(),
   activity_key: z.string().max(100).optional().nullable(),
   quantity: z.string().optional().nullable(),
   is_exceeded: z.boolean().optional(),
-  description: z.string().min(1).max(500).optional(),
+  title: z.string().min(1).max(500).optional(),
   amount: z
     .string()
     .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
       message: "Amount must be a positive number",
     })
     .optional(),
-  expense_date: z.string().optional(),
+  start_date: z.string().optional(),
+  end_date: z.string().optional(),
   invoice_number: z.string().max(100).optional().nullable(),
-  notes: z.string().optional().nullable(),
   documents: validators.optionalDocumentsValidator.optional(),
-});
+}).refine(endsOnOrAfterStart, endDateIssue);
 
 export const expenseMutationRouter = router({
   createExpense: protectedProcedure
     .input(createExpenseSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
+        await assertQuantityAllowed(
+          ctx,
+          input.work_order_site_id,
+          input.contractor_id,
+          input.quantity,
+        );
+
         try {
           const userId = ctx.user ? Number(ctx.user.sub) : null;
 
@@ -164,16 +195,15 @@ export const expenseMutationRouter = router({
             .insert(workOrderSiteExpenseTable)
             .values({
               work_order_site_id: input.work_order_site_id,
-              expense_type: input.expense_type,
               contractor_id: input.contractor_id ?? null,
               activity_key: input.activity_key ?? null,
               quantity: input.quantity ?? null,
               is_exceeded: finalExceeded ? 1 : 0,
-              description: input.description,
+              title: input.title,
               amount: input.amount,
-              expense_date: new Date(input.expense_date),
+              start_date: new Date(input.start_date),
+              end_date: new Date(input.end_date),
               invoice_number: input.invoice_number ?? null,
-              notes: input.notes ?? null,
               documents: input.documents ?? [],
               // Legacy single-document columns, kept until they are dropped.
               document_url: input.documents?.[0]?.url ?? null,
@@ -187,6 +217,8 @@ export const expenseMutationRouter = router({
               userMessage: "Failed to create expense. Please try again.",
             });
           }
+
+          await syncRestorationCompletion(ctx.db, input.work_order_site_id);
 
           return { success: true, id: created.id };
         } catch (error) {
@@ -211,9 +243,21 @@ export const expenseMutationRouter = router({
           throw notFound("Expense", id);
         }
 
+        // Checked only when the update touches the vendor or the quantity.
+        if (updateData.contractor_id !== undefined || updateData.quantity !== undefined) {
+          const before = existing[0]!;
+          await assertQuantityAllowed(
+            ctx,
+            before.work_order_site_id,
+            updateData.contractor_id !== undefined
+              ? updateData.contractor_id
+              : before.contractor_id,
+            updateData.quantity !== undefined ? updateData.quantity : before.quantity,
+          );
+        }
+
         try {
           const setData: Record<string, unknown> = {};
-          if (updateData.expense_type !== undefined) setData.expense_type = updateData.expense_type;
           if (updateData.contractor_id !== undefined) setData.contractor_id = updateData.contractor_id;
           if (updateData.activity_key !== undefined) setData.activity_key = updateData.activity_key;
           if (updateData.quantity !== undefined) setData.quantity = updateData.quantity;
@@ -237,11 +281,11 @@ export const expenseMutationRouter = router({
           } else if (updateData.is_exceeded !== undefined) {
             setData.is_exceeded = updateData.is_exceeded ? 1 : 0;
           }
-          if (updateData.description !== undefined) setData.description = updateData.description;
+          if (updateData.title !== undefined) setData.title = updateData.title;
           if (updateData.amount !== undefined) setData.amount = updateData.amount;
-          if (updateData.expense_date !== undefined) setData.expense_date = new Date(updateData.expense_date);
+          if (updateData.start_date !== undefined) setData.start_date = new Date(updateData.start_date);
+          if (updateData.end_date !== undefined) setData.end_date = new Date(updateData.end_date);
           if (updateData.invoice_number !== undefined) setData.invoice_number = updateData.invoice_number;
-          if (updateData.notes !== undefined) setData.notes = updateData.notes;
           if (updateData.documents !== undefined) {
             setData.documents = updateData.documents;
             setData.document_url = updateData.documents[0]?.url ?? null;
@@ -252,6 +296,8 @@ export const expenseMutationRouter = router({
             .update(workOrderSiteExpenseTable)
             .set(setData)
             .where(eq(workOrderSiteExpenseTable.id, id));
+
+          await syncRestorationCompletion(ctx.db, prev.work_order_site_id);
 
           return { success: true };
         } catch (error) {
@@ -277,6 +323,8 @@ export const expenseMutationRouter = router({
           await ctx.db
             .delete(workOrderSiteExpenseTable)
             .where(eq(workOrderSiteExpenseTable.id, input.id));
+
+          await syncRestorationCompletion(ctx.db, existing[0]!.work_order_site_id);
 
           return { success: true };
         } catch (error) {
