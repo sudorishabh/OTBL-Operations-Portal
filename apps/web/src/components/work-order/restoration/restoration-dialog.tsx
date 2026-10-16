@@ -4,11 +4,9 @@ import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
-import CompletionExpenseSummary from "../site-details-dialog/completion-expense-summary";
 import AddRestorationVendor from "./add-restoration-vendor";
 import RemoveRestorationVendor from "./remove-restoration-vendor";
 import RestorationSummary from "./restoration-summary";
@@ -81,56 +79,33 @@ const RestorationDialog = ({
           />
         )}
 
-        <Tabs defaultValue='expenses'>
-          <TabsList className='grid h-8 w-52 grid-cols-2'>
-            <TabsTrigger
-              value='expenses'
-              className='px-3 text-xs'>
-              Expenses
-            </TabsTrigger>
-            <TabsTrigger
-              value='completion'
-              className='px-3 text-xs'>
-              Completion
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent
-            value='expenses'
-            className='mt-4 space-y-5'>
-            <SiteExpensesSection
-              woSiteId={restoration.id}
-              processType={WO_PROCESS.RESTORATION}
-              splitByContractor
-              contractors={restoration.contractors}
-              showEstimateTable={false}
-              showSummaryCards={false}
-              headerActions={
-                <AddRestorationVendor
-                  restoration={restoration}
-                  workOrderId={workOrder.id}
-                />
-              }
-              emptyVendorActions={(vendor) => (
-                <RemoveRestorationVendor
-                  restorationId={restoration.id}
-                  workOrderId={workOrder.id}
-                  vendor={vendor}
-                />
-              )}
-            />
-          </TabsContent>
-
-          <TabsContent
-            value='completion'
-            className='mt-4'>
-            <RestorationCompletion
+        <SiteExpensesSection
+          woSiteId={restoration.id}
+          processType={WO_PROCESS.RESTORATION}
+          splitByContractor
+          contractors={restoration.contractors}
+          showEstimateTable={false}
+          showSummaryCards={false}
+          headerActions={
+            <AddRestorationVendor
               restoration={restoration}
               workOrderId={workOrder.id}
             />
-            <CompletionExpenseSummary woSiteId={restoration.id} />
-          </TabsContent>
-        </Tabs>
+          }
+          emptyVendorActions={(vendor) => (
+            <RemoveRestorationVendor
+              restorationId={restoration.id}
+              workOrderId={workOrder.id}
+              vendor={vendor}
+            />
+          )}
+        />
+
+        {/* The last step: the certificate, then marking it complete. */}
+        <RestorationCompletion
+          restoration={restoration}
+          workOrderId={workOrder.id}
+        />
       </div>
 
       {isOpen && (
