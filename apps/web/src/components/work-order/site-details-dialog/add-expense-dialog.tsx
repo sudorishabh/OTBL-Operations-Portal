@@ -78,6 +78,8 @@ interface Props {
   contractors?: { id: number; name: string }[];
   // The contractor a new expense starts under.
   defaultContractorId?: number | null;
+  // A new expense starts as miscellaneous, under no vendor.
+  startsMiscellaneous?: boolean;
 }
 
 // "Expense under" value for an expense under none of the contractors.
@@ -110,6 +112,7 @@ const AddExpenseDialog = ({
   usedQtyByActivity = {},
   contractors,
   defaultContractorId = null,
+  startsMiscellaneous = false,
 }: Props) => {
   const utils = trpc.useUtils();
 
@@ -184,11 +187,13 @@ const AddExpenseDialog = ({
       setContractorId("");
       // With one contractor it is the likely choice; with several, ask.
       setUnderId(
-        defaultContractorId
-          ? String(defaultContractorId)
-          : siteVendors.length === 1
-            ? String(siteVendors[0]!.id)
-            : "",
+        startsMiscellaneous
+          ? NOT_UNDER
+          : defaultContractorId
+            ? String(defaultContractorId)
+            : siteVendors.length === 1
+              ? String(siteVendors[0]!.id)
+              : "",
       );
       setSelectedActivityKey("");
       setQuantity("");
