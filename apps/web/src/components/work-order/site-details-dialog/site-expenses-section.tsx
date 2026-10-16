@@ -215,48 +215,31 @@ const SiteExpensesSection = ({
   const isBioremediation = processType === "bioremediation";
   const estimateType = "estimate_sub-wo";
 
-  const getEstimateQty = (activityKey: string): number | null => {
-    if (isBioremediation) {
-      const data = bioremediationDataQuery.data;
-      if (!data) return null;
-      if (
-        activityKey === "biorem_cont_soil" ||
-        activityKey === constants.WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL
-      ) {
-        const qty = data.contaminatedSoil?.find((i: any) => i.type === estimateType)?.estimated_quantity;
-        return qty != null ? Number(qty) : null;
-      }
-      if (activityKey === constants.OIL_ZAPPER.KEY) {
-        const qty = data.contaminatedSoil?.find((i: any) => i.type === estimateType)?.oil_zapper_quantity;
-        return qty != null ? Number(qty) : null;
-      }
-      return null;
-    }
-    // Restoration has no estimate: its schedule of rates is the limit.
-    const sorQty = siteActivitiesQuery.data?.find(
-      (a: any) => a.activity === activityKey,
-    )?.sor_estimated_quantity;
-    return sorQty != null ? Number(sorQty) : null;
-  };
-
   const activityOptions: ActivityOption[] = useMemo(() => {
+    // Bioremediation has one activity, and its expenses use up the oil zapper
+    // planned with its estimate rather than a quantity of it.
+    if (isBioremediation) {
+      const planned = bioremediationDataQuery.data?.contaminatedSoil?.find(
+        (i: any) => i.type === estimateType,
+      )?.oil_zapper_quantity;
+      return [
+        {
+          key: constants.OIL_ZAPPER.KEY,
+          label: constants.OIL_ZAPPER.LABEL,
+          unit: constants.OIL_ZAPPER.UNIT,
+          estimateQty: planned != null ? Number(planned) : null,
+        },
+      ];
+    }
     if (!siteActivitiesQuery.data) return [];
-    const options: ActivityOption[] = siteActivitiesQuery.data.map((a: any) => ({
+    // Restoration has no estimate: its schedule of rates is the limit.
+    return siteActivitiesQuery.data.map((a: any) => ({
       key: a.activity,
       label: formatActivityLabel(a.activity),
       unit: a.unit ?? "Nos",
-      estimateQty: getEstimateQty(a.activity),
+      estimateQty:
+        a.sor_estimated_quantity != null ? Number(a.sor_estimated_quantity) : null,
     }));
-    // Bioremediation also spends the oil zapper planned with its estimate.
-    if (isBioremediation) {
-      options.push({
-        key: constants.OIL_ZAPPER.KEY,
-        label: constants.OIL_ZAPPER.LABEL,
-        unit: constants.OIL_ZAPPER.UNIT,
-        estimateQty: getEstimateQty(constants.OIL_ZAPPER.KEY),
-      });
-    }
-    return options;
   }, [siteActivitiesQuery.data, bioremediationDataQuery.data, isBioremediation]);
 
   // Only activities with an estimated quantity are tracked against it.
@@ -782,20 +765,23 @@ const SiteExpensesSection = ({
           )}
         </div>
         <div className='flex items-center gap-2 flex-wrap'>
-          <Select value={activityFilter} onValueChange={setActivityFilter}>
-            <SelectTrigger className='h-8 text-xs w-full sm:w-[220px]'>
-              <SelectValue placeholder='Filter by activity' />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='__all__' className='text-sm'>All activities</SelectItem>
-              <SelectItem value='__none__' className='text-sm'>Other / Unlinked</SelectItem>
-              {activityOptions.map((a) => (
-                <SelectItem key={a.key} value={a.key} className='text-sm'>
-                  {a.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Bioremediation's one activity leaves nothing to filter by. */}
+          {!isBioremediation && (
+            <Select value={activityFilter} onValueChange={setActivityFilter}>
+              <SelectTrigger className='h-8 text-xs w-full sm:w-[220px]'>
+                <SelectValue placeholder='Filter by activity' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='__all__' className='text-sm'>All activities</SelectItem>
+                <SelectItem value='__none__' className='text-sm'>Other / Unlinked</SelectItem>
+                {activityOptions.map((a) => (
+                  <SelectItem key={a.key} value={a.key} className='text-sm'>
+                    {a.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {headerActions}
           <CustomButton
             text='Add Expense'
