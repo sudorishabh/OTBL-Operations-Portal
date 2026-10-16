@@ -47,7 +47,7 @@ const AddRestorationVendor = ({ restoration, workOrderId }: Props) => {
   );
 
   const addMutation =
-    trpc.restorationMutation.addRestorationContractor.useMutation({
+    trpc.siteContractorMutation.addSiteContractor.useMutation({
       onSuccess: () => {
         toast.success("Vendor added");
         setIsOpen(false);

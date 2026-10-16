@@ -23,7 +23,7 @@ const RemoveRestorationVendor = ({
   const name = capitalFirstLetter(vendor.name);
 
   const removeMutation =
-    trpc.restorationMutation.removeRestorationContractor.useMutation({
+    trpc.siteContractorMutation.removeSiteContractor.useMutation({
       onSuccess: () => {
         toast.success("Vendor removed");
         utils.restorationQuery.getRestoration.invalidate({
