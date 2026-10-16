@@ -11,6 +11,7 @@ import { BioremediationSections } from "./bioremediation-sections";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Calculator, Receipt } from "lucide-react";
 
 const SiteDetailDialog = () => {
   const { getParam, deleteParams, setParam } = useHandleParams();
@@ -76,15 +77,17 @@ const SiteDetailDialog = () => {
         {woSiteId > 0 && <WoSiteOperatorsSection woSiteId={woSiteId} />}
 
         <Tabs defaultValue='estimate'>
-          <TabsList className='w-full grid grid-cols-2 h-9'>
+          <TabsList className='grid w-full sm:w-80 grid-cols-2 h-8'>
             <TabsTrigger
               value='estimate'
-              className='text-xs'>
+              className='gap-2 text-xs text-gray-800'>
+              <Calculator className='size-3.5 text-gray-500' />
               Estimate/sub-WO
             </TabsTrigger>
             <TabsTrigger
               value='expenses'
-              className='text-xs'>
+              className='gap-2 text-xs text-gray-800'>
+              <Receipt className='size-3.5 text-gray-500' />
               Expenses &amp; P&amp;L
             </TabsTrigger>
           </TabsList>
