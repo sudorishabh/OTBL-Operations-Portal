@@ -39,14 +39,6 @@ import { format } from "date-fns";
 import { capitalFirstLetter } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 
-export const EXPENSE_TYPE_LABELS: Record<string, string> = {
-  contractor_payment: "Contractor Payment",
-  labour: "Labour",
-  material: "Material",
-  equipment: "Equipment",
-  miscellaneous: "Miscellaneous",
-};
-
 export interface ActivityOption {
   key: string;
   label: string;
@@ -56,7 +48,6 @@ export interface ActivityOption {
 
 export interface Expense {
   id: number;
-  expense_type: string;
   contractor_id: number | null;
   contractor_name: string | null;
   activity_key: string | null;
@@ -313,7 +304,6 @@ const AddExpenseDialog = ({
 
     createExpenseMutation.mutate({
       work_order_site_id: workOrderSiteId,
-      expense_type: "miscellaneous",
       ...payload,
     });
   };

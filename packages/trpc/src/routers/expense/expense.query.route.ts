@@ -58,7 +58,6 @@ export const expenseQueryRouter = router({
             .select({
               id: workOrderSiteExpenseTable.id,
               work_order_site_id: workOrderSiteExpenseTable.work_order_site_id,
-              expense_type: workOrderSiteExpenseTable.expense_type,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
               contractor_name: contractorTable.name,
               activity_key: workOrderSiteExpenseTable.activity_key,
@@ -108,22 +107,11 @@ export const expenseQueryRouter = router({
         await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
 
         try {
-          const rows = await ctx.db
-            .select({
-              expense_type: workOrderSiteExpenseTable.expense_type,
-              total: sum(workOrderSiteExpenseTable.amount),
-            })
+          const [totalRow] = await ctx.db
+            .select({ total: sum(workOrderSiteExpenseTable.amount) })
             .from(workOrderSiteExpenseTable)
-            .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id))
-            .groupBy(workOrderSiteExpenseTable.expense_type);
-
-          const byType: Record<string, number> = {};
-          let grandTotal = 0;
-          for (const row of rows) {
-            const t = Number(row.total ?? 0);
-            byType[row.expense_type] = t;
-            grandTotal += t;
-          }
+            .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id));
+          const grandTotal = Number(totalRow?.total ?? 0);
 
           const exceededRows = await ctx.db
             .select({ total: sum(workOrderSiteExpenseTable.amount) })
@@ -207,7 +195,6 @@ export const expenseQueryRouter = router({
           }
 
           return {
-            byType,
             grandTotal,
             regularTotal,
             exceededTotal,
@@ -239,7 +226,6 @@ export const expenseQueryRouter = router({
               work_order_site_id: workOrderSiteExpenseTable.work_order_site_id,
               site_id: workOrderSiteTable.site_id,
               site_name: siteNameOrRestoration,
-              expense_type: workOrderSiteExpenseTable.expense_type,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
               contractor_name: contractorTable.name,
               activity_key: workOrderSiteExpenseTable.activity_key,

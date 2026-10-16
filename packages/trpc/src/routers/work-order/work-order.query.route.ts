@@ -768,16 +768,13 @@ export const workOrderQueryRouter = router({
         type SiteExpenseAgg = {
           total: number;
           exceededTotal: number;
-          byType: Record<string, number>;
           count: number;
         };
         const siteExpenseMap = new Map<number, SiteExpenseAgg>();
-        const woExpenseByType: Record<string, number> = {};
         let woExpenseTotal = 0;
         let woExceededTotal = 0;
         let expenseRows: {
           work_order_site_id: number;
-          expense_type: string;
           amount: string | null;
           is_exceeded: number | null;
         }[] = [];
@@ -787,7 +784,6 @@ export const workOrderQueryRouter = router({
             .select({
               work_order_site_id:
                 workOrderSiteExpenseTable.work_order_site_id,
-              expense_type: workOrderSiteExpenseTable.expense_type,
               amount: workOrderSiteExpenseTable.amount,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
             })
@@ -804,15 +800,12 @@ export const workOrderQueryRouter = router({
             const isExceeded = !!row.is_exceeded;
             woExpenseTotal += amt;
             if (isExceeded) woExceededTotal += amt;
-            woExpenseByType[row.expense_type] =
-              (woExpenseByType[row.expense_type] || 0) + amt;
 
             let siteAgg = siteExpenseMap.get(row.work_order_site_id);
             if (!siteAgg) {
               siteAgg = {
                 total: 0,
                 exceededTotal: 0,
-                byType: {},
                 count: 0,
               };
               siteExpenseMap.set(row.work_order_site_id, siteAgg);
@@ -820,8 +813,6 @@ export const workOrderQueryRouter = router({
             siteAgg.total += amt;
             if (isExceeded) siteAgg.exceededTotal += amt;
             siteAgg.count += 1;
-            siteAgg.byType[row.expense_type] =
-              (siteAgg.byType[row.expense_type] || 0) + amt;
           }
         }
 
@@ -838,7 +829,6 @@ export const workOrderQueryRouter = router({
             siteExpenseMap.get(woSite.wo_site_id) ?? {
               total: 0,
               exceededTotal: 0,
-              byType: {} as Record<string, number>,
               count: 0,
             };
 
@@ -864,7 +854,6 @@ export const workOrderQueryRouter = router({
             total_completion_amount: totalCompletionAmount.toString(),
             total_expenses: expAgg.total.toString(),
             total_exceeded_expenses: expAgg.exceededTotal.toString(),
-            expense_by_type: expAgg.byType,
             expense_entry_count: expAgg.count,
             created_at: woSite.created_at,
             users: sitesUsers[index],
@@ -900,7 +889,6 @@ export const workOrderQueryRouter = router({
             total_expenses: woExpenseTotal,
             exceeded_total: woExceededTotal,
             regular_total: woExpenseTotal - woExceededTotal,
-            by_type: woExpenseByType,
             expense_entry_count: expenseRows.length,
             total_income: totalIncomeFromSites,
             net_surplus: totalIncomeFromSites - woExpenseTotal,

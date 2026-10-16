@@ -596,16 +596,6 @@ export const workOrderSiteExpenseTable = mysqlTable(
     work_order_site_id: int("work_order_site_id")
       .notNull()
       .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
-    expense_type: varchar("expense_type", {
-      length: 50,
-      enum: [
-        "contractor_payment",
-        "labour",
-        "material",
-        "equipment",
-        "miscellaneous",
-      ],
-    }).notNull(),
     contractor_id: int("contractor_id").references(() => contractorTable.id, {
       onDelete: "set null",
     }),
@@ -629,7 +619,6 @@ export const workOrderSiteExpenseTable = mysqlTable(
   (table) => [
     index("expense_wo_site_idx").on(table.work_order_site_id),
     index("expense_contractor_idx").on(table.contractor_id),
-    index("expense_type_idx").on(table.expense_type),
     index("expense_date_idx").on(table.expense_date),
   ],
 );
