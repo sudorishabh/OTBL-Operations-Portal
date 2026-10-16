@@ -8,7 +8,6 @@ import SiteDetailsCard from "./site-details-card";
 import SiteActivities from "./site-activities";
 import SiteExpensesSection from "./site-expenses-section";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
-import CompletionExpenseSummary from "./completion-expense-summary";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -70,7 +69,7 @@ const SiteDetailDialog = () => {
         {woSiteId > 0 && <WoSiteOperatorsSection woSiteId={woSiteId} />}
 
         <Tabs defaultValue='estimate'>
-          <TabsList className='w-full grid grid-cols-3 h-9'>
+          <TabsList className='w-full grid grid-cols-2 h-9'>
             <TabsTrigger
               value='estimate'
               className='text-xs'>
@@ -80,11 +79,6 @@ const SiteDetailDialog = () => {
               value='expenses'
               className='text-xs'>
               Expenses &amp; P&amp;L
-            </TabsTrigger>
-            <TabsTrigger
-              value='completion'
-              className='text-xs'>
-              Completion
             </TabsTrigger>
           </TabsList>
 
@@ -112,18 +106,6 @@ const SiteDetailDialog = () => {
                 Loading site details...
               </div>
             )}
-          </TabsContent>
-
-          <TabsContent
-            value='completion'
-            className='mt-4'>
-            <SiteActivities
-              woSiteId={woSiteId}
-              processType={siteDetails?.process_type}
-              phase='completion'
-              showPhaseTabs={false}
-            />
-            <CompletionExpenseSummary woSiteId={woSiteId} />
           </TabsContent>
         </Tabs>
       </div>

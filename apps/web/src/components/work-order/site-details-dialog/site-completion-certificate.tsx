@@ -13,8 +13,7 @@ interface Props {
   woSiteId: number;
 }
 
-// The site's signed completion certificate. Completion data can't be saved
-// until one is uploaded here.
+// The site's signed completion certificate.
 const SiteCompletionCertificate = ({ woSiteId }: Props) => {
   const utils = trpc.useUtils();
   const [files, setFiles] = useState<File[]>([]);
@@ -90,7 +89,7 @@ const SiteCompletionCertificate = ({ woSiteId }: Props) => {
           </span>
         </div>
         <p className='mt-0.5 text-[10px] text-gray-400'>
-          Needed before the completion data can be saved.
+          The signed certificate for the finished site.
         </p>
       </div>
 
