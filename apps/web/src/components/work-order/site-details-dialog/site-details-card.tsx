@@ -31,6 +31,7 @@ import CustomButton from "@/components/shared/btn";
 import { useIsViewer } from "@/contexts/AuthContext";
 import { MobilizationDocuments, ZeroDaySample } from "./site-mobilization";
 import SiteSorAvailability from "./site-sor-availability";
+import SiteActivities from "./site-activities";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import SiteCompletionCertificate from "./site-completion-certificate";
 
@@ -243,6 +244,15 @@ const SiteDetailsCard = ({
           woSiteId={siteDetails.id}
           className='mt-4 pt-4 border-t border-gray-200/50'
         />
+      )}
+
+      {siteDetails?.id && (
+        <div className='mt-4 pt-4 border-t border-gray-200/50'>
+          <SiteActivities
+            woSiteId={siteDetails.id}
+            processType={siteDetails.process_type}
+          />
+        </div>
       )}
 
       {isBioremediation && siteDetails?.id && (

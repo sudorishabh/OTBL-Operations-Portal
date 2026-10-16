@@ -5,12 +5,9 @@ import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter, constants } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import SiteDetailsCard from "./site-details-card";
-import SiteActivities from "./site-activities";
 import SiteExpensesSection from "./site-expenses-section";
 import { BioremediationSections } from "./bioremediation-sections";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Calculator, Receipt } from "lucide-react";
 
 const SiteDetailDialog = () => {
   const { getParam, deleteParams, setParam } = useHandleParams();
@@ -73,53 +70,21 @@ const SiteDetailDialog = () => {
           }
         />
 
-        <Tabs defaultValue='estimate'>
-          <TabsList className='grid w-full sm:w-64 grid-cols-2 h-8'>
-            <TabsTrigger
-              value='estimate'
-              className='gap-2 text-xs text-gray-800'>
-              <Calculator className='size-3.5 text-gray-500' />
-              Estimate
-            </TabsTrigger>
-            <TabsTrigger
-              value='expenses'
-              className='gap-2 text-xs text-gray-800'>
-              <Receipt className='size-3.5 text-gray-500' />
-              Expenses
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent
-            value='estimate'
-            className='mt-4'>
-            <SiteActivities
+        {woSiteId > 0 && siteDetails ? (
+          <div className='space-y-6'>
+            <SiteExpensesSection
               woSiteId={woSiteId}
               processType={siteDetails?.process_type}
-              phase='estimate_sub-wo'
-              showPhaseTabs={false}
             />
-          </TabsContent>
-
-          <TabsContent
-            value='expenses'
-            className='mt-4'>
-            {woSiteId > 0 && siteDetails ? (
-              <div className='space-y-6'>
-                <SiteExpensesSection
-                  woSiteId={woSiteId}
-                  processType={siteDetails?.process_type}
-                />
-                {isBioremediation && (
-                  <BioremediationSections woSiteId={woSiteId} />
-                )}
-              </div>
-            ) : (
-              <div className='text-center py-8 text-gray-400 text-sm'>
-                Loading site details...
-              </div>
+            {isBioremediation && (
+              <BioremediationSections woSiteId={woSiteId} />
             )}
-          </TabsContent>
-        </Tabs>
+          </div>
+        ) : (
+          <div className='text-center py-8 text-gray-400 text-sm'>
+            Loading site details...
+          </div>
+        )}
       </div>
 
       {isOpenDialog && woSiteId > 0 && (
