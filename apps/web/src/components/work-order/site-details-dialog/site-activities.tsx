@@ -27,12 +27,7 @@ import {
 } from "@/components/ui/table";
 import CustomButton from "@/components/shared/btn";
 
-type DocType =
-  | "sub_wo"
-  | "estimate"
-  | "completion"
-  | "estimate_sub-wo"
-  | "completion_certificate";
+type DocType = "sub_wo" | "estimate" | "completion" | "estimate_sub-wo";
 
 const PHASES: DocType[] = ["estimate_sub-wo", "completion"];
 const PHASE_LABELS: Record<string, string> = {
@@ -40,7 +35,6 @@ const PHASE_LABELS: Record<string, string> = {
   estimate: "Estimate",
   completion: "Completion",
   "estimate_sub-wo": "Estimate / Sub-WO",
-  completion_certificate: "Completion Certificate",
 };
 
 const formatName = (name: string) => {
@@ -327,8 +321,11 @@ const PhaseForm = ({
         return;
       }
     } else if (phase === "completion") {
+      // The certificate is uploaded from the site information card.
       if (documentCount("completion_certificate") === 0) {
-        toast.error("Please upload Completion Certificate.");
+        toast.error(
+          "Upload the completion certificate in Site Information first.",
+        );
         return;
       }
     } else if (documentCount(phase) === 0) {
@@ -416,39 +413,34 @@ const PhaseForm = ({
 
   return (
     <div className='space-y-5'>
-      <div className='rounded-xl border border-slate-200 bg-gray-100/50 p-4'>
-        <div className='mb-3'>
-          <h4 className='text-[11px] font-semibold text-slate-600 uppercase tracking-wider'>
-            Required Documents
-          </h4>
-        </div>
+      {phase !== "completion" && (
+        <div className='rounded-xl border border-slate-200 bg-gray-100/50 p-4'>
+          <div className='mb-3'>
+            <h4 className='text-[11px] font-semibold text-slate-600 uppercase tracking-wider'>
+              Required Documents
+            </h4>
+          </div>
 
-        {phase === "estimate_sub-wo" ? (
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-            <div className='space-y-1.5'>
-              <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
-                Sub WO
-              </span>
-              {renderDocumentSection("sub_wo")}
+          {phase === "estimate_sub-wo" ? (
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+              <div className='space-y-1.5'>
+                <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
+                  Sub WO
+                </span>
+                {renderDocumentSection("sub_wo")}
+              </div>
+              <div className='space-y-1.5'>
+                <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
+                  Estimate
+                </span>
+                {renderDocumentSection("estimate")}
+              </div>
             </div>
-            <div className='space-y-1.5'>
-              <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
-                Estimate
-              </span>
-              {renderDocumentSection("estimate")}
-            </div>
-          </div>
-        ) : phase === "completion" ? (
-          <div className='space-y-1.5'>
-            <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
-              Completion Certificate
-            </span>
-            {renderDocumentSection("completion_certificate")}
-          </div>
-        ) : (
-          renderDocumentSection(phase)
-        )}
-      </div>
+          ) : (
+            renderDocumentSection(phase)
+          )}
+        </div>
+      )}
 
           <div className='rounded-xl border bg-gray-100/50 overflow-hidden'>
             <div className='overflow-x-auto'>

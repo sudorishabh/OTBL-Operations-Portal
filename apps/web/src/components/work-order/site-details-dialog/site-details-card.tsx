@@ -31,6 +31,7 @@ import DeferredFilePicker from "@/components/shared/deferred-file-picker";
 import CustomButton from "@/components/shared/btn";
 import { useIsViewer } from "@/contexts/AuthContext";
 import SiteMobilization from "./site-mobilization";
+import SiteCompletionCertificate from "./site-completion-certificate";
 
 const InfoCard = ({
   icon: Icon,
@@ -423,6 +424,12 @@ const SiteDetailsCard = ({
           </div>
         )}
       </div>
+
+      {siteDetails?.id && (
+        <div className='mt-4 pt-4 border-t border-gray-200/50'>
+          <SiteCompletionCertificate woSiteId={siteDetails.id} />
+        </div>
+      )}
     </div>
   );
 };
