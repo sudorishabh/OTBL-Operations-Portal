@@ -337,7 +337,7 @@ const SiteExpensesSection = ({
     const documentCount = record.documents.length;
     const isOpen = expandedId === record.id;
     const toggle = () => setExpandedId(isOpen ? null : record.id);
-    const columnCount = showVendor ? 8 : 7;
+    const columnCount = showVendor ? 9 : 8;
 
     return (
       <React.Fragment key={record.id}>
@@ -401,29 +401,23 @@ const SiteExpensesSection = ({
               {record.contractorName ?? <span className='text-gray-300'>—</span>}
             </TableCell>
           )}
-          {/* The invoice number with its documents beside it. */}
           <TableCell className={cn(cellClass, "pl-8 sm:pl-8 text-xs text-gray-600")}>
-            <div className='flex items-center gap-1.5'>
-              {record.invoiceNumber ? (
-                <span className='truncate'>{record.invoiceNumber}</span>
-              ) : (
-                documentCount === 0 && <span className='text-gray-300'>—</span>
-              )}
-              {documentCount > 0 && (
-                <DocumentsMenu documents={record.documents}>
-                  <button
-                    type='button'
-                    aria-label={documentCount === 1 ? "View document" : `View ${documentCount} documents`}
-                    title={documentCount === 1 ? "View document" : `View ${documentCount} documents`}
-                    className='inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-blue-600 transition-colors hover:bg-blue-50'>
-                    <Paperclip className='size-3.5' />
-                    {documentCount > 1 && (
-                      <span className='text-[11px] font-medium tabular-nums'>{documentCount}</span>
-                    )}
-                  </button>
-                </DocumentsMenu>
-              )}
-            </div>
+            {record.invoiceNumber ?? <span className='text-gray-300'>—</span>}
+          </TableCell>
+          <TableCell className={cn(cellClass, "whitespace-nowrap text-xs")}>
+            {documentCount > 0 ? (
+              <DocumentsMenu documents={record.documents}>
+                <button
+                  type='button'
+                  title={documentCount === 1 ? "Open the document" : "Choose a document to open"}
+                  className='inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium text-blue-600 transition-colors hover:bg-blue-50'>
+                  <Paperclip className='size-3.5' />
+                  {documentCount === 1 ? "1 file" : `${documentCount} files`}
+                </button>
+              </DocumentsMenu>
+            ) : (
+              <span className='text-gray-300'>—</span>
+            )}
           </TableCell>
           <TableCell className={cn(cellClass, "whitespace-nowrap text-right")}>
             <span
@@ -540,7 +534,8 @@ const SiteExpensesSection = ({
           <TableHead className={headClass}>Expense</TableHead>
           <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
           {showVendor && <TableHead className={headClass}>Contractor</TableHead>}
-          <TableHead className={cn(headClass, "w-[170px] pl-8 sm:pl-8")}>Invoice</TableHead>
+          <TableHead className={cn(headClass, "w-[150px] pl-8 sm:pl-8")}>Invoice</TableHead>
+          <TableHead className={cn(headClass, "w-[100px]")}>Documents</TableHead>
           <TableHead className={cn(headClass, "w-[130px] text-right")}>Amount</TableHead>
           <TableHead className={cn(headClass, "w-px")}>
             <span className='sr-only'>Actions</span>
