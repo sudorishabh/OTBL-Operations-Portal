@@ -48,6 +48,7 @@ const createSiteDocumentSchema = z.object({
     "completion",
     "measurement_sheet",
     "completion_certificate",
+    "mobilization",
   ]),
 });
 
