@@ -8,8 +8,8 @@ import useHandleParams from "@/hooks/useHandleParams";
 import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
-import AddRestorationVendor from "./add-restoration-vendor";
-import RemoveRestorationVendor from "./remove-restoration-vendor";
+import AddSiteVendor from "../site-details-dialog/add-site-vendor";
+import RemoveSiteVendor from "../site-details-dialog/remove-site-vendor";
 import RestorationSummary from "./restoration-summary";
 import RestorationCompletion from "./restoration-completion";
 import RestorationRatesSection from "./restoration-rates-section";
@@ -105,17 +105,13 @@ const RestorationDialog = ({
           contractors={restoration.contractors}
           showEstimateTable={false}
           headerActions={
-            <AddRestorationVendor
-              restoration={restoration}
-              workOrderId={workOrder.id}
+            <AddSiteVendor
+              woSiteId={restoration.id}
+              contractors={restoration.contractors}
             />
           }
           emptyVendorActions={(vendor) => (
-            <RemoveRestorationVendor
-              restorationId={restoration.id}
-              workOrderId={workOrder.id}
-              vendor={vendor}
-            />
+            <RemoveSiteVendor woSiteId={restoration.id} vendor={vendor} />
           )}
         />
       </div>

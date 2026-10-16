@@ -15,18 +15,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import VendorFormDialog from "@/components/vendor/vendor-form-dialog";
-import type { Restoration } from "./restoration-section";
 
 type Vendor = { id: number; name: string; status: string };
 
 interface Props {
-  restoration: Restoration;
-  workOrderId: number;
+  woSiteId: number;
+  // The vendors the site already has.
+  contractors: { id: number }[];
 }
 
-// Adds a vendor to the restoration so expenses can be recorded under it:
-// an existing vendor, or a new one created on the spot. Managers only.
-const AddRestorationVendor = ({ restoration, workOrderId }: Props) => {
+// Adds a vendor to a restoration or bioremediation site so expenses can be
+// recorded under it: an existing vendor, or a new one created on the spot.
+// Managers only.
+const AddSiteVendor = ({ woSiteId, contractors }: Props) => {
   const isManager = useIsManager();
   const utils = trpc.useUtils();
   const [isOpen, setIsOpen] = useState(false);
@@ -41,7 +42,7 @@ const AddRestorationVendor = ({ restoration, workOrderId }: Props) => {
     {},
     { enabled: isOpen },
   );
-  const addedIds = new Set(restoration.contractors.map((c) => c.id));
+  const addedIds = new Set(contractors.map((c) => c.id));
   const vendors = ((vendorsQuery.data?.contractors ?? []) as Vendor[]).filter(
     (vendor) => vendor.status === "active" && !addedIds.has(vendor.id),
   );
@@ -51,16 +52,17 @@ const AddRestorationVendor = ({ restoration, workOrderId }: Props) => {
       onSuccess: () => {
         toast.success("Vendor added");
         setIsOpen(false);
-        utils.restorationQuery.getRestoration.invalidate({
-          work_order_id: workOrderId,
+        utils.siteContractorQuery.getSiteContractors.invalidate({
+          work_order_site_id: woSiteId,
         });
+        utils.restorationQuery.getRestoration.invalidate();
       },
       onError: (error: { message: string }) => toast.error(error.message),
     });
 
   const add = (vendorId: number) =>
     addMutation.mutate({
-      work_order_site_id: restoration.id,
+      work_order_site_id: woSiteId,
       contractor_id: vendorId,
     });
 
@@ -140,7 +142,7 @@ const AddRestorationVendor = ({ restoration, workOrderId }: Props) => {
         </div>
       </DialogWindow>
 
-      {/* A vendor created here is added to the restoration right away. */}
+      {/* A vendor created here is added to the site right away. */}
       <VendorFormDialog
         open={isCreating}
         onOpenChange={(open) => {
@@ -155,4 +157,4 @@ const AddRestorationVendor = ({ restoration, workOrderId }: Props) => {
   );
 };
 
-export default AddRestorationVendor;
+export default AddSiteVendor;

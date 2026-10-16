@@ -7,17 +7,13 @@ import { trpc } from "@/lib/trpc";
 import { useIsManager } from "@/contexts/AuthContext";
 
 interface Props {
-  restorationId: number;
-  workOrderId: number;
+  woSiteId: number;
   vendor: { id: number; name: string };
 }
 
-// Takes a vendor with no expenses off the restoration. Managers only.
-const RemoveRestorationVendor = ({
-  restorationId,
-  workOrderId,
-  vendor,
-}: Props) => {
+// Takes a vendor with no expenses off a restoration or bioremediation site.
+// Managers only.
+const RemoveSiteVendor = ({ woSiteId, vendor }: Props) => {
   const isManager = useIsManager();
   const utils = trpc.useUtils();
   const name = capitalFirstLetter(vendor.name);
@@ -26,9 +22,10 @@ const RemoveRestorationVendor = ({
     trpc.siteContractorMutation.removeSiteContractor.useMutation({
       onSuccess: () => {
         toast.success("Vendor removed");
-        utils.restorationQuery.getRestoration.invalidate({
-          work_order_id: workOrderId,
+        utils.siteContractorQuery.getSiteContractors.invalidate({
+          work_order_site_id: woSiteId,
         });
+        utils.restorationQuery.getRestoration.invalidate();
       },
       onError: (error: { message: string }) => toast.error(error.message),
     });
@@ -43,7 +40,7 @@ const RemoveRestorationVendor = ({
       disabled={removeMutation.isPending}
       onClick={() =>
         removeMutation.mutate({
-          work_order_site_id: restorationId,
+          work_order_site_id: woSiteId,
           contractor_id: vendor.id,
         })
       }
@@ -57,4 +54,4 @@ const RemoveRestorationVendor = ({
   );
 };
 
-export default RemoveRestorationVendor;
+export default RemoveSiteVendor;
