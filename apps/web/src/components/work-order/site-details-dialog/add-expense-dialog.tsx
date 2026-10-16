@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import { trpc } from "@/lib/trpc";
 import {
   Dialog,
@@ -30,8 +30,10 @@ import {
   Save,
   Paperclip,
   AlertTriangle,
+  Check,
   HardHat,
   ReceiptIndianRupee,
+  Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
@@ -82,6 +84,17 @@ const NOT_UNDER = "none";
 const toDateInput = (value: string | Date = new Date()) =>
   format(new Date(value), "yyyy-MM-dd");
 
+// A search box appears once a site has this many vendors.
+const VENDOR_SEARCH_FROM = 7;
+
+// "Sharma ext" -> "SE"; a single word gives its first two letters.
+const initialsOf = (name: string) => {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const letters =
+    words.length > 1 ? `${words[0]![0]}${words[1]![0]}` : (words[0] ?? "").slice(0, 2);
+  return letters.toUpperCase();
+};
+
 const formatQty = (value: number) =>
   new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
 
@@ -106,6 +119,8 @@ const AddExpenseDialog = ({
   const [contractorId, setContractorId] = useState<string>("");
   // A contractor id, NOT_UNDER, or "" until chosen.
   const [underId, setUnderId] = useState("");
+  const [vendorSearch, setVendorSearch] = useState("");
+  const underGroupName = useId();
   const [selectedActivityKey, setSelectedActivityKey] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
   const [description, setDescription] = useState("");
@@ -184,6 +199,7 @@ const AddExpenseDialog = ({
     setNewContractorName("");
     setNewContractorContact("");
     setNewContractorGst("");
+    setVendorSearch("");
   }, [editingExpense, open]);
 
   const selectedActivity = activities.find((a) => a.key === selectedActivityKey);
@@ -324,56 +340,63 @@ const AddExpenseDialog = ({
     updateExpenseMutation.isPending ||
     isUploadingDoc;
 
-  // One "Expense under" choice, drawn as a radio row.
+  const vendorQuery = vendorSearch.trim().toLowerCase();
+  const shownVendors = vendorQuery
+    ? siteVendors.filter((c) => c.name.toLowerCase().includes(vendorQuery))
+    : siteVendors;
+
+  // One "Expense under" choice. A real radio underneath, so arrow keys move
+  // between the choices.
   const renderUnderOption = ({
     value,
     label,
-    Icon,
+    badge,
     hint,
-    bordered = false,
+    tile = false,
   }: {
     value: string;
     label: string;
-    Icon: React.ElementType;
+    badge: React.ReactNode;
     hint?: string;
-    bordered?: boolean;
+    tile?: boolean;
   }) => {
     const checked = underId === value;
     return (
-      <button
+      <label
         key={value}
-        type='button'
-        role='radio'
-        aria-checked={checked}
-        onClick={() => setUnderId(value)}
         className={cn(
-          "flex w-full min-w-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors",
+          "flex min-w-0 cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-300",
           checked
-            ? "bg-blue-50 font-medium text-blue-700"
+            ? "bg-blue-50 font-medium text-blue-800"
             : "text-gray-700 hover:bg-gray-50",
-          bordered &&
-            cn("rounded-lg border", checked ? "border-blue-200" : "border-gray-200"),
+          tile &&
+            cn(
+              "rounded-lg border",
+              checked ? "border-blue-200" : "border-dashed border-gray-300",
+            ),
         )}>
-        <span
-          className={cn(
-            "flex size-4 shrink-0 items-center justify-center rounded-full border",
-            checked ? "border-blue-600" : "border-gray-300",
-          )}>
-          {checked && <span className='size-2 rounded-full bg-blue-600' />}
-        </span>
-        <Icon
-          className={cn(
-            "size-3.5 shrink-0",
-            checked ? "text-blue-600" : "text-gray-400",
-          )}
+        <input
+          type='radio'
+          name={underGroupName}
+          value={value}
+          checked={checked}
+          onChange={() => setUnderId(value)}
+          className='sr-only'
         />
-        <span className='truncate'>{label}</span>
+        <span
+          aria-hidden
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-colors",
+            checked ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600",
+          )}>
+          {badge}
+        </span>
+        <span className='min-w-0 flex-1 truncate'>{label}</span>
         {hint && (
-          <span className='ml-auto shrink-0 text-xs font-normal text-gray-400'>
-            {hint}
-          </span>
+          <span className='shrink-0 text-xs font-normal text-gray-400'>{hint}</span>
         )}
-      </button>
+        {checked && <Check className='size-4 shrink-0 text-blue-600' />}
+      </label>
     );
   };
 
@@ -419,36 +442,53 @@ const AddExpenseDialog = ({
         <div className='flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0'>
 
           {siteVendors.length > 0 && (
-            <div className='space-y-1.5'>
-              <Label className='text-xs font-medium text-gray-700'>
+            <fieldset className='min-w-0'>
+              <legend className='mb-1.5 text-xs font-medium text-gray-700'>
                 Expense under <span className='text-red-500'>*</span>
-              </Label>
-              <div
-                role='radiogroup'
-                aria-label='Expense under'
-                className='space-y-2'>
-                {/* Two columns that scroll inside a fixed height, however
-                    many vendors there are. */}
-                <div className='grid max-h-40 grid-cols-1 gap-0.5 overflow-y-auto rounded-lg border border-gray-200 p-1 sm:grid-cols-2'>
-                  {siteVendors.map((c) =>
-                    renderUnderOption({
-                      value: String(c.id),
-                      label: capitalFirstLetter(c.name),
-                      Icon: HardHat,
-                    }),
+              </legend>
+
+              <div className='space-y-2'>
+                <div className='overflow-hidden rounded-lg border border-gray-200'>
+                  {siteVendors.length >= VENDOR_SEARCH_FROM && (
+                    <div className='relative border-b border-gray-100'>
+                      <Search className='pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-gray-400' />
+                      <input
+                        type='search'
+                        value={vendorSearch}
+                        onChange={(e) => setVendorSearch(e.target.value)}
+                        placeholder='Find a vendor'
+                        aria-label='Find a vendor'
+                        className='h-9 w-full bg-transparent pl-8 pr-3 text-sm outline-none placeholder:text-gray-400 focus:bg-gray-50/60'
+                      />
+                    </div>
                   )}
+                  {/* Two columns that scroll inside a fixed height, however
+                      many vendors there are. */}
+                  <div className='grid max-h-44 grid-cols-1 gap-0.5 overflow-y-auto p-1 sm:grid-cols-2'>
+                    {shownVendors.map((c) =>
+                      renderUnderOption({
+                        value: String(c.id),
+                        label: capitalFirstLetter(c.name),
+                        badge: initialsOf(c.name),
+                      }),
+                    )}
+                    {shownVendors.length === 0 && (
+                      <p className='col-span-full px-2 py-2 text-xs text-gray-400'>
+                        No vendor matches &ldquo;{vendorSearch.trim()}&rdquo;.
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className='sm:w-1/2'>
-                  {renderUnderOption({
-                    value: NOT_UNDER,
-                    label: "Miscellaneous",
-                    Icon: ReceiptIndianRupee,
-                    hint: "Not under a vendor",
-                    bordered: true,
-                  })}
-                </div>
+
+                {renderUnderOption({
+                  value: NOT_UNDER,
+                  label: "Miscellaneous",
+                  badge: <ReceiptIndianRupee className='size-3.5' />,
+                  hint: "Not under any vendor",
+                  tile: true,
+                })}
               </div>
-            </div>
+            </fieldset>
           )}
 
           {activities.length > 0 && (
