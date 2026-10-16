@@ -1,13 +1,6 @@
 import { Button } from "@/components/ui/button";
 import DialogWindow from "@/components/shared/dialog-window";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form } from "@/components/ui/form";
 import { trpc } from "@/lib/trpc";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { workOrderSchemas } from "@pkg/schema";
@@ -30,7 +23,6 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Checkbox } from "@/components/ui/checkbox";
 import toast from "react-hot-toast";
 import useHandleParams from "@/hooks/useHandleParams";
 import CustomButton from "@/components/shared/btn";
@@ -179,6 +171,24 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
 
   const createSiteMutation = trpc.siteMutation.createSite.useMutation();
 
+  // A site only does bioremediation, so it takes the work order's
+  // bioremediation activities without the user picking them.
+  const bioremediationActivities = useMemo(() => {
+    const bioremediation = new Set(
+      allActivityOptions
+        .filter((activity) => activity.isBioremediation)
+        .map((activity) => activity.value),
+    );
+
+    return (scheduleOfRates ?? []).flatMap((sor: any) => {
+      const name =
+        typeof sor.activity === "object" ? sor.activity.name : sor.activity;
+      return bioremediation.has(name)
+        ? [{ name, unit: sor.unit, schedule_of_rate_id: sor.id }]
+        : [];
+    });
+  }, [scheduleOfRates]);
+
   const onSubmit = async (data: z.infer<typeof createWorkOrderSiteSchema>) => {
     try {
       if (siteChoice === "new" && data.new_site) {
@@ -200,9 +210,10 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
         return;
       }
 
-      console.log(data);
-
-      addSiteMutation.mutate(data);
+      addSiteMutation.mutate({
+        ...data,
+        selected_activities: bioremediationActivities,
+      });
     } catch (error) {
       console.error(error);
       toast.error("An error occurred");
@@ -210,35 +221,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
   };
 
   const selectedSiteId = watch("site_id");
-
-  const activityMetadataMap = useMemo(() => {
-    const map = new Map<string, { unit: string; id: number }>();
-    scheduleOfRates?.forEach((sor: any) => {
-      const activityName =
-        typeof sor.activity === "object" ? sor.activity.name : sor.activity;
-      map.set(activityName, { unit: sor.unit, id: sor.id });
-    });
-    return map;
-  }, [scheduleOfRates]);
-
-  // The work order's bioremediation activities that have a schedule of rates.
-  const activityOptions = useMemo(() => {
-    if (!scheduleOfRates) return [];
-
-    const sorActivities = scheduleOfRates.map((sor: any) =>
-      typeof sor.activity === "object" ? sor.activity.name : sor.activity,
-    );
-
-    return allActivityOptions
-      .filter(
-        (activity) =>
-          activity.isBioremediation && sorActivities.includes(activity.value),
-      )
-      .map((activity) => ({
-        id: activity.value,
-        label: activity.label,
-      }));
-  }, [scheduleOfRates]);
 
   return (
     <DialogWindow
@@ -473,85 +455,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                     </div>
                   </div>
                 )}
-
-                <div className='space-y-4 border border-slate-100 rounded-2xl p-6 bg-slate-50/30'>
-                  <div className='flex items-center justify-between'>
-                    <FormLabel className='text-xs font-bold text-slate-500 uppercase tracking-widest'>
-                      Site Activities
-                    </FormLabel>
-                    <div className='px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[10px] font-bold text-slate-400 uppercase'>
-                      {activityOptions.length} available
-                    </div>
-                  </div>
-
-                  {activityOptions.length === 0 ? (
-                    <div className='flex flex-col items-center justify-center p-8 bg-white border-2 border-dashed border-slate-100 rounded-2xl'>
-                      <p className='text-sm text-slate-400 italic font-medium'>
-                        No activities found for this process.
-                      </p>
-                    </div>
-                  ) : (
-                    <FormField
-                      control={form.control}
-                      name='selected_activities'
-                      render={({ field }) => (
-                        <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                          {activityOptions.map((activity) => {
-                            const isChecked = field.value?.some(
-                              (a) => a.name === activity.id,
-                            );
-                            return (
-                              <FormItem
-                                key={activity.id}
-                                className={`flex flex-row items-stretch space-x-3 space-y-0 p-3 rounded-xl border transition-all duration-200 ${
-                                  isChecked
-                                    ? "bg-blue-50/30 border-blue-600 shadow-sm ring-1 ring-blue-600/10"
-                                    : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/50"
-                                }`}>
-                                <div className='flex items-center'>
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={isChecked}
-                                      onCheckedChange={(checked) => {
-                                        const current = field.value || [];
-                                        if (checked) {
-                                          field.onChange([
-                                            ...current,
-                                            {
-                                              name: activity.id,
-                                              unit:
-                                                activityMetadataMap.get(
-                                                  activity.id,
-                                                )?.unit || "",
-                                              schedule_of_rate_id:
-                                                activityMetadataMap.get(
-                                                  activity.id,
-                                                )?.id || 0,
-                                            },
-                                          ]);
-                                        } else {
-                                          field.onChange(
-                                            current.filter(
-                                              (a) => a.name !== activity.id,
-                                            ),
-                                          );
-                                        }
-                                      }}
-                                      className='transition-all data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600'
-                                    />
-                                  </FormControl>
-                                </div>
-                                <FormLabel className='text-sm font-bold text-slate-600 cursor-pointer flex-1 py-1 leading-tight select-none flex items-center h-full m-0'>
-                                  {activity.label}
-                                </FormLabel>
-                              </FormItem>
-                            );
-                          })}
-                        </div>
-                      )}
-                    />
-                  )}
-                </div>
 
                 <div className='flex justify-end items-center gap-4 pt-6 border-t border-slate-100'>
                   <Button
