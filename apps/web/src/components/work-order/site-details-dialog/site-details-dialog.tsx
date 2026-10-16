@@ -28,9 +28,13 @@ const SiteDetailDialog = () => {
   const isBioremediation =
     siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
 
-  const dialogTitle = siteDetails?.site?.name
+  const processLabel = constants.processTypeOptions.find(
+    (option) => option.value === siteDetails?.process_type,
+  )?.label;
+  const siteName = siteDetails?.site?.name
     ? capitalFirstLetter(siteDetails.site.name)
     : "Site Details";
+  const dialogTitle = processLabel ? `${siteName} · ${processLabel}` : siteName;
 
   const dialogDescription = siteDetails?.work_order
     ? `${siteDetails.work_order.code} - ${siteDetails.work_order.title}`

@@ -3,7 +3,6 @@ import React from "react";
 import {
   Calendar,
   MapPin,
-  Briefcase,
   FileText,
   Upload,
   Trash2,
@@ -33,26 +32,6 @@ import { useIsViewer } from "@/contexts/AuthContext";
 import { MobilizationDocuments, ZeroDaySample } from "./site-mobilization";
 import SiteSorAvailability from "./site-sor-availability";
 import SiteCompletionCertificate from "./site-completion-certificate";
-
-const InfoCard = ({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-}) => (
-  <div className='flex items-start gap-2.5'>
-    <Icon className='w-3.5 h-3.5 text-gray-400 mt-0.5' />
-    <div>
-      <p className='text-[10px] text-gray-400 uppercase tracking-wide'>
-        {label}
-      </p>
-      <p className='text-gray-700 text-xs font-medium'>{value}</p>
-    </div>
-  </div>
-);
 
 interface WorkOrderSiteDetails {
   id: number;
@@ -192,12 +171,15 @@ const SiteDetailsCard = ({
     }
   };
 
-  const processLabel =
-    constants.processTypeOptions.find(
-      (opt) => opt.value === siteDetails?.process_type,
-    )?.label ||
-    siteDetails?.process_type ||
-    "N/A";
+  const formatDate = (value: string | undefined) =>
+    value ? format(new Date(value), "dd MMM yyyy") : "N/A";
+  const address = [
+    siteDetails?.site?.address,
+    siteDetails?.site?.city,
+    siteDetails?.site?.state,
+  ]
+    .map((part) => part ?? "N/A")
+    .join(", ");
   const isBioremediation =
     siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
   // A site completes once its expenses use up the planned oil zapper; only
@@ -209,10 +191,24 @@ const SiteDetailsCard = ({
 
   return (
     <div className='bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-5 border'>
-      <div className='flex flex-wrap items-center justify-between mb-4 gap-2'>
-        <h3 className='text-xs font-medium text-gray-500 uppercase tracking-wide'>
-          Site Information
-        </h3>
+      <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
+        <div className='flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-2 text-xs text-gray-700'>
+          <h3 className='text-xs font-medium text-gray-500 uppercase tracking-wide'>
+            Site Information
+          </h3>
+          <span className='inline-flex items-center gap-1.5 whitespace-nowrap font-medium'>
+            <Calendar className='w-3.5 h-3.5 text-gray-400' />
+            {formatDate(siteDetails?.date)}
+            <span className='text-gray-400'>→</span>
+            {formatDate(siteDetails?.end_date)}
+          </span>
+          <span
+            className='inline-flex min-w-0 max-w-full items-center gap-1.5'
+            title={address}>
+            <MapPin className='w-3.5 h-3.5 shrink-0 text-gray-400' />
+            <span className='truncate'>{address}</span>
+          </span>
+        </div>
         <div className='flex items-center gap-2'>
           {operatorUploadsCount > 0 && onOpenOperatorUploads && (
             <button
@@ -232,48 +228,6 @@ const SiteDetailsCard = ({
             className={`text-[10px] border ${getStatusColor(status)}`}>
             {capitalFirstLetter(status)}
           </Badge>
-        </div>
-      </div>
-
-      <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-        <InfoCard
-          icon={Briefcase}
-          label='Process Type'
-          value={processLabel}
-        />
-        <InfoCard
-          icon={Calendar}
-          label='Start Date'
-          value={
-            siteDetails?.date
-              ? format(new Date(siteDetails.date), "dd MMM yyyy")
-              : "N/A"
-          }
-        />
-        <InfoCard
-          icon={Calendar}
-          label='End Date'
-          value={
-            siteDetails?.end_date
-              ? format(new Date(siteDetails.end_date), "dd MMM yyyy")
-              : "N/A"
-          }
-        />
-      </div>
-
-      <div className='mt-4 pt-3 border-t border-gray-200/50'>
-        <div className='flex items-start gap-2.5'>
-          <MapPin className='w-3.5 h-3.5 text-gray-400 mt-0.5' />
-          <div>
-            <p className='text-[10px] text-gray-400 uppercase tracking-wide'>
-              Address
-            </p>
-            <p className='text-xs text-gray-700'>
-              {siteDetails?.site?.address ?? "N/A"},{" "}
-              {siteDetails?.site?.city ?? "N/A"},{" "}
-              {siteDetails?.site?.state ?? "N/A"}
-            </p>
-          </div>
         </div>
       </div>
 
