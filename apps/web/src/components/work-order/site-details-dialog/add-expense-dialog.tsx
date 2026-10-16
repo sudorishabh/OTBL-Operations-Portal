@@ -80,6 +80,9 @@ interface Props {
   defaultContractorId?: number | null;
   // A new expense starts as miscellaneous, under no vendor.
   startsMiscellaneous?: boolean;
+  // The one activity every expense is recorded against, so none is picked:
+  // bioremediation's oil zapper.
+  fixedActivityKey?: string;
 }
 
 // "Expense under" value for an expense under none of the contractors.
@@ -113,6 +116,7 @@ const AddExpenseDialog = ({
   contractors,
   defaultContractorId = null,
   startsMiscellaneous = false,
+  fixedActivityKey,
 }: Props) => {
   const utils = trpc.useUtils();
 
@@ -178,7 +182,10 @@ const AddExpenseDialog = ({
       setUnderId(
         under ? String(under.id) : siteVendors.length > 0 ? NOT_UNDER : "",
       );
-      setSelectedActivityKey(editingExpense.activity_key ?? "");
+      // An older expense keeps the activity it was recorded against.
+      setSelectedActivityKey(
+        editingExpense.activity_key ?? fixedActivityKey ?? "",
+      );
       setQuantity(editingExpense.quantity ?? "");
       setTitle(editingExpense.title);
       setStartDate(toDateInput(editingExpense.start_date));
@@ -199,7 +206,7 @@ const AddExpenseDialog = ({
               ? String(siteVendors[0]!.id)
               : "",
       );
-      setSelectedActivityKey("");
+      setSelectedActivityKey(fixedActivityKey ?? "");
       setQuantity("");
       setTitle("");
       setStartDate(toDateInput());
@@ -234,6 +241,15 @@ const AddExpenseDialog = ({
     !isExceededMode && canEnterQuantity && !!quantity &&
     remainingQty !== null && enteredQty > remainingQty;
   const qtyUnit = selectedActivity?.unit ?? "Nos";
+  const fixedActivityLabel =
+    activities.find((a) => a.key === fixedActivityKey)?.label ?? null;
+  // What's left of the activity's quantity, or of the fixed activity itself.
+  const describeLeft = (amount: string, willBe = false) => {
+    const left = willBe ? "will be left" : "left";
+    return fixedActivityLabel
+      ? `${amount} of ${fixedActivityLabel} ${left}`
+      : `${amount} ${left} on this activity`;
+  };
 
   const contractorsQuery = trpc.contractorQuery.getContractors.useQuery(
     {},
@@ -321,7 +337,7 @@ const AddExpenseDialog = ({
       const q = parseFloat(quantity);
       if (isNaN(q) || q < 0) { toast.error("Quantity must be a positive number"); return; }
       if (!isExceededMode && remainingQty !== null && q > remainingQty) {
-        toast.error(`Only ${formatQty(remainingQty)} ${qtyUnit} left on this activity`);
+        toast.error(`Only ${describeLeft(`${formatQty(remainingQty)} ${qtyUnit}`)}`);
         return;
       }
     }
@@ -440,7 +456,9 @@ const AddExpenseDialog = ({
           </DialogTitle>
           <DialogDescription className='text-xs text-gray-500'>
             {isExceededMode
-              ? "This activity's estimated quantity is fully used. Will be recorded as exceeded."
+              ? fixedActivityLabel
+                ? `The planned ${fixedActivityLabel} is fully used. Will be recorded as exceeded.`
+                : "This activity's estimated quantity is fully used. Will be recorded as exceeded."
               : isEditing
                 ? "Update the expense details below."
                 : "Record an amount spent on this site."}
@@ -516,38 +534,47 @@ const AddExpenseDialog = ({
 
           {activities.length > 0 && (
             <div className='space-y-1.5'>
-              <div className='grid grid-cols-1 gap-3 sm:grid-cols-[1fr_11rem]'>
-                <div className='space-y-1.5'>
-                  <Label className='text-xs font-medium text-gray-700'>
-                    Activity <span className='text-red-500'>*</span>
-                  </Label>
-                  <Select
-                    open={isActivityPickerOpen}
-                    onOpenChange={setIsActivityPickerOpen}
-                    value={selectedActivityKey}
-                    onValueChange={(v) => {
-                      setSelectedActivityKey(v);
-                      setQuantity("");
-                    }}>
-                    <SelectTrigger className='h-9 w-full text-sm'>
-                      <SelectValue placeholder='Select activity this expense belongs to...' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activities.map((a) => (
-                        <SelectItem key={a.key} value={a.key} className='text-sm'>
-                          {a.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div
+                className={cn(
+                  "grid grid-cols-1 gap-3",
+                  fixedActivityKey ? "sm:grid-cols-[16rem]" : "sm:grid-cols-[1fr_11rem]",
+                )}>
+                {!fixedActivityKey && (
+                  <div className='space-y-1.5'>
+                    <Label className='text-xs font-medium text-gray-700'>
+                      Activity <span className='text-red-500'>*</span>
+                    </Label>
+                    <Select
+                      open={isActivityPickerOpen}
+                      onOpenChange={setIsActivityPickerOpen}
+                      value={selectedActivityKey}
+                      onValueChange={(v) => {
+                        setSelectedActivityKey(v);
+                        setQuantity("");
+                      }}>
+                      <SelectTrigger className='h-9 w-full text-sm'>
+                        <SelectValue placeholder='Select activity this expense belongs to...' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activities.map((a) => (
+                          <SelectItem key={a.key} value={a.key} className='text-sm'>
+                            {a.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Always in place; it opens once an activity is chosen, and
                     never for a miscellaneous expense. Until an activity is
                     chosen a click on it opens the activity list instead. */}
                 <div className='space-y-1.5'>
                   <Label className='text-xs font-medium text-gray-700'>
-                    Quantity <span className='text-gray-400'>(optional)</span>
+                    {fixedActivityKey && selectedActivity
+                      ? `${selectedActivity.label} used`
+                      : "Quantity"}{" "}
+                    <span className='text-gray-400'>(optional)</span>
                   </Label>
                   <div
                     className={cn(
@@ -585,8 +612,9 @@ const AddExpenseDialog = ({
 
               {isMiscellaneous && (
                 <p className='text-xs text-gray-500'>
-                  Miscellaneous expenses don&apos;t record a quantity. Choose a
-                  vendor to deduct one from the activity.
+                  {fixedActivityLabel
+                    ? `Miscellaneous expenses don't use ${fixedActivityLabel}. Choose a vendor to deduct it.`
+                    : "Miscellaneous expenses don't record a quantity. Choose a vendor to deduct one from the activity."}
                 </p>
               )}
 
@@ -598,10 +626,10 @@ const AddExpenseDialog = ({
                     qtyExceedsRemaining ? "text-red-600" : "text-gray-500",
                   )}>
                   {qtyExceedsRemaining
-                    ? `Only ${formatQty(remainingQty)} ${qtyUnit} left on this activity.`
+                    ? `Only ${describeLeft(`${formatQty(remainingQty)} ${qtyUnit}`)}.`
                     : enteredQty > 0
-                      ? `${formatQty(remainingQty - enteredQty)} of ${formatQty(estimateQty)} ${qtyUnit} will be left on this activity.`
-                      : `${formatQty(remainingQty)} of ${formatQty(estimateQty)} ${qtyUnit} left on this activity.`}
+                      ? `${describeLeft(`${formatQty(remainingQty - enteredQty)} of ${formatQty(estimateQty)} ${qtyUnit}`, true)}.`
+                      : `${describeLeft(`${formatQty(remainingQty)} of ${formatQty(estimateQty)} ${qtyUnit}`)}.`}
                 </p>
               )}
             </div>

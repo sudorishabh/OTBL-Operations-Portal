@@ -905,6 +905,7 @@ const SiteExpensesSection = ({
         contractors={splitByContractor ? contractors : undefined}
         defaultContractorId={typeof addUnder === "number" ? addUnder : null}
         startsMiscellaneous={addUnder === "miscellaneous"}
+        fixedActivityKey={isBioremediation ? constants.OIL_ZAPPER.KEY : undefined}
       />
 
       <AlertDialog
