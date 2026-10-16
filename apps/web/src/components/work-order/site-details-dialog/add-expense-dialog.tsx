@@ -152,6 +152,10 @@ const AddExpenseDialog = ({
     : picksAnyVendor && contractorId
       ? Number(contractorId)
       : null;
+  // A miscellaneous expense, under none of the site's vendors, uses up no
+  // activity quantity, so it takes none.
+  const isMiscellaneous =
+    !picksAnyVendor && (underId === NOT_UNDER || siteVendors.length === 0);
 
   const sharePointUpload = useSharePointUpload({
     folderPath: `/WorkOrders/Sites/${workOrderSiteId}/Expenses`,
@@ -225,8 +229,9 @@ const AddExpenseDialog = ({
   const isQuotaExhausted = remainingQty !== null && remainingQty <= 0;
   const isExceededMode = !!selectedActivityKey && isQuotaExhausted;
   const enteredQty = quantity ? parseFloat(quantity) : 0;
+  const canEnterQuantity = !!selectedActivityKey && !isMiscellaneous;
   const qtyExceedsRemaining =
-    !isExceededMode && !!selectedActivityKey && !!quantity &&
+    !isExceededMode && canEnterQuantity && !!quantity &&
     remainingQty !== null && enteredQty > remainingQty;
   const qtyUnit = selectedActivity?.unit ?? "Nos";
 
@@ -308,7 +313,7 @@ const AddExpenseDialog = ({
       return;
     }
 
-    if (selectedActivityKey && quantity) {
+    if (canEnterQuantity && quantity) {
       const q = parseFloat(quantity);
       if (isNaN(q) || q < 0) { toast.error("Quantity must be a positive number"); return; }
       if (!isExceededMode && remainingQty !== null && q > remainingQty) {
@@ -324,7 +329,7 @@ const AddExpenseDialog = ({
     const payload = {
       contractor_id: expenseContractorId,
       activity_key: selectedActivityKey || null,
-      quantity: selectedActivityKey && quantity ? quantity : null,
+      quantity: canEnterQuantity && quantity ? quantity : null,
       is_exceeded: isExceededMode,
       title: title.trim(),
       amount,
@@ -391,7 +396,10 @@ const AddExpenseDialog = ({
           name={underGroupName}
           value={value}
           checked={checked}
-          onChange={() => setUnderId(value)}
+          onChange={() => {
+            setUnderId(value);
+            if (value === NOT_UNDER) setQuantity("");
+          }}
           className='sr-only'
         />
         <span
@@ -530,27 +538,39 @@ const AddExpenseDialog = ({
                   </Select>
                 </div>
 
-                {/* Always in place; it opens once an activity is chosen. Until
-                    then a click on it opens the activity list instead. */}
+                {/* Always in place; it opens once an activity is chosen, and
+                    never for a miscellaneous expense. Until an activity is
+                    chosen a click on it opens the activity list instead. */}
                 <div className='space-y-1.5'>
                   <Label className='text-xs font-medium text-gray-700'>
                     Quantity <span className='text-gray-400'>(optional)</span>
                   </Label>
                   <div
-                    className={cn("relative", !selectedActivityKey && "cursor-pointer")}
+                    className={cn(
+                      "relative",
+                      !selectedActivityKey && !isMiscellaneous && "cursor-pointer",
+                    )}
                     onClick={() => {
-                      if (!selectedActivityKey) setIsActivityPickerOpen(true);
+                      if (!selectedActivityKey && !isMiscellaneous) {
+                        setIsActivityPickerOpen(true);
+                      }
                     }}>
                     <Input
                       type='number' min='0' step='0.01'
-                      placeholder={selectedActivityKey ? "0.00" : "Pick activity"}
-                      value={quantity}
+                      placeholder={
+                        isMiscellaneous
+                          ? "Vendors only"
+                          : selectedActivityKey
+                            ? "0.00"
+                            : "Pick activity"
+                      }
+                      value={isMiscellaneous ? "" : quantity}
                       onChange={(e) => setQuantity(e.target.value)}
-                      disabled={!selectedActivityKey}
+                      disabled={!canEnterQuantity}
                       aria-invalid={qtyExceedsRemaining || undefined}
                       className='h-9 pr-12 text-sm'
                     />
-                    {selectedActivity && (
+                    {canEnterQuantity && (
                       <span className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400'>
                         {qtyUnit}
                       </span>
@@ -559,8 +579,15 @@ const AddExpenseDialog = ({
                 </div>
               </div>
 
+              {isMiscellaneous && (
+                <p className='text-xs text-gray-500'>
+                  Miscellaneous expenses don&apos;t record a quantity. Choose a
+                  vendor to deduct one from the activity.
+                </p>
+              )}
+
               {/* A quantity is used up from the activity's estimate. */}
-              {selectedActivityKey && !isExceededMode && remainingQty !== null && estimateQty !== null && (
+              {canEnterQuantity && !isExceededMode && remainingQty !== null && estimateQty !== null && (
                 <p
                   className={cn(
                     "text-xs",
