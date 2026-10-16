@@ -2,7 +2,7 @@ import { and, eq, ne, sum } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { fromDatabaseError, notFound } from "../../errors";
+import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
 import { validators } from "@pkg/schema";
@@ -10,13 +10,14 @@ import { constants } from "@pkg/utils";
 import { syncRestorationCompletion } from "../restoration/restoration-row";
 
 const {
+  workOrderSiteTable,
   workOrderSiteExpenseTable,
   bioremediationContSoilTable,
   siteActivityTable,
   scheduleOfRatesTable,
 } = schema;
 
-const { WO_ACTIVITIES, allActivityOptions } = constants;
+const { WO_ACTIVITIES, WO_PROCESS, allActivityOptions } = constants;
 
 const RESTORATION_ACTIVITIES = new Set<string>(
   allActivityOptions
@@ -96,6 +97,27 @@ async function computeIsExceeded(
   return existingTotal + newQty > estimateQty + 0.001;
 }
 
+// A restoration's miscellaneous expense, under none of its vendors, uses up
+// no activity quantity, so it may not carry one.
+async function assertQuantityAllowed(
+  ctx: any,
+  siteId: number,
+  contractorId: number | null | undefined,
+  quantity: string | null | undefined,
+) {
+  if (contractorId || !quantity || !(parseFloat(quantity) > 0)) return;
+
+  const [site] = await ctx.db
+    .select({ process_type: workOrderSiteTable.process_type })
+    .from(workOrderSiteTable)
+    .where(eq(workOrderSiteTable.id, siteId));
+  if (site?.process_type === WO_PROCESS.RESTORATION) {
+    throw businessRule(
+      "Miscellaneous expenses don't record a quantity. Choose a vendor to deduct one.",
+    );
+  }
+}
+
 // An expense can't end before it starts.
 const endsOnOrAfterStart = (value: { start_date?: string; end_date?: string }) =>
   !value.start_date ||
@@ -150,6 +172,13 @@ export const expenseMutationRouter = router({
     .input(createExpenseSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
+        await assertQuantityAllowed(
+          ctx,
+          input.work_order_site_id,
+          input.contractor_id,
+          input.quantity,
+        );
+
         try {
           const userId = ctx.user ? Number(ctx.user.sub) : null;
 
@@ -212,6 +241,19 @@ export const expenseMutationRouter = router({
 
         if (existing.length === 0) {
           throw notFound("Expense", id);
+        }
+
+        // Checked only when the update touches the vendor or the quantity.
+        if (updateData.contractor_id !== undefined || updateData.quantity !== undefined) {
+          const before = existing[0]!;
+          await assertQuantityAllowed(
+            ctx,
+            before.work_order_site_id,
+            updateData.contractor_id !== undefined
+              ? updateData.contractor_id
+              : before.contractor_id,
+            updateData.quantity !== undefined ? updateData.quantity : before.quantity,
+          );
         }
 
         try {
