@@ -85,6 +85,13 @@
       "when": 1792130446599,
       "tag": "0011_expense_start_end_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1792132531483,
+      "tag": "0012_rename_expense_description_to_title",
+      "breakpoints": true
     }
   ]
 }

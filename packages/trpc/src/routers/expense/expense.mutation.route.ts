@@ -112,7 +112,7 @@ const createExpenseSchema = z.object({
   activity_key: z.string().max(100).optional().nullable(),
   quantity: z.string().optional().nullable(),
   is_exceeded: z.boolean().optional().default(false),
-  description: z.string().min(1, "Description is required").max(500),
+  title: z.string().min(1, "Title is required").max(500),
   amount: z
     .string()
     .min(1, "Amount is required")
@@ -131,7 +131,7 @@ const updateExpenseSchema = z.object({
   activity_key: z.string().max(100).optional().nullable(),
   quantity: z.string().optional().nullable(),
   is_exceeded: z.boolean().optional(),
-  description: z.string().min(1).max(500).optional(),
+  title: z.string().min(1).max(500).optional(),
   amount: z
     .string()
     .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
@@ -169,7 +169,7 @@ export const expenseMutationRouter = router({
               activity_key: input.activity_key ?? null,
               quantity: input.quantity ?? null,
               is_exceeded: finalExceeded ? 1 : 0,
-              description: input.description,
+              title: input.title,
               amount: input.amount,
               start_date: new Date(input.start_date),
               end_date: new Date(input.end_date),
@@ -236,7 +236,7 @@ export const expenseMutationRouter = router({
           } else if (updateData.is_exceeded !== undefined) {
             setData.is_exceeded = updateData.is_exceeded ? 1 : 0;
           }
-          if (updateData.description !== undefined) setData.description = updateData.description;
+          if (updateData.title !== undefined) setData.title = updateData.title;
           if (updateData.amount !== undefined) setData.amount = updateData.amount;
           if (updateData.start_date !== undefined) setData.start_date = new Date(updateData.start_date);
           if (updateData.end_date !== undefined) setData.end_date = new Date(updateData.end_date);

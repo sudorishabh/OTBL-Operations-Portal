@@ -54,7 +54,7 @@ export interface Expense {
   activity_key: string | null;
   quantity: string | null;
   is_exceeded: number | boolean | null;
-  description: string;
+  title: string;
   amount: string;
   start_date: string | Date;
   end_date: string | Date;
@@ -126,7 +126,7 @@ const AddExpenseDialog = ({
   const [selectedActivityKey, setSelectedActivityKey] = useState<string>("");
   const [isActivityPickerOpen, setIsActivityPickerOpen] = useState(false);
   const [quantity, setQuantity] = useState<string>("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState("");
   const [startDate, setStartDate] = useState(() => toDateInput());
   const [endDate, setEndDate] = useState(() => toDateInput());
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -173,7 +173,7 @@ const AddExpenseDialog = ({
       );
       setSelectedActivityKey(editingExpense.activity_key ?? "");
       setQuantity(editingExpense.quantity ?? "");
-      setDescription(editingExpense.description);
+      setTitle(editingExpense.title);
       setStartDate(toDateInput(editingExpense.start_date));
       setEndDate(toDateInput(editingExpense.end_date));
       setInvoiceNumber(editingExpense.invoice_number ?? "");
@@ -192,7 +192,7 @@ const AddExpenseDialog = ({
       );
       setSelectedActivityKey("");
       setQuantity("");
-      setDescription("");
+      setTitle("");
       setStartDate(toDateInput());
       setEndDate(toDateInput());
       setInvoiceNumber("");
@@ -291,7 +291,7 @@ const AddExpenseDialog = ({
       toast.error("Enter a valid amount");
       return;
     }
-    if (!description.trim()) { toast.error("Description is required"); return; }
+    if (!title.trim()) { toast.error("Description is required"); return; }
     if (!startDate || !endDate) {
       toast.error("Start and end dates are required");
       return;
@@ -319,7 +319,7 @@ const AddExpenseDialog = ({
       activity_key: selectedActivityKey || null,
       quantity: selectedActivityKey && quantity ? quantity : null,
       is_exceeded: isExceededMode,
-      description: description.trim(),
+      title: title.trim(),
       amount,
       start_date: new Date(startDate).toISOString(),
       end_date: new Date(endDate).toISOString(),
@@ -646,8 +646,8 @@ const AddExpenseDialog = ({
             </Label>
             <Input
               placeholder='e.g. Excavation work, Labour charges...'
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               className='h-9 text-sm'
             />
           </div>

@@ -78,7 +78,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
       if (onlyExceeded && !e.is_exceeded) return false;
       if (!q) return true;
       const hay = [
-        e.description,
+        e.title,
         e.contractor_name,
         e.invoice_number,
         e.site_name,
@@ -288,7 +288,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                         </div>
                       </TableCell>
                       <TableCell className='px-3 py-2 text-slate-600 max-w-[260px] truncate'>
-                        {e.description || "—"}
+                        {e.title || "—"}
                       </TableCell>
                       <TableCell className='px-3 py-2 text-center'>
                         {documents.length > 0 ? (

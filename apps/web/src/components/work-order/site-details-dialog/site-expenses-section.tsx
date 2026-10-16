@@ -70,7 +70,7 @@ type ExpenseRecord = {
   endDate: string | Date;
   quantity: string | null;
   isExceeded: boolean;
-  description: string;
+  title: string;
   contractorId: number | null;
   contractorName: string | null;
   invoiceNumber: string | null;
@@ -313,7 +313,7 @@ const SiteExpensesSection = ({
         endDate: exp.end_date,
         quantity: exp.quantity ?? null,
         isExceeded: !!exp.is_exceeded,
-        description: exp.description,
+        title: exp.title,
         contractorId: exp.contractor_id ?? null,
         contractorName: exp.contractor_name ?? null,
         invoiceNumber: exp.invoice_number ?? null,
@@ -372,7 +372,7 @@ const SiteExpensesSection = ({
           </TableCell>
           {/* What was spent on, and against which activity. */}
           <TableCell className={cn(cellClass, "min-w-48")}>
-            <p className='text-sm font-medium text-gray-900'>{record.description}</p>
+            <p className='text-sm font-medium text-gray-900'>{record.title}</p>
             <p className='mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500'>
               <span>{record.activityLabel}</span>
               {isExceeded && (
@@ -471,7 +471,7 @@ const SiteExpensesSection = ({
             <TableCell colSpan={columnCount} className='px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1'>
               <dl className='grid grid-cols-2 gap-x-6 gap-y-3 pl-5 sm:grid-cols-4'>
                 <Detail label='Description' className='col-span-2 sm:col-span-4'>
-                  <span className='whitespace-pre-wrap break-words'>{record.description}</span>
+                  <span className='whitespace-pre-wrap break-words'>{record.title}</span>
                 </Detail>
                 <Detail label='Under'>{record.contractorName ?? "Miscellaneous"}</Detail>
                 <Detail label='Activity'>{record.activityLabel}</Detail>

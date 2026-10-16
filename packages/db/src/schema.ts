@@ -599,7 +599,7 @@ export const workOrderSiteExpenseTable = mysqlTable(
     contractor_id: int("contractor_id").references(() => contractorTable.id, {
       onDelete: "set null",
     }),
-    description: varchar("description", { length: 500 }).notNull(),
+    title: varchar("title", { length: 500 }).notNull(),
     amount: decimal("amount", { precision: 20, scale: 2 }).notNull(),
     // The days the expense covers; one day when they match.
     start_date: timestamp("start_date").notNull(),
