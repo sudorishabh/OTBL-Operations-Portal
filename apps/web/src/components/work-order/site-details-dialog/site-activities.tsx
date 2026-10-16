@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import { constants } from "@pkg/utils";
 import { BioremediationSections } from "./bioremediation-sections";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -709,113 +708,6 @@ const SiteActivities = ({
 
   return (
     <div className='space-y-5'>
-      {siteActivitiesQuery.data?.some((a: any) => a.sor_estimated_quantity) && (
-        <div className='rounded-lg border bg-gray-100/50 overflow-hidden'>
-          <div className='px-3 py-1.5 border-b flex items-center gap-1.5 bg-slate-50/80'>
-            <span className='text-[11px] font-semibold text-slate-600'>
-              SOR availability
-            </span>
-            <span className='text-[10px] text-slate-400 truncate'>
-              (used across the work order)
-            </span>
-          </div>
-          <div
-            className={cn(
-              "overflow-x-auto",
-              (siteActivitiesQuery.data?.filter(
-                (a: any) => a.sor_estimated_quantity,
-              ).length || 0) > 5
-                ? "max-h-40 overflow-y-auto"
-                : undefined,
-            )}>
-            <Table className='w-full text-[11px]'>
-              <TableHeader>
-                <TableRow className='border-slate-100 hover:bg-transparent'>
-                  <TableHead className='h-8 px-2 py-0 text-left font-semibold text-slate-500 uppercase tracking-wide'>
-                    Activity
-                  </TableHead>
-                  <TableHead className='h-8 px-2 py-0 text-right font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap'>
-                    SOR
-                  </TableHead>
-                  <TableHead className='h-8 px-2 py-0 text-right font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap'>
-                    Used
-                  </TableHead>
-                  <TableHead className='h-8 px-2 py-0 text-right font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap'>
-                    Avail.
-                  </TableHead>
-                  <TableHead className='h-8 px-2 py-0 text-left font-semibold text-slate-500 uppercase tracking-wide w-[88px]'>
-                    %
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className='[&_tr]:border-slate-100'>
-                {siteActivitiesQuery.data
-                  ?.filter((a: any) => a.sor_estimated_quantity)
-                  .map((activity: any) => {
-                    const sorQty = parseFloat(
-                      activity.sor_estimated_quantity || "0",
-                    );
-                    const usedTotal = parseFloat(
-                      activity.total_used_quantity || "0",
-                    );
-                    const available = sorQty - usedTotal;
-                    const usedPct =
-                      sorQty > 0
-                        ? Math.min(100, (usedTotal / sorQty) * 100)
-                        : 0;
-                    const barColor =
-                      usedPct >= 100
-                        ? "bg-red-500"
-                        : usedPct >= 80
-                          ? "bg-amber-500"
-                          : "bg-emerald-500";
-
-                    return (
-                      <TableRow
-                        key={activity.id}
-                        className='hover:bg-slate-50/50'>
-                        <TableCell className='px-2 py-1.5 max-w-[140px] truncate font-medium text-slate-700'>
-                          {formatName(activity.activity)}
-                        </TableCell>
-                        <TableCell className='px-2 py-1.5 text-right tabular-nums text-slate-600 whitespace-nowrap'>
-                          {sorQty.toFixed(2)}{" "}
-                          <span className='text-slate-400 font-normal'>
-                            {activity.unit || "Nos"}
-                          </span>
-                        </TableCell>
-                        <TableCell className='px-2 py-1.5 text-right tabular-nums text-amber-700'>
-                          {usedTotal.toFixed(2)}
-                        </TableCell>
-                        <TableCell
-                          className={`px-2 py-1.5 text-right tabular-nums font-semibold ${
-                            available < 0 ? "text-red-600" : "text-emerald-700"
-                          }`}>
-                          {available.toFixed(2)}
-                        </TableCell>
-                        <TableCell className='px-2 py-1.5'>
-                          <div className='flex items-center gap-1.5 min-w-0'>
-                            <div className='h-1 flex-1 min-w-[36px] bg-slate-100 rounded-full overflow-hidden'>
-                              <div
-                                className={`h-full rounded-full transition-all ${barColor}`}
-                                style={{
-                                  width: `${Math.min(100, usedPct)}%`,
-                                }}
-                              />
-                            </div>
-                            <span className='text-[10px] tabular-nums text-slate-500 w-8 text-right shrink-0'>
-                              {usedPct.toFixed(0)}%
-                            </span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      )}
-
       <div className='rounded-xl bg-white overflow-hidden'>
         <div className='py-4 border-b border-slate-200'>
           <div className='flex items-center justify-between'>

@@ -31,6 +31,7 @@ import DeferredFilePicker from "@/components/shared/deferred-file-picker";
 import CustomButton from "@/components/shared/btn";
 import { useIsViewer } from "@/contexts/AuthContext";
 import SiteMobilization from "./site-mobilization";
+import SiteSorAvailability from "./site-sor-availability";
 import SiteCompletionCertificate from "./site-completion-certificate";
 
 const InfoCard = ({
@@ -268,6 +269,13 @@ const SiteDetailsCard = ({
           </div>
         </div>
       </div>
+
+      {siteDetails?.id && (
+        <SiteSorAvailability
+          woSiteId={siteDetails.id}
+          className='mt-4 pt-4 border-t border-gray-200/50'
+        />
+      )}
 
       {isBioremediation && siteDetails?.id && (
         <div className='mt-4 pt-4 border-t border-gray-200/50'>
