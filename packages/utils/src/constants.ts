@@ -103,6 +103,10 @@ export const TRANSPORT_SLABS = [
   { key: "over_40_km", label: "More than 40 KM (additional per km)" },
 ] as const;
 
+// The bio sample taken at mobilization, before the first application. It is
+// stored as the bio sample whose application month is this label.
+export const ZERO_DAY_SAMPLE = "Zero Day";
+
 export const GST_PERCENTAGE = 18;
 
 // Most documents a user can upload at once, or attach to one record.
@@ -170,6 +174,7 @@ export default {
   processTypeOptions,
   unitOptions,
   TRANSPORT_SLABS,
+  ZERO_DAY_SAMPLE,
   allActivityOptions,
   ACTIVITY_TYPE,
   ACTIVITY_PHASE,

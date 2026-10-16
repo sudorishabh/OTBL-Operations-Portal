@@ -42,6 +42,7 @@ import {
   type StoredDocument,
 } from "@/lib/documents";
 import { format } from "date-fns";
+import { constants } from "@pkg/utils";
 
 const BioSampleForm = ({
   woSiteId,
@@ -562,7 +563,10 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
     );
   }
 
-  const bioSamples = bioremediationDataQuery.data?.bioSamples || [];
+  // The zero day sample lives in the mobilization tab.
+  const bioSamples = (bioremediationDataQuery.data?.bioSamples || []).filter(
+    (item: any) => item.application_month !== constants.ZERO_DAY_SAMPLE,
+  );
   const oilZapping = bioremediationDataQuery.data?.oilZapping || [];
 
   const combinedItems: CombinedItem[] = [

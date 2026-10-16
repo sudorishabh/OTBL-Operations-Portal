@@ -459,6 +459,7 @@ export const workOrderSiteDocsTable = mysqlTable("work_order_site_docs", {
       "completion",
       "measurement_sheet",
       "completion_certificate",
+      "mobilization",
     ],
     length: 255,
   }).notNull(),

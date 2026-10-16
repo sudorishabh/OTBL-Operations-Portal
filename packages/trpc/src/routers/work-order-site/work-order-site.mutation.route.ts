@@ -48,6 +48,7 @@ const createSiteDocumentSchema = z.object({
     "completion",
     "measurement_sheet",
     "completion_certificate",
+    "mobilization",
   ]),
 });
 
@@ -604,6 +605,26 @@ export const workOrderSiteMutationRouter = router({
 
   createBioSample: publicProcedure.input(createBioSampleSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
+      // A site takes one zero day sample, its baseline TPH.
+      if (input.application_month === constants.ZERO_DAY_SAMPLE) {
+        const [existing] = await ctx.db
+          .select({ id: bioSampleTable.id })
+          .from(bioSampleTable)
+          .where(
+            and(
+              eq(bioSampleTable.work_order_site_id, input.work_order_site_id),
+              eq(bioSampleTable.application_month, constants.ZERO_DAY_SAMPLE),
+            ),
+          )
+          .limit(1);
+
+        if (existing) {
+          throw businessRule(
+            "This site already has a zero day sample. Delete it to add a new one.",
+          );
+        }
+      }
+
       try {
         const [result] = await ctx.db.insert(bioSampleTable).values({
           work_order_site_id: input.work_order_site_id,
