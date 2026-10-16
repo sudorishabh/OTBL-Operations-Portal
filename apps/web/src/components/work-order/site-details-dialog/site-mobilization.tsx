@@ -28,7 +28,7 @@ interface Props {
 
 // Documents recording the team and equipment moving onto the site, before
 // bioremediation starts.
-const MobilizationDocuments = ({ woSiteId }: Props) => {
+export const MobilizationDocuments = ({ woSiteId }: Props) => {
   const utils = trpc.useUtils();
   const [files, setFiles] = useState<File[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -146,7 +146,7 @@ const MobilizationDocuments = ({ woSiteId }: Props) => {
 
 // The sample taken at mobilization, before the first application. Its TPH is
 // the baseline the monthly samples are measured against.
-const ZeroDaySample = ({ woSiteId }: Props) => {
+export const ZeroDaySample = ({ woSiteId }: Props) => {
   const utils = trpc.useUtils();
   const [files, setFiles] = useState<File[]>([]);
   const [tphValue, setTphValue] = useState("");
@@ -317,14 +317,3 @@ const ZeroDaySample = ({ woSiteId }: Props) => {
     </div>
   );
 };
-
-// What happens at a bioremediation site before the first application, shown
-// in the site information card.
-const SiteMobilization = ({ woSiteId }: Props) => (
-  <div className='grid grid-cols-1 gap-5 md:grid-cols-2'>
-    <MobilizationDocuments woSiteId={woSiteId} />
-    <ZeroDaySample woSiteId={woSiteId} />
-  </div>
-);
-
-export default SiteMobilization;
