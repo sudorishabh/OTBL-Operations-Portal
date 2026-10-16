@@ -60,6 +60,8 @@ export interface Expense {
   end_date: string | Date;
   invoice_number: string | null;
   documents: StoredDocument[] | null;
+  created_by_name?: string | null;
+  created_at?: string | Date;
 }
 
 interface Props {

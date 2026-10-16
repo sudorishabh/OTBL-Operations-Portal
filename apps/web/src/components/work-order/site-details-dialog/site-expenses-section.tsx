@@ -41,6 +41,7 @@ import {
   AlertTriangle,
   ChevronRight,
   CornerDownRight,
+  FileText,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
@@ -52,7 +53,13 @@ import AddExpenseDialog, {
   Expense,
 } from "./add-expense-dialog";
 import DocumentsMenu from "@/components/shared/documents-menu";
-import { toDocuments, type StoredDocument } from "@/lib/documents";
+import {
+  documentName,
+  openDocument,
+  toDocuments,
+  type StoredDocument,
+} from "@/lib/documents";
+import { differenceInCalendarDays, format, isSameDay } from "date-fns";
 import { formatDateRange } from "@/lib/wo-site-display";
 
 type ExpenseRecord = {
@@ -70,6 +77,8 @@ type ExpenseRecord = {
   invoiceNumber: string | null;
   documents: StoredDocument[];
   amount: number;
+  recordedBy: string | null;
+  recordedAt: string | Date | null;
 };
 
 const formatCurrency = (value: number) =>
@@ -86,6 +95,29 @@ const formatQty = (value: number) =>
 const headClass =
   "h-9 px-3 sm:h-9 sm:px-3 text-xs font-medium text-gray-500 whitespace-nowrap";
 const cellClass = "px-3 py-2.5 sm:px-3 sm:py-2.5";
+
+const formatFullDates = (start: string | Date, end: string | Date) => {
+  const from = new Date(start);
+  const to = new Date(end);
+  if (isSameDay(from, to)) return `${format(from, "d MMM yyyy")} (1 day)`;
+  const days = differenceInCalendarDays(to, from) + 1;
+  return `${format(from, "d MMM yyyy")} – ${format(to, "d MMM yyyy")} (${days} days)`;
+};
+
+const Detail = ({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div className={cn("min-w-0", className)}>
+    <dt className='text-xs text-gray-500'>{label}</dt>
+    <dd className='mt-0.5 text-sm text-gray-800'>{children}</dd>
+  </div>
+);
 
 const formatActivityLabel = (key: string) =>
   key
@@ -124,6 +156,8 @@ const SiteExpensesSection = ({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  // The expense whose full details are open under its row.
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [activityFilter, setActivityFilter] = useState<string>("__all__");
   // The vendor a new expense starts under, when added from its group.
   const [addUnderId, setAddUnderId] = useState<number | null>(null);
@@ -284,6 +318,8 @@ const SiteExpensesSection = ({
         invoiceNumber: exp.invoice_number ?? null,
         documents: toDocuments(exp.documents),
         amount: Number(exp.amount),
+        recordedBy: exp.created_by_name ?? null,
+        recordedAt: exp.created_at ?? null,
       };
     });
     all.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
@@ -297,103 +333,196 @@ const SiteExpensesSection = ({
     const { isExceeded } = record;
     const expense = expenses.find((e) => e.id === record.id);
     const documentCount = record.documents.length;
+    const isOpen = expandedId === record.id;
+    const toggle = () => setExpandedId(isOpen ? null : record.id);
+    const columnCount = showVendor ? 7 : 6;
 
     return (
-      <TableRow
-        key={record.id}
-        className={cn(
-          "border-gray-100",
-          isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-gray-50/80",
-        )}>
-        <TableCell className={cn(cellClass, "whitespace-nowrap text-xs tabular-nums text-gray-600")}>
-          {formatDateRange(record.startDate, record.endDate)}
-        </TableCell>
-        {/* What was spent on, and against which activity. */}
-        <TableCell className={cn(cellClass, "min-w-48")}>
-          <p className='text-sm font-medium text-gray-900'>{record.description}</p>
-          <p className='mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500'>
-            <span>{record.activityLabel}</span>
-            {isExceeded && (
-              <span className='inline-flex items-center gap-1 font-medium text-orange-600'>
-                <AlertTriangle className='size-3' />
-                Exceeded
-              </span>
-            )}
-          </p>
-        </TableCell>
-        <TableCell className={cn(cellClass, "whitespace-nowrap text-right text-xs tabular-nums")}>
-          {record.quantity ? (
-            <>
-              <span className='font-medium text-gray-800'>
-                {formatQty(Number(record.quantity))}
-              </span>
-              {record.unit && <span className='ml-1 text-gray-400'>{record.unit}</span>}
-            </>
-          ) : (
-            <span className='text-gray-300'>—</span>
-          )}
-        </TableCell>
-        {showVendor && (
-          <TableCell className={cn(cellClass, "text-xs text-gray-600")}>
-            {record.contractorName ?? <span className='text-gray-300'>—</span>}
+      <React.Fragment key={record.id}>
+        <TableRow
+          onClick={toggle}
+          className={cn(
+            "cursor-pointer border-gray-100",
+            isOpen && "border-transparent",
+            isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-gray-50/80",
+            isOpen && !isExceeded && "bg-gray-50/80",
+          )}>
+          <TableCell className={cn(cellClass, "whitespace-nowrap text-xs tabular-nums text-gray-600")}>
+            <button
+              type='button'
+              aria-expanded={isOpen}
+              aria-label={isOpen ? "Hide expense details" : "Show expense details"}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle();
+              }}
+              className='inline-flex items-center gap-1.5 rounded text-left'>
+              <ChevronRight
+                className={cn(
+                  "size-3.5 shrink-0 text-gray-400 transition-transform",
+                  isOpen && "rotate-90",
+                )}
+              />
+              {formatDateRange(record.startDate, record.endDate)}
+            </button>
           </TableCell>
-        )}
-        {/* The invoice number with its documents beside it. */}
-        <TableCell className={cn(cellClass, "text-xs text-gray-600")}>
-          <div className='flex items-center gap-1.5'>
-            {record.invoiceNumber ? (
-              <span className='truncate'>{record.invoiceNumber}</span>
+          {/* What was spent on, and against which activity. */}
+          <TableCell className={cn(cellClass, "min-w-48")}>
+            <p className='text-sm font-medium text-gray-900'>{record.description}</p>
+            <p className='mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500'>
+              <span>{record.activityLabel}</span>
+              {isExceeded && (
+                <span className='inline-flex items-center gap-1 font-medium text-orange-600'>
+                  <AlertTriangle className='size-3' />
+                  Exceeded
+                </span>
+              )}
+            </p>
+          </TableCell>
+          <TableCell className={cn(cellClass, "whitespace-nowrap text-right text-xs tabular-nums")}>
+            {record.quantity ? (
+              <>
+                <span className='font-medium text-gray-800'>
+                  {formatQty(Number(record.quantity))}
+                </span>
+                {record.unit && <span className='ml-1 text-gray-400'>{record.unit}</span>}
+              </>
             ) : (
-              documentCount === 0 && <span className='text-gray-300'>—</span>
+              <span className='text-gray-300'>—</span>
             )}
-            {documentCount > 0 && (
-              <DocumentsMenu documents={record.documents}>
-                <button
-                  type='button'
-                  aria-label={documentCount === 1 ? "View document" : `View ${documentCount} documents`}
-                  title={documentCount === 1 ? "View document" : `View ${documentCount} documents`}
-                  className='inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-blue-600 transition-colors hover:bg-blue-50'>
-                  <Paperclip className='size-3.5' />
-                  {documentCount > 1 && (
-                    <span className='text-[11px] font-medium tabular-nums'>{documentCount}</span>
-                  )}
-                </button>
-              </DocumentsMenu>
-            )}
-          </div>
-        </TableCell>
-        <TableCell className={cn(cellClass, "whitespace-nowrap text-right")}>
-          <span
+          </TableCell>
+          {showVendor && (
+            <TableCell className={cn(cellClass, "text-xs text-gray-600")}>
+              {record.contractorName ?? <span className='text-gray-300'>—</span>}
+            </TableCell>
+          )}
+          {/* The invoice number with its documents beside it. */}
+          <TableCell className={cn(cellClass, "text-xs text-gray-600")}>
+            <div className='flex items-center gap-1.5'>
+              {record.invoiceNumber ? (
+                <span className='truncate'>{record.invoiceNumber}</span>
+              ) : (
+                documentCount === 0 && <span className='text-gray-300'>—</span>
+              )}
+              {documentCount > 0 && (
+                <DocumentsMenu documents={record.documents}>
+                  <button
+                    type='button'
+                    aria-label={documentCount === 1 ? "View document" : `View ${documentCount} documents`}
+                    title={documentCount === 1 ? "View document" : `View ${documentCount} documents`}
+                    className='inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-blue-600 transition-colors hover:bg-blue-50'>
+                    <Paperclip className='size-3.5' />
+                    {documentCount > 1 && (
+                      <span className='text-[11px] font-medium tabular-nums'>{documentCount}</span>
+                    )}
+                  </button>
+                </DocumentsMenu>
+              )}
+            </div>
+          </TableCell>
+          <TableCell className={cn(cellClass, "whitespace-nowrap text-right")}>
+            <span
+              className={cn(
+                "text-sm font-semibold tabular-nums",
+                isExceeded ? "text-orange-700" : "text-gray-900",
+              )}>
+              {formatCurrency(record.amount)}
+            </span>
+          </TableCell>
+          <TableCell className={cn(cellClass, "w-px whitespace-nowrap")}>
+            <div className='flex items-center justify-end gap-0.5'>
+              <button
+                type='button'
+                aria-label='Edit expense'
+                title='Edit'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (expense) handleEdit(expense);
+                }}
+                disabled={isViewer || !expense}
+                className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30'>
+                <Pencil className='size-3.5' />
+              </button>
+              <button
+                type='button'
+                aria-label='Delete expense'
+                title='Delete'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeletingId(record.id);
+                }}
+                disabled={isViewer}
+                className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30'>
+                <Trash2 className='size-3.5' />
+              </button>
+            </div>
+          </TableCell>
+        </TableRow>
+        {isOpen && (
+          <TableRow
             className={cn(
-              "text-sm font-semibold tabular-nums",
-              isExceeded ? "text-orange-700" : "text-gray-900",
+              "border-gray-100 hover:bg-transparent",
+              isExceeded ? "bg-orange-50/40" : "bg-gray-50/80",
             )}>
-            {formatCurrency(record.amount)}
-          </span>
-        </TableCell>
-        <TableCell className={cn(cellClass, "w-px whitespace-nowrap")}>
-          <div className='flex items-center justify-end gap-0.5'>
-            <button
-              type='button'
-              aria-label='Edit expense'
-              title='Edit'
-              onClick={() => expense && handleEdit(expense)}
-              disabled={isViewer || !expense}
-              className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30'>
-              <Pencil className='size-3.5' />
-            </button>
-            <button
-              type='button'
-              aria-label='Delete expense'
-              title='Delete'
-              onClick={() => setDeletingId(record.id)}
-              disabled={isViewer}
-              className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30'>
-              <Trash2 className='size-3.5' />
-            </button>
-          </div>
-        </TableCell>
-      </TableRow>
+            <TableCell colSpan={columnCount} className='px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1'>
+              <dl className='grid grid-cols-2 gap-x-6 gap-y-3 pl-5 sm:grid-cols-4'>
+                <Detail label='Description' className='col-span-2 sm:col-span-4'>
+                  <span className='whitespace-pre-wrap break-words'>{record.description}</span>
+                </Detail>
+                <Detail label='Under'>{record.contractorName ?? "Miscellaneous"}</Detail>
+                <Detail label='Activity'>{record.activityLabel}</Detail>
+                <Detail label='Dates' className='col-span-2'>
+                  {formatFullDates(record.startDate, record.endDate)}
+                </Detail>
+                <Detail label='Quantity'>
+                  {record.quantity
+                    ? `${formatQty(Number(record.quantity))}${record.unit ? ` ${record.unit}` : ""}`
+                    : "Not recorded"}
+                </Detail>
+                <Detail label='Amount'>
+                  <span className='font-semibold tabular-nums'>{formatCurrency(record.amount)}</span>
+                </Detail>
+                <Detail label='Invoice #'>{record.invoiceNumber ?? "None"}</Detail>
+                {(record.quantity || isExceeded) && (
+                  <Detail label='Estimate'>
+                    {isExceeded ? (
+                      <span className='font-medium text-orange-700'>
+                        Exceeded the activity&apos;s quantity
+                      </span>
+                    ) : (
+                      "Within the activity's quantity"
+                    )}
+                  </Detail>
+                )}
+                <Detail label='Recorded' className='col-span-2'>
+                  {record.recordedBy ?? "Unknown user"}
+                  {record.recordedAt &&
+                    ` on ${format(new Date(record.recordedAt), "d MMM yyyy, h:mm a")}`}
+                </Detail>
+                <Detail label='Documents' className='col-span-2 sm:col-span-4'>
+                  {documentCount === 0 ? (
+                    "None attached"
+                  ) : (
+                    <ul className='mt-0.5 flex flex-wrap gap-1.5'>
+                      {record.documents.map((doc, index) => (
+                        <li key={`${doc.url}-${index}`}>
+                          <button
+                            type='button'
+                            onClick={() => openDocument(doc)}
+                            className='inline-flex max-w-64 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 transition-colors hover:border-blue-200 hover:text-blue-700'>
+                            <FileText className='size-3.5 shrink-0 text-gray-400' />
+                            <span className='truncate'>{documentName(doc, index)}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Detail>
+              </dl>
+            </TableCell>
+          </TableRow>
+        )}
+      </React.Fragment>
     );
   };
 
@@ -401,7 +530,7 @@ const SiteExpensesSection = ({
     <Table>
       <TableHeader>
         <TableRow className='border-gray-100 hover:bg-transparent'>
-          <TableHead className={cn(headClass, "w-[120px]")}>Dates</TableHead>
+          <TableHead className={cn(headClass, "w-[140px]")}>Dates</TableHead>
           <TableHead className={headClass}>Expense</TableHead>
           <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
           {showVendor && <TableHead className={headClass}>Contractor</TableHead>}
