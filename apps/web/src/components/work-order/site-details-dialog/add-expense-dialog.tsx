@@ -122,6 +122,7 @@ const AddExpenseDialog = ({
   const [vendorSearch, setVendorSearch] = useState("");
   const underGroupName = useId();
   const [selectedActivityKey, setSelectedActivityKey] = useState<string>("");
+  const [isActivityPickerOpen, setIsActivityPickerOpen] = useState(false);
   const [quantity, setQuantity] = useState<string>("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState(() => toDateInput());
@@ -200,6 +201,7 @@ const AddExpenseDialog = ({
     setNewContractorContact("");
     setNewContractorGst("");
     setVendorSearch("");
+    setIsActivityPickerOpen(false);
   }, [editingExpense, open]);
 
   const selectedActivity = activities.find((a) => a.key === selectedActivityKey);
@@ -499,6 +501,8 @@ const AddExpenseDialog = ({
                     Activity <span className='text-red-500'>*</span>
                   </Label>
                   <Select
+                    open={isActivityPickerOpen}
+                    onOpenChange={setIsActivityPickerOpen}
                     value={selectedActivityKey}
                     onValueChange={(v) => {
                       setSelectedActivityKey(v);
@@ -517,18 +521,23 @@ const AddExpenseDialog = ({
                   </Select>
                 </div>
 
-                {/* Always in place; it opens once an activity is chosen. */}
+                {/* Always in place; it opens once an activity is chosen. Until
+                    then a click on it opens the activity list instead. */}
                 <div className='space-y-1.5'>
                   <Label className='text-xs font-medium text-gray-700'>
                     Quantity <span className='text-gray-400'>(optional)</span>
                   </Label>
-                  <div className='relative'>
+                  <div
+                    className={cn("relative", !selectedActivityKey && "cursor-pointer")}
+                    onClick={() => {
+                      if (!selectedActivityKey) setIsActivityPickerOpen(true);
+                    }}>
                     <Input
-                      type='number' min='0' step='0.01' placeholder='0.00'
+                      type='number' min='0' step='0.01'
+                      placeholder={selectedActivityKey ? "0.00" : "Pick activity"}
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
                       disabled={!selectedActivityKey}
-                      title={selectedActivityKey ? undefined : "Select an activity first"}
                       aria-invalid={qtyExceedsRemaining || undefined}
                       className='h-9 pr-12 text-sm'
                     />
