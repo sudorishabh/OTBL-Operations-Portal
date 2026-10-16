@@ -1,8 +1,13 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sum } from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
 import { constants } from "@pkg/utils";
 
-const { workOrderSiteTable, siteActivityTable, scheduleOfRatesTable } = schema;
+const {
+  workOrderSiteTable,
+  siteActivityTable,
+  scheduleOfRatesTable,
+  workOrderSiteExpenseTable,
+} = schema;
 const { WO_PROCESS, WORK_ORDER_STATUS, allActivityOptions } = constants;
 
 // Either the database or a transaction on it.
@@ -72,4 +77,67 @@ export async function createRestorationRow(
   }
 
   return restorationId;
+}
+
+// Allowance for decimal rounding when comparing quantities.
+const QTY_EPSILON = 0.001;
+
+// A restoration is complete once its expenses have used up the quantity of
+// every activity in its schedule of rates, and reopens if they no longer do.
+// Activities without a quantity don't count; a cancelled one is left alone.
+export async function syncRestorationCompletion(
+  db: DbOrTx,
+  workOrderSiteId: number,
+): Promise<void> {
+  const [row] = await db
+    .select({
+      process_type: workOrderSiteTable.process_type,
+      status: workOrderSiteTable.status,
+      is_completed: workOrderSiteTable.is_completed,
+    })
+    .from(workOrderSiteTable)
+    .where(eq(workOrderSiteTable.id, workOrderSiteId));
+
+  if (!row || row.process_type !== WO_PROCESS.RESTORATION) return;
+  if (row.status === WORK_ORDER_STATUS.CANCELLED) return;
+
+  const targets = await db
+    .select({
+      activity: siteActivityTable.activity,
+      quantity: scheduleOfRatesTable.estimated_quantity,
+    })
+    .from(siteActivityTable)
+    .innerJoin(
+      scheduleOfRatesTable,
+      eq(siteActivityTable.schedule_of_rates_id, scheduleOfRatesTable.id),
+    )
+    .where(eq(siteActivityTable.work_order_site_id, workOrderSiteId));
+
+  const used = await db
+    .select({
+      activity: workOrderSiteExpenseTable.activity_key,
+      quantity: sum(workOrderSiteExpenseTable.quantity),
+    })
+    .from(workOrderSiteExpenseTable)
+    .where(eq(workOrderSiteExpenseTable.work_order_site_id, workOrderSiteId))
+    .groupBy(workOrderSiteExpenseTable.activity_key);
+  const usedByActivity = new Map(
+    used.map((u) => [u.activity, Number(u.quantity ?? 0)]),
+  );
+
+  const measured = targets
+    .map((t) => ({ activity: t.activity, quantity: Number(t.quantity ?? 0) }))
+    .filter((t) => t.quantity > 0);
+  const isComplete =
+    measured.length > 0 &&
+    measured.every(
+      (t) => (usedByActivity.get(t.activity) ?? 0) + QTY_EPSILON >= t.quantity,
+    );
+
+  if (isComplete !== row.is_completed) {
+    await db
+      .update(workOrderSiteTable)
+      .set({ is_completed: isComplete })
+      .where(eq(workOrderSiteTable.id, workOrderSiteId));
+  }
 }

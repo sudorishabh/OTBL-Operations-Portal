@@ -7,6 +7,7 @@ import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
 import { validators } from "@pkg/schema";
 import { constants } from "@pkg/utils";
+import { syncRestorationCompletion } from "../restoration/restoration-row";
 
 const {
   workOrderSiteExpenseTable,
@@ -188,6 +189,8 @@ export const expenseMutationRouter = router({
             });
           }
 
+          await syncRestorationCompletion(ctx.db, input.work_order_site_id);
+
           return { success: true, id: created.id };
         } catch (error) {
           if (error && typeof error === "object" && "errorCode" in error) throw error;
@@ -252,6 +255,8 @@ export const expenseMutationRouter = router({
             .set(setData)
             .where(eq(workOrderSiteExpenseTable.id, id));
 
+          await syncRestorationCompletion(ctx.db, prev.work_order_site_id);
+
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Updating expense");
@@ -276,6 +281,8 @@ export const expenseMutationRouter = router({
           await ctx.db
             .delete(workOrderSiteExpenseTable)
             .where(eq(workOrderSiteExpenseTable.id, input.id));
+
+          await syncRestorationCompletion(ctx.db, existing[0]!.work_order_site_id);
 
           return { success: true };
         } catch (error) {
