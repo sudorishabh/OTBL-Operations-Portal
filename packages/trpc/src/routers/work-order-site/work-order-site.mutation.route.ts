@@ -59,6 +59,7 @@ const saveActivityDataSchema = z.object({
   estimated_quantity: z.string(),
   amount: z.string().optional(),
   transportation_km: z.string().optional(),
+  oil_zapper_quantity: z.string().optional(),
 });
 
 type SaveActivityData = z.infer<typeof saveActivityDataSchema>;

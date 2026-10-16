@@ -17,7 +17,7 @@ const {
   scheduleOfRatesTable,
 } = schema;
 
-const { WO_ACTIVITIES, WO_PROCESS, allActivityOptions } = constants;
+const { WO_ACTIVITIES, WO_PROCESS, OIL_ZAPPER, allActivityOptions } = constants;
 
 const RESTORATION_ACTIVITIES = new Set<string>(
   allActivityOptions
@@ -26,15 +26,22 @@ const RESTORATION_ACTIVITIES = new Set<string>(
 );
 
 // The quantity an activity's expenses are measured against: bioremediation's
-// estimate, or for restoration, which has no estimate, its schedule of rates.
+// estimate (its soil, or the oil zapper planned for it), or for restoration,
+// which has no estimate, its schedule of rates.
 async function getEstimateQtyForSite(
   ctx: any,
   siteId: number,
   activityKey: string,
 ): Promise<number | null> {
-  if (activityKey === WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL) {
+  if (
+    activityKey === WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL ||
+    activityKey === OIL_ZAPPER.KEY
+  ) {
     const [estimate] = await ctx.db
-      .select({ quantity: bioremediationContSoilTable.estimated_quantity })
+      .select({
+        quantity: bioremediationContSoilTable.estimated_quantity,
+        oilZapperQuantity: bioremediationContSoilTable.oil_zapper_quantity,
+      })
       .from(bioremediationContSoilTable)
       .where(
         and(
@@ -42,7 +49,13 @@ async function getEstimateQtyForSite(
           eq(bioremediationContSoilTable.type, "estimate_sub-wo"),
         ),
       );
-    return estimate ? parseFloat(estimate.quantity || "0") : null;
+    if (!estimate) return null;
+    if (activityKey === OIL_ZAPPER.KEY) {
+      return estimate.oilZapperQuantity != null
+        ? parseFloat(estimate.oilZapperQuantity)
+        : null;
+    }
+    return parseFloat(estimate.quantity || "0");
   }
 
   if (!RESTORATION_ACTIVITIES.has(activityKey)) return null;
