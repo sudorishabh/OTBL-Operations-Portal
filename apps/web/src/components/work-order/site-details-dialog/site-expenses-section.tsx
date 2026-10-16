@@ -402,7 +402,7 @@ const SiteExpensesSection = ({
             </TableCell>
           )}
           {/* The invoice number with its documents beside it. */}
-          <TableCell className={cn(cellClass, "text-xs text-gray-600")}>
+          <TableCell className={cn(cellClass, "pl-8 sm:pl-8 text-xs text-gray-600")}>
             <div className='flex items-center gap-1.5'>
               {record.invoiceNumber ? (
                 <span className='truncate'>{record.invoiceNumber}</span>
@@ -540,7 +540,7 @@ const SiteExpensesSection = ({
           <TableHead className={headClass}>Expense</TableHead>
           <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
           {showVendor && <TableHead className={headClass}>Contractor</TableHead>}
-          <TableHead className={cn(headClass, "w-[150px]")}>Invoice</TableHead>
+          <TableHead className={cn(headClass, "w-[170px] pl-8 sm:pl-8")}>Invoice</TableHead>
           <TableHead className={cn(headClass, "w-[130px] text-right")}>Amount</TableHead>
           <TableHead className={cn(headClass, "w-px")}>
             <span className='sr-only'>Actions</span>
