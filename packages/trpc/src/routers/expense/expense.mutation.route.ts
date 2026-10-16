@@ -95,6 +95,17 @@ async function computeIsExceeded(
   return existingTotal + newQty > estimateQty + 0.001;
 }
 
+// An expense can't end before it starts.
+const endsOnOrAfterStart = (value: { start_date?: string; end_date?: string }) =>
+  !value.start_date ||
+  !value.end_date ||
+  new Date(value.end_date).getTime() >= new Date(value.start_date).getTime();
+
+const endDateIssue = {
+  message: "End date can't be before the start date",
+  path: ["end_date"],
+};
+
 const createExpenseSchema = z.object({
   work_order_site_id: z.number().positive(),
   contractor_id: z.number().positive().optional().nullable(),
@@ -108,10 +119,11 @@ const createExpenseSchema = z.object({
     .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
       message: "Amount must be a positive number",
     }),
-  expense_date: z.string().min(1, "Date is required"),
+  start_date: z.string().min(1, "Start date is required"),
+  end_date: z.string().min(1, "End date is required"),
   invoice_number: z.string().max(100).optional().nullable(),
   documents: validators.optionalDocumentsValidator.optional(),
-});
+}).refine(endsOnOrAfterStart, endDateIssue);
 
 const updateExpenseSchema = z.object({
   id: z.number().positive(),
@@ -126,10 +138,11 @@ const updateExpenseSchema = z.object({
       message: "Amount must be a positive number",
     })
     .optional(),
-  expense_date: z.string().optional(),
+  start_date: z.string().optional(),
+  end_date: z.string().optional(),
   invoice_number: z.string().max(100).optional().nullable(),
   documents: validators.optionalDocumentsValidator.optional(),
-});
+}).refine(endsOnOrAfterStart, endDateIssue);
 
 export const expenseMutationRouter = router({
   createExpense: protectedProcedure
@@ -158,7 +171,8 @@ export const expenseMutationRouter = router({
               is_exceeded: finalExceeded ? 1 : 0,
               description: input.description,
               amount: input.amount,
-              expense_date: new Date(input.expense_date),
+              start_date: new Date(input.start_date),
+              end_date: new Date(input.end_date),
               invoice_number: input.invoice_number ?? null,
               documents: input.documents ?? [],
               // Legacy single-document columns, kept until they are dropped.
@@ -224,7 +238,8 @@ export const expenseMutationRouter = router({
           }
           if (updateData.description !== undefined) setData.description = updateData.description;
           if (updateData.amount !== undefined) setData.amount = updateData.amount;
-          if (updateData.expense_date !== undefined) setData.expense_date = new Date(updateData.expense_date);
+          if (updateData.start_date !== undefined) setData.start_date = new Date(updateData.start_date);
+          if (updateData.end_date !== undefined) setData.end_date = new Date(updateData.end_date);
           if (updateData.invoice_number !== undefined) setData.invoice_number = updateData.invoice_number;
           if (updateData.documents !== undefined) {
             setData.documents = updateData.documents;

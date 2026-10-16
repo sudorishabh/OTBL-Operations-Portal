@@ -65,7 +65,8 @@ export const expenseQueryRouter = router({
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
               description: workOrderSiteExpenseTable.description,
               amount: workOrderSiteExpenseTable.amount,
-              expense_date: workOrderSiteExpenseTable.expense_date,
+              start_date: workOrderSiteExpenseTable.start_date,
+              end_date: workOrderSiteExpenseTable.end_date,
               invoice_number: workOrderSiteExpenseTable.invoice_number,
               documents: workOrderSiteExpenseTable.documents,
               created_by: workOrderSiteExpenseTable.created_by,
@@ -78,7 +79,7 @@ export const expenseQueryRouter = router({
               eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
             )
             .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id))
-            .orderBy(desc(workOrderSiteExpenseTable.expense_date), desc(workOrderSiteExpenseTable.created_at))
+            .orderBy(desc(workOrderSiteExpenseTable.start_date), desc(workOrderSiteExpenseTable.created_at))
             .limit(limit)
             .offset(offset);
 
@@ -210,7 +211,8 @@ export const expenseQueryRouter = router({
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
               description: workOrderSiteExpenseTable.description,
               amount: workOrderSiteExpenseTable.amount,
-              expense_date: workOrderSiteExpenseTable.expense_date,
+              start_date: workOrderSiteExpenseTable.start_date,
+              end_date: workOrderSiteExpenseTable.end_date,
               invoice_number: workOrderSiteExpenseTable.invoice_number,
               documents: workOrderSiteExpenseTable.documents,
               created_at: workOrderSiteExpenseTable.created_at,
@@ -229,7 +231,7 @@ export const expenseQueryRouter = router({
               eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
             )
             .where(eq(workOrderSiteTable.work_order_id, input.work_order_id))
-            .orderBy(desc(workOrderSiteExpenseTable.expense_date));
+            .orderBy(desc(workOrderSiteExpenseTable.start_date));
 
           return { expenses };
         } catch (error) {

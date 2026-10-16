@@ -54,7 +54,8 @@ export interface Expense {
   is_exceeded: number | boolean | null;
   description: string;
   amount: string;
-  expense_date: string | Date;
+  start_date: string | Date;
+  end_date: string | Date;
   invoice_number: string | null;
   documents: StoredDocument[] | null;
 }
@@ -77,6 +78,9 @@ interface Props {
 
 // "Expense under" value for an expense under none of the contractors.
 const NOT_UNDER = "none";
+
+const toDateInput = (value: string | Date = new Date()) =>
+  format(new Date(value), "yyyy-MM-dd");
 
 const AddExpenseDialog = ({
   open,
@@ -102,7 +106,8 @@ const AddExpenseDialog = ({
   const [selectedActivityKey, setSelectedActivityKey] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
   const [description, setDescription] = useState("");
-  const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [startDate, setStartDate] = useState(() => toDateInput());
+  const [endDate, setEndDate] = useState(() => toDateInput());
   const [invoiceNumber, setInvoiceNumber] = useState("");
 
   const [files, setFiles] = useState<File[]>([]);
@@ -148,7 +153,8 @@ const AddExpenseDialog = ({
       setSelectedActivityKey(editingExpense.activity_key ?? "");
       setQuantity(editingExpense.quantity ?? "");
       setDescription(editingExpense.description);
-      setExpenseDate(format(new Date(editingExpense.expense_date), "yyyy-MM-dd"));
+      setStartDate(toDateInput(editingExpense.start_date));
+      setEndDate(toDateInput(editingExpense.end_date));
       setInvoiceNumber(editingExpense.invoice_number ?? "");
       setSavedDocuments(toDocuments(editingExpense.documents));
       setFiles([]);
@@ -166,7 +172,8 @@ const AddExpenseDialog = ({
       setSelectedActivityKey("");
       setQuantity("");
       setDescription("");
-      setExpenseDate(format(new Date(), "yyyy-MM-dd"));
+      setStartDate(toDateInput());
+      setEndDate(toDateInput());
       setInvoiceNumber("");
       resetDocumentState();
     }
@@ -264,7 +271,14 @@ const AddExpenseDialog = ({
       return;
     }
     if (!description.trim()) { toast.error("Description is required"); return; }
-    if (!expenseDate) { toast.error("Date is required"); return; }
+    if (!startDate || !endDate) {
+      toast.error("Start and end dates are required");
+      return;
+    }
+    if (endDate < startDate) {
+      toast.error("End date can't be before the start date");
+      return;
+    }
 
     if (selectedActivityKey && !isExceededMode && quantity) {
       const q = parseFloat(quantity);
@@ -286,7 +300,8 @@ const AddExpenseDialog = ({
       is_exceeded: isExceededMode,
       description: description.trim(),
       amount,
-      expense_date: new Date(expenseDate).toISOString(),
+      start_date: new Date(startDate).toISOString(),
+      end_date: new Date(endDate).toISOString(),
       invoice_number: invoiceNumber.trim() || null,
       documents,
     };
@@ -560,15 +575,32 @@ const AddExpenseDialog = ({
             </div>
           </div>
 
-          <div className='space-y-1.5'>
-            <Label className='text-xs font-medium text-gray-700'>
-              Date <span className='text-red-500'>*</span>
-            </Label>
-            <Input
-              type='date' value={expenseDate}
-              onChange={(e) => setExpenseDate(e.target.value)}
-              className='h-9 text-sm sm:w-1/2'
-            />
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+            <div className='space-y-1.5'>
+              <Label className='text-xs font-medium text-gray-700'>
+                Start date <span className='text-red-500'>*</span>
+              </Label>
+              <Input
+                type='date' value={startDate}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setStartDate(next);
+                  // A later start takes the end with it, so the range stays valid.
+                  if (next && endDate < next) setEndDate(next);
+                }}
+                className='h-9 text-sm'
+              />
+            </div>
+            <div className='space-y-1.5'>
+              <Label className='text-xs font-medium text-gray-700'>
+                End date <span className='text-red-500'>*</span>
+              </Label>
+              <Input
+                type='date' value={endDate} min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+                className='h-9 text-sm'
+              />
+            </div>
           </div>
 
           <div className='space-y-1.5'>

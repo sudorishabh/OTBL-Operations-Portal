@@ -48,7 +48,6 @@ import {
   ChevronRight,
   CornerDownRight,
 } from "lucide-react";
-import { format } from "date-fns";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
 import { cn } from "@/lib/utils";
@@ -60,13 +59,15 @@ import AddExpenseDialog, {
 } from "./add-expense-dialog";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { toDocuments, type StoredDocument } from "@/lib/documents";
+import { formatDateRange } from "@/lib/wo-site-display";
 
 type ExpenseRecord = {
   id: number;
   activityKey: string | null;
   activityLabel: string;
   unit: string | null;
-  expenseDate: string | Date;
+  startDate: string | Date;
+  endDate: string | Date;
   quantity: string | null;
   isExceeded: boolean;
   description: string;
@@ -271,7 +272,8 @@ const SiteExpensesSection = ({
         activityKey,
         activityLabel: activityMeta.label,
         unit: activityMeta.unit,
-        expenseDate: exp.expense_date,
+        startDate: exp.start_date,
+        endDate: exp.end_date,
         quantity: exp.quantity ?? null,
         isExceeded: !!exp.is_exceeded,
         description: exp.description,
@@ -282,7 +284,7 @@ const SiteExpensesSection = ({
         amount: Number(exp.amount),
       };
     });
-    all.sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
+    all.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
 
     if (activityFilter === "__all__") return all;
     const filterKey = activityFilter === "__none__" ? null : activityFilter;
@@ -297,8 +299,8 @@ const SiteExpensesSection = ({
       <TableRow
         key={record.id}
         className={`transition-colors ${isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-blue-50/20"}`}>
-        <TableCell className='text-xs text-gray-600 py-2.5'>
-          {format(new Date(record.expenseDate), "dd MMM yyyy")}
+        <TableCell className='text-xs text-gray-600 py-2.5 whitespace-nowrap'>
+          {formatDateRange(record.startDate, record.endDate)}
         </TableCell>
         <TableCell className='py-2.5'>
           <div className='flex flex-wrap items-center gap-1.5'>
@@ -415,7 +417,7 @@ const SiteExpensesSection = ({
     <Table>
       <TableHeader>
         <TableRow className='bg-gray-50/50 hover:bg-gray-50/50'>
-          <TableHead className='text-xs font-semibold text-gray-600 w-[110px] whitespace-nowrap'>Date</TableHead>
+          <TableHead className='text-xs font-semibold text-gray-600 w-[130px] whitespace-nowrap'>Dates</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Activity</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Description</TableHead>
           <TableHead className='text-xs font-semibold text-gray-600 text-center w-[90px] whitespace-nowrap'>Qty</TableHead>

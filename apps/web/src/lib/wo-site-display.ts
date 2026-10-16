@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, format } from "date-fns";
+import { differenceInCalendarDays, format, isSameDay } from "date-fns";
 import { constants } from "@pkg/utils";
 
 export type SiteStatus = "pending" | "completed" | "cancelled";
@@ -39,6 +39,7 @@ export const formatDateRange = (
   const to = toDate(end);
   if (!from && !to) return "Not scheduled";
   if (from && to) {
+    if (isSameDay(from, to)) return format(from, "d MMM yy");
     const sameYear = from.getFullYear() === to.getFullYear();
     return `${format(from, sameYear ? "d MMM" : "d MMM yy")} – ${format(to, "d MMM yy")}`;
   }

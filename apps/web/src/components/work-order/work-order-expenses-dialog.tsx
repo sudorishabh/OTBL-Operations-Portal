@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from "react";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { toDocuments } from "@/lib/documents";
-import { format } from "date-fns";
+import { formatDateRange } from "@/lib/wo-site-display";
 import {
   AlertTriangle,
   ExternalLink,
@@ -207,7 +207,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
             <TableHeader>
               <TableRow className='border-b bg-slate-50/60'>
                 <TableHead className='h-9 px-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
-                  Date
+                  Dates
                 </TableHead>
                 <TableHead className='h-9 px-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
                   Site
@@ -254,9 +254,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                       key={e.id}
                       className={`border-b last:border-0 hover:bg-slate-50/60 transition-colors ${isExceeded ? "bg-orange-50/30" : ""}`}>
                       <TableCell className='px-3 py-2 whitespace-nowrap text-slate-600'>
-                        {e.expense_date
-                          ? format(new Date(e.expense_date), "dd MMM yyyy")
-                          : "—"}
+                        {formatDateRange(e.start_date, e.end_date)}
                       </TableCell>
                       <TableCell className='px-3 py-2'>
                         <button
