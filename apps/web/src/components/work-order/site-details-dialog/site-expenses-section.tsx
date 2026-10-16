@@ -60,7 +60,6 @@ import {
   type StoredDocument,
 } from "@/lib/documents";
 import { differenceInCalendarDays, format, isSameDay } from "date-fns";
-import { formatDateRange } from "@/lib/wo-site-display";
 
 type ExpenseRecord = {
   id: number;
@@ -95,6 +94,8 @@ const formatQty = (value: number) =>
 const headClass =
   "h-9 px-3 sm:h-9 sm:px-3 text-xs font-medium text-gray-500 whitespace-nowrap";
 const cellClass = "px-3 py-2.5 sm:px-3 sm:py-2.5";
+
+const formatShortDate = (value: string | Date) => format(new Date(value), "d MMM yy");
 
 const formatFullDates = (start: string | Date, end: string | Date) => {
   const from = new Date(start);
@@ -335,7 +336,7 @@ const SiteExpensesSection = ({
     const documentCount = record.documents.length;
     const isOpen = expandedId === record.id;
     const toggle = () => setExpandedId(isOpen ? null : record.id);
-    const columnCount = showVendor ? 7 : 6;
+    const columnCount = showVendor ? 8 : 7;
 
     return (
       <React.Fragment key={record.id}>
@@ -363,8 +364,11 @@ const SiteExpensesSection = ({
                   isOpen && "rotate-90",
                 )}
               />
-              {formatDateRange(record.startDate, record.endDate)}
+              {formatShortDate(record.startDate)}
             </button>
+          </TableCell>
+          <TableCell className={cn(cellClass, "whitespace-nowrap text-xs tabular-nums text-gray-600")}>
+            {formatShortDate(record.endDate)}
           </TableCell>
           {/* What was spent on, and against which activity. */}
           <TableCell className={cn(cellClass, "min-w-48")}>
@@ -530,7 +534,8 @@ const SiteExpensesSection = ({
     <Table>
       <TableHeader>
         <TableRow className='border-gray-100 hover:bg-transparent'>
-          <TableHead className={cn(headClass, "w-[140px]")}>Dates</TableHead>
+          <TableHead className={cn(headClass, "w-[110px]")}>Start date</TableHead>
+          <TableHead className={cn(headClass, "w-[90px]")}>End date</TableHead>
           <TableHead className={headClass}>Expense</TableHead>
           <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
           {showVendor && <TableHead className={headClass}>Contractor</TableHead>}
