@@ -118,8 +118,9 @@ async function syncSiteCompletion(ctx: any, siteId: number) {
   await syncBioremediationCompletion(ctx.db, siteId);
 }
 
-// A restoration's miscellaneous expense, under none of its vendors, uses up
-// no activity quantity, so it may not carry one.
+// A miscellaneous expense, under none of a restoration's or bioremediation
+// site's vendors, uses up no activity quantity or oil zapper, so it may not
+// carry one.
 async function assertQuantityAllowed(
   ctx: any,
   siteId: number,
@@ -135,6 +136,11 @@ async function assertQuantityAllowed(
   if (site?.process_type === WO_PROCESS.RESTORATION) {
     throw businessRule(
       "Miscellaneous expenses don't record a quantity. Choose a vendor to deduct one.",
+    );
+  }
+  if (site?.process_type === WO_PROCESS.BIOREMEDIATION) {
+    throw businessRule(
+      "Miscellaneous expenses don't use oil zapper. Choose a vendor to deduct it.",
     );
   }
 }
