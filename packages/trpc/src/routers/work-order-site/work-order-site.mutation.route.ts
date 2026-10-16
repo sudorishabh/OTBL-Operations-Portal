@@ -43,7 +43,6 @@ const createSiteDocumentSchema = z.object({
   document_url: z.string().min(1).max(255),
   document_id: z.string().min(1).max(255).optional(),
   type: z.enum([
-    "sub_wo",
     "estimate",
     "completion",
     "measurement_sheet",
@@ -415,9 +414,9 @@ export const workOrderSiteMutationRouter = router({
     handleMutation(async ({ input, ctx }) => {
       const { work_order_site_id, document_url, document_id, type } = input;
 
-      // Sub-WO and estimate documents belong to an estimate, which
-      // restoration doesn't have.
-      if (type === "sub_wo" || type === "estimate") {
+      // Estimate documents belong to an estimate, which restoration
+      // doesn't have.
+      if (type === "estimate") {
         const [woSite] = await ctx.db
           .select({ process_type: workOrderSiteTable.process_type })
           .from(workOrderSiteTable)
@@ -425,7 +424,7 @@ export const workOrderSiteMutationRouter = router({
 
         if (woSite?.process_type === constants.WO_PROCESS.RESTORATION) {
           throw businessRule(
-            "Restoration has no estimate, so it takes no sub-WO or estimate documents.",
+            "Restoration has no estimate, so it takes no estimate documents.",
           );
         }
       }
@@ -488,9 +487,8 @@ export const workOrderSiteMutationRouter = router({
     .input(
       z.object({
         work_order_site_id: z.number().positive(),
-        phase: z.enum(["sub_wo", "estimate", "completion", "estimate_sub-wo"]),
+        phase: z.enum(["estimate", "completion", "estimate_sub-wo"]),
         document_url: z.string().optional(),
-        sub_wo_document_url: z.string().optional(),
         estimate_document_url: z.string().optional(),
         data: saveActivityDataSchema,
       }),
@@ -502,7 +500,6 @@ export const workOrderSiteMutationRouter = router({
           phase,
           data,
           document_url,
-          sub_wo_document_url,
           estimate_document_url,
         } = input;
         try {
@@ -536,9 +533,6 @@ export const workOrderSiteMutationRouter = router({
 
           if (document_url && phase !== "estimate_sub-wo") {
             await upsertDoc(document_url, phase);
-          }
-          if (sub_wo_document_url) {
-            await upsertDoc(sub_wo_document_url, "sub_wo");
           }
           if (estimate_document_url) {
             await upsertDoc(estimate_document_url, "estimate");

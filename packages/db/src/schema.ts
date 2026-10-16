@@ -454,7 +454,6 @@ export const workOrderSiteDocsTable = mysqlTable("work_order_site_docs", {
 
   type: varchar("type", {
     enum: [
-      "sub_wo",
       "estimate",
       "completion",
       "measurement_sheet",
