@@ -77,18 +77,18 @@ const SiteDetailDialog = () => {
         {woSiteId > 0 && <WoSiteOperatorsSection woSiteId={woSiteId} />}
 
         <Tabs defaultValue='estimate'>
-          <TabsList className='grid w-full sm:w-80 grid-cols-2 h-8'>
+          <TabsList className='grid w-full sm:w-64 grid-cols-2 h-8'>
             <TabsTrigger
               value='estimate'
               className='gap-2 text-xs text-gray-800'>
               <Calculator className='size-3.5 text-gray-500' />
-              Estimate/sub-WO
+              Estimate
             </TabsTrigger>
             <TabsTrigger
               value='expenses'
               className='gap-2 text-xs text-gray-800'>
               <Receipt className='size-3.5 text-gray-500' />
-              Expenses &amp; P&amp;L
+              Expenses
             </TabsTrigger>
           </TabsList>
 
