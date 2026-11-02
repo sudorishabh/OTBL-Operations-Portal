@@ -4,7 +4,6 @@ import { Calculator, CheckCircle2, Receipt } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 import SiteSorAvailability from "./site-sor-availability";
 import SiteActivities from "./site-activities";
 import SiteSorCompletion from "./site-sor-completion";
@@ -61,19 +60,6 @@ const SiteDetailsTabs = ({
       <TabsContent
         value='estimation'
         className='space-y-4'>
-        {/* Mobilization comes first: the team moves on and the baseline
-            sample is taken before the estimate. */}
-        {isBioremediation && (
-          <div
-            className={cn(sectionClass, "grid grid-cols-1 gap-5 md:grid-cols-2")}>
-            <div className='min-w-0'>
-              <MobilizationCertificate woSiteId={woSiteId} />
-            </div>
-            <div className='min-w-0'>
-              <ZeroDaySample woSiteId={woSiteId} />
-            </div>
-          </div>
-        )}
         <SiteSorAvailability
           woSiteId={woSiteId}
           className={sectionClass}

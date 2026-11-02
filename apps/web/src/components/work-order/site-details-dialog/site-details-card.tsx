@@ -7,11 +7,12 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, constants } from "@pkg/utils";
 import { format } from "date-fns";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import EditSiteDatesDialog from "./edit-site-dates-dialog";
+import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 
 interface WorkOrderSiteDetails {
   id: number;
@@ -142,6 +143,20 @@ const SiteDetailsCard = ({
           <WoSiteOperatorsSection woSiteId={siteDetails.id} />
         </div>
       )}
+
+      {/* How the site was set up: the team moving on, and the baseline
+          sample taken before treatment starts. */}
+      {siteDetails?.id &&
+        siteDetails.process_type === constants.WO_PROCESS.BIOREMEDIATION && (
+          <div className='mt-4 grid grid-cols-1 gap-5 border-t border-gray-200/50 pt-4 md:grid-cols-2'>
+            <div className='min-w-0'>
+              <MobilizationCertificate woSiteId={siteDetails.id} />
+            </div>
+            <div className='min-w-0'>
+              <ZeroDaySample woSiteId={siteDetails.id} />
+            </div>
+          </div>
+        )}
     </div>
   );
 };
