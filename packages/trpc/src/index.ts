@@ -21,6 +21,8 @@ import { restorationQueryRouter } from "./routers/restoration/restoration.query.
 import { restorationMutationRouter } from "./routers/restoration/restoration.mutation.route";
 import { siteContractorQueryRouter } from "./routers/site-contractor/site-contractor.query.route";
 import { siteContractorMutationRouter } from "./routers/site-contractor/site-contractor.mutation.route";
+import { jobOrderQueryRouter } from "./routers/job-order/job-order.query.route";
+import { jobOrderMutationRouter } from "./routers/job-order/job-order.mutation.route";
 import { contractOrderQueryRouter } from "./routers/contract-order/contract-order.query.route";
 import { contractOrderMutationRouter } from "./routers/contract-order/contract-order.mutation.route";
 import { expenseQueryRouter } from "./routers/expense/expense.query.route";
@@ -67,6 +69,9 @@ export const appRouter = router({
 
   siteContractorQuery: siteContractorQueryRouter,
   siteContractorMutation: siteContractorMutationRouter,
+
+  jobOrderQuery: jobOrderQueryRouter,
+  jobOrderMutation: jobOrderMutationRouter,
 
   contractOrderQuery: contractOrderQueryRouter,
   contractOrderMutation: contractOrderMutationRouter,
