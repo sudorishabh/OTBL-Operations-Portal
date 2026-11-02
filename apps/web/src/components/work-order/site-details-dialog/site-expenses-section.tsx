@@ -616,23 +616,11 @@ const SiteExpensesSection = ({
     0,
   );
 
-  // Bioremediation groups: per order requirement, per vendor under it, the
-  // older vendor expenses on no order, and the miscellaneous ones.
+  // Bioremediation totals per order requirement, and per vendor under it.
   const orderItemTotal = (itemId: number): number =>
     summary?.byOrderItem?.[String(itemId)] ?? 0;
   const orderItemVendorTotal = (itemId: number, vendorId: number): number =>
     summary?.byOrderItemVendor?.[`${itemId}:${vendorId}`] ?? 0;
-  const unorderedVendorRecords = records.filter(
-    (r) => r.contractorId !== null && r.contractOrderItemId === null,
-  );
-  const miscellaneousRecords = records.filter(
-    (r) => r.contractorId === null && r.contractOrderItemId === null,
-  );
-  const miscellaneousTotal = summary?.byContractor?.none ?? 0;
-  const unorderedVendorTotal =
-    expenseTotal -
-    miscellaneousTotal -
-    orderItems.reduce((sum, item) => sum + orderItemTotal(item.id), 0);
 
   const toggleGroup = (key: string) =>
     setCollapsedGroups((prev) => {
@@ -733,6 +721,141 @@ const SiteExpensesSection = ({
       Add expense
     </button>
   );
+
+  // Expenses spent on something with its own vendors, such as a contract
+  // order requirement: a group for each, then one for each of its vendors.
+  type ExpenseGroup = {
+    key: string;
+    Icon: React.ElementType;
+    title: string;
+    total: number;
+    vendors: { id: number; name: string }[];
+    records: ExpenseRecord[];
+    vendorTotal: (vendorId: number) => number;
+    onAdd: (vendorId: number) => void;
+    actions?: React.ReactNode;
+  };
+
+  // The grouped sections, then vendor expenses in no group (recorded before
+  // the groups were kept), then the miscellaneous ones under no vendor.
+  const renderGroupedExpenses = ({
+    sections,
+    unassignedTitle,
+  }: {
+    sections: {
+      key: string;
+      title: string;
+      meta: string;
+      emptyText: string;
+      action?: React.ReactNode;
+      groups: ExpenseGroup[];
+    }[];
+    unassignedTitle: string;
+  }) => {
+    const groupedIds = new Set(
+      sections.flatMap((section) =>
+        section.groups.flatMap((group) => group.records.map((r) => r.id)),
+      ),
+    );
+    const unassignedRecords = records.filter(
+      (r) => r.contractorId !== null && !groupedIds.has(r.id),
+    );
+    const miscellaneousRecords = records.filter(
+      (r) => r.contractorId === null && !groupedIds.has(r.id),
+    );
+    const groupedTotal = sections.reduce(
+      (sum, section) =>
+        sum + section.groups.reduce((groupSum, group) => groupSum + group.total, 0),
+      0,
+    );
+    const miscellaneousTotal = summary?.byContractor?.none ?? 0;
+
+    return (
+      <div className='space-y-6'>
+        {sections.map((section) => (
+          <section
+            key={section.key}
+            className='space-y-1'>
+            {renderSectionHeader({
+              title: section.title,
+              meta: section.meta,
+              total: section.groups.reduce((sum, group) => sum + group.total, 0),
+              action: section.action,
+            })}
+            {section.groups.length === 0 && emptyGroupText(section.emptyText)}
+            {section.groups.map((group) =>
+              renderVendorGroup({
+                groupKey: group.key,
+                Icon: group.Icon,
+                title: group.title,
+                total: group.total,
+                count: group.records.length,
+                actions: group.actions,
+                content: (
+                  <div className='space-y-1'>
+                    {group.vendors.length === 0 &&
+                      emptyGroupText("No vendors on this yet.")}
+                    {group.vendors.map((vendor) => {
+                      const name = capitalFirstLetter(vendor.name);
+                      const vendorRecords = group.records.filter(
+                        (r) => r.contractorId === vendor.id,
+                      );
+                      return renderVendorGroup({
+                        groupKey: `${group.key}-vendor-${vendor.id}`,
+                        Icon: HardHat,
+                        title: name,
+                        total: group.vendorTotal(vendor.id),
+                        count: vendorRecords.length,
+                        content:
+                          vendorRecords.length > 0
+                            ? renderRecordsBox(vendorRecords, false)
+                            : emptyGroupText(`No expenses under ${name} yet.`),
+                        actions: renderAddExpenseButton(
+                          `Add expense under ${name}`,
+                          () => group.onAdd(vendor.id),
+                        ),
+                      });
+                    })}
+                  </div>
+                ),
+              }),
+            )}
+          </section>
+        ))}
+
+        {unassignedRecords.length > 0 && (
+          <section className='space-y-2'>
+            {renderSectionHeader({
+              title: unassignedTitle,
+              meta: `${unassignedRecords.length} expense${unassignedRecords.length !== 1 ? "s" : ""}`,
+              total: expenseTotal - miscellaneousTotal - groupedTotal,
+            })}
+            {renderRecordsBox(unassignedRecords)}
+          </section>
+        )}
+
+        <section className='space-y-2'>
+          {renderSectionHeader({
+            title: "Miscellaneous",
+            meta: `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
+            total: miscellaneousTotal,
+            action: renderAddExpenseButton("Add a miscellaneous expense", () =>
+              openAddExpense("miscellaneous"),
+            ),
+          })}
+          {miscellaneousRecords.length > 0
+            ? renderRecordsBox(miscellaneousRecords)
+            : emptyGroupText("No miscellaneous expenses yet.")}
+        </section>
+
+        {expensesPagination && expensesPagination.total > expenses.length && (
+          <p className='text-xs text-gray-400'>
+            Showing {expenses.length} of {expensesPagination.total} entries
+          </p>
+        )}
+      </div>
+    );
+  };
 
   // Which vendors the expense dialog offers. A bioremediation expense on an
   // order is under one of the order's vendors; an older one keeps its own;
@@ -899,94 +1022,29 @@ const SiteExpensesSection = ({
       {expensesQuery.isLoading && expensePage === 1 ? (
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
       ) : isBioremediation ? (
-        <div className='space-y-6'>
-          {ORDER_GROUPS.map(({ type, title, Icon }) => {
+        renderGroupedExpenses({
+          sections: ORDER_GROUPS.map(({ type, title, Icon }) => {
             const items = orderItems.filter((item) => item.order_type === type);
-            return (
-              <section
-                key={type}
-                className='space-y-1'>
-                {renderSectionHeader({
-                  title,
-                  meta: `${items.length} requirement${items.length !== 1 ? "s" : ""}`,
-                  total: items.reduce((sum, item) => sum + orderItemTotal(item.id), 0),
-                })}
-                {items.length === 0 &&
-                  emptyGroupText("No orders require anything at this site yet.")}
-                {items.map((item) => {
-                  const itemRecords = records.filter(
-                    (r) => r.contractOrderItemId === item.id,
-                  );
-                  return renderVendorGroup({
-                    groupKey: `item-${item.id}`,
-                    Icon,
-                    title: `${orderItemTitle(item)} (${formatQty(Number(item.quantity))} ${item.unit})`,
-                    total: orderItemTotal(item.id),
-                    count: itemRecords.length,
-                    content: (
-                      <div className='space-y-1'>
-                        {item.vendors.map((vendor) => {
-                          const name = capitalFirstLetter(vendor.name);
-                          const vendorRecords = itemRecords.filter(
-                            (r) => r.contractorId === vendor.id,
-                          );
-                          return renderVendorGroup({
-                            groupKey: `item-${item.id}-vendor-${vendor.id}`,
-                            Icon: HardHat,
-                            title: name,
-                            total: orderItemVendorTotal(item.id, vendor.id),
-                            count: vendorRecords.length,
-                            content:
-                              vendorRecords.length > 0
-                                ? renderRecordsBox(vendorRecords, false)
-                                : emptyGroupText(`No expenses under ${name} yet.`),
-                            actions: renderAddExpenseButton(
-                              `Add expense under ${name}`,
-                              () => openAddExpense(vendor.id, item.id),
-                            ),
-                          });
-                        })}
-                      </div>
-                    ),
-                  });
-                })}
-              </section>
-            );
-          })}
-
-          {/* Recorded under a vendor before the site's orders were kept. */}
-          {unorderedVendorRecords.length > 0 && (
-            <section className='space-y-2'>
-              {renderSectionHeader({
-                title: "Vendor expenses not on an order",
-                meta: `${unorderedVendorRecords.length} expense${unorderedVendorRecords.length !== 1 ? "s" : ""}`,
-                total: unorderedVendorTotal,
-              })}
-              {renderRecordsBox(unorderedVendorRecords)}
-            </section>
-          )}
-
-          {/* Expenses under no vendor. */}
-          <section className='space-y-2'>
-            {renderSectionHeader({
-              title: "Miscellaneous",
-              meta: `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
-              total: miscellaneousTotal,
-              action: renderAddExpenseButton("Add a miscellaneous expense", () =>
-                openAddExpense("miscellaneous"),
-              ),
-            })}
-            {miscellaneousRecords.length > 0
-              ? renderRecordsBox(miscellaneousRecords)
-              : emptyGroupText("No miscellaneous expenses yet.")}
-          </section>
-
-          {expensesPagination && expensesPagination.total > expenses.length && (
-            <p className='text-xs text-gray-400'>
-              Showing {expenses.length} of {expensesPagination.total} entries
-            </p>
-          )}
-        </div>
+            return {
+              key: type,
+              title,
+              meta: `${items.length} requirement${items.length !== 1 ? "s" : ""}`,
+              emptyText: "No orders require anything at this site yet.",
+              groups: items.map((item) => ({
+                key: `item-${item.id}`,
+                Icon,
+                title: `${orderItemTitle(item)} (${formatQty(Number(item.quantity))} ${item.unit})`,
+                total: orderItemTotal(item.id),
+                vendors: item.vendors,
+                records: records.filter((r) => r.contractOrderItemId === item.id),
+                vendorTotal: (vendorId: number) =>
+                  orderItemVendorTotal(item.id, vendorId),
+                onAdd: (vendorId: number) => openAddExpense(vendorId, item.id),
+              })),
+            };
+          }),
+          unassignedTitle: "Vendor expenses not on an order",
+        })
       ) : splitByContractor ? (
         <div className='space-y-6'>
           {/* Expenses under the site's vendors, a group for each. */}
