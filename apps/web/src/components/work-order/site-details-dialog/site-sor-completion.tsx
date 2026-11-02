@@ -18,6 +18,7 @@ const { TPH_TARGET, WO_UNITS, ZERO_DAY_SAMPLE } = constants;
 interface Props {
   woSiteId: number;
   isCompleted: boolean;
+  className?: string;
 }
 
 const formatQty = (value: number) =>
@@ -27,13 +28,13 @@ const sampleDate = (sample: any) =>
   new Date(sample.sampled_on ?? sample.created_at).getTime();
 
 const headClass =
-  "text-[10px] font-semibold text-gray-600 whitespace-nowrap text-right";
+  "h-8 px-3 sm:h-8 sm:px-3 text-[11px] font-medium text-gray-400 whitespace-nowrap text-right";
 const cellClass =
-  "py-2 text-xs text-gray-700 text-right tabular-nums whitespace-nowrap";
+  "px-3 py-2 sm:px-3 sm:py-2 text-[13px] text-gray-700 text-right tabular-nums whitespace-nowrap";
 
 // The site's share of the schedule of rates. It is used in full once
 // treatment is achieved: the latest bio sample's TPH is below the target.
-const SiteSorCompletion = ({ woSiteId, isCompleted }: Props) => {
+const SiteSorCompletion = ({ woSiteId, isCompleted, className }: Props) => {
   const stockQuery = trpc.workOrderSiteQuery.getOilZapperStock.useQuery(
     { work_order_site_id: woSiteId },
     { enabled: !!woSiteId },
@@ -53,39 +54,42 @@ const SiteSorCompletion = ({ woSiteId, isCompleted }: Props) => {
   const available = sorQuantity !== null ? sorQuantity - used : null;
 
   return (
-    <div className='space-y-2'>
+    <div className={cn("space-y-2", className)}>
       <div className='flex flex-wrap items-center justify-between gap-2'>
-        <div className='flex items-center gap-2'>
-          <Target className='w-3.5 h-3.5 text-emerald-500' />
+        <div className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5'>
+          <Target className='size-3.5 text-gray-400' />
           <span className='text-xs font-medium text-gray-700'>
-            SOR Completion
+            SOR completion
+          </span>
+          <span className='text-[11px] text-gray-400'>
+            used in full once the TPH is below {TPH_TARGET}
           </span>
         </div>
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
             isCompleted
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-slate-200 bg-white text-slate-500",
+              ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+              : "bg-gray-50 text-gray-600 ring-gray-200",
           )}>
           {isCompleted && <CheckCircle2 className='size-3' />}
-          Latest TPH:{" "}
-          {latestSample ? latestSample.tph_value : "no sample yet"} · target
-          below {TPH_TARGET}
+          {latestSample
+            ? `Latest TPH ${latestSample.tph_value}`
+            : "No monthly sample yet"}
         </span>
       </div>
 
       {sorQuantity === null ? (
-        <p className='rounded-lg border border-dashed bg-white px-3 py-4 text-center text-xs text-gray-400'>
+        <p className='rounded-lg border border-dashed border-gray-200 px-3 py-2.5 text-xs text-gray-400'>
           Save the site's estimate to allocate its share of the schedule of
           rates.
         </p>
       ) : (
-        <div className='overflow-hidden rounded-lg border border-slate-200 bg-white'>
+        <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
           <Table>
             <TableHeader>
-              <TableRow className='bg-gray-50/60 hover:bg-gray-50/60'>
-                <TableHead className={headClass}>SOR Qty (Site)</TableHead>
+              <TableRow className='border-gray-100 hover:bg-transparent'>
+                <TableHead className={headClass}>Site&apos;s SOR</TableHead>
                 <TableHead className={headClass}>Used</TableHead>
                 <TableHead className={headClass}>Available</TableHead>
               </TableRow>
@@ -99,8 +103,8 @@ const SiteSorCompletion = ({ woSiteId, isCompleted }: Props) => {
                 <TableCell
                   className={cn(
                     cellClass,
-                    "font-semibold",
-                    available ? "text-amber-700" : "text-emerald-700",
+                    "font-medium",
+                    available ? "text-gray-900" : "text-emerald-700",
                   )}>
                   {formatQty(available ?? 0)}
                 </TableCell>

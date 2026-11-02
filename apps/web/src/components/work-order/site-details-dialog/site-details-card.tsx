@@ -7,7 +7,11 @@ import { formatDateRange, scheduleNote } from "@/lib/wo-site-display";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import EditSiteDatesDialog from "./edit-site-dates-dialog";
+import SiteEstimate from "./site-estimate";
 import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
+import SiteMeasurementSheets from "./site-measurement-sheets";
+import SiteSorCompletion from "./site-sor-completion";
+import SiteCompletionCertificate from "./site-completion-certificate";
 
 interface WorkOrderSiteDetails {
   id: number;
@@ -87,6 +91,11 @@ const SiteDetailsCard = ({
     ? "completed"
     : (siteDetails?.status ?? "pending");
   const note = scheduleNote(status, siteDetails?.date, siteDetails?.end_date);
+  const isBioremediation =
+    siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
+  const isCompleted = !!siteDetails?.is_completed;
+  // Mobilization and the 0-day sample, the sheets, then the certificate.
+  const documentCount = (isBioremediation ? 2 : 0) + 1 + (isCompleted ? 1 : 0);
 
   return (
     <section className='rounded-lg border border-gray-200 bg-white'>
@@ -146,19 +155,58 @@ const SiteDetailsCard = ({
         />
       )}
 
-      {/* How the site was set up: the team moving on, and the baseline
-          sample taken before treatment starts. */}
-      {siteDetails?.id &&
-        siteDetails.process_type === constants.WO_PROCESS.BIOREMEDIATION && (
-          <div className='grid grid-cols-1 gap-x-6 gap-y-5 border-t border-gray-100 px-5 py-4 md:grid-cols-2'>
-            <div className='min-w-0'>
-              <MobilizationCertificate woSiteId={siteDetails.id} />
-            </div>
-            <div className='min-w-0'>
-              <ZeroDaySample woSiteId={siteDetails.id} />
-            </div>
+      {/* What the site is estimated to take, which sets its share of the
+          work order's schedule of rates. */}
+      {siteDetails?.id && (
+        <SiteEstimate
+          woSiteId={siteDetails.id}
+          processType={siteDetails.process_type}
+          className='border-t border-gray-100 px-5 py-4'
+        />
+      )}
+
+      {/* How much of the site's SOR share is used: all of it once the
+          latest bio sample's TPH is below the target. */}
+      {siteDetails?.id && isBioremediation && (
+        <SiteSorCompletion
+          woSiteId={siteDetails.id}
+          isCompleted={isCompleted}
+          className='border-t border-gray-100 px-5 py-4'
+        />
+      )}
+
+      {/* The site's documents. For bioremediation, how it was set up: the
+          team moving on, and the baseline sample taken before treatment
+          starts. Then the measurements behind its quantities, and the
+          certificate, only taken once the site is complete. */}
+      {siteDetails?.id && (
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-x-6 gap-y-5 border-t border-gray-100 px-5 py-4",
+            documentCount >= 2 && "md:grid-cols-2",
+            documentCount === 3 && "xl:grid-cols-3",
+            documentCount >= 4 && "xl:grid-cols-4",
+          )}>
+          {isBioremediation && (
+            <>
+              <div className='min-w-0'>
+                <MobilizationCertificate woSiteId={siteDetails.id} />
+              </div>
+              <div className='min-w-0'>
+                <ZeroDaySample woSiteId={siteDetails.id} />
+              </div>
+            </>
+          )}
+          <div className='min-w-0'>
+            <SiteMeasurementSheets woSiteId={siteDetails.id} />
           </div>
-        )}
+          {isCompleted && (
+            <div className='min-w-0'>
+              <SiteCompletionCertificate woSiteId={siteDetails.id} />
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 };

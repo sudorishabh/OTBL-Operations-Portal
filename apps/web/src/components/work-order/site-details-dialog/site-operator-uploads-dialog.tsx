@@ -21,22 +21,17 @@ interface Props {
   siteName?: string;
   uploads: UploadRow[];
   isLoading?: boolean;
-  // The `dialog` param of the dialog this one opens over, or null when it
-  // opens straight from a page.
-  parentDialog?: string | null;
 }
 
 export function SiteOperatorUploadsDialog({
   siteName,
   uploads,
   isLoading = false,
-  parentDialog = "site-details",
 }: Props) {
   const { getParam, deleteParam } = useHandleParams();
 
-  const open =
-    (parentDialog === null || getParam("dialog") === parentDialog) &&
-    getParam("site-dialog") === "operator-uploads";
+  // Opened over the site's or restoration's page.
+  const open = getParam("site-dialog") === "operator-uploads";
 
   const rows = useMemo(() => {
     return uploads.map((row) => ({
