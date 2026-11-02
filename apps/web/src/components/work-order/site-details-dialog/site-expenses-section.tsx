@@ -163,15 +163,10 @@ const formatActivityLabel = (key: string) =>
 interface Props {
   woSiteId: number;
   processType?: string;
-  // Lists the expenses under each vendor apart from the rest.
-  splitByContractor?: boolean;
-  contractors?: { id: number; name: string }[];
   // Off when the caller already shows estimated, used and left quantities.
   showEstimateTable?: boolean;
   // Extra buttons beside Add Expense.
   headerActions?: React.ReactNode;
-  // Shown on a vendor with no expenses, such as a button to remove it.
-  emptyVendorActions?: (vendor: { id: number; name: string }) => React.ReactNode;
   // Shown on each restoration job order, such as edit and delete buttons.
   jobOrderActions?: (jobOrder: JobOrder) => React.ReactNode;
 }
@@ -179,11 +174,8 @@ interface Props {
 const SiteExpensesSection = ({
   woSiteId,
   processType,
-  splitByContractor = false,
-  contractors = [],
   showEstimateTable = true,
   headerActions,
-  emptyVendorActions,
   jobOrderActions,
 }: Props) => {
   const utils = trpc.useUtils();
@@ -623,21 +615,6 @@ const SiteExpensesSection = ({
     </div>
   );
 
-  const contractorIds = new Set(contractors.map((c) => c.id));
-  const recordsUnder = (contractorId: number) =>
-    records.filter((r) => r.contractorId === contractorId);
-  // Miscellaneous: expenses under none of the site's vendors, including older
-  // ones linked to a vendor that isn't one of them.
-  const otherRecords = records.filter(
-    (r) => r.contractorId === null || !contractorIds.has(r.contractorId),
-  );
-  const totalUnder = (contractorId: number): number =>
-    summary?.byContractor?.[String(contractorId)] ?? 0;
-  const contractorsTotal = contractors.reduce(
-    (sum, c) => sum + totalUnder(c.id),
-    0,
-  );
-
   // Bioremediation totals per order requirement, and per vendor under it.
   const orderItemTotal = (itemId: number): number =>
     summary?.byOrderItem?.[String(itemId)] ?? 0;
@@ -898,9 +875,7 @@ const SiteExpensesSection = ({
       ? dialogJobOrder
         ? dialogJobOrder.vendors
         : editingVendor
-      : splitByContractor
-        ? contractors
-        : undefined;
+      : undefined;
   // Oil zapper is procured through a purchase of it; an older vendor expense
   // may also carry some.
   const dialogProcuresOilZapper =
@@ -1098,64 +1073,6 @@ const SiteExpensesSection = ({
           ],
           unassignedTitle: "Vendor expenses not on a job order",
         })
-      ) : splitByContractor ? (
-        <div className='space-y-6'>
-          {/* Expenses under the site's vendors, a group for each. */}
-          <section className='space-y-1'>
-            {renderSectionHeader({
-              title: "Vendor expenses",
-              meta: `${contractors.length} vendor${contractors.length !== 1 ? "s" : ""}`,
-              total: contractorsTotal,
-            })}
-            {contractors.length === 0 &&
-              emptyGroupText("No vendors yet. Add a vendor to record expenses under it.")}
-            {contractors.map((c) => {
-              const name = capitalFirstLetter(c.name);
-              const records = recordsUnder(c.id);
-              const hasExpenses = records.length > 0 || totalUnder(c.id) > 0;
-              return renderVendorGroup({
-                groupKey: `vendor-${c.id}`,
-                Icon: HardHat,
-                title: name,
-                total: totalUnder(c.id),
-                count: records.length,
-                content:
-                  records.length > 0
-                    ? renderRecordsBox(records, false)
-                    : emptyGroupText(`No expenses under ${name} yet.`),
-                actions: (
-                  <div className='flex shrink-0 items-center gap-1'>
-                    {renderAddExpenseButton(`Add expense under ${name}`, () =>
-                      openAddExpense(c.id),
-                    )}
-                    {!hasExpenses && emptyVendorActions?.(c)}
-                  </div>
-                ),
-              });
-            })}
-          </section>
-
-          {/* Expenses under no vendor. */}
-          <section className='space-y-2'>
-            {renderSectionHeader({
-              title: "Miscellaneous",
-              meta: `${otherRecords.length} expense${otherRecords.length !== 1 ? "s" : ""}`,
-              total: expenseTotal - contractorsTotal,
-              action: renderAddExpenseButton("Add a miscellaneous expense", () =>
-                openAddExpense("miscellaneous"),
-              ),
-            })}
-            {otherRecords.length > 0
-              ? renderRecordsBox(otherRecords)
-              : emptyGroupText("No miscellaneous expenses yet.")}
-          </section>
-
-          {expensesPagination && expensesPagination.total > expenses.length && (
-            <p className='text-xs text-gray-400'>
-              Showing {expenses.length} of {expensesPagination.total} entries
-            </p>
-          )}
-        </div>
       ) : records.length === 0 ? (
         <div className='text-center py-10 border border-dashed rounded-xl bg-gray-50/30'>
           <ReceiptIndianRupee className='w-8 h-8 text-gray-300 mx-auto mb-2' />
