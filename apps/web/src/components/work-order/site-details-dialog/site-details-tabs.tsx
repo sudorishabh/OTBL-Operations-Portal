@@ -14,7 +14,7 @@ interface Props {
   woSiteId: number;
   processType: string;
   isCompleted: boolean;
-  // The site's expenses, rendered by the dialog with its vendor actions.
+  // The site's expenses, shown under its bioremediation activities.
   execution: React.ReactNode;
 }
 
@@ -63,19 +63,26 @@ const SiteDetailsTabs = ({
         />
       </TabsContent>
 
-      <TabsContent value='execution'>{execution}</TabsContent>
+      {/* The work carried out at a bioremediation site, then what it cost. */}
+      <TabsContent
+        value='execution'
+        className='space-y-4'>
+        {isBioremediation && (
+          <div className={sectionClass}>
+            <BioremediationSections woSiteId={woSiteId} />
+          </div>
+        )}
+        <div className={sectionClass}>{execution}</div>
+      </TabsContent>
 
       <TabsContent
         value='completion'
         className='space-y-4'>
         {isBioremediation && (
-          <>
-            <SiteSorCompletion
-              woSiteId={woSiteId}
-              isCompleted={isCompleted}
-            />
-            <BioremediationSections woSiteId={woSiteId} />
-          </>
+          <SiteSorCompletion
+            woSiteId={woSiteId}
+            isCompleted={isCompleted}
+          />
         )}
         {/* The certificate is only taken once the site is complete. */}
         <div

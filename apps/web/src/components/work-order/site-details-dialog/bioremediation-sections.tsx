@@ -657,7 +657,7 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
   });
 
   return (
-    <div className='space-y-6 pt-6 border-t border-slate-200'>
+    <div className='space-y-6'>
       <div className='flex flex-col sm:flex-row items-center justify-between mb-6 gap-4'>
         <div>
           <h3 className='text-sm font-semibold tracking-wide text-slate-700'>
