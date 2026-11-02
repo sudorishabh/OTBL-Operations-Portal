@@ -1,8 +1,7 @@
 "use client";
-import React, { useMemo } from "react";
+import React from "react";
 import { RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
-import { constants } from "@pkg/utils";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useIsManager } from "@/contexts/AuthContext";
@@ -12,9 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ProcessSectionHeader from "../process-section-header";
 import RestorationDialog from "./restoration-dialog";
 import RestorationCard from "./restoration-card";
-import type { RestorationRate } from "./restoration-rates-table";
-
-const { allActivityOptions } = constants;
+import useRestorationRates from "./use-restoration-rates";
 
 export type Restoration = NonNullable<
   RouterOutputs["restorationQuery"]["getRestoration"]
@@ -47,24 +44,7 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
     onError: (error: { message: string }) => toast.error(error.message),
   });
 
-  // The work order's restoration activities, in schedule of rates order.
-  const rates = useMemo<RestorationRate[]>(
-    () =>
-      allActivityOptions
-        .filter((option) => !option.isBioremediation)
-        .flatMap((option) => {
-          const sor = scheduleOfRates.find(
-            (row) => row.activity === option.value,
-          );
-          return sor ? [{ ...sor, label: option.label }] : [];
-        }),
-    [scheduleOfRates],
-  );
-
-  const estimatedTotal = rates.reduce(
-    (sum, rate) => sum + (Number(rate.total_cost) || 0),
-    0,
-  );
+  const { rates, estimatedTotal } = useRestorationRates(scheduleOfRates);
 
   // Set up, the restoration is one panel that opens its dialog.
   if (restoration) {
