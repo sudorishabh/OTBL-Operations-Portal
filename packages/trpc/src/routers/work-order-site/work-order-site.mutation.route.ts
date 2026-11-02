@@ -71,6 +71,8 @@ const createBioSampleSchema = z.object({
   documents: validators.documentsValidator,
   tph_value: z.string(),
   application_month: z.string(),
+  // The day the sample was taken; today when left out.
+  sampled_on: validators.optionalDateValidator,
 });
 
 const createOilZappingSchema = z.object({
@@ -82,6 +84,8 @@ const createOilZappingSchema = z.object({
     .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
       message: "Quantity must be a positive number",
     }),
+  // The day the oil zapper was applied; today when left out.
+  applied_on: validators.optionalDateValidator,
 });
 
 const deleteRecordSchema = z.object({
@@ -630,6 +634,7 @@ export const workOrderSiteMutationRouter = router({
           tph_document_url: input.documents[0]!.url,
           tph_value: input.tph_value,
           application_month: input.application_month,
+          sampled_on: input.sampled_on ? new Date(input.sampled_on) : new Date(),
         });
         // A TPH below the target completes the site.
         await syncBioremediationCompletion(ctx.db, input.work_order_site_id);
@@ -696,6 +701,7 @@ export const workOrderSiteMutationRouter = router({
           // Legacy single-document column, kept until it is dropped.
           document_url: input.documents[0]!.url,
           estimated_quantity: requested.toFixed(2),
+          applied_on: input.applied_on ? new Date(input.applied_on) : new Date(),
         });
         return {
           success: true,

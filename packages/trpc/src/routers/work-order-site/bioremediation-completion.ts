@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
 import { constants } from "@pkg/utils";
 
@@ -37,7 +37,13 @@ export async function syncBioremediationCompletion(
         ne(bioSampleTable.application_month, ZERO_DAY_SAMPLE),
       ),
     )
-    .orderBy(desc(bioSampleTable.created_at), desc(bioSampleTable.id))
+    // Older samples have no sampling date, so fall back to when they were added.
+    .orderBy(
+      desc(
+        sql`coalesce(${bioSampleTable.sampled_on}, ${bioSampleTable.created_at})`,
+      ),
+      desc(bioSampleTable.id),
+    )
     .limit(1);
 
   const isComplete = !!latest && Number(latest.tph) < TPH_TARGET;
