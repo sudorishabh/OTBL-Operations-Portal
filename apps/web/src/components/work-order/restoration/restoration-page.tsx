@@ -230,7 +230,6 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
         siteName='Restoration'
         uploads={operatorUploadsQuery.data ?? []}
         isLoading={operatorUploadsQuery.isLoading}
-        parentDialog={null}
       />
     </PageWrapper>
   );

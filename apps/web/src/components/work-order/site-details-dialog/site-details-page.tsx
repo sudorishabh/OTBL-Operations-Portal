@@ -119,7 +119,6 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
         siteName={siteDetails.site.name ?? undefined}
         uploads={operatorUploadsQuery.data ?? []}
         isLoading={operatorUploadsQuery.isLoading}
-        parentDialog={null}
       />
     </PageWrapper>
   );
