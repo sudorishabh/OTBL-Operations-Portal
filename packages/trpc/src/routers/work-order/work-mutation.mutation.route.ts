@@ -17,7 +17,11 @@ import {
   coversRestoration,
   createRestorationRow,
   restorationRowWhere,
+  syncRestorationCompletion,
 } from "../restoration/restoration-row";
+
+// Allowance for decimal rounding when checking transport slab totals.
+const SLAB_EPSILON = 0.005;
 
 const {
   workOrderTable,
@@ -188,6 +192,95 @@ export const workOrderMutationRouter = router({
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Updating work order");
+        }
+      }),
+    ),
+
+  // Admins can correct the quantity and rate of the work order's schedule of
+  // rates rows. Restoration completion depends on them, so it is re-checked.
+  updateScheduleOfRates: adminProcedure
+    .input(workOrderSchemas.updateScheduleOfRatesSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const rows = await ctx.db
+          .select({
+            id: scheduleOfRatesTable.id,
+            activity: scheduleOfRatesTable.activity,
+            gst_percentage: scheduleOfRatesTable.gst_percentage,
+          })
+          .from(scheduleOfRatesTable)
+          .where(eq(scheduleOfRatesTable.work_order_id, input.work_order_id));
+        const rowById = new Map(rows.map((row) => [row.id, row]));
+
+        const updates = input.rates.map((rate) => {
+          const row = rowById.get(rate.id);
+          if (!row) {
+            throw notFound("Schedule of rate", rate.id, {
+              userMessage:
+                "A schedule of rates row doesn't belong to this work order.",
+            });
+          }
+
+          const isTransport =
+            row.activity ===
+            constants.WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL;
+          if (isTransport) {
+            const slabTotal = Object.values(
+              rate.transportation_slabs ?? {},
+            ).reduce((sum, qty) => sum + qty, 0);
+            if (
+              !rate.transportation_slabs ||
+              Math.abs(slabTotal - rate.estimated_quantity) > SLAB_EPSILON
+            ) {
+              throw validationError(
+                "Transportation quantity must equal the sum of its distance slabs",
+                [
+                  {
+                    field: "transportation_slabs",
+                    message: "Quantity must equal the sum of the distance slabs",
+                  },
+                ],
+              );
+            }
+          }
+
+          const unitRateIncGst =
+            rate.rc_unit_rate * (1 + Number(row.gst_percentage) / 100);
+          return {
+            id: row.id,
+            values: {
+              estimated_quantity: rate.estimated_quantity.toFixed(2),
+              rc_unit_rate: rate.rc_unit_rate.toFixed(2),
+              unit_rate_inc_gst: unitRateIncGst.toFixed(2),
+              total_cost: (unitRateIncGst * rate.estimated_quantity).toFixed(2),
+              ...(isTransport && {
+                transportation_slabs: rate.transportation_slabs,
+              }),
+            },
+          };
+        });
+
+        try {
+          await ctx.db.transaction(async (tx) => {
+            for (const update of updates) {
+              await tx
+                .update(scheduleOfRatesTable)
+                .set(update.values)
+                .where(eq(scheduleOfRatesTable.id, update.id));
+            }
+
+            const [restoration] = await tx
+              .select({ id: workOrderSiteTable.id })
+              .from(workOrderSiteTable)
+              .where(restorationRowWhere(input.work_order_id));
+            if (restoration) {
+              await syncRestorationCompletion(tx, restoration.id);
+            }
+          });
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Updating schedule of rates");
         }
       }),
     ),
