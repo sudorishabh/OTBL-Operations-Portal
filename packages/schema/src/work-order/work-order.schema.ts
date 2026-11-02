@@ -248,3 +248,15 @@ export const createWorkOrderSiteSchema = z.object({
   selected_activities: z.array(woActivitySchemaWithId).optional(),
   new_site: createSiteSchema.optional(),
 });
+
+// An admin's correction to the dates a work order site runs over.
+export const updateWorkOrderSiteDatesSchema = z
+  .object({
+    id: positiveIntValidator,
+    date: dateValidator,
+    end_date: dateValidator,
+  })
+  .refine((data) => data.end_date >= data.date, {
+    message: "End date must be on or after start date",
+    path: ["end_date"],
+  });
