@@ -16,11 +16,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import CustomButton from "@/components/shared/btn";
+import UploadSectionHeader from "@/components/shared/upload-section-header";
 
 // The contaminated soil record the estimate is saved as, and the site
 // document type of its estimate document.
 const ESTIMATE = "estimate_sub-wo";
 const ESTIMATE_DOCUMENT = "estimate";
+
+const formatQty = (value: string | number) =>
+  new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(
+    Number(value) || 0,
+  );
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
+    value,
+  );
+
+const headClass =
+  "h-8 px-3 sm:h-8 sm:px-3 text-[11px] font-medium text-gray-400 whitespace-nowrap";
+const cellClass = "px-3 py-2 sm:px-3 sm:py-2 text-[13px]";
+const numberClass = cn(
+  cellClass,
+  "whitespace-nowrap text-right tabular-nums text-gray-700",
+);
 
 const formatName = (name: string) => {
   return name
@@ -125,7 +144,8 @@ const EstimateForm = ({
   const createSiteDocMutation =
     trpc.workOrderSiteMutation.createSiteDocument.useMutation();
 
-  useEffect(() => {
+  // The saved estimate, or blanks to fill in.
+  const loadSaved = useCallback(() => {
     const newFormData: Record<string, ActivityData> = {};
     activities.forEach((activity) => {
       const data = getActivityData(activity.activity, isBioremediation);
@@ -138,6 +158,16 @@ const EstimateForm = ({
     });
     setFormData(newFormData);
   }, [activities, getActivityData, isBioremediation]);
+
+  useEffect(() => {
+    loadSaved();
+  }, [loadSaved]);
+
+  // Leaving edit mode drops the changes that weren't saved.
+  const cancelEdit = () => {
+    loadSaved();
+    setIsEditMode(false);
+  };
 
   const handleChange = (
     activityKey: string,
@@ -276,14 +306,78 @@ const EstimateForm = ({
 
   const isLoading = saveContaminatedSoil.isPending || isFileUploading;
 
+  const actions = isReadOnly ? (
+    <CustomButton
+      variant='outline'
+      text='Edit'
+      Icon={Pencil}
+      onClick={() => setIsEditMode(true)}
+      type='button'
+      className='h-7 px-2.5 text-xs'
+      disableForViewer
+    />
+  ) : (
+    <>
+      {hasExistingData && (
+        <CustomButton
+          variant='outline'
+          text='Cancel'
+          onClick={cancelEdit}
+          type='button'
+          disabled={isLoading}
+          className='h-7 px-2.5 text-xs'
+        />
+      )}
+      <CustomButton
+        variant='primary'
+        text='Save estimate'
+        onClick={handleSaveAll}
+        type='button'
+        loading={isLoading}
+        disabled={isLoading}
+        className='h-7 px-2.5 text-xs'
+        disableForViewer
+      />
+    </>
+  );
+
+  // A number as typed, shown with its unit while the estimate is read-only.
+  const renderQuantity = (
+    value: string,
+    unit: string,
+    field: "estimated_quantity" | "oil_zapper_quantity",
+    activityKey: string,
+    placeholder: string,
+  ) =>
+    isReadOnly ? (
+      value ? (
+        <>
+          {formatQty(value)} <span className='text-xs text-gray-400'>{unit}</span>
+        </>
+      ) : (
+        <span className='text-gray-300'>—</span>
+      )
+    ) : (
+      <div className='flex items-center justify-end gap-1.5'>
+        <Input
+          inputMode='decimal'
+          value={value}
+          onChange={(e) => handleChange(activityKey, field, e.target.value)}
+          placeholder={placeholder}
+          aria-label={`${field === "oil_zapper_quantity" ? "Oil zapper" : "Estimated"} quantity in ${unit}`}
+          className='h-8 w-28 bg-white text-right text-[13px] tabular-nums placeholder:text-gray-300'
+        />
+        <span className='w-8 text-left text-xs text-gray-400'>{unit}</span>
+      </div>
+    );
+
   return (
-    <div className='space-y-5'>
-      <div className='space-y-1.5'>
-        <span className='text-[10px] font-medium text-slate-500 uppercase tracking-wider px-0.5'>
-          Estimate Document
-        </span>
+    <div className='space-y-3'>
+      <EstimateHeader actions={actions} />
+
+      <div className='grid grid-cols-1 gap-3 lg:grid-cols-5'>
         <DocumentsField
-          label='Upload Estimate Documents'
+          label='Upload estimate document'
           files={pendingDocs}
           onFilesChange={setPendingDocs}
           existing={savedDocs.map((doc, index) => ({
@@ -299,38 +393,28 @@ const EstimateForm = ({
           }}
           isUploading={isFileUploading}
           progress={progress}
-          className='rounded-xl'
+          className='self-start lg:col-span-2'
         />
-      </div>
 
-      <div className='rounded-xl border bg-gray-100/50 overflow-hidden'>
-        <div className='overflow-x-auto'>
-          <Table className='w-full text-xs'>
+        <div className='self-start overflow-hidden rounded-lg border border-gray-200 bg-white lg:col-span-3'>
+          <Table>
             <TableHeader>
-              <TableRow className='border-b'>
-                <TableHead className='px-4 py-3 text-left w-[30%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
-                  Activity Name
-                </TableHead>
-                <TableHead className='px-2 py-3 text-center w-[10%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
-                  Unit
-                </TableHead>
-                <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
-                  Rate
-                </TableHead>
-                <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
-                  Est. Qty
+              <TableRow className='border-gray-100 hover:bg-transparent'>
+                <TableHead className={headClass}>Activity</TableHead>
+                <TableHead className={cn(headClass, "text-right")}>Rate</TableHead>
+                <TableHead className={cn(headClass, "text-right")}>
+                  Est. quantity
                 </TableHead>
                 {showOilZapper && (
-                  <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
+                  <TableHead className={cn(headClass, "text-right")}>
+                    {/* Named as the change request (M6) asks. */}
                     {`Tot. Est. ${constants.OIL_ZAPPER.LABEL} Qty (${constants.OIL_ZAPPER.UNIT})`}
                   </TableHead>
                 )}
-                <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
-                  Amount
-                </TableHead>
+                <TableHead className={cn(headClass, "text-right")}>Amount</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className='divide-y'>
+            <TableBody>
               {activities.map((activity) => {
                 const currentData = formData[activity.activity] || {
                   estimated_quantity: "",
@@ -340,80 +424,56 @@ const EstimateForm = ({
                 };
                 const isBioremActivity =
                   isBioremediation && isBioremActivityKey(activity.activity);
+                const unit = activity.unit || "Nos";
+                const amount = Number(currentData.amount) || 0;
 
                 return (
                   <TableRow
                     key={activity.id}
-                    className='group hover:bg-blue-50/20 transition-colors'>
-                    <TableCell className='px-4 py-2.5 font-medium text-slate-700 text-xs'>
+                    className='border-gray-100 hover:bg-transparent'>
+                    <TableCell
+                      className={cn(
+                        cellClass,
+                        "min-w-44 whitespace-normal font-medium text-gray-800",
+                      )}>
                       {formatName(activity.activity)}
                     </TableCell>
-                    <TableCell className='px-2 py-2.5 text-center'>
-                      <span className='text-[10px] font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full'>
-                        {activity.unit || "Nos"}
-                      </span>
+                    <TableCell className={numberClass}>
+                      {formatCurrency(Number(activity.rate) || 0)}
+                      <span className='text-xs text-gray-400'> / {unit}</span>
                     </TableCell>
-                    <TableCell className='px-2 py-2.5 text-center text-emerald-600 font-semibold'>
-                      ₹{activity.rate || "0.00"}
-                    </TableCell>
-                    <TableCell className='p-0'>
-                      <Input
-                        value={currentData.estimated_quantity}
-                        onChange={(e) =>
-                          handleChange(
-                            activity.activity,
-                            "estimated_quantity",
-                            e.target.value,
-                          )
-                        }
-                        readOnly={isReadOnly}
-                        className={`h-10 w-full border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 text-center text-xs placeholder:text-slate-300 ${
-                          isReadOnly
-                            ? "bg-slate-50/60 text-slate-600 cursor-default"
-                            : "bg-transparent"
-                        }`}
-                        placeholder={
-                          activity.sor_estimated_quantity
-                            ? `Max: ${activity.sor_estimated_quantity}`
-                            : "0.00"
-                        }
-                      />
+                    <TableCell className={numberClass}>
+                      {renderQuantity(
+                        currentData.estimated_quantity,
+                        unit,
+                        "estimated_quantity",
+                        activity.activity,
+                        activity.sor_estimated_quantity
+                          ? `Max ${formatQty(activity.sor_estimated_quantity)}`
+                          : "0",
+                      )}
                     </TableCell>
                     {showOilZapper && (
-                      <TableCell className='p-0'>
+                      <TableCell className={numberClass}>
                         {isBioremActivity ? (
-                          <Input
-                            inputMode='decimal'
-                            value={currentData.oil_zapper_quantity}
-                            onChange={(e) =>
-                              handleChange(
-                                activity.activity,
-                                "oil_zapper_quantity",
-                                e.target.value,
-                              )
-                            }
-                            readOnly={isReadOnly}
-                            className={`h-10 w-full border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 text-center text-xs placeholder:text-slate-300 ${
-                              isReadOnly
-                                ? "bg-slate-50/60 text-slate-600 cursor-default"
-                                : "bg-transparent"
-                            }`}
-                            placeholder='0.00'
-                          />
+                          renderQuantity(
+                            currentData.oil_zapper_quantity,
+                            constants.OIL_ZAPPER.UNIT,
+                            "oil_zapper_quantity",
+                            activity.activity,
+                            "0",
+                          )
                         ) : (
-                          <span className='block text-center text-slate-300'>
-                            —
-                          </span>
+                          <span className='text-gray-300'>—</span>
                         )}
                       </TableCell>
                     )}
-                    <TableCell className='p-0'>
-                      <Input
-                        value={currentData.amount}
-                        readOnly
-                        className='h-10 w-full border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-slate-50/30 px-3 text-center text-xs font-semibold text-slate-700 placeholder:text-slate-300'
-                        placeholder='0.00'
-                      />
+                    <TableCell
+                      className={cn(
+                        numberClass,
+                        amount > 0 ? "font-semibold text-gray-900" : "text-gray-300",
+                      )}>
+                      {amount > 0 ? formatCurrency(amount) : "—"}
                     </TableCell>
                   </TableRow>
                 );
@@ -422,42 +482,22 @@ const EstimateForm = ({
           </Table>
         </div>
       </div>
-
-      <div className='flex justify-end gap-2 pt-1'>
-        {isReadOnly ? (
-          <CustomButton
-            variant='outline'
-            text='Edit'
-            Icon={Pencil}
-            onClick={() => setIsEditMode(true)}
-            type='button'
-            disableForViewer
-          />
-        ) : (
-          <>
-            {hasExistingData && (
-              <CustomButton
-                variant='outline'
-                text='Cancel'
-                onClick={() => setIsEditMode(false)}
-                type='button'
-              />
-            )}
-            <CustomButton
-              variant='primary'
-              text='Save Estimate / Sub-WO Data'
-              onClick={handleSaveAll}
-              type='button'
-              loading={isLoading}
-              disabled={isLoading}
-              disableForViewer
-            />
-          </>
-        )}
-      </div>
     </div>
   );
 };
+
+// The estimate's title on one line, with its actions on the right.
+const EstimateHeader = ({ actions }: { actions?: React.ReactNode }) => (
+  <div className='flex flex-wrap items-center justify-between gap-2'>
+    <UploadSectionHeader
+      Icon={Calculator}
+      title='Estimate'
+      description='The estimate document and the quantities it sets for this site.'
+      className='flex-1'
+    />
+    {actions && <div className='flex items-center gap-2'>{actions}</div>}
+  </div>
+);
 
 // The site's estimate: its document, and the quantities it sets for each of
 // the site's activities.
@@ -500,19 +540,7 @@ const SiteEstimate = ({
   );
 
   return (
-    <div className={cn("space-y-3", className)}>
-      <div>
-        <div className='flex items-center gap-2'>
-          <Calculator className='w-3.5 h-3.5 text-emerald-500' />
-          <span className='text-xs font-medium text-gray-700'>
-            Estimate
-          </span>
-        </div>
-        <p className='mt-0.5 text-[10px] text-gray-400'>
-          Upload the estimate document and enter the estimated quantities.
-        </p>
-      </div>
-
+    <div className={className}>
       {siteActivitiesQuery.data && siteActivitiesQuery.data.length > 0 ? (
         <EstimateForm
           woSiteId={woSiteId}
@@ -522,8 +550,13 @@ const SiteEstimate = ({
           siteDocuments={siteDocumentsQuery.data}
         />
       ) : (
-        <div className='text-xs text-center text-slate-400 italic py-10 border-2 border-dashed border-slate-200 rounded-xl'>
-          No activities found for this site.
+        <div className='space-y-3'>
+          <EstimateHeader />
+          <p className='rounded-lg border border-dashed border-gray-200 px-3 py-2.5 text-xs text-gray-400'>
+            {siteActivitiesQuery.isLoading
+              ? "Loading the site's activities…"
+              : "This site has no activities to estimate."}
+          </p>
         </div>
       )}
     </div>
