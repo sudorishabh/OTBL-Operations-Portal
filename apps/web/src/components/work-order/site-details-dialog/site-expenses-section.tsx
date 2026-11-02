@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -260,6 +259,8 @@ const SiteExpensesSection = ({
   const expenses: Expense[] = expensesList;
   const summary = summaryQuery.data;
   const expenseTotal = summary?.grandTotal ?? 0;
+  // Every expense, including those on pages not loaded yet.
+  const entryCount = expensesPagination?.total ?? expensesList.length;
   const exceededTotal = summary?.exceededTotal ?? 0;
 
   const isBioremediation = processType === "bioremediation";
@@ -1032,26 +1033,29 @@ const SiteExpensesSection = ({
         </div>
       )}
 
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
-        <div className='flex items-center gap-2'>
-          <h3 className='text-sm font-semibold text-gray-700 whitespace-nowrap'>Expense List</h3>
-          {expenses.length > 0 && (
-            <Badge variant='outline' className='text-[10px] px-1.5 py-0 h-4 bg-gray-50'>
-              {expenses.length}
-            </Badge>
-          )}
-          {exceededTotal > 0 && (
-            <Badge variant='outline' className='text-[10px] px-1.5 py-0 h-4 bg-orange-50 text-orange-700 border-orange-200 flex items-center gap-0.5'>
-              <AlertTriangle className='w-2.5 h-2.5' />
-              {formatCurrency(exceededTotal)} exceeded
-            </Badge>
-          )}
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='min-w-0'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <h3 className='text-sm font-semibold text-gray-900'>Expenses</h3>
+            {exceededTotal > 0 && (
+              <span className='inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700 ring-1 ring-inset ring-orange-200'>
+                <AlertTriangle className='size-3' />
+                {formatCurrency(exceededTotal)} exceeded
+              </span>
+            )}
+          </div>
+          <p className='mt-0.5 text-xs text-gray-500'>
+            <span className='font-semibold tabular-nums text-gray-900'>
+              {formatCurrency(expenseTotal)}
+            </span>{" "}
+            spent across {entryCount} expense{entryCount !== 1 ? "s" : ""}
+          </p>
         </div>
-        <div className='flex items-center gap-2 flex-wrap'>
+        <div className='flex flex-wrap items-center gap-2'>
           {/* Bioremediation's one activity leaves nothing to filter by. */}
           {!isBioremediation && (
             <Select value={activityFilter} onValueChange={setActivityFilter}>
-              <SelectTrigger className='h-8 text-xs w-full sm:w-[220px]'>
+              <SelectTrigger className='h-8 w-full text-xs sm:w-48'>
                 <SelectValue placeholder='Filter by activity' />
               </SelectTrigger>
               <SelectContent>
