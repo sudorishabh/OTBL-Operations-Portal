@@ -15,6 +15,7 @@ import CreateWorkOrderSiteDialog from "../create-wo-site/create-wo-site-dialog";
 import SiteDetailDialog from "../site-details-dialog/site-details-dialog";
 import SitesTable from "./wo-sites-table";
 import WOSitesCard from "./wo-sites-card";
+import ContractOrdersSection from "../contract-orders/contract-orders-section";
 
 interface Props {
   workOrder: any;
@@ -236,6 +237,10 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
         <div className='text-center text-xs py-8 text-gray-500'>
           No sites added yet. Click &quot;Create Site&quot; to get started.
         </div>
+      )}
+
+      {sitesList.length > 0 && (
+        <ContractOrdersSection workOrderId={workOrder.id} />
       )}
 
       <CreateWorkOrderSiteDialog
