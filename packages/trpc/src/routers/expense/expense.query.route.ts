@@ -99,6 +99,62 @@ export const expenseQueryRouter = router({
       }),
     ),
 
+  // A site's expenses by the month they start in, newest first, split by job
+  // order; expenses on none (miscellaneous) are keyed "none".
+  getMonthlyExpenses: protectedProcedure
+    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrderSite(
+          ctx.db,
+          scope,
+          input.work_order_site_id,
+        );
+
+        try {
+          const rows = await ctx.db
+            .select({
+              start_date: workOrderSiteExpenseTable.start_date,
+              job_order_id: workOrderSiteExpenseTable.job_order_id,
+              amount: workOrderSiteExpenseTable.amount,
+            })
+            .from(workOrderSiteExpenseTable)
+            .where(
+              eq(
+                workOrderSiteExpenseTable.work_order_site_id,
+                input.work_order_site_id,
+              ),
+            );
+
+          const months = new Map<
+            string,
+            { total: number; byJobOrder: Record<string, number> }
+          >();
+          for (const row of rows) {
+            const date = new Date(row.start_date);
+            const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+            const entry = months.get(month) ?? { total: 0, byJobOrder: {} };
+            const amount = Number(row.amount || 0);
+            const jobKey = row.job_order_id ? String(row.job_order_id) : "none";
+            entry.total += amount;
+            entry.byJobOrder[jobKey] = (entry.byJobOrder[jobKey] ?? 0) + amount;
+            months.set(month, entry);
+          }
+
+          return [...months.entries()]
+            .sort(([a], [b]) => b.localeCompare(a))
+            .map(([month, entry]) => ({ month, ...entry }));
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching monthly expenses");
+        }
+      }),
+    ),
+
   getExpenseSummary: protectedProcedure
     .input(z.object({ work_order_site_id: z.number().positive() }))
     .query(
