@@ -126,10 +126,10 @@ const orderItemTitle = (item: SiteOrderItem) =>
 
 // Tighter than the table defaults, so a record takes one compact row.
 const headClass =
-  "h-9 px-3 sm:h-9 sm:px-3 text-xs font-medium text-gray-500 whitespace-nowrap";
+  "h-8 px-3 sm:h-8 sm:px-3 text-[11px] font-medium text-gray-400 whitespace-nowrap";
+// Lines a vendor's rows up under its name.
+const indentClass = "pl-9 sm:pl-9";
 const cellClass = "px-3 py-2.5 sm:px-3 sm:py-2.5";
-
-const formatShortDate = (value: string | Date) => format(new Date(value), "d MMM yy");
 
 const formatFullDates = (start: string | Date, end: string | Date) => {
   const from = new Date(start);
@@ -393,25 +393,34 @@ const SiteExpensesSection = ({
     return all.filter((r) => r.activityKey === filterKey);
   }, [expenses, activityOptions, activityFilter]);
 
-  const renderRecordRow = (record: ExpenseRecord, showVendor = true) => {
+  const renderRecordRow = (
+    record: ExpenseRecord,
+    showVendor = true,
+    indented = false,
+  ) => {
     const { isExceeded } = record;
     const expense = expenses.find((e) => e.id === record.id);
     const documentCount = record.documents.length;
     const isOpen = expandedId === record.id;
     const toggle = () => setExpandedId(isOpen ? null : record.id);
-    const columnCount = showVendor ? 9 : 8;
+    const columnCount = showVendor ? 8 : 7;
 
     return (
       <React.Fragment key={record.id}>
         <TableRow
           onClick={toggle}
           className={cn(
-            "cursor-pointer border-gray-200/70",
+            "cursor-pointer border-gray-100",
             isOpen && "border-transparent",
-            isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-gray-100/70",
-            isOpen && !isExceeded && "bg-gray-100/70",
+            isExceeded ? "bg-orange-50/40 hover:bg-orange-50/70" : "hover:bg-gray-50/80",
+            isOpen && !isExceeded && "bg-gray-50/80",
           )}>
-          <TableCell className={cn(cellClass, "whitespace-nowrap text-xs tabular-nums text-gray-600")}>
+          <TableCell
+            className={cn(
+              cellClass,
+              "whitespace-nowrap text-xs tabular-nums text-gray-600",
+              indented && indentClass,
+            )}>
             <button
               type='button'
               aria-expanded={isOpen}
@@ -427,15 +436,12 @@ const SiteExpensesSection = ({
                   isOpen && "rotate-90",
                 )}
               />
-              {formatShortDate(record.startDate)}
+              {formatDateRange(record.startDate, record.endDate)}
             </button>
-          </TableCell>
-          <TableCell className={cn(cellClass, "whitespace-nowrap text-xs tabular-nums text-gray-600")}>
-            {formatShortDate(record.endDate)}
           </TableCell>
           {/* What was spent on, and against which activity. */}
           <TableCell className={cn(cellClass, "min-w-48")}>
-            <p className='text-sm font-medium text-gray-900'>{record.title}</p>
+            <p className='text-[13px] font-medium text-gray-900'>{record.title}</p>
             <p className='mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500'>
               <span>{record.activityLabel}</span>
               {isExceeded && (
@@ -463,7 +469,7 @@ const SiteExpensesSection = ({
               {record.contractorName ?? <span className='text-gray-300'>—</span>}
             </TableCell>
           )}
-          <TableCell className={cn(cellClass, "pl-8 sm:pl-8 text-xs text-gray-600")}>
+          <TableCell className={cn(cellClass, "text-xs text-gray-600")}>
             {record.invoiceNumber ?? <span className='text-gray-300'>—</span>}
           </TableCell>
           <TableCell className={cn(cellClass, "whitespace-nowrap text-xs")}>
@@ -484,7 +490,7 @@ const SiteExpensesSection = ({
           <TableCell className={cn(cellClass, "whitespace-nowrap text-right")}>
             <span
               className={cn(
-                "text-sm font-semibold tabular-nums",
+                "text-[13px] font-semibold tabular-nums",
                 isExceeded ? "text-orange-700" : "text-gray-900",
               )}>
               {formatCurrency(record.amount)}
@@ -522,10 +528,15 @@ const SiteExpensesSection = ({
         {isOpen && (
           <TableRow
             className={cn(
-              "border-gray-200/70 hover:bg-transparent",
-              isExceeded ? "bg-orange-50/40" : "bg-gray-100/70",
+              "border-gray-100 hover:bg-transparent",
+              isExceeded ? "bg-orange-50/40" : "bg-gray-50/80",
             )}>
-            <TableCell colSpan={columnCount} className='px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1'>
+            <TableCell
+              colSpan={columnCount}
+              className={cn(
+                "px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1",
+                indented && indentClass,
+              )}>
               <dl className='grid grid-cols-2 gap-x-6 gap-y-3 pl-5 sm:grid-cols-4'>
                 <Detail label='Title' className='col-span-2 sm:col-span-4'>
                   <span className='whitespace-pre-wrap break-words'>{record.title}</span>
@@ -587,24 +598,32 @@ const SiteExpensesSection = ({
     );
   };
 
-  const renderRecordsTable = (rows: ExpenseRecord[], showVendor = true) => (
+  const renderRecordsTable = (
+    rows: ExpenseRecord[],
+    showVendor = true,
+    indented = false,
+  ) => (
     <Table>
       <TableHeader>
-        <TableRow className='border-gray-200/70 hover:bg-transparent'>
-          <TableHead className={cn(headClass, "w-[110px]")}>Start date</TableHead>
-          <TableHead className={cn(headClass, "w-[90px]")}>End date</TableHead>
+        <TableRow className='border-gray-100 hover:bg-transparent'>
+          <TableHead className={cn(headClass, "w-[160px]", indented && indentClass)}>
+            {/* In line with the dates, past each row's arrow. */}
+            <span className='pl-5'>Dates</span>
+          </TableHead>
           <TableHead className={headClass}>Expense</TableHead>
           <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
-          {showVendor && <TableHead className={headClass}>Contractor</TableHead>}
-          <TableHead className={cn(headClass, "w-[150px] pl-8 sm:pl-8")}>Invoice</TableHead>
+          {showVendor && <TableHead className={headClass}>Vendor</TableHead>}
+          <TableHead className={cn(headClass, "w-[130px]")}>Invoice</TableHead>
           <TableHead className={cn(headClass, "w-[100px]")}>Documents</TableHead>
-          <TableHead className={cn(headClass, "w-[130px] text-right")}>Amount</TableHead>
+          <TableHead className={cn(headClass, "w-[120px] text-right")}>Amount</TableHead>
           <TableHead className={cn(headClass, "w-px")}>
             <span className='sr-only'>Actions</span>
           </TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody>{rows.map((r) => renderRecordRow(r, showVendor))}</TableBody>
+      <TableBody>
+        {rows.map((r) => renderRecordRow(r, showVendor, indented))}
+      </TableBody>
     </Table>
   );
 
@@ -747,7 +766,7 @@ const SiteExpensesSection = ({
           )}
           {renderTotal(group.vendorTotal(vendor.id), "min-w-24 text-[13px]")}
         </div>
-        {isOpen && renderRecordsTable(vendorRecords, false)}
+        {isOpen && renderRecordsTable(vendorRecords, false, true)}
       </div>
     );
   };
@@ -1126,7 +1145,7 @@ const SiteExpensesSection = ({
           </p>
         </div>
       ) : (
-        <div className='rounded-lg bg-gray-50 overflow-x-auto'>
+        <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
           {renderRecordsTable(records)}
 
           <div className='flex items-center justify-between px-4 py-2.5 bg-gray-50 border-t text-xs'>
