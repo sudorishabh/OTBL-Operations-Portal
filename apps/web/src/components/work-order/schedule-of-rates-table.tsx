@@ -21,6 +21,8 @@ import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
 import { cn } from "@/lib/utils";
 import { workOrderTypes } from "@pkg/schema";
+import { useIsAdmin } from "@/contexts/AuthContext";
+import EditScheduleOfRatesDialog from "./edit-schedule-of-rates-dialog";
 import {
   activityKey,
   constants,
@@ -32,6 +34,7 @@ const { TRANSPORT_SLABS, allActivityOptions } = constants;
 
 interface ScheduleOfRate {
   id: number;
+  work_order_id: number;
   activity: string;
   unit: string;
   estimated_quantity: string;
@@ -312,6 +315,7 @@ const ScheduleOfRatesTable = ({
   expenseSummary,
 }: Props) => {
   const { getParam, deleteParam } = useHandleParams();
+  const isAdmin = useIsAdmin();
   const dialog = getParam("dialog");
   const isDialogOpen = dialog === "schedule-of-rates";
 
@@ -406,6 +410,11 @@ const ScheduleOfRatesTable = ({
                 Approved rates and estimated quantities for the work order
               </p>
             </div>
+            {isAdmin && (
+              <div className='ml-auto'>
+                <EditScheduleOfRatesDialog scheduleOfRates={scheduleOfRates} />
+              </div>
+            )}
           </div>
           <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
             <Table>
