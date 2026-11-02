@@ -116,6 +116,10 @@ export const OIL_ZAPPER = {
   UNIT: "kg",
 } as const;
 
+// A bioremediation site's treatment is achieved once a bio sample's TPH drops
+// below this target; its share of the schedule of rates is then used.
+export const TPH_TARGET = 0.5;
+
 export const GST_PERCENTAGE = 18;
 
 // Most documents a user can upload at once, or attach to one record.
@@ -185,6 +189,7 @@ export default {
   TRANSPORT_SLABS,
   ZERO_DAY_SAMPLE,
   OIL_ZAPPER,
+  TPH_TARGET,
   allActivityOptions,
   ACTIVITY_TYPE,
   ACTIVITY_PHASE,
