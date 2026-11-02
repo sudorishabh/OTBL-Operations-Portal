@@ -17,6 +17,7 @@ import { useApiError } from "@/hooks/useApiError";
 import { useIsViewer } from "@/contexts/AuthContext";
 import { toDocuments } from "@/lib/documents";
 import CustomButton from "@/components/shared/btn";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -64,18 +65,36 @@ const GROUPS = [
   {
     type: CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
     label: "Purchase order",
+    filterLabel: "Purchase orders",
     Icon: ShoppingCart,
     tone: "bg-sky-50 text-sky-700 ring-sky-100",
   },
   {
     type: CONTRACT_ORDER_TYPE.WORK_ORDER,
     label: "Work order (subcontract)",
+    filterLabel: "Work orders",
     Icon: Wrench,
     tone: "bg-amber-50 text-amber-700 ring-amber-100",
   },
 ] as const;
 
 // Tighter than the table defaults, at every screen size.
+// Which orders the list shows: all of them, or one type.
+type OrderFilter = "all" | ContractOrder["type"];
+
+const FILTERS: {
+  value: OrderFilter;
+  label: string;
+  Icon: React.ElementType | null;
+}[] = [
+  { value: "all", label: "All", Icon: null },
+  ...GROUPS.map((group) => ({
+    value: group.type,
+    label: group.filterLabel,
+    Icon: group.Icon,
+  })),
+];
+
 const headClass = "h-9 px-4 sm:h-9 sm:px-4 text-xs font-medium text-gray-500";
 const cellClass = "px-4 py-3 sm:px-4 sm:py-3";
 
@@ -87,6 +106,7 @@ const ContractOrdersSection = ({ workOrderId }: Props) => {
   const utils = trpc.useUtils();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ContractOrder | null>(null);
+  const [filter, setFilter] = useState<OrderFilter>("all");
 
   const ordersQuery = trpc.contractOrderQuery.getContractOrders.useQuery({
     work_order_id: workOrderId,
@@ -117,6 +137,13 @@ const ContractOrdersSection = ({ workOrderId }: Props) => {
     (order) => order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
   ).length;
   const workCount = orders.length - purchaseCount;
+  const shownOrders =
+    filter === "all" ? orders : orders.filter((order) => order.type === filter);
+  const filterCounts: Record<OrderFilter, number> = {
+    all: orders.length,
+    [CONTRACT_ORDER_TYPE.PURCHASE_ORDER]: purchaseCount,
+    [CONTRACT_ORDER_TYPE.WORK_ORDER]: workCount,
+  };
 
   return (
     <div className='mt-6 border-t border-gray-100 pt-6'>
@@ -126,18 +153,38 @@ const ContractOrdersSection = ({ workOrderId }: Props) => {
             Purchase and work orders
           </h3>
           <p className='text-xs text-gray-500'>
-            {orders.length === 0
-              ? "Material bought and work subcontracted for these sites"
-              : `${purchaseCount} purchase ${purchaseCount === 1 ? "order" : "orders"}, ${workCount} work ${workCount === 1 ? "order" : "orders"}`}
+            Material bought and work subcontracted for these sites
           </p>
         </div>
-        <CustomButton
-          variant='outline'
-          Icon={Plus}
-          text='New order'
-          onClick={() => openDialog(null)}
-          disableForViewer
-        />
+        <div className='flex flex-wrap items-center gap-2'>
+          {orders.length > 0 && (
+            <Tabs
+              value={filter}
+              onValueChange={(value) => setFilter(value as OrderFilter)}>
+              <TabsList className='h-8'>
+                {FILTERS.map(({ value, label, Icon }) => (
+                  <TabsTrigger
+                    key={value}
+                    value={value}
+                    className='gap-1.5 px-2.5 text-xs text-gray-800'>
+                    {Icon && <Icon className='size-3.5 text-gray-500' />}
+                    {label}
+                    <span className='tabular-nums text-gray-400'>
+                      {filterCounts[value]}
+                    </span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          )}
+          <CustomButton
+            variant='outline'
+            Icon={Plus}
+            text='New order'
+            onClick={() => openDialog(null)}
+            disableForViewer
+          />
+        </div>
       </div>
 
       {orders.length === 0 ? (
@@ -163,7 +210,18 @@ const ContractOrdersSection = ({ workOrderId }: Props) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => {
+              {shownOrders.length === 0 && (
+                <TableRow className='hover:bg-transparent'>
+                  <TableCell
+                    colSpan={5}
+                    className='py-6 text-center text-xs text-gray-500 sm:py-6'>
+                    No{" "}
+                    {GROUPS.find((group) => group.type === filter)?.filterLabel.toLowerCase()}{" "}
+                    yet.
+                  </TableCell>
+                </TableRow>
+              )}
+              {shownOrders.map((order) => {
                 const group =
                   GROUPS.find((option) => option.type === order.type) ??
                   GROUPS[0];
