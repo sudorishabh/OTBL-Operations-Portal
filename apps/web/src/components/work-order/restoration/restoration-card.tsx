@@ -1,9 +1,18 @@
 "use client";
 import React from "react";
-import { CalendarDays, ChevronRight } from "lucide-react";
+import {
+  Award,
+  CalendarDays,
+  ChevronRight,
+  ClipboardList,
+  HardHat,
+} from "lucide-react";
+import { capitalFirstLetter } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatDateRange, scheduleNote } from "@/lib/wo-site-display";
+import { toDocuments } from "@/lib/documents";
+import type { JobOrder } from "./job-order-dialog";
 import type { RestorationRate } from "./restoration-rates-table";
 import type { Restoration } from "./restoration-section";
 
@@ -64,6 +73,21 @@ const RestorationCard = ({
     string,
     { totalQuantity: number }
   >;
+
+  const jobOrdersQuery = trpc.jobOrderQuery.getJobOrders.useQuery({
+    work_order_site_id: restoration.id,
+  });
+  const jobOrders = (jobOrdersQuery.data ?? []) as JobOrder[];
+  const vendorNames = [
+    ...new Map(
+      jobOrders.flatMap((jobOrder) =>
+        jobOrder.vendors.map((vendor) => [vendor.id, vendor.name] as const),
+      ),
+    ).values(),
+  ].map((name) => capitalFirstLetter(name));
+  const certifiedCount = jobOrders.filter(
+    (jobOrder) => toDocuments(jobOrder.documents).length > 0,
+  ).length;
 
   const isCancelled = restoration.status === "cancelled";
   const status = isCancelled
@@ -176,6 +200,41 @@ const RestorationCard = ({
           The schedule of rates has no restoration activities.
         </p>
       )}
+
+      {/* Who the work is given to, through job orders. */}
+      <div className='flex flex-wrap items-center gap-x-5 gap-y-1 rounded-b-xl border-t border-gray-100 bg-gray-50/60 px-4 py-2.5 text-xs text-gray-600'>
+        <span className='inline-flex items-center gap-1.5'>
+          <ClipboardList className='size-3.5 text-gray-400' />
+          {jobOrders.length === 0
+            ? "No job orders yet"
+            : `${jobOrders.length} job order${jobOrders.length !== 1 ? "s" : ""}`}
+        </span>
+        {vendorNames.length > 0 && (
+          // Wraps rather than truncating: the card's click area covers any
+          // tooltip.
+          <span className='inline-flex min-w-0 items-start gap-1.5'>
+            <HardHat className='mt-px size-3.5 shrink-0 text-gray-400' />
+            <span>{vendorNames.join(", ")}</span>
+          </span>
+        )}
+        {jobOrders.length > 0 && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 sm:ml-auto",
+              certifiedCount === jobOrders.length && "text-emerald-700",
+            )}>
+            <Award
+              className={cn(
+                "size-3.5",
+                certifiedCount === jobOrders.length
+                  ? "text-emerald-600"
+                  : "text-gray-400",
+              )}
+            />
+            {certifiedCount} of {jobOrders.length} certified complete
+          </span>
+        )}
+      </div>
     </div>
   );
 };
