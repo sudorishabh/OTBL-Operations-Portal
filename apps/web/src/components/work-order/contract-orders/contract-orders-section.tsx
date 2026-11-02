@@ -52,9 +52,8 @@ export interface ContractOrder {
 
 interface Props {
   workOrderId: number;
-  // Lays out the section's actions and its table, such as in a tab; a
-  // heading over the table when left out.
-  children?: (parts: {
+  // Lays out the section's actions and its table, such as in a tab.
+  children: (parts: {
     actions: React.ReactNode;
     table: React.ReactNode;
     count: number;
@@ -321,24 +320,7 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
 
   return (
     <>
-      {children ? (
-        children({ actions, table, count: orders.length })
-      ) : (
-        <div className='mt-6 border-t border-gray-100 pt-6'>
-          <div className='mb-3 flex flex-wrap items-center justify-between gap-3'>
-            <div>
-              <h3 className='text-sm font-semibold text-gray-900'>
-                Purchase and work orders
-              </h3>
-              <p className='text-xs text-gray-500'>
-                Material bought and work subcontracted for these sites
-              </p>
-            </div>
-            <div className='flex flex-wrap items-center gap-2'>{actions}</div>
-          </div>
-          {table}
-        </div>
-      )}
+      {children({ actions, table, count: orders.length })}
 
       <ContractOrderDialog
         workOrderId={workOrderId}
