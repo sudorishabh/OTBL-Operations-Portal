@@ -51,6 +51,7 @@ export interface Expense {
   id: number;
   contractor_id: number | null;
   contractor_name: string | null;
+  contract_order_item_id?: number | null;
   activity_key: string | null;
   quantity: string | null;
   is_exceeded: number | boolean | null;
@@ -83,6 +84,9 @@ interface Props {
   // The one activity every expense is recorded against, so none is picked:
   // bioremediation's oil zapper.
   fixedActivityKey?: string;
+  // The contract order requirement the expense is spent on. Its vendors are
+  // then the order's, and it can't be miscellaneous.
+  orderItem?: { id: number; label: string } | null;
 }
 
 // "Expense under" value for an expense under none of the contractors.
@@ -117,6 +121,7 @@ const AddExpenseDialog = ({
   defaultContractorId = null,
   startsMiscellaneous = false,
   fixedActivityKey,
+  orderItem = null,
 }: Props) => {
   const utils = trpc.useUtils();
 
@@ -349,6 +354,7 @@ const AddExpenseDialog = ({
 
     const payload = {
       contractor_id: expenseContractorId,
+      contract_order_item_id: orderItem?.id ?? null,
       activity_key: selectedActivityKey || null,
       quantity: canEnterQuantity && quantity ? quantity : null,
       is_exceeded: isExceededMode,
@@ -460,9 +466,11 @@ const AddExpenseDialog = ({
               ? fixedActivityLabel
                 ? `The estimated ${fixedActivityLabel} is fully procured. Will be recorded as exceeded.`
                 : "This activity's estimated quantity is fully used. Will be recorded as exceeded."
-              : isEditing
-                ? "Update the expense details below."
-                : "Record an amount spent on this site."}
+              : orderItem
+                ? `Spent on ${orderItem.label}.`
+                : isEditing
+                  ? "Update the expense details below."
+                  : "Record an amount spent on this site."}
           </DialogDescription>
         </DialogHeader>
 
@@ -523,13 +531,15 @@ const AddExpenseDialog = ({
                   </div>
                 </div>
 
-                {renderUnderOption({
-                  value: NOT_UNDER,
-                  label: "Miscellaneous",
-                  badge: <ReceiptIndianRupee className='size-3.5' />,
-                  hint: "Not under any vendor",
-                  tile: true,
-                })}
+                {/* An order's expense is always under one of its vendors. */}
+                {!orderItem &&
+                  renderUnderOption({
+                    value: NOT_UNDER,
+                    label: "Miscellaneous",
+                    badge: <ReceiptIndianRupee className='size-3.5' />,
+                    hint: "Not under any vendor",
+                    tile: true,
+                  })}
               </div>
             </fieldset>
           )}
