@@ -51,7 +51,6 @@ import AddExpenseDialog, {
   Expense,
 } from "./add-expense-dialog";
 import DocumentsMenu from "@/components/shared/documents-menu";
-import OilZapperStockTable from "./oil-zapper-stock-table";
 import { itemLabel } from "../contract-orders/contract-orders-section";
 import type { JobOrder } from "../restoration/job-order-dialog";
 import {
@@ -952,11 +951,6 @@ const SiteExpensesSection = ({
 
   return (
     <div className='space-y-4'>
-      {/* Bioremediation tracks the oil zapper its expenses procure. */}
-      {showEstimateTable && isBioremediation && (
-        <OilZapperStockTable woSiteId={woSiteId} />
-      )}
-
       {/* Hidden until the estimate gives an activity a quantity. */}
       {showEstimateTable && !isBioremediation && estimatedActivities.length > 0 && (
         <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>

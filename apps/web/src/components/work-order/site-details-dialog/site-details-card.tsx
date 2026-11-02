@@ -7,7 +7,6 @@ import { formatDateRange, scheduleNote } from "@/lib/wo-site-display";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import EditSiteDatesDialog from "./edit-site-dates-dialog";
-import SiteSorAvailability from "./site-sor-availability";
 import SiteEstimate from "./site-estimate";
 import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 import SiteMeasurementSheets from "./site-measurement-sheets";
@@ -151,15 +150,6 @@ const SiteDetailsCard = ({
 
       {siteDetails?.id && (
         <WoSiteOperatorsSection
-          woSiteId={siteDetails.id}
-          className='border-t border-gray-100 px-5 py-4'
-        />
-      )}
-
-      {/* How much of the work order's schedule of rates is left for the
-          site's activities. Absent when none of them has a SOR quantity. */}
-      {siteDetails?.id && (
-        <SiteSorAvailability
           woSiteId={siteDetails.id}
           className='border-t border-gray-100 px-5 py-4'
         />
