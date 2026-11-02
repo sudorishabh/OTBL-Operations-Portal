@@ -103,7 +103,6 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
           <SiteDetailsTabs
             woSiteId={siteDetails.id}
             processType={siteDetails.process_type}
-            isCompleted={!!siteDetails.is_completed}
             execution={
               // A bioremediation site's vendors come from its orders.
               <SiteExpensesSection

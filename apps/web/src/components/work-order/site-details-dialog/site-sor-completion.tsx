@@ -18,6 +18,7 @@ const { TPH_TARGET, WO_UNITS, ZERO_DAY_SAMPLE } = constants;
 interface Props {
   woSiteId: number;
   isCompleted: boolean;
+  className?: string;
 }
 
 const formatQty = (value: number) =>
@@ -33,7 +34,7 @@ const cellClass =
 
 // The site's share of the schedule of rates. It is used in full once
 // treatment is achieved: the latest bio sample's TPH is below the target.
-const SiteSorCompletion = ({ woSiteId, isCompleted }: Props) => {
+const SiteSorCompletion = ({ woSiteId, isCompleted, className }: Props) => {
   const stockQuery = trpc.workOrderSiteQuery.getOilZapperStock.useQuery(
     { work_order_site_id: woSiteId },
     { enabled: !!woSiteId },
@@ -53,7 +54,7 @@ const SiteSorCompletion = ({ woSiteId, isCompleted }: Props) => {
   const available = sorQuantity !== null ? sorQuantity - used : null;
 
   return (
-    <div className='space-y-2'>
+    <div className={cn("space-y-2", className)}>
       <div className='flex flex-wrap items-center justify-between gap-2'>
         <div className='flex items-center gap-2'>
           <Target className='w-3.5 h-3.5 text-emerald-500' />
