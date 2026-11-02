@@ -11,8 +11,7 @@ import NoFetchData from "@/components/shared/no-fetch-data";
 import WorkOrderDetailsSkeleton from "@/components/skeleton/work-order/work-order-details-skeleton";
 import { workOrderPath, type WorkOrderFrom } from "../work-order-path";
 import SiteDetailsCard from "./site-details-card";
-import SiteDetailsTabs from "./site-details-tabs";
-import SiteExpensesSection from "./site-expenses-section";
+import SiteExecution from "./site-execution";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 
 interface Props {
@@ -22,8 +21,8 @@ interface Props {
   from: WorkOrderFrom;
 }
 
-// A work order site's own page: its information, then its estimation,
-// execution and completion.
+// A work order site's own page: its information, estimate and completion,
+// then the work carried out there.
 const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
   const router = useRouter();
   const { setParam } = useHandleParams();
@@ -100,16 +99,9 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
         />
 
         <section className='rounded-lg border border-gray-200 bg-white p-5'>
-          <SiteDetailsTabs
+          <SiteExecution
             woSiteId={siteDetails.id}
             processType={siteDetails.process_type}
-            execution={
-              // A bioremediation site's vendors come from its orders.
-              <SiteExpensesSection
-                woSiteId={siteDetails.id}
-                processType={siteDetails.process_type}
-              />
-            }
           />
         </section>
       </div>
