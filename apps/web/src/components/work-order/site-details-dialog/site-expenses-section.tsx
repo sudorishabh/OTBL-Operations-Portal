@@ -50,6 +50,7 @@ import AddExpenseDialog, {
   Expense,
 } from "./add-expense-dialog";
 import DocumentsMenu from "@/components/shared/documents-menu";
+import OilZapperStockTable from "./oil-zapper-stock-table";
 import {
   documentName,
   openDocument,
@@ -282,6 +283,7 @@ const SiteExpensesSection = ({
       utils.restorationQuery.getRestoration.invalidate();
       utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: woSiteId });
       utils.workOrderQuery.getWorkOrderDetails.invalidate();
+      utils.workOrderSiteQuery.getOilZapperStock.invalidate({ work_order_site_id: woSiteId });
       toast.success("Expense deleted");
     } catch (e: any) {
       toast.error(e?.message || "Failed to delete expense");
@@ -673,8 +675,13 @@ const SiteExpensesSection = ({
 
   return (
     <div className='space-y-4'>
+      {/* Bioremediation tracks the oil zapper its expenses procure. */}
+      {showEstimateTable && isBioremediation && (
+        <OilZapperStockTable woSiteId={woSiteId} />
+      )}
+
       {/* Hidden until the estimate gives an activity a quantity. */}
-      {showEstimateTable && estimatedActivities.length > 0 && (
+      {showEstimateTable && !isBioremediation && estimatedActivities.length > 0 && (
         <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>
           <div className='px-3 py-2 border-b bg-white flex items-center justify-between gap-3'>
             <div className='min-w-0'>

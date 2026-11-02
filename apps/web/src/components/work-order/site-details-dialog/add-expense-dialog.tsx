@@ -282,6 +282,7 @@ const AddExpenseDialog = ({
     utils.restorationQuery.getRestoration.invalidate();
     utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: workOrderSiteId });
     utils.workOrderQuery.getWorkOrderDetails.invalidate();
+    utils.workOrderSiteQuery.getOilZapperStock.invalidate({ work_order_site_id: workOrderSiteId });
     toast.success(message);
     onSuccess?.();
     onClose();
