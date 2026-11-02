@@ -291,7 +291,7 @@ const PhaseForm = ({
           !formData[activity.activity]?.oil_zapper_quantity?.trim(),
       )
     ) {
-      toast.error("Please fill in the Oil Zapper quantity.");
+      toast.error("Please fill in the total estimated Oil Zapper quantity.");
       return;
     }
 
@@ -464,7 +464,7 @@ const PhaseForm = ({
                   </TableHead>
                   {showOilZapper && (
                     <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
-                      {constants.OIL_ZAPPER.LABEL} ({constants.OIL_ZAPPER.UNIT})
+                      {`Tot. Est. ${constants.OIL_ZAPPER.LABEL} Qty (${constants.OIL_ZAPPER.UNIT})`}
                     </TableHead>
                   )}
                   <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
