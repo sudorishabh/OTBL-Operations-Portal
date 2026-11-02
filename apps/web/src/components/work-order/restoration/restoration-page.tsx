@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, File, Plus } from "lucide-react";
+import { CheckCircle2, File, Plus, Rows3 } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
@@ -18,7 +18,7 @@ import JobOrderCertificates from "./job-order-certificates";
 import RestorationMonthlyExpenses from "./restoration-monthly-expenses";
 import RestorationHeader from "./restoration-header";
 import RestorationCompletion from "./restoration-completion";
-import RestorationRatesSection from "./restoration-rates-section";
+import RestorationRatesDialog, { RATES_DIALOG } from "./restoration-rates-dialog";
 import useRestorationRates from "./use-restoration-rates";
 
 const { WO_PROCESS } = constants;
@@ -153,18 +153,21 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
           }
         />
 
+        {/* The restoration's figures, each in its own dialog. */}
+        <div className='flex flex-wrap justify-end gap-2'>
+          {rates.length > 0 && (
+            <CustomButton
+              text='View Schedule of Rates'
+              variant='outline'
+              Icon={Rows3}
+              onClick={() => setParam("dialog", RATES_DIALOG)}
+            />
+          )}
+        </div>
+
         {/* The certificate only comes in once the restoration is complete. */}
         {restoration.is_completed && (
           <RestorationCompletion restoration={restoration} />
-        )}
-
-        {rates.length > 0 && (
-          <RestorationRatesSection
-            restorationId={restoration.id}
-            rates={rates}
-            estimatedTotal={estimatedTotal}
-            className={PANEL}
-          />
         )}
 
         <RestorationMonthlyExpenses
@@ -202,6 +205,12 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
           />
         </section>
       </div>
+
+      <RestorationRatesDialog
+        restorationId={restoration.id}
+        rates={rates}
+        estimatedTotal={estimatedTotal}
+      />
 
       <JobOrderDialog
         restorationId={restoration.id}
