@@ -28,6 +28,9 @@ interface Props {
   maxFiles?: number;
   isUploading?: boolean;
   progress?: number;
+  // Shown at the end of the add row, such as the button that uploads the
+  // picked files.
+  action?: React.ReactNode;
   className?: string;
 }
 
@@ -53,13 +56,13 @@ const FileRow = ({
   const { Icon, bg, text } = getFileTypeStyle(name);
 
   return (
-    <li className='flex items-center gap-2.5 px-2.5 py-1.5'>
+    <li className='flex items-center gap-2 px-2.5 py-1'>
       <span
         className={cn(
-          "flex size-6 shrink-0 items-center justify-center rounded",
+          "flex size-5 shrink-0 items-center justify-center rounded",
           bg,
         )}>
-        <Icon className={cn("size-3.5", text)} />
+        <Icon className={cn("size-3", text)} />
       </span>
       <div className='min-w-0 flex-1'>
         {onOpen ? (
@@ -107,6 +110,7 @@ const DocumentsField = ({
   maxFiles = MAX_DOCUMENTS,
   isUploading = false,
   progress = 0,
+  action,
   className,
 }: Props) => {
   // The picker reports a multi-file selection one file at a time.
@@ -120,75 +124,101 @@ const DocumentsField = ({
   };
 
   const totalCount = existing.length + files.length;
+  const hasFiles = totalCount > 0;
 
+  // Takes the picker's place while the files upload.
+  const uploadingRow = (
+    <div className='flex h-9 items-center gap-2 px-2.5'>
+      <Progress
+        value={progress}
+        className='h-1 flex-1'
+      />
+      <span className='shrink-0 text-[11px] tabular-nums text-gray-500'>
+        Uploading {progress}%
+      </span>
+    </div>
+  );
+
+  const picker = (
+    <DeferredFilePicker
+      label={hasFiles ? "Add files" : label}
+      selectedFile={null}
+      onFileSelect={handleFileSelect}
+      multiple
+      maxFiles={maxFiles}
+      fileCount={totalCount}
+      allowedExtensions={allowedExtensions}
+      maxSizeMB={maxSizeMB}
+      variant={hasFiles ? "row" : "zone"}
+    />
+  );
+
+  // Nothing picked or saved yet: just the one-line drop zone.
+  if (!hasFiles) {
+    return (
+      <div className={className}>
+        {isUploading ? (
+          <div className='rounded-lg border border-gray-200 bg-white'>
+            {uploadingRow}
+          </div>
+        ) : (
+          picker
+        )}
+      </div>
+    );
+  }
+
+  // The files, then a row to add more, in one box.
   return (
-    <div className={cn("space-y-2", className)}>
-      {!isUploading && (
-        <DeferredFilePicker
-          label={label}
-          selectedFile={null}
-          onFileSelect={handleFileSelect}
-          multiple
-          maxFiles={maxFiles}
-          fileCount={totalCount}
-          allowedExtensions={allowedExtensions}
-          maxSizeMB={maxSizeMB}
-        />
-      )}
-
-      {totalCount > 0 && (
-        <ul className='divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white'>
-          {existing.map((doc, index) => (
-            <FileRow
-              key={`saved-${doc.url}-${index}`}
-              name={documentName(doc, index)}
-              meta={existingMeta(index)}
-              onOpen={() => openDocument(doc)}
-              onRemove={
-                onRemoveExisting && !isUploading
-                  ? () => onRemoveExisting(index)
-                  : undefined
-              }
-              removeLabel={`Remove ${documentName(doc, index)}`}
-            />
-          ))}
-          {files.map((file, index) => (
-            <FileRow
-              key={`pending-${file.name}-${file.lastModified}-${index}`}
-              name={file.name}
-              meta={
-                <>
-                  {formatFileSize(file.size)}
-                  <span
-                    className='ml-2 text-amber-600'
-                    title='Uploads when you save'>
-                    Not saved
-                  </span>
-                </>
-              }
-              onRemove={
-                isUploading
-                  ? undefined
-                  : () => onFilesChange(files.filter((_, i) => i !== index))
-              }
-              removeLabel={`Remove ${file.name}`}
-            />
-          ))}
-        </ul>
-      )}
-
-      {isUploading && (
-        <div className='flex items-center gap-2'>
-          <Progress
-            value={progress}
-            className='h-1.5 flex-1'
+    <div
+      className={cn(
+        "overflow-hidden rounded-lg border border-gray-200 bg-white",
+        className,
+      )}>
+      <ul className='divide-y divide-gray-100'>
+        {existing.map((doc, index) => (
+          <FileRow
+            key={`saved-${doc.url}-${index}`}
+            name={documentName(doc, index)}
+            meta={existingMeta(index)}
+            onOpen={() => openDocument(doc)}
+            onRemove={
+              onRemoveExisting && !isUploading
+                ? () => onRemoveExisting(index)
+                : undefined
+            }
+            removeLabel={`Remove ${documentName(doc, index)}`}
           />
-          <span className='text-[11px] tabular-nums text-gray-500'>
-            Uploading {progress}%
-          </span>
+        ))}
+        {files.map((file, index) => (
+          <FileRow
+            key={`pending-${file.name}-${file.lastModified}-${index}`}
+            name={file.name}
+            meta={
+              <>
+                {formatFileSize(file.size)}
+                <span
+                  className='ml-2 text-amber-600'
+                  title='Uploads when you save'>
+                  Not saved
+                </span>
+              </>
+            }
+            onRemove={
+              isUploading
+                ? undefined
+                : () => onFilesChange(files.filter((_, i) => i !== index))
+            }
+            removeLabel={`Remove ${file.name}`}
+          />
+        ))}
+      </ul>
+      <div className='flex items-center border-t border-gray-100'>
+        <div className='min-w-0 flex-1'>
+          {isUploading ? uploadingRow : picker}
         </div>
-      )}
-
+        {action && <div className='shrink-0 px-1.5'>{action}</div>}
+      </div>
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
+import UploadSectionHeader from "@/components/shared/upload-section-header";
 
 const CERTIFICATE = "completion_certificate";
 
@@ -80,18 +81,12 @@ const SiteCompletionCertificate = ({ woSiteId }: Props) => {
   };
 
   return (
-    <div className='space-y-3'>
-      <div>
-        <div className='flex items-center gap-2'>
-          <FileCheck className='size-3.5 text-gray-400' />
-          <span className='text-xs font-medium text-gray-700'>
-            Completion Certificate
-          </span>
-        </div>
-        <p className='mt-0.5 text-[11px] text-gray-400'>
-          The signed certificate for the finished site.
-        </p>
-      </div>
+    <div className='space-y-2'>
+      <UploadSectionHeader
+        Icon={FileCheck}
+        title='Completion Certificate'
+        description='The signed certificate for the finished site.'
+      />
 
       <DocumentsField
         label='Upload completion certificate'
@@ -110,21 +105,21 @@ const SiteCompletionCertificate = ({ woSiteId }: Props) => {
         }}
         isUploading={isUploading}
         progress={progress}
+        action={
+          files.length > 0 && (
+            <CustomButton
+              variant='primary'
+              Icon={Upload}
+              text='Upload certificate'
+              loading={isSaving}
+              disabled={isSaving}
+              onClick={upload}
+              className='h-7 px-2.5 text-xs'
+              disableForViewer
+            />
+          )
+        }
       />
-
-      {files.length > 0 && (
-        <div className='flex justify-end'>
-          <CustomButton
-            variant='primary'
-            Icon={Upload}
-            text='Upload certificate'
-            loading={isSaving}
-            disabled={isSaving}
-            onClick={upload}
-            disableForViewer
-          />
-        </div>
-      )}
     </div>
   );
 };

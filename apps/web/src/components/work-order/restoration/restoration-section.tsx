@@ -1,20 +1,16 @@
 "use client";
-import React, { useMemo } from "react";
+import React from "react";
+import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
-import { constants } from "@pkg/utils";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import useHandleParams from "@/hooks/useHandleParams";
 import { useIsManager } from "@/contexts/AuthContext";
 import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProcessSectionHeader from "../process-section-header";
-import RestorationDialog from "./restoration-dialog";
 import RestorationCard from "./restoration-card";
-import type { RestorationRate } from "./restoration-rates-table";
-
-const { allActivityOptions } = constants;
+import useRestorationRates from "./use-restoration-rates";
 
 export type Restoration = NonNullable<
   RouterOutputs["restorationQuery"]["getRestoration"]
@@ -26,9 +22,9 @@ interface Props {
 }
 
 // Restoration is done across the whole work order, so it has no sites: the
-// section is one entry that opens the restoration dialog.
+// section is one entry that opens the restoration page.
 const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
-  const { setParam } = useHandleParams();
+  const pathname = usePathname();
   const isManager = useIsManager();
   const utils = trpc.useUtils();
 
@@ -47,43 +43,19 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
     onError: (error: { message: string }) => toast.error(error.message),
   });
 
-  // The work order's restoration activities, in schedule of rates order.
-  const rates = useMemo<RestorationRate[]>(
-    () =>
-      allActivityOptions
-        .filter((option) => !option.isBioremediation)
-        .flatMap((option) => {
-          const sor = scheduleOfRates.find(
-            (row) => row.activity === option.value,
-          );
-          return sor ? [{ ...sor, label: option.label }] : [];
-        }),
-    [scheduleOfRates],
-  );
+  const { rates, estimatedTotal } = useRestorationRates(scheduleOfRates);
 
-  const estimatedTotal = rates.reduce(
-    (sum, rate) => sum + (Number(rate.total_cost) || 0),
-    0,
-  );
-
-  // Set up, the restoration is one panel that opens its dialog.
+  // Set up, the restoration is one panel that opens its page, which sits
+  // under whichever work order page this is.
   if (restoration) {
     return (
-      <>
-        <RestorationCard
-          workOrder={workOrder}
-          restoration={restoration}
-          rates={rates}
-          estimatedTotal={estimatedTotal}
-          onOpen={() => setParam("dialog", "restoration")}
-        />
-        <RestorationDialog
-          workOrder={workOrder}
-          restoration={restoration}
-          rates={rates}
-          estimatedTotal={estimatedTotal}
-        />
-      </>
+      <RestorationCard
+        workOrder={workOrder}
+        restoration={restoration}
+        rates={rates}
+        estimatedTotal={estimatedTotal}
+        href={`${pathname}/restoration`}
+      />
     );
   }
 

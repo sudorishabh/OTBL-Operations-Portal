@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Link from "next/link";
 import {
   Award,
   CalendarDays,
@@ -8,7 +9,6 @@ import {
   HardHat,
   RotateCcw,
 } from "lucide-react";
-import { capitalFirstLetter } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatDateRange, scheduleNote } from "@/lib/wo-site-display";
@@ -17,17 +17,21 @@ import type { JobOrder } from "./job-order-dialog";
 import type { RestorationRate } from "./restoration-rates-table";
 import type { Restoration } from "./restoration-section";
 import { PROCESS_TONES } from "../process-section-header";
+import {
+  activityTone,
+  jobOrderVendorNames,
+  percentOf,
+  restorationStatus,
+} from "./restoration-display";
 
 interface Props {
   workOrder: any;
   restoration: Restoration;
   rates: RestorationRate[];
   estimatedTotal: number;
-  onOpen: () => void;
+  // The restoration page the panel opens.
+  href: string;
 }
-
-// Allowance for decimal rounding when comparing quantities.
-const QTY_EPSILON = 0.001;
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-IN", {
@@ -39,33 +43,15 @@ const formatCurrency = (amount: number) =>
 const formatQty = (value: number) =>
   new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
 
-const percentOf = (part: number, whole: number) =>
-  whole > 0 ? Math.min(100, (part / whole) * 100) : 0;
-
-const STATUS_STYLES = {
-  complete: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  inProgress: "bg-purple-50 text-purple-700 ring-purple-200",
-  notStarted: "bg-gray-50 text-gray-600 ring-gray-200",
-  cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
-} as const;
-
-// How far one activity's schedule of rates quantity has been used.
-const activityTone = (used: number, estimated: number) => {
-  if (used > estimated + QTY_EPSILON) return { bar: "bg-rose-500", text: "text-rose-600" };
-  if (used + QTY_EPSILON >= estimated) return { bar: "bg-emerald-500", text: "text-emerald-700" };
-  if (used > 0) return { bar: "bg-purple-500", text: "text-gray-600" };
-  return { bar: "bg-gray-200", text: "text-gray-400" };
-};
-
 // The work order's restoration section, as one panel: where it stands, what
 // has been spent, and how far each activity has got, in the order the work is
-// done. The whole panel opens the restoration dialog.
+// done. The whole panel opens the restoration page.
 const RestorationCard = ({
   workOrder,
   restoration,
   rates,
   estimatedTotal,
-  onOpen,
+  href,
 }: Props) => {
   const summaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery({
     work_order_site_id: restoration.id,
@@ -80,25 +66,12 @@ const RestorationCard = ({
     work_order_site_id: restoration.id,
   });
   const jobOrders = (jobOrdersQuery.data ?? []) as JobOrder[];
-  const vendorNames = [
-    ...new Map(
-      jobOrders.flatMap((jobOrder) =>
-        jobOrder.vendors.map((vendor) => [vendor.id, vendor.name] as const),
-      ),
-    ).values(),
-  ].map((name) => capitalFirstLetter(name));
+  const vendorNames = jobOrderVendorNames(jobOrders);
   const certifiedCount = jobOrders.filter(
     (jobOrder) => toDocuments(jobOrder.documents).length > 0,
   ).length;
 
-  const isCancelled = restoration.status === "cancelled";
-  const status = isCancelled
-    ? { label: "Cancelled", style: STATUS_STYLES.cancelled }
-    : restoration.is_completed
-      ? { label: "Complete", style: STATUS_STYLES.complete }
-      : spent > 0
-        ? { label: "In progress", style: STATUS_STYLES.inProgress }
-        : { label: "Not started", style: STATUS_STYLES.notStarted };
+  const status = restorationStatus(restoration, spent);
   const note = restoration.is_completed
     ? null
     : scheduleNote(restoration.status, workOrder.start_date, workOrder.end_date);
@@ -118,13 +91,12 @@ const RestorationCard = ({
           <div className='min-w-0'>
             <div className='flex flex-wrap items-center gap-2'>
               <h2 className='text-base font-semibold text-gray-900'>
-                {/* Stretched over the panel, so all of it opens the dialog. */}
-                <button
-                  type='button'
-                  onClick={onOpen}
-                  className='text-left outline-none transition-colors after:absolute after:inset-0 after:rounded-lg group-hover:text-purple-700'>
+                {/* Stretched over the panel, so all of it opens the page. */}
+                <Link
+                  href={href}
+                  className='outline-none transition-colors after:absolute after:inset-0 after:rounded-lg group-hover:text-purple-700'>
                   Restoration
-                </button>
+                </Link>
               </h2>
               <span
                 className={cn(

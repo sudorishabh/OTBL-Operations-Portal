@@ -80,10 +80,10 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
           setOpen(true);
         }}
         className={cn(
-          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+          "mr-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset transition-colors",
           certificates.length > 0
-            ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-            : "bg-gray-100 text-gray-500 hover:bg-gray-200",
+            ? "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100"
+            : "bg-gray-50 text-gray-500 ring-gray-200 hover:bg-gray-100",
         )}>
         <Award className='size-3' />
         {certificates.length > 0

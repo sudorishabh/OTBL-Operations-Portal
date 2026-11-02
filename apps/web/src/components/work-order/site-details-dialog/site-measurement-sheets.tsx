@@ -9,6 +9,7 @@ import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import { useIsViewer } from "@/contexts/AuthContext";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
+import UploadSectionHeader from "@/components/shared/upload-section-header";
 
 interface Props {
   woSiteId: number | undefined;
@@ -85,18 +86,12 @@ const SiteMeasurementSheets = ({ woSiteId }: Props) => {
   };
 
   return (
-    <div className='min-w-0 space-y-3'>
-      <div>
-        <div className='flex items-center gap-2'>
-          <FileText className='size-3.5 text-gray-400' />
-          <span className='text-xs font-medium text-gray-700'>
-            Measurement Sheet
-          </span>
-        </div>
-        <p className='mt-0.5 text-[11px] text-gray-400'>
-          The site's measurements behind the quantities.
-        </p>
-      </div>
+    <div className='min-w-0 space-y-2'>
+      <UploadSectionHeader
+        Icon={FileText}
+        title='Measurement Sheet'
+        description="The site's measurements behind the quantities."
+      />
 
       <DocumentsField
         label='Upload measurement sheets'
@@ -128,25 +123,25 @@ const SiteMeasurementSheets = ({ woSiteId }: Props) => {
         maxFiles={sheets.length + constants.MAX_DOCUMENTS}
         isUploading={isSaving || isUploading}
         progress={progress}
+        action={
+          files.length > 0 && (
+            <CustomButton
+              variant='primary'
+              Icon={Upload}
+              text={
+                files.length === 1
+                  ? "Upload sheet"
+                  : `Upload ${files.length} sheets`
+              }
+              loading={isSaving}
+              disabled={isSaving}
+              onClick={upload}
+              className='h-7 px-2.5 text-xs'
+              disableForViewer
+            />
+          )
+        }
       />
-
-      {files.length > 0 && (
-        <div className='flex justify-end'>
-          <CustomButton
-            variant='primary'
-            Icon={Upload}
-            text={
-              files.length === 1
-                ? "Upload sheet"
-                : `Upload ${files.length} sheets`
-            }
-            loading={isSaving}
-            disabled={isSaving}
-            onClick={upload}
-            disableForViewer
-          />
-        </div>
-      )}
     </div>
   );
 };

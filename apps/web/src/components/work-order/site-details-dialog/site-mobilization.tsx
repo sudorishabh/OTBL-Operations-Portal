@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
+import UploadSectionHeader from "@/components/shared/upload-section-header";
 import DocumentsMenu from "@/components/shared/documents-menu";
 
 const MOBILIZATION = "mobilization";
@@ -94,18 +95,12 @@ export const MobilizationCertificate = ({ woSiteId }: Props) => {
   };
 
   return (
-    <div className='space-y-3'>
-      <div>
-        <div className='flex items-center gap-2'>
-          <Truck className='size-3.5 text-gray-400' />
-          <span className='text-xs font-medium text-gray-700'>
-            Mobilization Certificate
-          </span>
-        </div>
-        <p className='mt-0.5 text-[11px] text-gray-400'>
-          Certifies the team and equipment have moved onto the site.
-        </p>
-      </div>
+    <div className='space-y-2'>
+      <UploadSectionHeader
+        Icon={Truck}
+        title='Mobilization Certificate'
+        description='Certifies the team and equipment have moved onto the site.'
+      />
 
       <DocumentsField
         label='Upload mobilization certificate'
@@ -124,21 +119,21 @@ export const MobilizationCertificate = ({ woSiteId }: Props) => {
         }}
         isUploading={isUploading}
         progress={progress}
+        action={
+          files.length > 0 && (
+            <CustomButton
+              variant='primary'
+              Icon={Upload}
+              text='Upload certificate'
+              loading={isSaving}
+              disabled={isSaving}
+              onClick={upload}
+              className='h-7 px-2.5 text-xs'
+              disableForViewer
+            />
+          )
+        }
       />
-
-      {files.length > 0 && (
-        <div className='flex justify-end'>
-          <CustomButton
-            variant='primary'
-            Icon={Upload}
-            text='Upload certificate'
-            loading={isSaving}
-            disabled={isSaving}
-            onClick={upload}
-            disableForViewer
-          />
-        </div>
-      )}
     </div>
   );
 };
@@ -221,18 +216,12 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
   const isSaving = isUploading || createSample.isPending;
 
   return (
-    <div className='space-y-3'>
-      <div>
-        <div className='flex items-center gap-2'>
-          <FlaskConical className='size-3.5 text-gray-400' />
-          <span className='text-xs font-medium text-gray-700'>
-            0-Day Bio Sample Report
-          </span>
-        </div>
-        <p className='mt-0.5 text-[11px] text-gray-400'>
-          Taken before the first application, as the site's baseline TPH.
-        </p>
-      </div>
+    <div className='space-y-2'>
+      <UploadSectionHeader
+        Icon={FlaskConical}
+        title='0-Day Bio Sample Report'
+        description="Taken before the first application, as the site's baseline TPH."
+      />
 
       {bioremediationDataQuery.isLoading ? (
         <div className='flex justify-center py-4 text-gray-400'>

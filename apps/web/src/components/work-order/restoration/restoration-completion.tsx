@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
+import UploadSectionHeader from "@/components/shared/upload-section-header";
 import type { Restoration } from "./restoration-section";
 
 const CERTIFICATE = "completion_certificate";
@@ -83,18 +84,12 @@ const RestorationCompletion = ({ restoration }: Props) => {
   };
 
   return (
-    <div className='space-y-3 rounded-lg border border-gray-200 bg-white p-4'>
-      <div>
-        <div className='flex items-center gap-2'>
-          <FileCheck className='size-3.5 text-gray-400' />
-          <h4 className='text-xs font-medium text-gray-700'>
-            Completion certificate
-          </h4>
-        </div>
-        <p className='mt-0.5 text-[11px] text-gray-400'>
-          The signed certificate for the finished restoration.
-        </p>
-      </div>
+    <div className='space-y-2 rounded-lg border border-gray-200 bg-white p-4'>
+      <UploadSectionHeader
+        Icon={FileCheck}
+        title='Completion certificate'
+        description='The signed certificate for the finished restoration.'
+      />
 
       <DocumentsField
         label='Upload completion certificate'
@@ -113,21 +108,21 @@ const RestorationCompletion = ({ restoration }: Props) => {
         }}
         isUploading={isUploading}
         progress={progress}
+        action={
+          files.length > 0 && (
+            <CustomButton
+              variant='primary'
+              Icon={Upload}
+              text='Upload certificate'
+              loading={isSaving}
+              disabled={isSaving}
+              onClick={upload}
+              className='h-7 px-2.5 text-xs'
+              disableForViewer
+            />
+          )
+        }
       />
-
-      {files.length > 0 && (
-        <div className='flex justify-end'>
-          <CustomButton
-            variant='primary'
-            Icon={Upload}
-            text='Upload certificate'
-            loading={isSaving}
-            disabled={isSaving}
-            onClick={upload}
-            disableForViewer
-          />
-        </div>
-      )}
     </div>
   );
 };
