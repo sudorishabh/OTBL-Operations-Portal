@@ -180,6 +180,22 @@ export const updateWorkOrderSchema = baseWorkOrderSchema
     },
   );
 
+// A correction to one schedule of rates row. Its activity, unit and GST stay;
+// the rate including GST and the total are worked out again from these.
+export const updateScheduleOfRateRowSchema = z.object({
+  id: positiveIntValidator,
+  estimated_quantity: z.number().gt(0, "Quantity must be greater than zero"),
+  rc_unit_rate: z.number().gt(0, "Rate must be greater than zero"),
+  transportation_slabs: transportationSlabsSchema.optional(),
+});
+
+export const updateScheduleOfRatesSchema = z.object({
+  work_order_id: positiveIntValidator,
+  rates: z
+    .array(updateScheduleOfRateRowSchema)
+    .min(1, "At least one schedule of rate entry is required"),
+});
+
 export const approveWorkOrderSchema = z.object({
   id: positiveIntValidator,
 });
