@@ -15,6 +15,7 @@ import { escapeLike } from "../../helper/escape-like";
 import { siteNameOrRestoration } from "../../helper/restoration";
 import { z } from "zod";
 import { fromDatabaseError, notFound } from "../../errors";
+import { getOilZapperStock } from "./oil-zapper-stock";
 
 const getWorkOrderSiteDetailsSchema = z.object({
   work_order_site_id: z.number().positive(),
@@ -868,6 +869,30 @@ export const workOrderSiteQueryRouter = router({
       }
     }),
   ),
+
+  // Estimated, procured, used and left oil zapper for a bioremediation site.
+  getOilZapperStock: protectedProcedure
+    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrderSite(
+          ctx.db,
+          scope,
+          input.work_order_site_id,
+        );
+
+        try {
+          return await getOilZapperStock(ctx.db, input.work_order_site_id);
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching oil zapper stock");
+        }
+      }),
+    ),
 
   getBioremediationData: protectedProcedure
     .input(
