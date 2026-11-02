@@ -4,11 +4,9 @@ import { cn } from "@/lib/utils";
 // Each process keeps the colour of its badge on the work order details card.
 export const PROCESS_TONES = {
   bioremediation: {
-    section: "border-l-blue-500",
     icon: "bg-blue-50 text-blue-700 ring-blue-100",
   },
   restoration: {
-    section: "border-l-purple-500",
     icon: "bg-purple-50 text-purple-700 ring-purple-100",
   },
 } as const;

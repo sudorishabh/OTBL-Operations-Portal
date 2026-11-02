@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import { FlaskConical, LayoutGrid, List, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import useHandleParams from "@/hooks/useHandleParams";
@@ -10,7 +9,7 @@ import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import Error from "@/components/shared/error";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import WorkOrderSitesSkeleton from "@/components/skeleton/work-order/work-order-sites-skeleton";
-import ProcessSectionHeader, { PROCESS_TONES } from "../process-section-header";
+import ProcessSectionHeader from "../process-section-header";
 import CreateWorkOrderSiteDialog from "../create-wo-site/create-wo-site-dialog";
 import SiteDetailDialog from "../site-details-dialog/site-details-dialog";
 import SitesTable from "./wo-sites-table";
@@ -154,16 +153,12 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
   const siteCount = pagination?.total || 0;
 
   return (
-    <section
-      className={cn(
-        "rounded-lg border border-l-[3px] bg-white p-6",
-        PROCESS_TONES.bioremediation.section,
-      )}>
+    <section className='rounded-lg border bg-white p-6'>
       <ProcessSectionHeader
         Icon={FlaskConical}
         tone='bioremediation'
         title='Bioremediation'
-        description={`Done at sites, ${siteCount} ${siteCount === 1 ? "site" : "sites"} added so far.`}>
+        description={`Done site by site, ${siteCount} ${siteCount === 1 ? "site" : "sites"} so far`}>
         <Tabs
           value={viewMode}
           onValueChange={(val) => setViewMode(val as "card" | "table")}>
@@ -213,30 +208,23 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
             </TabsContent>
           </Tabs>
           {isFetchingMore && <WorkOrderSitesSkeleton />}
+          {/* Only while more sites are left to load. */}
           {!isFetchingMore && pagination?.hasMore && (
-            <div className='flex justify-center mt-4'>
+            <div className='mt-4 flex flex-col items-center gap-2'>
               <LoadMoreBtn
                 onClick={() => setCurrentPage((prev) => prev + 1)}
                 loading={false}
               />
+              <span className='text-xs text-gray-500'>
+                Showing {sitesList.length} of {pagination.total} sites
+              </span>
             </div>
           )}
-          <div className='flex justify-between items-center px-4 py-2 text-xs text-muted-foreground border-t mt-4'>
-            <span>
-              Showing {sitesList.length} of{" "}
-              {pagination?.total || sitesList.length} sites
-            </span>
-            {pagination && pagination.totalPages > 1 && (
-              <span>
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-            )}
-          </div>
         </div>
       ) : (
-        <div className='text-center text-xs py-8 text-gray-500'>
-          No sites added yet. Click &quot;Create Site&quot; to get started.
-        </div>
+        <p className='rounded-lg border border-dashed py-8 text-center text-xs text-gray-500'>
+          No sites yet. Create one to estimate and treat its contaminated soil.
+        </p>
       )}
 
       {sitesList.length > 0 && (
