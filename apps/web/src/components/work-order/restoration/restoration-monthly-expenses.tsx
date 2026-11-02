@@ -16,6 +16,7 @@ import type { JobOrder } from "./job-order-dialog";
 
 interface Props {
   restorationId: number;
+  className?: string;
 }
 
 type MonthRow = {
@@ -37,7 +38,7 @@ const cellClass = "px-3 py-2 text-xs tabular-nums whitespace-nowrap";
 
 // The restoration's expenses month by month, split by job order. Expenses are
 // edited in the list below, and these totals follow.
-const RestorationMonthlyExpenses = ({ restorationId }: Props) => {
+const RestorationMonthlyExpenses = ({ restorationId, className }: Props) => {
   const monthsQuery = trpc.expenseQuery.getMonthlyExpenses.useQuery({
     work_order_site_id: restorationId,
   });
@@ -62,7 +63,7 @@ const RestorationMonthlyExpenses = ({ restorationId }: Props) => {
   );
 
   return (
-    <section className='space-y-2'>
+    <section className={cn("space-y-2", className)}>
       <div className='flex items-center gap-2'>
         <CalendarRange className='size-3.5 text-emerald-500' />
         <h4 className='text-[13px] font-semibold text-gray-800'>
