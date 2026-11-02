@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { FlaskConical, LayoutGrid, List, Plus } from "lucide-react";
 import toast from "react-hot-toast";
@@ -11,7 +12,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import WorkOrderSitesSkeleton from "@/components/skeleton/work-order/work-order-sites-skeleton";
 import ProcessSectionHeader from "../process-section-header";
 import CreateWorkOrderSiteDialog from "../create-wo-site/create-wo-site-dialog";
-import SiteDetailDialog from "../site-details-dialog/site-details-dialog";
 import SitesTable from "./wo-sites-table";
 import WOSitesCard from "./wo-sites-card";
 import ContractOrdersSection from "../contract-orders/contract-orders-section";
@@ -44,7 +44,9 @@ const normalizeSiteStatus = (
 
 // Bioremediation is done at sites, so this section lists and adds them.
 const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
-  const { setParam, setParams } = useHandleParams();
+  const { setParam } = useHandleParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [currentPage, setCurrentPage] = useState(1);
   const [sitesList, setSitesList] = useState<any[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -130,11 +132,9 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
     setParam("dialog", "create-wo-site");
   };
 
+  // Each site has its own page, under whichever work order page this is.
   const handleSiteDetails = (siteId: string) => {
-    setParams({
-      dialog: "site-details",
-      "wo-site-id": siteId,
-    });
+    router.push(`${pathname}/sites/${siteId}`);
   };
 
   if (isSitesQueryLoading && currentPage === 1) {
@@ -235,7 +235,6 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
         workOrder={workOrder}
         scheduleOfRates={scheduleOfRates}
       />
-      <SiteDetailDialog />
     </section>
   );
 };

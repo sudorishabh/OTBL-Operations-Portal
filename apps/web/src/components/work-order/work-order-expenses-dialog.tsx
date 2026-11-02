@@ -1,5 +1,6 @@
 "use client";
 import React, { useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { toDocuments } from "@/lib/documents";
 import { formatDateRange } from "@/lib/wo-site-display";
@@ -45,7 +46,9 @@ const formatActivityLabel = (key: string) =>
     .join(" ");
 
 const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
-  const { getParam, deleteParams, setParams } = useHandleParams();
+  const { getParam, deleteParams } = useHandleParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const isOpen = getParam("dialog") === "all-expenses";
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -113,8 +116,16 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
     deleteParams(["dialog"]);
   };
 
-  const openSite = (woSiteId: number) => {
-    setParams({ dialog: "site-details", "wo-site-id": String(woSiteId) });
+  // The site's page, or the restoration's, which has no site.
+  const openSite = (expense: {
+    work_order_site_id: number;
+    site_id: number | null;
+  }) => {
+    router.push(
+      expense.site_id == null
+        ? `${pathname}/restoration`
+        : `${pathname}/sites/${expense.work_order_site_id}`,
+    );
   };
 
   return (
@@ -259,7 +270,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                       <TableCell className='px-3 py-2'>
                         <button
                           type='button'
-                          onClick={() => openSite(e.work_order_site_id)}
+                          onClick={() => openSite(e)}
                           className='text-slate-700 font-medium hover:text-blue-600 inline-flex items-center gap-1 transition-colors'>
                           {e.site_name || `Site ${e.site_id}`}
                           <ExternalLink className='size-3 opacity-60' />
