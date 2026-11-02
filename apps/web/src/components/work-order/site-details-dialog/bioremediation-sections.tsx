@@ -210,29 +210,14 @@ const OilZappingForm = ({
   const [estimatedQuantity, setEstimatedQuantity] = useState("");
   const [files, setFiles] = useState<File[]>([]);
 
-  const bioremediationDataQuery =
-    trpc.workOrderSiteQuery.getBioremediationData.useQuery(
-      { work_order_site_id: woSiteId },
-      { enabled: !!woSiteId },
-    );
-
-  const estimateLimit = React.useMemo(() => {
-    const estimateEntry = bioremediationDataQuery.data?.contaminatedSoil?.find(
-      (i: any) => i.type === "estimate_sub-wo",
-    );
-    return parseFloat(estimateEntry?.estimated_quantity || "0") || 0;
-  }, [bioremediationDataQuery.data?.contaminatedSoil]);
-
-  const currentTotal = React.useMemo(() => {
-    const oil = bioremediationDataQuery.data?.oilZapping || [];
-    return oil.reduce(
-      (sum: number, entry: any) =>
-        sum + (parseFloat(entry.estimated_quantity || "0") || 0),
-      0,
-    );
-  }, [bioremediationDataQuery.data?.oilZapping]);
-
-  const remaining = Math.max(0, estimateLimit - currentTotal);
+  // Oil zapping applies oil zapper the site's expenses have procured.
+  const stockQuery = trpc.workOrderSiteQuery.getOilZapperStock.useQuery(
+    { work_order_site_id: woSiteId },
+    { enabled: !!woSiteId },
+  );
+  const procured = stockQuery.data?.procured ?? 0;
+  const used = stockQuery.data?.used ?? 0;
+  const remaining = Math.max(0, stockQuery.data?.left ?? 0);
 
   const {
     uploadFiles,
@@ -249,6 +234,9 @@ const OilZappingForm = ({
       onSuccess: () => {
         toast.success("Oil zapping entry added successfully");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
+        utils.workOrderSiteQuery.getOilZapperStock.invalidate({
+          work_order_site_id: woSiteId,
+        });
         setEstimatedQuantity("");
         setFiles([]);
         resetUpload();
@@ -275,29 +263,27 @@ const OilZappingForm = ({
       return;
     }
 
-    if (estimateLimit <= 0) {
-      toast.error("Please save the Contaminated Soil estimate quantity first.");
+    if (procured <= 0) {
+      toast.error(
+        "No oil zapper has been procured yet. Record its purchase as an expense first.",
+      );
       return;
     }
 
-    if (remaining <= 0) {
-      toast.error("Oil zapping limit already reached for this site.");
+    if (enteredQty > remaining) {
+      toast.error(
+        `Only ${remaining.toFixed(2)} ${constants.OIL_ZAPPER.UNIT} of procured oil zapper is left to apply.`,
+      );
       return;
     }
 
     try {
       const uploaded = await uploadFiles(files);
       if (uploaded) {
-        const cappedQty = Math.min(enteredQty, remaining);
-        if (cappedQty < enteredQty) {
-          toast(
-            `Quantity capped to remaining: ${cappedQty.toFixed(2)} (limit ${estimateLimit.toFixed(2)})`,
-          );
-        }
         createMutation.mutate({
           work_order_site_id: woSiteId,
           documents: uploaded.map(toStoredDocument),
-          estimated_quantity: cappedQty.toFixed(2),
+          estimated_quantity: enteredQty.toFixed(2),
         });
       }
     } catch (error) {
@@ -321,7 +307,7 @@ const OilZappingForm = ({
         </div>
         <div>
           <label className='text-[10px] text-slate-600 font-medium mb-1 block'>
-            Quantity
+            Quantity applied ({constants.OIL_ZAPPER.UNIT})
           </label>
           <Input
             value={estimatedQuantity}
@@ -329,17 +315,17 @@ const OilZappingForm = ({
             placeholder='0.00'
             className='h-9'
           />
-          {estimateLimit > 0 && (
+          {procured > 0 && (
             <p className='mt-1 text-[10px] text-slate-500'>
-              Limit:{" "}
+              Procured:{" "}
               <span className='font-semibold tabular-nums'>
-                {estimateLimit.toFixed(2)}
+                {procured.toFixed(2)}
               </span>
               {" · "}Used:{" "}
               <span className='font-semibold tabular-nums'>
-                {currentTotal.toFixed(2)}
+                {used.toFixed(2)}
               </span>
-              {" · "}Remaining:{" "}
+              {" · "}Left:{" "}
               <span className='font-semibold tabular-nums'>
                 {remaining.toFixed(2)}
               </span>
@@ -533,6 +519,9 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
       onSuccess: () => {
         toast.success("Entry deleted");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
+        utils.workOrderSiteQuery.getOilZapperStock.invalidate({
+          work_order_site_id: woSiteId,
+        });
       },
       onError: (err: any) => {
         const message =
