@@ -1,15 +1,14 @@
 "use client";
 import React from "react";
+import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import useHandleParams from "@/hooks/useHandleParams";
 import { useIsManager } from "@/contexts/AuthContext";
 import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProcessSectionHeader from "../process-section-header";
-import RestorationDialog from "./restoration-dialog";
 import RestorationCard from "./restoration-card";
 import useRestorationRates from "./use-restoration-rates";
 
@@ -23,9 +22,9 @@ interface Props {
 }
 
 // Restoration is done across the whole work order, so it has no sites: the
-// section is one entry that opens the restoration dialog.
+// section is one entry that opens the restoration page.
 const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
-  const { setParam } = useHandleParams();
+  const pathname = usePathname();
   const isManager = useIsManager();
   const utils = trpc.useUtils();
 
@@ -46,24 +45,17 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
 
   const { rates, estimatedTotal } = useRestorationRates(scheduleOfRates);
 
-  // Set up, the restoration is one panel that opens its dialog.
+  // Set up, the restoration is one panel that opens its page, which sits
+  // under whichever work order page this is.
   if (restoration) {
     return (
-      <>
-        <RestorationCard
-          workOrder={workOrder}
-          restoration={restoration}
-          rates={rates}
-          estimatedTotal={estimatedTotal}
-          onOpen={() => setParam("dialog", "restoration")}
-        />
-        <RestorationDialog
-          workOrder={workOrder}
-          restoration={restoration}
-          rates={rates}
-          estimatedTotal={estimatedTotal}
-        />
-      </>
+      <RestorationCard
+        workOrder={workOrder}
+        restoration={restoration}
+        rates={rates}
+        estimatedTotal={estimatedTotal}
+        href={`${pathname}/restoration`}
+      />
     );
   }
 
