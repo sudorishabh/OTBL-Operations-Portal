@@ -124,7 +124,6 @@ export const MobilizationCertificate = ({ woSiteId }: Props) => {
         }}
         isUploading={isUploading}
         progress={progress}
-        className='rounded-lg'
       />
 
       {files.length > 0 && (
@@ -283,7 +282,6 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
             onFilesChange={setFiles}
             isUploading={isUploading}
             progress={progress}
-            className='rounded-lg'
           />
           <div className='flex flex-wrap items-end justify-between gap-3'>
             <div className='w-full sm:w-48'>
