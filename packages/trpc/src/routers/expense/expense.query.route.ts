@@ -61,6 +61,9 @@ export const expenseQueryRouter = router({
               work_order_site_id: workOrderSiteExpenseTable.work_order_site_id,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
               contractor_name: contractorTable.name,
+              contract_order_item_id:
+                workOrderSiteExpenseTable.contract_order_item_id,
+              job_order_id: workOrderSiteExpenseTable.job_order_id,
               activity_key: workOrderSiteExpenseTable.activity_key,
               quantity: workOrderSiteExpenseTable.quantity,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
@@ -92,6 +95,62 @@ export const expenseQueryRouter = router({
           return { expenses, pagination: { page, limit, total, totalPages, hasMore } };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching expenses");
+        }
+      }),
+    ),
+
+  // A site's expenses by the month they start in, newest first, split by job
+  // order; expenses on none (miscellaneous) are keyed "none".
+  getMonthlyExpenses: protectedProcedure
+    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrderSite(
+          ctx.db,
+          scope,
+          input.work_order_site_id,
+        );
+
+        try {
+          const rows = await ctx.db
+            .select({
+              start_date: workOrderSiteExpenseTable.start_date,
+              job_order_id: workOrderSiteExpenseTable.job_order_id,
+              amount: workOrderSiteExpenseTable.amount,
+            })
+            .from(workOrderSiteExpenseTable)
+            .where(
+              eq(
+                workOrderSiteExpenseTable.work_order_site_id,
+                input.work_order_site_id,
+              ),
+            );
+
+          const months = new Map<
+            string,
+            { total: number; byJobOrder: Record<string, number> }
+          >();
+          for (const row of rows) {
+            const date = new Date(row.start_date);
+            const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+            const entry = months.get(month) ?? { total: 0, byJobOrder: {} };
+            const amount = Number(row.amount || 0);
+            const jobKey = row.job_order_id ? String(row.job_order_id) : "none";
+            entry.total += amount;
+            entry.byJobOrder[jobKey] = (entry.byJobOrder[jobKey] ?? 0) + amount;
+            months.set(month, entry);
+          }
+
+          return [...months.entries()]
+            .sort(([a], [b]) => b.localeCompare(a))
+            .map(([month, entry]) => ({ month, ...entry }));
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching monthly expenses");
         }
       }),
     ),
@@ -147,6 +206,9 @@ export const expenseQueryRouter = router({
               quantity: workOrderSiteExpenseTable.quantity,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
+              contract_order_item_id:
+                workOrderSiteExpenseTable.contract_order_item_id,
+              job_order_id: workOrderSiteExpenseTable.job_order_id,
               amount: workOrderSiteExpenseTable.amount,
             })
             .from(workOrderSiteExpenseTable)
@@ -155,6 +217,13 @@ export const expenseQueryRouter = router({
           const byActivity: Record<string, { totalAmount: number; exceededAmount: number; totalQuantity: number; count: number }> = {};
           // Totals per contractor id; expenses under none are keyed "none".
           const byContractor: Record<string, number> = {};
+          // Totals per contract order item id, and per "itemId:contractorId"
+          // for each vendor under it.
+          const byOrderItem: Record<string, number> = {};
+          const byOrderItemVendor: Record<string, number> = {};
+          // The same for restoration job orders.
+          const byJobOrder: Record<string, number> = {};
+          const byJobOrderVendor: Record<string, number> = {};
 
           for (const row of activityRows) {
             const contractorKey = row.contractor_id
@@ -162,6 +231,23 @@ export const expenseQueryRouter = router({
               : "none";
             byContractor[contractorKey] =
               (byContractor[contractorKey] ?? 0) + Number(row.amount || 0);
+
+            if (row.contract_order_item_id) {
+              const itemKey = String(row.contract_order_item_id);
+              const vendorKey = `${itemKey}:${contractorKey}`;
+              byOrderItem[itemKey] =
+                (byOrderItem[itemKey] ?? 0) + Number(row.amount || 0);
+              byOrderItemVendor[vendorKey] =
+                (byOrderItemVendor[vendorKey] ?? 0) + Number(row.amount || 0);
+            }
+            if (row.job_order_id) {
+              const jobKey = String(row.job_order_id);
+              const vendorKey = `${jobKey}:${contractorKey}`;
+              byJobOrder[jobKey] =
+                (byJobOrder[jobKey] ?? 0) + Number(row.amount || 0);
+              byJobOrderVendor[vendorKey] =
+                (byJobOrderVendor[vendorKey] ?? 0) + Number(row.amount || 0);
+            }
 
             if (!row.activity_key) continue;
             if (!byActivity[row.activity_key]) {
@@ -182,6 +268,10 @@ export const expenseQueryRouter = router({
             incomeTotal,
             byActivity,
             byContractor,
+            byOrderItem,
+            byOrderItemVendor,
+            byJobOrder,
+            byJobOrderVendor,
           };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching expense summary");

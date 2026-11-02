@@ -239,12 +239,15 @@ const PhaseForm = ({
       onSuccess: () => {
         toast.success("Bioremediation data saved.");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
-        // A new oil zapper plan can complete or reopen the site.
+        // The estimate sets the site's SOR share and oil zapper plan.
         utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({
           work_order_site_id: woSiteId,
         });
         utils.workOrderQuery.getWorkOrderDetails.invalidate();
         utils.workOrderSiteQuery.getSiteActivities.invalidate({
+          work_order_site_id: woSiteId,
+        });
+        utils.workOrderSiteQuery.getOilZapperStock.invalidate({
           work_order_site_id: woSiteId,
         });
         utils.workOrderSiteQuery.getSiteDocuments.invalidate();
@@ -291,7 +294,7 @@ const PhaseForm = ({
           !formData[activity.activity]?.oil_zapper_quantity?.trim(),
       )
     ) {
-      toast.error("Please fill in the Oil Zapper quantity.");
+      toast.error("Please fill in the total estimated Oil Zapper quantity.");
       return;
     }
 
@@ -464,7 +467,7 @@ const PhaseForm = ({
                   </TableHead>
                   {showOilZapper && (
                     <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>
-                      {constants.OIL_ZAPPER.LABEL} ({constants.OIL_ZAPPER.UNIT})
+                      {`Tot. Est. ${constants.OIL_ZAPPER.LABEL} Qty (${constants.OIL_ZAPPER.UNIT})`}
                     </TableHead>
                   )}
                   <TableHead className='px-2 py-3 text-center w-[15%] text-slate-500 font-semibold h-auto text-[10px] uppercase tracking-wider'>

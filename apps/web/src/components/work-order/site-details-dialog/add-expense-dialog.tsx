@@ -51,6 +51,8 @@ export interface Expense {
   id: number;
   contractor_id: number | null;
   contractor_name: string | null;
+  contract_order_item_id?: number | null;
+  job_order_id?: number | null;
   activity_key: string | null;
   quantity: string | null;
   is_exceeded: number | boolean | null;
@@ -83,6 +85,11 @@ interface Props {
   // The one activity every expense is recorded against, so none is picked:
   // bioremediation's oil zapper.
   fixedActivityKey?: string;
+  // The contract order requirement the expense is spent on. Its vendors are
+  // then the order's, and it can't be miscellaneous.
+  orderItem?: { id: number; label: string } | null;
+  // The restoration job order the expense is spent on, likewise.
+  jobOrder?: { id: number; label: string } | null;
 }
 
 // "Expense under" value for an expense under none of the contractors.
@@ -117,7 +124,11 @@ const AddExpenseDialog = ({
   defaultContractorId = null,
   startsMiscellaneous = false,
   fixedActivityKey,
+  orderItem = null,
+  jobOrder = null,
 }: Props) => {
+  // What the expense is spent on, when it is on an order or job order.
+  const spentOn = orderItem ?? jobOrder;
   const utils = trpc.useUtils();
 
   const [amount, setAmount] = useState("");
@@ -243,11 +254,12 @@ const AddExpenseDialog = ({
   const qtyUnit = selectedActivity?.unit ?? "Nos";
   const fixedActivityLabel =
     activities.find((a) => a.key === fixedActivityKey)?.label ?? null;
-  // What's left of the activity's quantity, or of the fixed activity itself.
+  // What's left of the activity's quantity, or of the fixed activity's
+  // estimate still to procure.
   const describeLeft = (amount: string, willBe = false) => {
     const left = willBe ? "will be left" : "left";
     return fixedActivityLabel
-      ? `${amount} of ${fixedActivityLabel} ${left}`
+      ? `${amount} of the estimated ${fixedActivityLabel} ${left} to procure`
       : `${amount} ${left} on this activity`;
   };
 
@@ -276,12 +288,13 @@ const AddExpenseDialog = ({
   const handleSaved = (message: string) => {
     utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: workOrderSiteId });
     utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: workOrderSiteId });
-    // Using up the schedule of rates completes a restoration, or reopens it,
-    // and using up the planned oil zapper does the same for a bioremediation
-    // site.
+    utils.expenseQuery.getMonthlyExpenses.invalidate({ work_order_site_id: workOrderSiteId });
+    // Using up the schedule of rates completes a restoration, or reopens it.
+    // A bioremediation site's oil zapper stock changes with its expenses.
     utils.restorationQuery.getRestoration.invalidate();
     utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: workOrderSiteId });
     utils.workOrderQuery.getWorkOrderDetails.invalidate();
+    utils.workOrderSiteQuery.getOilZapperStock.invalidate({ work_order_site_id: workOrderSiteId });
     toast.success(message);
     onSuccess?.();
     onClose();
@@ -348,6 +361,8 @@ const AddExpenseDialog = ({
 
     const payload = {
       contractor_id: expenseContractorId,
+      contract_order_item_id: orderItem?.id ?? null,
+      job_order_id: jobOrder?.id ?? null,
       activity_key: selectedActivityKey || null,
       quantity: canEnterQuantity && quantity ? quantity : null,
       is_exceeded: isExceededMode,
@@ -457,11 +472,13 @@ const AddExpenseDialog = ({
           <DialogDescription className='text-xs text-gray-500'>
             {isExceededMode
               ? fixedActivityLabel
-                ? `The planned ${fixedActivityLabel} is fully used. Will be recorded as exceeded.`
+                ? `The estimated ${fixedActivityLabel} is fully procured. Will be recorded as exceeded.`
                 : "This activity's estimated quantity is fully used. Will be recorded as exceeded."
-              : isEditing
-                ? "Update the expense details below."
-                : "Record an amount spent on this site."}
+              : spentOn
+                ? `Spent on ${spentOn.label}.`
+                : isEditing
+                  ? "Update the expense details below."
+                  : "Record an amount spent on this site."}
           </DialogDescription>
         </DialogHeader>
 
@@ -473,7 +490,8 @@ const AddExpenseDialog = ({
                 Exceeded — {selectedActivity?.label}
               </p>
               <p className='text-[10px] text-orange-600 mt-0.5'>
-                Est: {estimateQty} {selectedActivity?.unit ?? "Nos"} · Fully used ({alreadyUsedQty}).
+                Est: {estimateQty} {selectedActivity?.unit ?? "Nos"} · Fully{" "}
+                {fixedActivityLabel ? "procured" : "used"} ({alreadyUsedQty}).
                 Recording as over-budget.
               </p>
             </div>
@@ -521,13 +539,15 @@ const AddExpenseDialog = ({
                   </div>
                 </div>
 
-                {renderUnderOption({
-                  value: NOT_UNDER,
-                  label: "Miscellaneous",
-                  badge: <ReceiptIndianRupee className='size-3.5' />,
-                  hint: "Not under any vendor",
-                  tile: true,
-                })}
+                {/* An order's expense is always under one of its vendors. */}
+                {!spentOn &&
+                  renderUnderOption({
+                    value: NOT_UNDER,
+                    label: "Miscellaneous",
+                    badge: <ReceiptIndianRupee className='size-3.5' />,
+                    hint: "Not under any vendor",
+                    tile: true,
+                  })}
               </div>
             </fieldset>
           )}
@@ -613,7 +633,7 @@ const AddExpenseDialog = ({
               {isMiscellaneous && (
                 <p className='text-xs text-gray-500'>
                   {fixedActivityLabel
-                    ? `Miscellaneous expenses don't use ${fixedActivityLabel}. Choose a vendor to deduct it.`
+                    ? `Miscellaneous expenses don't procure ${fixedActivityLabel}. Choose a vendor to record it.`
                     : "Miscellaneous expenses don't record a quantity. Choose a vendor to deduct one from the activity."}
                 </p>
               )}

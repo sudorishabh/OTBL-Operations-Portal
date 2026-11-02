@@ -44,6 +44,43 @@ import {
 import { format } from "date-fns";
 import { constants } from "@pkg/utils";
 
+// Today, as a date input value.
+const todayInput = () => format(new Date(), "yyyy-MM-dd");
+
+// A date input value as the ISO date-time the API takes.
+const toIsoDate = (value: string) => new Date(value).toISOString();
+
+// The date picker shown with each treatment entry.
+const EntryDateField = ({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) => (
+  <div>
+    <label className='text-[10px] text-slate-600 font-medium mb-1 block'>
+      {label}
+    </label>
+    <Input
+      type='date'
+      value={value}
+      max={todayInput()}
+      onChange={(e) => onChange(e.target.value)}
+      className='h-9'
+    />
+  </div>
+);
+
+// Completion depends on the latest TPH, so the site's status may change.
+const refreshSiteStatus = (utils: ReturnType<typeof trpc.useUtils>) => {
+  utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate();
+  utils.workOrderQuery.getWorkOrderDetails.invalidate();
+  utils.workOrderSiteQuery.getSiteActivities.invalidate();
+};
+
 const BioSampleForm = ({
   woSiteId,
   onSuccess,
@@ -54,6 +91,7 @@ const BioSampleForm = ({
   const utils = trpc.useUtils();
   const [tphValue, setTphValue] = useState("");
   const [applicationMonth, setApplicationMonth] = useState("");
+  const [sampledOn, setSampledOn] = useState(todayInput);
   const [files, setFiles] = useState<File[]>([]);
 
   const MONTHS = Array.from({ length: 30 }, (_, i) => {
@@ -82,8 +120,10 @@ const BioSampleForm = ({
       onSuccess: () => {
         toast.success("Bio sample added successfully");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
+        refreshSiteStatus(utils);
         setTphValue("");
         setApplicationMonth("");
+        setSampledOn(todayInput());
         setFiles([]);
         resetUpload();
         onSuccess();
@@ -111,6 +151,10 @@ const BioSampleForm = ({
       toast.error("Please select application month");
       return;
     }
+    if (!sampledOn) {
+      toast.error("Please enter the date the sample was taken");
+      return;
+    }
 
     try {
       const uploaded = await uploadFiles(files);
@@ -120,6 +164,7 @@ const BioSampleForm = ({
           documents: uploaded.map(toStoredDocument),
           tph_value: tphValue.replace(",", "."),
           application_month: applicationMonth,
+          sampled_on: toIsoDate(sampledOn),
         });
       }
     } catch (error) {
@@ -180,6 +225,11 @@ const BioSampleForm = ({
               </SelectContent>
             </Select>
           </div>
+          <EntryDateField
+            label='Sampled On'
+            value={sampledOn}
+            onChange={setSampledOn}
+          />
         </div>
         <div className='flex justify-end pt-2'>
           <Button
@@ -208,31 +258,17 @@ const OilZappingForm = ({
 }) => {
   const utils = trpc.useUtils();
   const [estimatedQuantity, setEstimatedQuantity] = useState("");
+  const [appliedOn, setAppliedOn] = useState(todayInput);
   const [files, setFiles] = useState<File[]>([]);
 
-  const bioremediationDataQuery =
-    trpc.workOrderSiteQuery.getBioremediationData.useQuery(
-      { work_order_site_id: woSiteId },
-      { enabled: !!woSiteId },
-    );
-
-  const estimateLimit = React.useMemo(() => {
-    const estimateEntry = bioremediationDataQuery.data?.contaminatedSoil?.find(
-      (i: any) => i.type === "estimate_sub-wo",
-    );
-    return parseFloat(estimateEntry?.estimated_quantity || "0") || 0;
-  }, [bioremediationDataQuery.data?.contaminatedSoil]);
-
-  const currentTotal = React.useMemo(() => {
-    const oil = bioremediationDataQuery.data?.oilZapping || [];
-    return oil.reduce(
-      (sum: number, entry: any) =>
-        sum + (parseFloat(entry.estimated_quantity || "0") || 0),
-      0,
-    );
-  }, [bioremediationDataQuery.data?.oilZapping]);
-
-  const remaining = Math.max(0, estimateLimit - currentTotal);
+  // Oil zapping applies oil zapper the site's expenses have procured.
+  const stockQuery = trpc.workOrderSiteQuery.getOilZapperStock.useQuery(
+    { work_order_site_id: woSiteId },
+    { enabled: !!woSiteId },
+  );
+  const procured = stockQuery.data?.procured ?? 0;
+  const used = stockQuery.data?.used ?? 0;
+  const remaining = Math.max(0, stockQuery.data?.left ?? 0);
 
   const {
     uploadFiles,
@@ -249,7 +285,11 @@ const OilZappingForm = ({
       onSuccess: () => {
         toast.success("Oil zapping entry added successfully");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
+        utils.workOrderSiteQuery.getOilZapperStock.invalidate({
+          work_order_site_id: woSiteId,
+        });
         setEstimatedQuantity("");
+        setAppliedOn(todayInput());
         setFiles([]);
         resetUpload();
         onSuccess();
@@ -275,29 +315,33 @@ const OilZappingForm = ({
       return;
     }
 
-    if (estimateLimit <= 0) {
-      toast.error("Please save the Contaminated Soil estimate quantity first.");
+    if (!appliedOn) {
+      toast.error("Please enter the date the oil zapper was applied");
       return;
     }
 
-    if (remaining <= 0) {
-      toast.error("Oil zapping limit already reached for this site.");
+    if (procured <= 0) {
+      toast.error(
+        "No oil zapper has been procured yet. Record its purchase as an expense first.",
+      );
+      return;
+    }
+
+    if (enteredQty > remaining) {
+      toast.error(
+        `Only ${remaining.toFixed(2)} ${constants.OIL_ZAPPER.UNIT} of procured oil zapper is left to apply.`,
+      );
       return;
     }
 
     try {
       const uploaded = await uploadFiles(files);
       if (uploaded) {
-        const cappedQty = Math.min(enteredQty, remaining);
-        if (cappedQty < enteredQty) {
-          toast(
-            `Quantity capped to remaining: ${cappedQty.toFixed(2)} (limit ${estimateLimit.toFixed(2)})`,
-          );
-        }
         createMutation.mutate({
           work_order_site_id: woSiteId,
           documents: uploaded.map(toStoredDocument),
-          estimated_quantity: cappedQty.toFixed(2),
+          estimated_quantity: enteredQty.toFixed(2),
+          applied_on: toIsoDate(appliedOn),
         });
       }
     } catch (error) {
@@ -321,7 +365,7 @@ const OilZappingForm = ({
         </div>
         <div>
           <label className='text-[10px] text-slate-600 font-medium mb-1 block'>
-            Quantity
+            Quantity applied ({constants.OIL_ZAPPER.UNIT})
           </label>
           <Input
             value={estimatedQuantity}
@@ -329,23 +373,29 @@ const OilZappingForm = ({
             placeholder='0.00'
             className='h-9'
           />
-          {estimateLimit > 0 && (
+          {procured > 0 && (
             <p className='mt-1 text-[10px] text-slate-500'>
-              Limit:{" "}
+              Procured:{" "}
               <span className='font-semibold tabular-nums'>
-                {estimateLimit.toFixed(2)}
+                {procured.toFixed(2)}
               </span>
               {" · "}Used:{" "}
               <span className='font-semibold tabular-nums'>
-                {currentTotal.toFixed(2)}
+                {used.toFixed(2)}
               </span>
-              {" · "}Remaining:{" "}
+              {" · "}Left:{" "}
               <span className='font-semibold tabular-nums'>
                 {remaining.toFixed(2)}
               </span>
             </p>
           )}
         </div>
+
+        <EntryDateField
+          label='Applied On'
+          value={appliedOn}
+          onChange={setAppliedOn}
+        />
 
         <div className='flex justify-end pt-2'>
           <Button
@@ -370,7 +420,8 @@ interface CombinedItem {
   type: "bio" | "oil";
   estimated_quantity?: string;
   application_month?: string;
-  created_at: string;
+  // When the sample was taken or oil zapper applied, else when it was added.
+  date: string;
   tph_value?: string;
   documents: StoredDocument[];
   original: any;
@@ -394,16 +445,16 @@ const CombinedList = ({
               Type
             </TableHead>
             <TableHead className='text-center font-semibold text-slate-600'>
-              Key Metrics
+              Key Metric
             </TableHead>
             <TableHead className='text-center font-semibold text-slate-600'>
-              Metric / Month
+              Month
             </TableHead>
             <TableHead className='text-center w-[150px] font-semibold text-slate-600'>
               Document
             </TableHead>
             <TableHead className='text-center w-[120px] font-semibold text-slate-600'>
-              Date Added
+              Date
             </TableHead>
             <TableHead className='w-[50px]'></TableHead>
           </TableRow>
@@ -437,6 +488,11 @@ const CombinedList = ({
                         className={`${item.type === "bio" ? "text-emerald-700" : "text-blue-700"}`}>
                         {item.type === "bio" ? "Bio Sample" : "Oil Zapping"}
                       </span>
+                      {item.type === "bio" && item.application_month && (
+                        <span className='text-[10px] font-normal text-slate-400'>
+                          {item.application_month}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </TableCell>
@@ -447,14 +503,13 @@ const CombinedList = ({
                     </span>
                   ) : (
                     <span className='inline-flex items-center px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] border border-blue-100'>
-                      Oil Zapping
+                      Applied: {item.estimated_quantity ?? "-"}{" "}
+                      {constants.OIL_ZAPPER.UNIT.toUpperCase()}
                     </span>
                   )}
                 </TableCell>
-                <TableCell className='text-center font-mono text-slate-600 font-medium'>
-                  {item.type === "bio"
-                    ? item.application_month
-                    : item.estimated_quantity || "-"}
+                <TableCell className='text-center text-slate-600 font-medium'>
+                  {format(new Date(item.date), "MMM yyyy")}
                 </TableCell>
                 <TableCell className='text-center'>
                   {item.documents.length > 0 ? (
@@ -477,7 +532,7 @@ const CombinedList = ({
                   )}
                 </TableCell>
                 <TableCell className='text-center text-slate-500'>
-                  {format(new Date(item.created_at), "dd MMM yyyy")}
+                  {format(new Date(item.date), "dd MMM yyyy")}
                 </TableCell>
                 <TableCell className='text-center pr-2'>
                   <Button
@@ -518,6 +573,7 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
       onSuccess: () => {
         toast.success("Sample deleted");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
+        refreshSiteStatus(utils);
       },
       onError: (err: any) => {
         const message =
@@ -533,6 +589,9 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
       onSuccess: () => {
         toast.success("Entry deleted");
         utils.workOrderSiteQuery.getBioremediationData.invalidate();
+        utils.workOrderSiteQuery.getOilZapperStock.invalidate({
+          work_order_site_id: woSiteId,
+        });
       },
       onError: (err: any) => {
         const message =
@@ -574,7 +633,7 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
       id: item.id,
       type: "bio" as const,
       application_month: item.application_month,
-      created_at: item.created_at,
+      date: item.sampled_on ?? item.created_at,
       tph_value: item.tph_value,
       documents: toDocuments(item.documents),
       original: item,
@@ -583,13 +642,13 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
       id: item.id,
       type: "oil" as const,
       estimated_quantity: item.estimated_quantity,
-      created_at: item.created_at,
+      date: item.applied_on ?? item.created_at,
       documents: toDocuments(item.documents),
       original: item,
     })),
   ].sort(
     (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
   const filteredItems = combinedItems.filter((item) => {

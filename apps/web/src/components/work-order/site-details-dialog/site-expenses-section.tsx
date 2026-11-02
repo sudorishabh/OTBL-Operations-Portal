@@ -39,6 +39,9 @@ import {
   ChevronRight,
   CornerDownRight,
   FileText,
+  ShoppingCart,
+  Wrench,
+  ClipboardList,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
@@ -50,6 +53,9 @@ import AddExpenseDialog, {
   Expense,
 } from "./add-expense-dialog";
 import DocumentsMenu from "@/components/shared/documents-menu";
+import OilZapperStockTable from "./oil-zapper-stock-table";
+import { itemLabel } from "../contract-orders/contract-orders-section";
+import type { JobOrder } from "../restoration/job-order-dialog";
 import {
   documentName,
   openDocument,
@@ -70,6 +76,8 @@ type ExpenseRecord = {
   title: string;
   contractorId: number | null;
   contractorName: string | null;
+  contractOrderItemId: number | null;
+  jobOrderId: number | null;
   invoiceNumber: string | null;
   documents: StoredDocument[];
   amount: number;
@@ -86,6 +94,35 @@ const formatCurrency = (value: number) =>
 
 const formatQty = (value: number) =>
   new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
+
+// What a contract order requires at the site, as getSiteContractOrderItems
+// returns it.
+type SiteOrderItem = {
+  id: number;
+  item: string;
+  description: string | null;
+  quantity: string;
+  unit: string;
+  order_type: string;
+  order_number: string;
+  vendors: { id: number; name: string }[];
+};
+
+const ORDER_GROUPS = [
+  {
+    type: constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
+    title: "Purchase Orders",
+    Icon: ShoppingCart,
+  },
+  {
+    type: constants.CONTRACT_ORDER_TYPE.WORK_ORDER,
+    title: "Work Orders (Subcontract)",
+    Icon: Wrench,
+  },
+] as const;
+
+const orderItemTitle = (item: SiteOrderItem) =>
+  `${item.order_number} · ${itemLabel(item.item, item.description)}`;
 
 // Tighter than the table defaults, so a record takes one compact row.
 const headClass =
@@ -135,6 +172,8 @@ interface Props {
   headerActions?: React.ReactNode;
   // Shown on a vendor with no expenses, such as a button to remove it.
   emptyVendorActions?: (vendor: { id: number; name: string }) => React.ReactNode;
+  // Shown on each restoration job order, such as edit and delete buttons.
+  jobOrderActions?: (jobOrder: JobOrder) => React.ReactNode;
 }
 
 const SiteExpensesSection = ({
@@ -145,6 +184,7 @@ const SiteExpensesSection = ({
   showEstimateTable = true,
   headerActions,
   emptyVendorActions,
+  jobOrderActions,
 }: Props) => {
   const utils = trpc.useUtils();
   const isViewer = useIsViewer();
@@ -157,6 +197,10 @@ const SiteExpensesSection = ({
   // What a new expense starts under, when added from a vendor or from
   // Miscellaneous.
   const [addUnder, setAddUnder] = useState<number | "miscellaneous" | null>(null);
+  // The contract order requirement a bioremediation expense is spent on, or
+  // the job order a restoration one is.
+  const [dialogOrderItemId, setDialogOrderItemId] = useState<number | null>(null);
+  const [dialogJobOrderId, setDialogJobOrderId] = useState<number | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const [expensePage, setExpensePage] = useState(1);
@@ -182,6 +226,20 @@ const SiteExpensesSection = ({
     { work_order_site_id: woSiteId },
     { enabled: !!woSiteId && processType === "bioremediation" },
   );
+
+  // Bioremediation expenses are spent on what the site's orders require.
+  const orderItemsQuery = trpc.contractOrderQuery.getSiteContractOrderItems.useQuery(
+    { work_order_site_id: woSiteId },
+    { enabled: !!woSiteId && processType === "bioremediation" },
+  );
+  const orderItems = (orderItemsQuery.data ?? []) as SiteOrderItem[];
+
+  // Restoration vendor expenses are spent on its job orders.
+  const jobOrdersQuery = trpc.jobOrderQuery.getJobOrders.useQuery(
+    { work_order_site_id: woSiteId },
+    { enabled: !!woSiteId && processType === constants.WO_PROCESS.RESTORATION },
+  );
+  const jobOrders = (jobOrdersQuery.data ?? []) as JobOrder[];
 
   const expensesQuery = trpc.expenseQuery.getExpenses.useQuery(
     { work_order_site_id: woSiteId, page: expensePage },
@@ -213,11 +271,12 @@ const SiteExpensesSection = ({
   const exceededTotal = summary?.exceededTotal ?? 0;
 
   const isBioremediation = processType === "bioremediation";
+  const isRestoration = processType === constants.WO_PROCESS.RESTORATION;
   const estimateType = "estimate_sub-wo";
 
   const activityOptions: ActivityOption[] = useMemo(() => {
-    // Bioremediation has one activity, and its expenses use up the oil zapper
-    // planned with its estimate rather than a quantity of it.
+    // Bioremediation has one activity, and its expenses procure the oil
+    // zapper planned with its estimate rather than a quantity of it.
     if (isBioremediation) {
       const planned = bioremediationDataQuery.data?.contaminatedSoil?.find(
         (i: any) => i.type === estimateType,
@@ -256,6 +315,8 @@ const SiteExpensesSection = ({
 
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
+    setDialogOrderItemId(expense.contract_order_item_id ?? null);
+    setDialogJobOrderId(expense.job_order_id ?? null);
     setDialogOpen(true);
   };
 
@@ -263,11 +324,19 @@ const SiteExpensesSection = ({
     setDialogOpen(false);
     setEditingExpense(null);
     setAddUnder(null);
+    setDialogOrderItemId(null);
+    setDialogJobOrderId(null);
   };
 
-  const openAddExpense = (under: number | "miscellaneous" | null = null) => {
+  const openAddExpense = (
+    under: number | "miscellaneous" | null = null,
+    orderItemId: number | null = null,
+    jobOrderId: number | null = null,
+  ) => {
     setEditingExpense(null);
     setAddUnder(under);
+    setDialogOrderItemId(orderItemId);
+    setDialogJobOrderId(jobOrderId);
     setDialogOpen(true);
   };
 
@@ -278,10 +347,12 @@ const SiteExpensesSection = ({
       resetExpenseList();
       await utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: woSiteId });
       await utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: woSiteId });
+      utils.expenseQuery.getMonthlyExpenses.invalidate({ work_order_site_id: woSiteId });
       // Deleting one can reopen a completed restoration or bioremediation site.
       utils.restorationQuery.getRestoration.invalidate();
       utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: woSiteId });
       utils.workOrderQuery.getWorkOrderDetails.invalidate();
+      utils.workOrderSiteQuery.getOilZapperStock.invalidate({ work_order_site_id: woSiteId });
       toast.success("Expense deleted");
     } catch (e: any) {
       toast.error(e?.message || "Failed to delete expense");
@@ -314,6 +385,8 @@ const SiteExpensesSection = ({
         title: exp.title,
         contractorId: exp.contractor_id ?? null,
         contractorName: exp.contractor_name ?? null,
+        contractOrderItemId: exp.contract_order_item_id ?? null,
+        jobOrderId: exp.job_order_id ?? null,
         invoiceNumber: exp.invoice_number ?? null,
         documents: toDocuments(exp.documents),
         amount: Number(exp.amount),
@@ -565,6 +638,12 @@ const SiteExpensesSection = ({
     0,
   );
 
+  // Bioremediation totals per order requirement, and per vendor under it.
+  const orderItemTotal = (itemId: number): number =>
+    summary?.byOrderItem?.[String(itemId)] ?? 0;
+  const orderItemVendorTotal = (itemId: number, vendorId: number): number =>
+    summary?.byOrderItemVendor?.[`${itemId}:${vendorId}`] ?? 0;
+
   const toggleGroup = (key: string) =>
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
@@ -665,6 +744,171 @@ const SiteExpensesSection = ({
     </button>
   );
 
+  // Expenses spent on something with its own vendors, such as a contract
+  // order requirement: a group for each, then one for each of its vendors.
+  type ExpenseGroup = {
+    key: string;
+    Icon: React.ElementType;
+    title: string;
+    total: number;
+    vendors: { id: number; name: string }[];
+    records: ExpenseRecord[];
+    vendorTotal: (vendorId: number) => number;
+    onAdd: (vendorId: number) => void;
+    actions?: React.ReactNode;
+  };
+
+  // The grouped sections, then vendor expenses in no group (recorded before
+  // the groups were kept), then the miscellaneous ones under no vendor.
+  const renderGroupedExpenses = ({
+    sections,
+    unassignedTitle,
+  }: {
+    sections: {
+      key: string;
+      title: string;
+      meta: string;
+      emptyText: string;
+      action?: React.ReactNode;
+      groups: ExpenseGroup[];
+    }[];
+    unassignedTitle: string;
+  }) => {
+    const groupedIds = new Set(
+      sections.flatMap((section) =>
+        section.groups.flatMap((group) => group.records.map((r) => r.id)),
+      ),
+    );
+    const unassignedRecords = records.filter(
+      (r) => r.contractorId !== null && !groupedIds.has(r.id),
+    );
+    const miscellaneousRecords = records.filter(
+      (r) => r.contractorId === null && !groupedIds.has(r.id),
+    );
+    const groupedTotal = sections.reduce(
+      (sum, section) =>
+        sum + section.groups.reduce((groupSum, group) => groupSum + group.total, 0),
+      0,
+    );
+    const miscellaneousTotal = summary?.byContractor?.none ?? 0;
+
+    return (
+      <div className='space-y-6'>
+        {sections.map((section) => (
+          <section
+            key={section.key}
+            className='space-y-1'>
+            {renderSectionHeader({
+              title: section.title,
+              meta: section.meta,
+              total: section.groups.reduce((sum, group) => sum + group.total, 0),
+              action: section.action,
+            })}
+            {section.groups.length === 0 && emptyGroupText(section.emptyText)}
+            {section.groups.map((group) =>
+              renderVendorGroup({
+                groupKey: group.key,
+                Icon: group.Icon,
+                title: group.title,
+                total: group.total,
+                count: group.records.length,
+                actions: group.actions,
+                content: (
+                  <div className='space-y-1'>
+                    {group.vendors.length === 0 &&
+                      emptyGroupText("No vendors on this yet.")}
+                    {group.vendors.map((vendor) => {
+                      const name = capitalFirstLetter(vendor.name);
+                      const vendorRecords = group.records.filter(
+                        (r) => r.contractorId === vendor.id,
+                      );
+                      return renderVendorGroup({
+                        groupKey: `${group.key}-vendor-${vendor.id}`,
+                        Icon: HardHat,
+                        title: name,
+                        total: group.vendorTotal(vendor.id),
+                        count: vendorRecords.length,
+                        content:
+                          vendorRecords.length > 0
+                            ? renderRecordsBox(vendorRecords, false)
+                            : emptyGroupText(`No expenses under ${name} yet.`),
+                        actions: renderAddExpenseButton(
+                          `Add expense under ${name}`,
+                          () => group.onAdd(vendor.id),
+                        ),
+                      });
+                    })}
+                  </div>
+                ),
+              }),
+            )}
+          </section>
+        ))}
+
+        {unassignedRecords.length > 0 && (
+          <section className='space-y-2'>
+            {renderSectionHeader({
+              title: unassignedTitle,
+              meta: `${unassignedRecords.length} expense${unassignedRecords.length !== 1 ? "s" : ""}`,
+              total: expenseTotal - miscellaneousTotal - groupedTotal,
+            })}
+            {renderRecordsBox(unassignedRecords)}
+          </section>
+        )}
+
+        <section className='space-y-2'>
+          {renderSectionHeader({
+            title: "Miscellaneous",
+            meta: `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
+            total: miscellaneousTotal,
+            action: renderAddExpenseButton("Add a miscellaneous expense", () =>
+              openAddExpense("miscellaneous"),
+            ),
+          })}
+          {miscellaneousRecords.length > 0
+            ? renderRecordsBox(miscellaneousRecords)
+            : emptyGroupText("No miscellaneous expenses yet.")}
+        </section>
+
+        {expensesPagination && expensesPagination.total > expenses.length && (
+          <p className='text-xs text-gray-400'>
+            Showing {expenses.length} of {expensesPagination.total} entries
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  // Which vendors the expense dialog offers. A bioremediation expense on an
+  // order is under one of the order's vendors; an older one keeps its own;
+  // a miscellaneous one has none.
+  const dialogOrderItem =
+    orderItems.find((item) => item.id === dialogOrderItemId) ?? null;
+  const dialogJobOrder =
+    jobOrders.find((jobOrder) => jobOrder.id === dialogJobOrderId) ?? null;
+  const editingVendor =
+    editingExpense?.contractor_id && editingExpense.contractor_name
+      ? [{ id: editingExpense.contractor_id, name: editingExpense.contractor_name }]
+      : [];
+  const dialogContractors = isBioremediation
+    ? dialogOrderItem
+      ? dialogOrderItem.vendors
+      : editingVendor
+    : isRestoration
+      ? dialogJobOrder
+        ? dialogJobOrder.vendors
+        : editingVendor
+      : splitByContractor
+        ? contractors
+        : undefined;
+  // Oil zapper is procured through a purchase of it; an older vendor expense
+  // may also carry some.
+  const dialogProcuresOilZapper =
+    isBioremediation &&
+    (dialogOrderItem
+      ? dialogOrderItem.item === constants.OIL_ZAPPER.KEY
+      : editingExpense?.activity_key === constants.OIL_ZAPPER.KEY);
+
   const emptyGroupText = (text: string) => (
     <p className='py-1 text-xs text-gray-400'>
       {text}
@@ -673,8 +917,13 @@ const SiteExpensesSection = ({
 
   return (
     <div className='space-y-4'>
+      {/* Bioremediation tracks the oil zapper its expenses procure. */}
+      {showEstimateTable && isBioremediation && (
+        <OilZapperStockTable woSiteId={woSiteId} />
+      )}
+
       {/* Hidden until the estimate gives an activity a quantity. */}
-      {showEstimateTable && estimatedActivities.length > 0 && (
+      {showEstimateTable && !isBioremediation && estimatedActivities.length > 0 && (
         <div className='rounded-lg border border-slate-200 bg-slate-50/40 overflow-hidden'>
           <div className='px-3 py-2 border-b bg-white flex items-center justify-between gap-3'>
             <div className='min-w-0'>
@@ -783,19 +1032,72 @@ const SiteExpensesSection = ({
             </Select>
           )}
           {headerActions}
-          <CustomButton
-            text='Add Expense'
-            variant='primary'
-            Icon={Plus}
-            onClick={() => openAddExpense()}
-            className='h-8 text-xs'
-            disableForViewer
-          />
+          {/* Bioremediation and restoration expenses are added under an
+              order or job order, or as miscellaneous, from their groups. */}
+          {!isBioremediation && !isRestoration && (
+            <CustomButton
+              text='Add Expense'
+              variant='primary'
+              Icon={Plus}
+              onClick={() => openAddExpense()}
+              className='h-8 text-xs'
+              disableForViewer
+            />
+          )}
         </div>
       </div>
 
       {expensesQuery.isLoading && expensePage === 1 ? (
         <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
+      ) : isBioremediation ? (
+        renderGroupedExpenses({
+          sections: ORDER_GROUPS.map(({ type, title, Icon }) => {
+            const items = orderItems.filter((item) => item.order_type === type);
+            return {
+              key: type,
+              title,
+              meta: `${items.length} requirement${items.length !== 1 ? "s" : ""}`,
+              emptyText: "No orders require anything at this site yet.",
+              groups: items.map((item) => ({
+                key: `item-${item.id}`,
+                Icon,
+                title: `${orderItemTitle(item)} (${formatQty(Number(item.quantity))} ${item.unit})`,
+                total: orderItemTotal(item.id),
+                vendors: item.vendors,
+                records: records.filter((r) => r.contractOrderItemId === item.id),
+                vendorTotal: (vendorId: number) =>
+                  orderItemVendorTotal(item.id, vendorId),
+                onAdd: (vendorId: number) => openAddExpense(vendorId, item.id),
+              })),
+            };
+          }),
+          unassignedTitle: "Vendor expenses not on an order",
+        })
+      ) : isRestoration ? (
+        renderGroupedExpenses({
+          sections: [
+            {
+              key: "job-orders",
+              title: "Job Orders",
+              meta: `${jobOrders.length} job order${jobOrders.length !== 1 ? "s" : ""}`,
+              emptyText: "No job orders yet. Add one to record vendor expenses on it.",
+              groups: jobOrders.map((jobOrder) => ({
+                key: `job-order-${jobOrder.id}`,
+                Icon: ClipboardList,
+                title: `${jobOrder.jo_number} · ${jobOrder.title}`,
+                total: summary?.byJobOrder?.[String(jobOrder.id)] ?? 0,
+                vendors: jobOrder.vendors,
+                records: records.filter((r) => r.jobOrderId === jobOrder.id),
+                vendorTotal: (vendorId: number) =>
+                  summary?.byJobOrderVendor?.[`${jobOrder.id}:${vendorId}`] ?? 0,
+                onAdd: (vendorId: number) =>
+                  openAddExpense(vendorId, null, jobOrder.id),
+                actions: jobOrderActions?.(jobOrder),
+              })),
+            },
+          ],
+          unassignedTitle: "Vendor expenses not on a job order",
+        })
       ) : splitByContractor ? (
         <div className='space-y-6'>
           {/* Expenses under the site's vendors, a group for each. */}
@@ -900,12 +1202,25 @@ const SiteExpensesSection = ({
         onSuccess={resetExpenseList}
         workOrderSiteId={woSiteId}
         editingExpense={editingExpense}
-        activities={activityOptions}
         usedQtyByActivity={usedQtyByActivity}
-        contractors={splitByContractor ? contractors : undefined}
+        contractors={dialogContractors}
         defaultContractorId={typeof addUnder === "number" ? addUnder : null}
         startsMiscellaneous={addUnder === "miscellaneous"}
-        fixedActivityKey={isBioremediation ? constants.OIL_ZAPPER.KEY : undefined}
+        fixedActivityKey={dialogProcuresOilZapper ? constants.OIL_ZAPPER.KEY : undefined}
+        activities={dialogProcuresOilZapper || !isBioremediation ? activityOptions : []}
+        orderItem={
+          dialogOrderItem
+            ? { id: dialogOrderItem.id, label: orderItemTitle(dialogOrderItem) }
+            : null
+        }
+        jobOrder={
+          dialogJobOrder
+            ? {
+                id: dialogJobOrder.id,
+                label: `${dialogJobOrder.jo_number} · ${dialogJobOrder.title}`,
+              }
+            : null
+        }
       />
 
       <AlertDialog

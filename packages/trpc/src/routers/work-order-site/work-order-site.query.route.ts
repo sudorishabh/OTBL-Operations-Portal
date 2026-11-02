@@ -15,6 +15,7 @@ import { escapeLike } from "../../helper/escape-like";
 import { siteNameOrRestoration } from "../../helper/restoration";
 import { z } from "zod";
 import { fromDatabaseError, notFound } from "../../errors";
+import { getOilZapperStock } from "./oil-zapper-stock";
 
 const getWorkOrderSiteDetailsSchema = z.object({
   work_order_site_id: z.number().positive(),
@@ -739,6 +740,7 @@ export const workOrderSiteQueryRouter = router({
           const relatedSites = await ctx.db
             .select({
               id: workOrderSiteTable.id,
+              is_completed: workOrderSiteTable.is_completed,
             })
             .from(workOrderSiteTable)
             .where(
@@ -761,29 +763,31 @@ export const workOrderSiteQueryRouter = router({
 
           const siteIds = relatedSites.map((s: any) => s.id);
 
-          const [bioremEntries, allOilZappingEntries] = await Promise.all([
-            ctx.db
-              .select()
-              .from(bioremediationContSoilTable)
-              .where(
-                inArray(
-                  bioremediationContSoilTable.work_order_site_id,
-                  siteIds,
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(bioOilZappingTable)
-              .where(inArray(bioOilZappingTable.work_order_site_id, siteIds)),
-          ]);
-
-          const oilZappingBySite = new Map<number, number>();
-          for (const entry of allOilZappingEntries) {
-            const current = oilZappingBySite.get(entry.work_order_site_id) || 0;
-            oilZappingBySite.set(
-              entry.work_order_site_id,
-              current + parseFloat(entry.estimated_quantity || "0"),
+          const bioremEntries = await ctx.db
+            .select()
+            .from(bioremediationContSoilTable)
+            .where(
+              inArray(bioremediationContSoilTable.work_order_site_id, siteIds),
             );
+
+          // A completed site has used its whole share of the schedule of
+          // rates: the soil its estimate allocated to it.
+          const completedSiteIds = new Set(
+            relatedSites
+              .filter((site: any) => site.is_completed)
+              .map((site: any) => site.id),
+          );
+          const usedAllocationBySite = new Map<number, number>();
+          for (const entry of bioremEntries) {
+            if (
+              entry.type === "estimate_sub-wo" &&
+              completedSiteIds.has(entry.work_order_site_id)
+            ) {
+              usedAllocationBySite.set(
+                entry.work_order_site_id,
+                parseFloat(entry.estimated_quantity || "0"),
+              );
+            }
           }
 
           const utilizationMap = new Map<number, number>();
@@ -804,7 +808,7 @@ export const workOrderSiteQueryRouter = router({
                 continue;
               }
 
-              totalUsed += oilZappingBySite.get(sa.work_order_site_id) || 0;
+              totalUsed += usedAllocationBySite.get(sa.work_order_site_id) || 0;
               totalCompletion += bioremEntries
                 .filter(
                   (e: any) =>
@@ -868,6 +872,30 @@ export const workOrderSiteQueryRouter = router({
       }
     }),
   ),
+
+  // Estimated, procured, used and left oil zapper for a bioremediation site.
+  getOilZapperStock: protectedProcedure
+    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrderSite(
+          ctx.db,
+          scope,
+          input.work_order_site_id,
+        );
+
+        try {
+          return await getOilZapperStock(ctx.db, input.work_order_site_id);
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching oil zapper stock");
+        }
+      }),
+    ),
 
   getBioremediationData: protectedProcedure
     .input(

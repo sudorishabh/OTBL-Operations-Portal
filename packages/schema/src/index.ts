@@ -24,6 +24,12 @@ import * as workOrderTypes from "./work-order/work-order.type";
 import * as siteActivitySchemas from "./site-activity/site-activity.schema";
 import * as siteActivityTypes from "./site-activity/site-activity.type";
 
+import * as jobOrderSchemas from "./job-order/job-order.schema";
+import * as jobOrderTypes from "./job-order/job-order.type";
+
+import * as contractOrderSchemas from "./contract-order/contract-order.schema";
+import * as contractOrderTypes from "./contract-order/contract-order.type";
+
 import * as vendorSchemas from "./vendor/vendor.schema";
 import * as vendorTypes from "./vendor/vendor.type";
 
@@ -47,6 +53,10 @@ export {
   workOrderTypes,
   siteActivitySchemas,
   siteActivityTypes,
+  jobOrderSchemas,
+  jobOrderTypes,
+  contractOrderSchemas,
+  contractOrderTypes,
   vendorSchemas,
   vendorTypes,
   validators,

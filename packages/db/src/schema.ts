@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
   json,
+  foreignKey,
 } from "drizzle-orm/mysql-core";
 import { constants } from "@pkg/utils";
 
@@ -26,7 +27,13 @@ export type TransportationSlabsRow = Record<
   number
 >;
 
-const { ROLES, STATUS, PROPOSAL_STATUS, WORK_ORDER_STATUS } = constants;
+const {
+  ROLES,
+  STATUS,
+  PROPOSAL_STATUS,
+  WORK_ORDER_STATUS,
+  CONTRACT_ORDER_TYPE,
+} = constants;
 
 export const userTable = mysqlTable(
   "users",
@@ -518,6 +525,8 @@ export const bioSampleTable = mysqlTable("bio_samples", {
   }).notNull(),
 
   application_month: varchar("application_month", { length: 255 }).notNull(),
+  // The day the sample was taken; older samples only have created_at.
+  sampled_on: timestamp("sampled_on"),
 
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
@@ -541,6 +550,8 @@ export const bioOilZappingTable = mysqlTable("bio_oil_zapping", {
     precision: 20,
     scale: 2,
   }),
+  // The day the oil zapper was applied; older entries only have created_at.
+  applied_on: timestamp("applied_on"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
@@ -594,6 +605,144 @@ export const workOrderSiteContractorTable = mysqlTable(
   ],
 );
 
+// A job order under a work order's restoration. Restoration work is given out
+// through job orders, each to one or more vendors, and each proven complete by
+// its own certificate.
+export const jobOrderTable = mysqlTable(
+  "job_orders",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    // The work order's restoration row.
+    work_order_site_id: int("work_order_site_id")
+      .notNull()
+      .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
+    jo_number: varchar("jo_number", { length: 255 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    start_date: timestamp("start_date").notNull(),
+    end_date: timestamp("end_date").notNull(),
+    description: text("description"),
+    // The job order's completion certificates.
+    documents: json("documents").$type<StoredDocumentRow[]>(),
+    created_by: int("created_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [
+    uniqueIndex("jo_wo_site_number_idx").on(
+      table.work_order_site_id,
+      table.jo_number,
+    ),
+  ],
+);
+
+// The vendors a job order is given to.
+export const jobOrderContractorTable = mysqlTable(
+  "job_order_contractors",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    job_order_id: int("job_order_id")
+      .notNull()
+      .references(() => jobOrderTable.id, { onDelete: "cascade" }),
+    contractor_id: int("contractor_id")
+      .notNull()
+      .references(() => contractorTable.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("joc_job_order_contractor_idx").on(
+      table.job_order_id,
+      table.contractor_id,
+    ),
+    index("joc_contractor_idx").on(table.contractor_id),
+  ],
+);
+
+// A purchase order or subcontract work order that bioremediation work is
+// given out through. One order can cover several of the work order's sites.
+export const contractOrderTable = mysqlTable(
+  "contract_orders",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    work_order_id: int("work_order_id")
+      .notNull()
+      .references(() => workOrderTable.id, { onDelete: "cascade" }),
+    type: varchar("type", {
+      length: 50,
+      enum: [CONTRACT_ORDER_TYPE.PURCHASE_ORDER, CONTRACT_ORDER_TYPE.WORK_ORDER],
+    }).notNull(),
+    order_number: varchar("order_number", { length: 255 }).notNull(),
+    order_date: timestamp("order_date").notNull(),
+    description: text("description"),
+    documents: json("documents").$type<StoredDocumentRow[]>(),
+    created_by: int("created_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [
+    uniqueIndex("co_wo_type_number_idx").on(
+      table.work_order_id,
+      table.type,
+      table.order_number,
+    ),
+  ],
+);
+
+// What a contract order requires at one of its sites, such as oil zapper or
+// a JCB, and how much.
+export const contractOrderItemTable = mysqlTable(
+  "contract_order_items",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    contract_order_id: int("contract_order_id")
+      .notNull()
+      .references(() => contractOrderTable.id, { onDelete: "cascade" }),
+    work_order_site_id: int("work_order_site_id")
+      .notNull()
+      .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
+    item: varchar("item", { length: 100 }).notNull(),
+    // Names the item when it is "other".
+    description: varchar("description", { length: 255 }),
+    quantity: decimal("quantity", { precision: 20, scale: 2 }).notNull(),
+    unit: varchar("unit", { length: 20 }).notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [
+    index("coi_contract_order_idx").on(table.contract_order_id),
+    index("coi_wo_site_idx").on(table.work_order_site_id),
+  ],
+);
+
+// The vendors a contract order is given to.
+export const contractOrderContractorTable = mysqlTable(
+  "contract_order_contractors",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    contract_order_id: int("contract_order_id").notNull(),
+    contractor_id: int("contractor_id")
+      .notNull()
+      .references(() => contractorTable.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    // Named here, as the generated name is longer than MySQL allows.
+    foreignKey({
+      name: "coc_contract_order_fk",
+      columns: [table.contract_order_id],
+      foreignColumns: [contractOrderTable.id],
+    }).onDelete("cascade"),
+    uniqueIndex("coc_order_contractor_idx").on(
+      table.contract_order_id,
+      table.contractor_id,
+    ),
+    index("coc_contractor_idx").on(table.contractor_id),
+  ],
+);
+
 export const workOrderSiteExpenseTable = mysqlTable(
   "wo_site_expenses",
   {
@@ -602,6 +751,12 @@ export const workOrderSiteExpenseTable = mysqlTable(
       .notNull()
       .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
     contractor_id: int("contractor_id").references(() => contractorTable.id, {
+      onDelete: "set null",
+    }),
+    // The contract order requirement the expense is spent on, if any.
+    contract_order_item_id: int("contract_order_item_id"),
+    // The restoration job order the expense is spent on, if any.
+    job_order_id: int("job_order_id").references(() => jobOrderTable.id, {
       onDelete: "set null",
     }),
     title: varchar("title", { length: 500 }).notNull(),
@@ -625,6 +780,14 @@ export const workOrderSiteExpenseTable = mysqlTable(
   (table) => [
     index("expense_wo_site_idx").on(table.work_order_site_id),
     index("expense_contractor_idx").on(table.contractor_id),
+    index("expense_contract_order_item_idx").on(table.contract_order_item_id),
+    index("expense_job_order_idx").on(table.job_order_id),
+    // Named here, as the generated name is longer than MySQL allows.
+    foreignKey({
+      name: "expense_contract_order_item_fk",
+      columns: [table.contract_order_item_id],
+      foreignColumns: [contractOrderItemTable.id],
+    }).onDelete("set null"),
     index("expense_start_date_idx").on(table.start_date),
   ],
 );

@@ -26,9 +26,9 @@ interface Props {
   woSiteId: number;
 }
 
-// Documents recording the team and equipment moving onto the site, before
-// bioremediation starts.
-export const MobilizationDocuments = ({ woSiteId }: Props) => {
+// The certificate recording the team and equipment moving onto the site,
+// before bioremediation starts.
+export const MobilizationCertificate = ({ woSiteId }: Props) => {
   const utils = trpc.useUtils();
   const [files, setFiles] = useState<File[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -81,7 +81,7 @@ export const MobilizationDocuments = ({ woSiteId }: Props) => {
       }
       setFiles([]);
       refreshDocuments();
-      toast.success("Mobilization documents uploaded");
+      toast.success("Mobilization certificate uploaded");
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -99,22 +99,22 @@ export const MobilizationDocuments = ({ woSiteId }: Props) => {
         <div className='flex items-center gap-2'>
           <Truck className='w-3.5 h-3.5 text-emerald-500' />
           <span className='text-xs font-medium text-gray-700'>
-            Mobilization Documents
+            Mobilization Certificate
           </span>
         </div>
         <p className='mt-0.5 text-[10px] text-gray-400'>
-          Records of the team and equipment moving onto the site.
+          Certifies the team and equipment have moved onto the site.
         </p>
       </div>
 
       <DocumentsField
-        label='Upload mobilization documents'
+        label='Upload mobilization certificate'
         files={files}
         onFilesChange={setFiles}
         existing={documents.map((doc, index) => ({
           url: doc.document_url,
           id: doc.document_id ?? null,
-          name: `Mobilization document ${index + 1}`,
+          name: `Mobilization certificate ${index + 1}`,
         }))}
         onRemoveExisting={(index) => {
           const doc = documents[index];
@@ -132,7 +132,7 @@ export const MobilizationDocuments = ({ woSiteId }: Props) => {
           <CustomButton
             variant='primary'
             Icon={Upload}
-            text='Upload documents'
+            text='Upload certificate'
             loading={isSaving}
             disabled={isSaving}
             onClick={upload}
@@ -227,7 +227,7 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
         <div className='flex items-center gap-2'>
           <FlaskConical className='w-3.5 h-3.5 text-emerald-500' />
           <span className='text-xs font-medium text-gray-700'>
-            Zero Day Bio Sample
+            0-Day Bio Sample Report
           </span>
         </div>
         <p className='mt-0.5 text-[10px] text-gray-400'>
@@ -277,7 +277,7 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
       ) : (
         <>
           <DocumentsField
-            label='Upload sample report'
+            label='Upload 0-day bio sample report'
             files={files}
             onFilesChange={setFiles}
             isUploading={isUploading}

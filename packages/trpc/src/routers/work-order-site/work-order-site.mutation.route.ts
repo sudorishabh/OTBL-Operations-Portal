@@ -24,6 +24,7 @@ import {
 } from "../sharepoint/sharepoint.config";
 import { createSharePointService } from "../sharepoint/sharepoint.service";
 import { syncBioremediationCompletion } from "./bioremediation-completion";
+import { getOilZapperStock, OIL_ZAPPER_EPSILON } from "./oil-zapper-stock";
 
 const createSiteActivitySchema = z.object({
   work_order_site_id: z.number().positive(),
@@ -70,6 +71,8 @@ const createBioSampleSchema = z.object({
   documents: validators.documentsValidator,
   tph_value: z.string(),
   application_month: z.string(),
+  // The day the sample was taken; today when left out.
+  sampled_on: validators.optionalDateValidator,
 });
 
 const createOilZappingSchema = z.object({
@@ -81,6 +84,8 @@ const createOilZappingSchema = z.object({
     .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
       message: "Quantity must be a positive number",
     }),
+  // The day the oil zapper was applied; today when left out.
+  applied_on: validators.optionalDateValidator,
 });
 
 const deleteRecordSchema = z.object({
@@ -590,9 +595,6 @@ export const workOrderSiteMutationRouter = router({
               .update(workOrderSiteTable)
               .set({ is_completed: true })
               .where(eq(workOrderSiteTable.id, work_order_site_id));
-          } else {
-            // A new oil zapper plan can complete or reopen the site.
-            await syncBioremediationCompletion(ctx.db, work_order_site_id);
           }
 
           return { success: true, message: "Contaminated Soil saved" };
@@ -632,7 +634,10 @@ export const workOrderSiteMutationRouter = router({
           tph_document_url: input.documents[0]!.url,
           tph_value: input.tph_value,
           application_month: input.application_month,
+          sampled_on: input.sampled_on ? new Date(input.sampled_on) : new Date(),
         });
+        // A TPH below the target completes the site.
+        await syncBioremediationCompletion(ctx.db, input.work_order_site_id);
         return {
           success: true,
           message: "Bio sample added successfully",
@@ -647,9 +652,20 @@ export const workOrderSiteMutationRouter = router({
   deleteBioSample: publicProcedure.input(deleteRecordSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       try {
+        const [sample] = await ctx.db
+          .select({ work_order_site_id: bioSampleTable.work_order_site_id })
+          .from(bioSampleTable)
+          .where(eq(bioSampleTable.id, input.id));
         await ctx.db
           .delete(bioSampleTable)
           .where(eq(bioSampleTable.id, input.id));
+        // Removing the latest sample can reopen the site.
+        if (sample) {
+          await syncBioremediationCompletion(
+            ctx.db,
+            sample.work_order_site_id,
+          );
+        }
         return { success: true, message: "Bio sample deleted successfully" };
       } catch (error) {
         throw fromDatabaseError(error, "Deleting bio sample");
@@ -657,48 +673,35 @@ export const workOrderSiteMutationRouter = router({
     }),
   ),
 
+  // Oil zapping applies oil zapper the site has procured, so it can't apply
+  // more than is left.
   createOilZapping: publicProcedure.input(createOilZappingSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
-      try {
-        const estimateRows = await ctx.db
-          .select({ estimated_quantity: bioremediationContSoilTable.estimated_quantity })
-          .from(bioremediationContSoilTable)
-          .where(
-            and(
-              eq(bioremediationContSoilTable.work_order_site_id, input.work_order_site_id),
-              eq(bioremediationContSoilTable.type, "estimate_sub-wo" as any),
-            ),
-          );
+      const requested = parseFloat(input.estimated_quantity || "0") || 0;
+      if (!(requested > 0)) {
+        throw businessRule("Enter the oil zapper quantity applied.");
+      }
 
-        const estimateLimit = parseFloat(estimateRows[0]?.estimated_quantity || "0") || 0;
-        if (estimateLimit <= 0) {
-          throw new Error("Please save the Contaminated Soil estimate quantity first.");
-        }
-
-        const existingOil = await ctx.db
-          .select({ estimated_quantity: bioOilZappingTable.estimated_quantity })
-          .from(bioOilZappingTable)
-          .where(eq(bioOilZappingTable.work_order_site_id, input.work_order_site_id));
-
-        const currentTotal = existingOil.reduce(
-          (sum: number, r: any) => sum + (parseFloat(r.estimated_quantity || "0") || 0),
-          0,
+      const stock = await getOilZapperStock(ctx.db, input.work_order_site_id);
+      if (!(stock.procured > 0)) {
+        throw businessRule(
+          "No oil zapper has been procured for this site yet. Record its purchase as an expense first.",
         );
+      }
+      if (requested > stock.left + OIL_ZAPPER_EPSILON) {
+        throw businessRule(
+          `Only ${Math.max(0, stock.left).toFixed(2)} ${constants.OIL_ZAPPER.UNIT} of procured oil zapper is left to apply.`,
+        );
+      }
 
-        const remaining = estimateLimit - currentTotal;
-        if (remaining <= 0) {
-          throw new Error("Oil zapping limit already reached for this site.");
-        }
-
-        const requested = parseFloat(input.estimated_quantity || "0") || 0;
-        const capped = Math.min(requested, remaining);
-
+      try {
         const [result] = await ctx.db.insert(bioOilZappingTable).values({
           work_order_site_id: input.work_order_site_id,
           documents: input.documents,
           // Legacy single-document column, kept until it is dropped.
           document_url: input.documents[0]!.url,
-          estimated_quantity: capped.toFixed(2),
+          estimated_quantity: requested.toFixed(2),
+          applied_on: input.applied_on ? new Date(input.applied_on) : new Date(),
         });
         return {
           success: true,

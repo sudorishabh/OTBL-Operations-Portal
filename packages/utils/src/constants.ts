@@ -116,6 +116,32 @@ export const OIL_ZAPPER = {
   UNIT: "kg",
 } as const;
 
+// The two kinds of order bioremediation work is given out through: a purchase
+// order buys material, and a work order subcontracts a service.
+export const CONTRACT_ORDER_TYPE = {
+  PURCHASE_ORDER: "purchase_order",
+  WORK_ORDER: "work_order",
+} as const;
+
+export const contractOrderTypeOptions = [
+  { value: CONTRACT_ORDER_TYPE.PURCHASE_ORDER, label: "Purchase Order" },
+  { value: CONTRACT_ORDER_TYPE.WORK_ORDER, label: "Work Order (Subcontract)" },
+] as const;
+
+// What a contract order can require at a site. Oil zapper bought through a
+// purchase order is the site's procured oil zapper.
+export const CONTRACT_ORDER_ITEMS = [
+  { key: OIL_ZAPPER.KEY, label: OIL_ZAPPER.LABEL, unit: OIL_ZAPPER.UNIT },
+  { key: "jcb", label: "JCB", unit: "hours" },
+  { key: "labour", label: "Labour", unit: "man-days" },
+  { key: "transport", label: "Transport", unit: "trips" },
+  { key: "other", label: "Other", unit: "Nos" },
+] as const;
+
+// A bioremediation site's treatment is achieved once a bio sample's TPH drops
+// below this target; its share of the schedule of rates is then used.
+export const TPH_TARGET = 0.5;
+
 export const GST_PERCENTAGE = 18;
 
 // Most documents a user can upload at once, or attach to one record.
@@ -185,6 +211,10 @@ export default {
   TRANSPORT_SLABS,
   ZERO_DAY_SAMPLE,
   OIL_ZAPPER,
+  TPH_TARGET,
+  CONTRACT_ORDER_TYPE,
+  contractOrderTypeOptions,
+  CONTRACT_ORDER_ITEMS,
   allActivityOptions,
   ACTIVITY_TYPE,
   ACTIVITY_PHASE,

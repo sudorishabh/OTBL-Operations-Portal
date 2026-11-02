@@ -16,7 +16,12 @@ import { assertOfficeManager } from "../../helper/office-permissions";
 import {
   coversRestoration,
   createRestorationRow,
+  restorationRowWhere,
+  syncRestorationCompletion,
 } from "../restoration/restoration-row";
+
+// Allowance for decimal rounding when checking transport slab totals.
+const SLAB_EPSILON = 0.005;
 
 const {
   workOrderTable,
@@ -144,6 +149,138 @@ export const workOrderMutationRouter = router({
           };
         } catch (error) {
           throw fromDatabaseError(error, "Creating work order");
+        }
+      }),
+    ),
+
+  // Admins can correct a work order's details whatever its status.
+  updateWorkOrder: adminProcedure
+    .input(workOrderSchemas.updateWorkOrderSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const { id, ...details } = input;
+
+        const [workOrder] = await ctx.db
+          .select({ id: workOrderTable.id })
+          .from(workOrderTable)
+          .where(eq(workOrderTable.id, id));
+
+        if (!workOrder) {
+          throw notFound("Work order", id);
+        }
+
+        try {
+          await ctx.db.transaction(async (tx) => {
+            await tx
+              .update(workOrderTable)
+              .set({
+                ...details,
+                description: details.description || null,
+                remarks: details.remarks || "",
+                // Legacy single-document column, kept until it is dropped.
+                document_key: details.documents[0]!.url,
+              })
+              .where(eq(workOrderTable.id, id));
+
+            // The restoration row runs over the work order's dates.
+            await tx
+              .update(workOrderSiteTable)
+              .set({ date: details.start_date, end_date: details.end_date })
+              .where(restorationRowWhere(id));
+          });
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Updating work order");
+        }
+      }),
+    ),
+
+  // Admins can correct the quantity and rate of the work order's schedule of
+  // rates rows. Restoration completion depends on them, so it is re-checked.
+  updateScheduleOfRates: adminProcedure
+    .input(workOrderSchemas.updateScheduleOfRatesSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const rows = await ctx.db
+          .select({
+            id: scheduleOfRatesTable.id,
+            activity: scheduleOfRatesTable.activity,
+            gst_percentage: scheduleOfRatesTable.gst_percentage,
+          })
+          .from(scheduleOfRatesTable)
+          .where(eq(scheduleOfRatesTable.work_order_id, input.work_order_id));
+        const rowById = new Map(rows.map((row) => [row.id, row]));
+
+        const updates = input.rates.map((rate) => {
+          const row = rowById.get(rate.id);
+          if (!row) {
+            throw notFound("Schedule of rate", rate.id, {
+              userMessage:
+                "A schedule of rates row doesn't belong to this work order.",
+            });
+          }
+
+          const isTransport =
+            row.activity ===
+            constants.WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL;
+          if (isTransport) {
+            const slabTotal = Object.values(
+              rate.transportation_slabs ?? {},
+            ).reduce((sum, qty) => sum + qty, 0);
+            if (
+              !rate.transportation_slabs ||
+              Math.abs(slabTotal - rate.estimated_quantity) > SLAB_EPSILON
+            ) {
+              throw validationError(
+                "Transportation quantity must equal the sum of its distance slabs",
+                [
+                  {
+                    field: "transportation_slabs",
+                    message: "Quantity must equal the sum of the distance slabs",
+                  },
+                ],
+              );
+            }
+          }
+
+          const unitRateIncGst =
+            rate.rc_unit_rate * (1 + Number(row.gst_percentage) / 100);
+          return {
+            id: row.id,
+            values: {
+              estimated_quantity: rate.estimated_quantity.toFixed(2),
+              rc_unit_rate: rate.rc_unit_rate.toFixed(2),
+              unit_rate_inc_gst: unitRateIncGst.toFixed(2),
+              total_cost: (unitRateIncGst * rate.estimated_quantity).toFixed(2),
+              ...(isTransport && {
+                transportation_slabs: rate.transportation_slabs,
+              }),
+            },
+          };
+        });
+
+        try {
+          await ctx.db.transaction(async (tx) => {
+            for (const update of updates) {
+              await tx
+                .update(scheduleOfRatesTable)
+                .set(update.values)
+                .where(eq(scheduleOfRatesTable.id, update.id));
+            }
+
+            const [restoration] = await tx
+              .select({ id: workOrderSiteTable.id })
+              .from(workOrderSiteTable)
+              .where(restorationRowWhere(input.work_order_id));
+            if (restoration) {
+              await syncRestorationCompletion(tx, restoration.id);
+            }
+          });
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Updating schedule of rates");
         }
       }),
     ),
@@ -351,6 +488,39 @@ export const workOrderMutationRouter = router({
             throw fromDatabaseError(error, "Adding work order site");
           }
         });
+      }),
+    ),
+
+  // Admins can correct the dates a site runs over. The restoration row runs
+  // over its work order's dates, so it changes with the work order instead.
+  updateWorkOrderSiteDates: adminProcedure
+    .input(workOrderSchemas.updateWorkOrderSiteDatesSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const [woSite] = await ctx.db
+          .select({ site_id: workOrderSiteTable.site_id })
+          .from(workOrderSiteTable)
+          .where(eq(workOrderSiteTable.id, input.id));
+
+        if (!woSite) {
+          throw notFound("Work order site", input.id);
+        }
+        if (woSite.site_id === null) {
+          throw businessRule(
+            "Restoration runs over the work order's dates. Edit the work order to change them.",
+          );
+        }
+
+        try {
+          await ctx.db
+            .update(workOrderSiteTable)
+            .set({ date: input.date, end_date: input.end_date })
+            .where(eq(workOrderSiteTable.id, input.id));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Updating work order site dates");
+        }
       }),
     ),
 });
