@@ -12,6 +12,7 @@ import CustomButton from "@/components/shared/btn";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
 import JobOrderCertificates from "./job-order-certificates";
+import RestorationMonthlyExpenses from "./restoration-monthly-expenses";
 import RestorationSummary from "./restoration-summary";
 import RestorationCompletion from "./restoration-completion";
 import RestorationRatesSection from "./restoration-rates-section";
@@ -106,6 +107,8 @@ const RestorationDialog = ({
             estimatedTotal={estimatedTotal}
           />
         )}
+
+        <RestorationMonthlyExpenses restorationId={restoration.id} />
 
         {/* Vendor expenses are recorded on the job order they are spent on. */}
         <SiteExpensesSection

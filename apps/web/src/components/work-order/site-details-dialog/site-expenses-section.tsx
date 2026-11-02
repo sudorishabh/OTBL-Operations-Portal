@@ -347,6 +347,7 @@ const SiteExpensesSection = ({
       resetExpenseList();
       await utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: woSiteId });
       await utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: woSiteId });
+      utils.expenseQuery.getMonthlyExpenses.invalidate({ work_order_site_id: woSiteId });
       // Deleting one can reopen a completed restoration or bioremediation site.
       utils.restorationQuery.getRestoration.invalidate();
       utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: woSiteId });
