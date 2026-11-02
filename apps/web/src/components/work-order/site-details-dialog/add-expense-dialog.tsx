@@ -52,6 +52,7 @@ export interface Expense {
   contractor_id: number | null;
   contractor_name: string | null;
   contract_order_item_id?: number | null;
+  job_order_id?: number | null;
   activity_key: string | null;
   quantity: string | null;
   is_exceeded: number | boolean | null;
@@ -87,6 +88,8 @@ interface Props {
   // The contract order requirement the expense is spent on. Its vendors are
   // then the order's, and it can't be miscellaneous.
   orderItem?: { id: number; label: string } | null;
+  // The restoration job order the expense is spent on, likewise.
+  jobOrder?: { id: number; label: string } | null;
 }
 
 // "Expense under" value for an expense under none of the contractors.
@@ -122,7 +125,10 @@ const AddExpenseDialog = ({
   startsMiscellaneous = false,
   fixedActivityKey,
   orderItem = null,
+  jobOrder = null,
 }: Props) => {
+  // What the expense is spent on, when it is on an order or job order.
+  const spentOn = orderItem ?? jobOrder;
   const utils = trpc.useUtils();
 
   const [amount, setAmount] = useState("");
@@ -355,6 +361,7 @@ const AddExpenseDialog = ({
     const payload = {
       contractor_id: expenseContractorId,
       contract_order_item_id: orderItem?.id ?? null,
+      job_order_id: jobOrder?.id ?? null,
       activity_key: selectedActivityKey || null,
       quantity: canEnterQuantity && quantity ? quantity : null,
       is_exceeded: isExceededMode,
@@ -466,8 +473,8 @@ const AddExpenseDialog = ({
               ? fixedActivityLabel
                 ? `The estimated ${fixedActivityLabel} is fully procured. Will be recorded as exceeded.`
                 : "This activity's estimated quantity is fully used. Will be recorded as exceeded."
-              : orderItem
-                ? `Spent on ${orderItem.label}.`
+              : spentOn
+                ? `Spent on ${spentOn.label}.`
                 : isEditing
                   ? "Update the expense details below."
                   : "Record an amount spent on this site."}
@@ -532,7 +539,7 @@ const AddExpenseDialog = ({
                 </div>
 
                 {/* An order's expense is always under one of its vendors. */}
-                {!orderItem &&
+                {!spentOn &&
                   renderUnderOption({
                     value: NOT_UNDER,
                     label: "Miscellaneous",
