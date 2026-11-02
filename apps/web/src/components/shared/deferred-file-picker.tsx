@@ -196,15 +196,16 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
       .map((ext) => ext.replace(".", "").toUpperCase())
       .join(", ") + (allowedExtensions.length > 3 ? " and more" : "");
   const hint = multiple
-    ? `Drag files here or browse. ${types}, up to ${remainingSlots} ${remainingSlots === 1 ? "file" : "files"}, ${maxSizeMB} MB each.`
-    : `Drag a file here or browse. ${types}, up to ${maxSizeMB} MB.`;
+    ? `${types}, up to ${remainingSlots} ${remainingSlots === 1 ? "file" : "files"} of ${maxSizeMB} MB`
+    : `${types}, up to ${maxSizeMB} MB`;
 
   return (
     <div className={cn("w-full", className)}>
       {isFull ? (
-        <div className='rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-500'>
-          You&apos;ve added the maximum of {maxFiles} files. Remove one to add
-          another.
+        <div className='flex h-9 items-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-2.5 text-[11px] text-gray-500'>
+          <span className='truncate'>
+            All {maxFiles} files added. Remove one to add another.
+          </span>
         </div>
       ) : !selectedFile ? (
         <div
@@ -223,7 +224,7 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
             }
           }}
           className={cn(
-            "group flex cursor-pointer items-center gap-3 rounded-lg border border-dashed px-3 py-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/30",
+            "group flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-dashed px-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/30",
             isDragActive
               ? "border-primary bg-primary/5"
               : "border-gray-300 hover:border-primary/50 hover:bg-gray-50/60",
@@ -237,45 +238,40 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
             accept={allowedExtensions.join(",")}
             multiple={multiple}
           />
-          <div
+          <Upload
             className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors",
+              "size-3.5 shrink-0 transition-colors",
               isDragActive
-                ? "bg-primary/10"
-                : "bg-gray-100 group-hover:bg-primary/10",
-            )}>
-            <Upload
-              className={cn(
-                "size-3.5 transition-colors",
-                isDragActive
-                  ? "text-primary"
-                  : "text-gray-400 group-hover:text-primary/70",
-              )}
-            />
-          </div>
-          <div className='min-w-0 flex-1'>
-            <p className='truncate text-xs font-medium text-gray-700'>
+                ? "text-primary"
+                : "text-gray-400 group-hover:text-primary/70",
+            )}
+          />
+          {/* One line: the label keeps its room, the hint takes what's left. */}
+          <p className='flex min-w-0 flex-1 items-baseline gap-2'>
+            <span className='max-w-full shrink-0 truncate text-xs font-medium text-gray-700'>
               {isDragActive ? "Drop to add" : label}
-            </p>
-            <p className='truncate text-[11px] text-gray-400'>{hint}</p>
-          </div>
+            </span>
+            <span className='min-w-0 truncate text-[11px] text-gray-400'>
+              {hint}
+            </span>
+          </p>
           {/* The whole zone opens the picker; this only shows that it does. */}
           <span
             aria-hidden
-            className='shrink-0 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 transition-colors group-hover:border-primary/40 group-hover:text-primary'>
+            className='shrink-0 text-[11px] font-medium text-gray-500 transition-colors group-hover:text-primary'>
             Browse
           </span>
         </div>
       ) : (
         <div
           className={cn(
-            "flex items-center gap-2.5 rounded-lg border bg-white px-2.5 py-2 transition-colors",
+            "flex items-center gap-2 rounded-lg border bg-white px-2.5 py-1.5 transition-colors",
             isUploaded ? "border-emerald-200" : "border-gray-200",
           )}>
           <div className='relative shrink-0'>
             <div
               className={cn(
-                "flex size-8 items-center justify-center rounded-md",
+                "flex size-6 items-center justify-center rounded",
                 getFileTypeStyle(selectedFile.name).bg,
               )}>
               {isUploading || isDeleting ? (
