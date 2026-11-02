@@ -52,6 +52,13 @@ export interface ContractOrder {
 
 interface Props {
   workOrderId: number;
+  // Lays out the section's actions and its table, such as in a tab; a
+  // heading over the table when left out.
+  children?: (parts: {
+    actions: React.ReactNode;
+    table: React.ReactNode;
+    count: number;
+  }) => React.ReactNode;
 }
 
 export const itemLabel = (item: string, description?: string | null) =>
@@ -100,7 +107,7 @@ const cellClass = "px-4 py-3 sm:px-4 sm:py-3";
 
 // The purchase and subcontract orders bioremediation work is given out
 // through. One order can require things at several of the work order's sites.
-const ContractOrdersSection = ({ workOrderId }: Props) => {
+const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   const isViewer = useIsViewer();
   const { handleError } = useApiError();
   const utils = trpc.useUtils();
@@ -145,178 +152,191 @@ const ContractOrdersSection = ({ workOrderId }: Props) => {
     [CONTRACT_ORDER_TYPE.WORK_ORDER]: workCount,
   };
 
-  return (
-    <div className='mt-6 border-t border-gray-100 pt-6'>
-      <div className='mb-3 flex flex-wrap items-center justify-between gap-3'>
-        <div>
-          <h3 className='text-sm font-semibold text-gray-900'>
-            Purchase and work orders
-          </h3>
-          <p className='text-xs text-gray-500'>
-            Material bought and work subcontracted for these sites
-          </p>
-        </div>
-        <div className='flex flex-wrap items-center gap-2'>
-          {orders.length > 0 && (
-            <Tabs
-              value={filter}
-              onValueChange={(value) => setFilter(value as OrderFilter)}>
-              <TabsList className='h-8'>
-                {FILTERS.map(({ value, label, Icon }) => (
-                  <TabsTrigger
-                    key={value}
-                    value={value}
-                    className='gap-1.5 px-2.5 text-xs text-gray-800'>
-                    {Icon && <Icon className='size-3.5 text-gray-500' />}
-                    {label}
-                    <span className='tabular-nums text-gray-400'>
-                      {filterCounts[value]}
-                    </span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          )}
-          <CustomButton
-            variant='outline'
-            Icon={Plus}
-            text='New order'
-            onClick={() => openDialog(null)}
-            disableForViewer
-          />
-        </div>
-      </div>
+  // What the section lets you do: filter by type and add an order.
+  const actions = (
+    <>
+      {orders.length > 0 && (
+        <Tabs
+          value={filter}
+          onValueChange={(value) => setFilter(value as OrderFilter)}>
+          <TabsList className='h-8'>
+            {FILTERS.map(({ value, label, Icon }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className='gap-1.5 px-2.5 text-xs text-gray-800'>
+                {Icon && <Icon className='size-3.5 text-gray-500' />}
+                {label}
+                <span className='tabular-nums text-gray-400'>
+                  {filterCounts[value]}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
+      <CustomButton
+        variant='outline'
+        Icon={Plus}
+        text='New order'
+        onClick={() => openDialog(null)}
+        disableForViewer
+      />
+    </>
+  );
 
-      {orders.length === 0 ? (
-        <p className='rounded-lg border border-dashed py-6 text-center text-xs text-gray-500'>
-          {ordersQuery.isLoading
-            ? "Loading orders..."
-            : "No orders yet. Add a purchase order to buy material, or a work order to subcontract work."}
-        </p>
-      ) : (
-        // A row per order, spread across the width; scrolls sideways when
-        // narrow.
-        <div className='overflow-x-auto rounded-lg border border-gray-200'>
-          <Table>
-            <TableHeader>
-              <TableRow className='bg-gray-50 hover:bg-gray-50'>
-                <TableHead className={cn(headClass, "w-[16rem]")}>Order</TableHead>
-                <TableHead className={cn(headClass, "w-[7.5rem]")}>Date</TableHead>
-                <TableHead className={cn(headClass, "w-[12rem]")}>Vendors</TableHead>
-                <TableHead className={headClass}>Requirements by site</TableHead>
-                <TableHead className={cn(headClass, "w-px")}>
-                  <span className='sr-only'>Actions</span>
-                </TableHead>
+  const table =
+    orders.length === 0 ? (
+      <p className='rounded-lg border border-dashed py-6 text-center text-xs text-gray-500'>
+        {ordersQuery.isLoading
+          ? "Loading orders..."
+          : "No orders yet. Add a purchase order to buy material, or a work order to subcontract work."}
+      </p>
+    ) : (
+      // A row per order, spread across the width; scrolls sideways when
+      // narrow.
+      <div className='overflow-x-auto rounded-lg border border-gray-200'>
+        <Table>
+          <TableHeader>
+            <TableRow className='bg-gray-50 hover:bg-gray-50'>
+              <TableHead className={cn(headClass, "w-[16rem]")}>Order</TableHead>
+              <TableHead className={cn(headClass, "w-[7.5rem]")}>Date</TableHead>
+              <TableHead className={cn(headClass, "w-[12rem]")}>Vendors</TableHead>
+              <TableHead className={headClass}>Requirements by site</TableHead>
+              <TableHead className={cn(headClass, "w-px")}>
+                <span className='sr-only'>Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {shownOrders.length === 0 && (
+              <TableRow className='hover:bg-transparent'>
+                <TableCell
+                  colSpan={5}
+                  className='py-6 text-center text-xs text-gray-500 sm:py-6'>
+                  No{" "}
+                  {GROUPS.find((group) => group.type === filter)?.filterLabel.toLowerCase()}{" "}
+                  yet.
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {shownOrders.length === 0 && (
-                <TableRow className='hover:bg-transparent'>
+            )}
+            {shownOrders.map((order) => {
+              const group =
+                GROUPS.find((option) => option.type === order.type) ??
+                GROUPS[0];
+              const documents = toDocuments(order.documents);
+              return (
+                <TableRow
+                  key={order.id}
+                  className='hover:bg-gray-50/60'>
+                  <TableCell className={cellClass}>
+                    <div className='flex items-center gap-3'>
+                      <div
+                        title={group.label}
+                        className={cn(
+                          "shrink-0 rounded-md p-1.5 ring-1 ring-inset",
+                          group.tone,
+                        )}>
+                        <group.Icon className='size-3.5' />
+                      </div>
+                      <div className='min-w-0'>
+                        <p className='truncate text-sm font-semibold text-gray-900'>
+                          {order.order_number}
+                        </p>
+                        <p className='text-xs text-gray-500'>{group.label}</p>
+                      </div>
+                    </div>
+                  </TableCell>
                   <TableCell
-                    colSpan={5}
-                    className='py-6 text-center text-xs text-gray-500 sm:py-6'>
-                    No{" "}
-                    {GROUPS.find((group) => group.type === filter)?.filterLabel.toLowerCase()}{" "}
-                    yet.
+                    className={cn(cellClass, "whitespace-nowrap text-xs text-gray-600")}>
+                    {format(new Date(order.order_date), "d MMM yyyy")}
+                  </TableCell>
+                  <TableCell className={cn(cellClass, "text-xs text-gray-700")}>
+                    {order.vendors.map((vendor) => vendor.name).join(", ")}
+                  </TableCell>
+                  <TableCell className={cellClass}>
+                    <div className='flex flex-wrap gap-1.5'>
+                      {order.items.map((item) => (
+                        <span
+                          key={item.id}
+                          className='inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-gray-50 px-2 py-0.5 text-xs text-gray-700 ring-1 ring-inset ring-gray-200'>
+                          <span className='text-gray-500'>
+                            {item.site_name ?? "Site"}
+                          </span>
+                          <span className='font-medium'>
+                            {itemLabel(item.item, item.description)}
+                          </span>
+                          <span className='tabular-nums'>
+                            {Number(item.quantity).toLocaleString("en-IN")}{" "}
+                            {item.unit}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell className={cn(cellClass, "text-right")}>
+                    <div className='flex items-center justify-end gap-0.5'>
+                      {documents.length > 0 && (
+                        <DocumentsMenu documents={documents}>
+                          <button
+                            type='button'
+                            title='Order documents'
+                            className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700'>
+                            <FileText className='size-3.5' />
+                          </button>
+                        </DocumentsMenu>
+                      )}
+                      {!isViewer && (
+                        <>
+                          <button
+                            type='button'
+                            title='Edit order'
+                            onClick={() => openDialog(order)}
+                            className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700'>
+                            <Pencil className='size-3.5' />
+                          </button>
+                          <button
+                            type='button'
+                            title='Delete order'
+                            disabled={deleteOrder.isPending}
+                            onClick={() => {
+                              if (confirm(`Delete order ${order.order_number}?`)) {
+                                deleteOrder.mutate({ id: order.id });
+                              }
+                            }}
+                            className='rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500'>
+                            <Trash2 className='size-3.5' />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
-              )}
-              {shownOrders.map((order) => {
-                const group =
-                  GROUPS.find((option) => option.type === order.type) ??
-                  GROUPS[0];
-                const documents = toDocuments(order.documents);
-                return (
-                  <TableRow
-                    key={order.id}
-                    className='hover:bg-gray-50/60'>
-                    <TableCell className={cellClass}>
-                      <div className='flex items-center gap-3'>
-                        <div
-                          title={group.label}
-                          className={cn(
-                            "shrink-0 rounded-md p-1.5 ring-1 ring-inset",
-                            group.tone,
-                          )}>
-                          <group.Icon className='size-3.5' />
-                        </div>
-                        <div className='min-w-0'>
-                          <p className='truncate text-sm font-semibold text-gray-900'>
-                            {order.order_number}
-                          </p>
-                          <p className='text-xs text-gray-500'>{group.label}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      className={cn(cellClass, "whitespace-nowrap text-xs text-gray-600")}>
-                      {format(new Date(order.order_date), "d MMM yyyy")}
-                    </TableCell>
-                    <TableCell className={cn(cellClass, "text-xs text-gray-700")}>
-                      {order.vendors.map((vendor) => vendor.name).join(", ")}
-                    </TableCell>
-                    <TableCell className={cellClass}>
-                      <div className='flex flex-wrap gap-1.5'>
-                        {order.items.map((item) => (
-                          <span
-                            key={item.id}
-                            className='inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-gray-50 px-2 py-0.5 text-xs text-gray-700 ring-1 ring-inset ring-gray-200'>
-                            <span className='text-gray-500'>
-                              {item.site_name ?? "Site"}
-                            </span>
-                            <span className='font-medium'>
-                              {itemLabel(item.item, item.description)}
-                            </span>
-                            <span className='tabular-nums'>
-                              {Number(item.quantity).toLocaleString("en-IN")}{" "}
-                              {item.unit}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className={cn(cellClass, "text-right")}>
-                      <div className='flex items-center justify-end gap-0.5'>
-                        {documents.length > 0 && (
-                          <DocumentsMenu documents={documents}>
-                            <button
-                              type='button'
-                              title='Order documents'
-                              className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700'>
-                              <FileText className='size-3.5' />
-                            </button>
-                          </DocumentsMenu>
-                        )}
-                        {!isViewer && (
-                          <>
-                            <button
-                              type='button'
-                              title='Edit order'
-                              onClick={() => openDialog(order)}
-                              className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700'>
-                              <Pencil className='size-3.5' />
-                            </button>
-                            <button
-                              type='button'
-                              title='Delete order'
-                              disabled={deleteOrder.isPending}
-                              onClick={() => {
-                                if (confirm(`Delete order ${order.order_number}?`)) {
-                                  deleteOrder.mutate({ id: order.id });
-                                }
-                              }}
-                              className='rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500'>
-                              <Trash2 className='size-3.5' />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    );
+
+  return (
+    <>
+      {children ? (
+        children({ actions, table, count: orders.length })
+      ) : (
+        <div className='mt-6 border-t border-gray-100 pt-6'>
+          <div className='mb-3 flex flex-wrap items-center justify-between gap-3'>
+            <div>
+              <h3 className='text-sm font-semibold text-gray-900'>
+                Purchase and work orders
+              </h3>
+              <p className='text-xs text-gray-500'>
+                Material bought and work subcontracted for these sites
+              </p>
+            </div>
+            <div className='flex flex-wrap items-center gap-2'>{actions}</div>
+          </div>
+          {table}
         </div>
       )}
 
@@ -326,7 +346,7 @@ const ContractOrdersSection = ({ workOrderId }: Props) => {
         onClose={() => setDialogOpen(false)}
         editing={editing}
       />
-    </div>
+    </>
   );
 };
 
