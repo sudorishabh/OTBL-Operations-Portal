@@ -4,13 +4,12 @@ import { RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
 import { constants } from "@pkg/utils";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useIsManager } from "@/contexts/AuthContext";
 import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import { Skeleton } from "@/components/ui/skeleton";
-import ProcessSectionHeader, { PROCESS_TONES } from "../process-section-header";
+import ProcessSectionHeader from "../process-section-header";
 import RestorationDialog from "./restoration-dialog";
 import RestorationCard from "./restoration-card";
 import type { RestorationRate } from "./restoration-rates-table";
@@ -130,11 +129,7 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
   };
 
   return (
-    <section
-      className={cn(
-        "rounded-lg border border-l-[3px] bg-white p-6",
-        PROCESS_TONES.restoration.section,
-      )}>
+    <section className='rounded-lg border bg-white p-6'>
       <ProcessSectionHeader
         Icon={RotateCcw}
         tone='restoration'
