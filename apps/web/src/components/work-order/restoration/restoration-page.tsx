@@ -11,14 +11,13 @@ import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import WorkOrderDetailsSkeleton from "@/components/skeleton/work-order/work-order-details-skeleton";
-import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
 import JobOrderCertificates from "./job-order-certificates";
 import RestorationMonthlyExpenses from "./restoration-monthly-expenses";
-import RestorationSummary from "./restoration-summary";
+import RestorationHeader from "./restoration-header";
 import RestorationCompletion from "./restoration-completion";
 import RestorationRatesSection from "./restoration-rates-section";
 import useRestorationRates from "./use-restoration-rates";
@@ -146,20 +145,14 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
           </div>
         )}
 
-        <section className={cn(PANEL, "space-y-4")}>
-          <RestorationSummary
-            workOrder={workOrder}
-            restoration={restoration}
-            operatorUploadsCount={operatorUploadsQuery.data?.length ?? 0}
-            onOpenOperatorUploads={() =>
-              setParam("site-dialog", "operator-uploads")
-            }
-          />
-          <WoSiteOperatorsSection
-            woSiteId={restoration.id}
-            subject='restoration'
-          />
-        </section>
+        <RestorationHeader
+          workOrder={workOrder}
+          restoration={restoration}
+          operatorUploadsCount={operatorUploadsQuery.data?.length ?? 0}
+          onOpenOperatorUploads={() =>
+            setParam("site-dialog", "operator-uploads")
+          }
+        />
 
         {/* The certificate only comes in once the restoration is complete. */}
         {restoration.is_completed && (
