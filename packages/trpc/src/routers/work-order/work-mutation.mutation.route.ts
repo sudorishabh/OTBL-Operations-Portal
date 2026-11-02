@@ -16,6 +16,7 @@ import { assertOfficeManager } from "../../helper/office-permissions";
 import {
   coversRestoration,
   createRestorationRow,
+  restorationRowWhere,
 } from "../restoration/restoration-row";
 
 const {
@@ -144,6 +145,49 @@ export const workOrderMutationRouter = router({
           };
         } catch (error) {
           throw fromDatabaseError(error, "Creating work order");
+        }
+      }),
+    ),
+
+  // Admins can correct a work order's details whatever its status.
+  updateWorkOrder: adminProcedure
+    .input(workOrderSchemas.updateWorkOrderSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const { id, ...details } = input;
+
+        const [workOrder] = await ctx.db
+          .select({ id: workOrderTable.id })
+          .from(workOrderTable)
+          .where(eq(workOrderTable.id, id));
+
+        if (!workOrder) {
+          throw notFound("Work order", id);
+        }
+
+        try {
+          await ctx.db.transaction(async (tx) => {
+            await tx
+              .update(workOrderTable)
+              .set({
+                ...details,
+                description: details.description || null,
+                remarks: details.remarks || "",
+                // Legacy single-document column, kept until it is dropped.
+                document_key: details.documents[0]!.url,
+              })
+              .where(eq(workOrderTable.id, id));
+
+            // The restoration row runs over the work order's dates.
+            await tx
+              .update(workOrderSiteTable)
+              .set({ date: details.start_date, end_date: details.end_date })
+              .where(restorationRowWhere(id));
+          });
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Updating work order");
         }
       }),
     ),
