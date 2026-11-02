@@ -21,8 +21,10 @@ const itemKeys = CONTRACT_ORDER_ITEMS.map((item) => item.key) as [
 export const contractOrderItemEnum = z.enum(itemKeys);
 
 // What the order requires at one of its sites. "Other" items say what they are.
+// An edit names the items it keeps by id, as expenses point at them.
 export const contractOrderItemSchema = z
   .object({
+    id: positiveIntValidator.optional(),
     work_order_site_id: positiveIntValidator,
     item: contractOrderItemEnum,
     description: z
