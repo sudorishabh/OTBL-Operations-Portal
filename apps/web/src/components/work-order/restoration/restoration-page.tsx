@@ -1,7 +1,13 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, File, Plus, Rows3 } from "lucide-react";
+import {
+  CalendarRange,
+  CheckCircle2,
+  File,
+  Plus,
+  Rows3,
+} from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
@@ -15,7 +21,9 @@ import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
 import JobOrderCertificates from "./job-order-certificates";
-import RestorationMonthlyExpenses from "./restoration-monthly-expenses";
+import RestorationMonthlyExpensesDialog, {
+  MONTHLY_EXPENSES_DIALOG,
+} from "./restoration-monthly-expenses-dialog";
 import RestorationHeader from "./restoration-header";
 import RestorationCompletion from "./restoration-completion";
 import RestorationRatesDialog, { RATES_DIALOG } from "./restoration-rates-dialog";
@@ -163,17 +171,18 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
               onClick={() => setParam("dialog", RATES_DIALOG)}
             />
           )}
+          <CustomButton
+            text='View Monthly Expenses'
+            variant='outline'
+            Icon={CalendarRange}
+            onClick={() => setParam("dialog", MONTHLY_EXPENSES_DIALOG)}
+          />
         </div>
 
         {/* The certificate only comes in once the restoration is complete. */}
         {restoration.is_completed && (
           <RestorationCompletion restoration={restoration} />
         )}
-
-        <RestorationMonthlyExpenses
-          restorationId={restoration.id}
-          className={PANEL}
-        />
 
         {/* Vendor expenses are recorded on the job order they are spent on. */}
         <section className={PANEL}>
@@ -211,6 +220,8 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
         rates={rates}
         estimatedTotal={estimatedTotal}
       />
+
+      <RestorationMonthlyExpensesDialog restorationId={restoration.id} />
 
       <JobOrderDialog
         restorationId={restoration.id}
