@@ -243,11 +243,12 @@ const AddExpenseDialog = ({
   const qtyUnit = selectedActivity?.unit ?? "Nos";
   const fixedActivityLabel =
     activities.find((a) => a.key === fixedActivityKey)?.label ?? null;
-  // What's left of the activity's quantity, or of the fixed activity itself.
+  // What's left of the activity's quantity, or of the fixed activity's
+  // estimate still to procure.
   const describeLeft = (amount: string, willBe = false) => {
     const left = willBe ? "will be left" : "left";
     return fixedActivityLabel
-      ? `${amount} of ${fixedActivityLabel} ${left}`
+      ? `${amount} of the estimated ${fixedActivityLabel} ${left} to procure`
       : `${amount} ${left} on this activity`;
   };
 
@@ -458,7 +459,7 @@ const AddExpenseDialog = ({
           <DialogDescription className='text-xs text-gray-500'>
             {isExceededMode
               ? fixedActivityLabel
-                ? `The planned ${fixedActivityLabel} is fully used. Will be recorded as exceeded.`
+                ? `The estimated ${fixedActivityLabel} is fully procured. Will be recorded as exceeded.`
                 : "This activity's estimated quantity is fully used. Will be recorded as exceeded."
               : isEditing
                 ? "Update the expense details below."
@@ -474,7 +475,8 @@ const AddExpenseDialog = ({
                 Exceeded — {selectedActivity?.label}
               </p>
               <p className='text-[10px] text-orange-600 mt-0.5'>
-                Est: {estimateQty} {selectedActivity?.unit ?? "Nos"} · Fully used ({alreadyUsedQty}).
+                Est: {estimateQty} {selectedActivity?.unit ?? "Nos"} · Fully{" "}
+                {fixedActivityLabel ? "procured" : "used"} ({alreadyUsedQty}).
                 Recording as over-budget.
               </p>
             </div>
@@ -614,7 +616,7 @@ const AddExpenseDialog = ({
               {isMiscellaneous && (
                 <p className='text-xs text-gray-500'>
                   {fixedActivityLabel
-                    ? `Miscellaneous expenses don't use ${fixedActivityLabel}. Choose a vendor to deduct it.`
+                    ? `Miscellaneous expenses don't procure ${fixedActivityLabel}. Choose a vendor to record it.`
                     : "Miscellaneous expenses don't record a quantity. Choose a vendor to deduct one from the activity."}
                 </p>
               )}

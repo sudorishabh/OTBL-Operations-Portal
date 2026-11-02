@@ -123,8 +123,8 @@ async function syncSiteCompletion(ctx: any, siteId: number) {
 }
 
 // A miscellaneous expense, under none of a restoration's or bioremediation
-// site's vendors, uses up no activity quantity or oil zapper, so it may not
-// carry one.
+// site's vendors, uses up no activity quantity or procures oil zapper, so it
+// may not carry one.
 async function assertQuantityAllowed(
   ctx: any,
   siteId: number,
@@ -144,7 +144,7 @@ async function assertQuantityAllowed(
   }
   if (site?.process_type === WO_PROCESS.BIOREMEDIATION) {
     throw businessRule(
-      "Miscellaneous expenses don't use oil zapper. Choose a vendor to deduct it.",
+      "Miscellaneous expenses don't procure oil zapper. Choose a vendor to record it.",
     );
   }
 }

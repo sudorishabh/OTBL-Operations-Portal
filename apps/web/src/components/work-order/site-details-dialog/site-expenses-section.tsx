@@ -217,8 +217,8 @@ const SiteExpensesSection = ({
   const estimateType = "estimate_sub-wo";
 
   const activityOptions: ActivityOption[] = useMemo(() => {
-    // Bioremediation has one activity, and its expenses use up the oil zapper
-    // planned with its estimate rather than a quantity of it.
+    // Bioremediation has one activity, and its expenses procure the oil
+    // zapper planned with its estimate rather than a quantity of it.
     if (isBioremediation) {
       const planned = bioremediationDataQuery.data?.contaminatedSoil?.find(
         (i: any) => i.type === estimateType,
