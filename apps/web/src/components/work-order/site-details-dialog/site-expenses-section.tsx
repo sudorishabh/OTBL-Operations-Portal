@@ -37,7 +37,6 @@ import {
   ReceiptIndianRupee,
   AlertTriangle,
   ChevronRight,
-  CornerDownRight,
   FileText,
   ShoppingCart,
   Wrench,
@@ -63,6 +62,7 @@ import {
   type StoredDocument,
 } from "@/lib/documents";
 import { differenceInCalendarDays, format, isSameDay } from "date-fns";
+import { formatDateRange } from "@/lib/wo-site-display";
 
 type ExpenseRecord = {
   id: number;
@@ -111,12 +111,12 @@ type SiteOrderItem = {
 const ORDER_GROUPS = [
   {
     type: constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
-    title: "Purchase Orders",
+    title: "Purchase orders",
     Icon: ShoppingCart,
   },
   {
     type: constants.CONTRACT_ORDER_TYPE.WORK_ORDER,
-    title: "Work Orders (Subcontract)",
+    title: "Work orders (subcontract)",
     Icon: Wrench,
   },
 ] as const;
@@ -608,9 +608,9 @@ const SiteExpensesSection = ({
     </Table>
   );
 
-  // A records table for the vendor groups, scrolling sideways when narrow.
+  // A records table on its own, such as the miscellaneous expenses.
   const renderRecordsBox = (rows: ExpenseRecord[], showVendor = true) => (
-    <div className='overflow-x-auto rounded-lg bg-gray-50'>
+    <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
       {renderRecordsTable(rows, showVendor)}
     </div>
   );
@@ -629,81 +629,39 @@ const SiteExpensesSection = ({
       return next;
     });
 
-  // A vendor's expenses, opened and closed by the arrow beside its name.
-  const renderVendorGroup = ({
-    groupKey,
-    Icon,
-    title,
-    total,
-    count,
-    content,
-    actions,
-  }: {
-    groupKey: string;
-    Icon: React.ElementType;
-    title: string;
-    total: number;
-    count: number;
-    content: React.ReactNode;
-    actions?: React.ReactNode;
-  }) => {
-    const isOpen = !collapsedGroups.has(groupKey);
-    return (
-      <div key={groupKey}>
-        <div className='flex items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-50'>
-          <button
-            type='button'
-            onClick={() => toggleGroup(groupKey)}
-            aria-expanded={isOpen}
-            className='flex min-w-0 flex-1 items-center gap-2 text-left'>
-            <ChevronRight
-              className={cn(
-                "size-4 shrink-0 text-gray-400 transition-transform",
-                isOpen && "rotate-90",
-              )}
-            />
-            <Icon className='size-3.5 shrink-0 text-purple-600' />
-            <span className='truncate text-sm font-semibold text-gray-800'>{title}</span>
-            <span className='shrink-0 rounded-full bg-gray-100 px-1.5 text-[10px] font-medium leading-4 text-gray-600'>
-              {count}
-            </span>
-          </button>
-          {actions}
-          <span className='shrink-0 text-sm font-semibold tabular-nums text-gray-800'>
-            {formatCurrency(total)}
-          </span>
-        </div>
-        {/* Indented so the table starts in line with the vendor's name. */}
-        {isOpen && (
-          <div className='flex gap-2 pb-1 pl-6'>
-            <CornerDownRight className='mt-1 size-4 shrink-0 text-purple-300' />
-            <div className='min-w-0 flex-1'>{content}</div>
-          </div>
-        )}
-      </div>
-    );
-  };
+  // A total, kept quiet while nothing is spent.
+  const renderTotal = (total: number, className?: string) => (
+    <span
+      className={cn(
+        "shrink-0 text-right tabular-nums",
+        total > 0 ? "font-semibold text-gray-900" : "text-gray-400",
+        className,
+      )}>
+      {formatCurrency(total)}
+    </span>
+  );
 
-  // Heads the vendor expenses and the miscellaneous ones, each with its total.
+  // Heads a list of groups, or the miscellaneous expenses, with its total.
   const renderSectionHeader = ({
+    Icon,
     title,
     meta,
     total,
     action,
   }: {
+    Icon: React.ElementType;
     title: string;
     meta: string;
     total: number;
     action?: React.ReactNode;
   }) => (
-    <div className='flex items-center gap-2 border-b border-gray-200 pb-1.5'>
-      <h4 className='text-[13px] font-semibold text-gray-800'>{title}</h4>
-      <span className='text-xs text-gray-400'>{meta}</span>
-      <div className='ml-auto flex items-center gap-2'>
+    <div className='flex min-h-7 items-center gap-2'>
+      <Icon className='size-3.5 shrink-0 text-gray-400' />
+      <h4 className='text-xs font-semibold text-gray-700'>{title}</h4>
+      <span className='text-[11px] text-gray-400'>{meta}</span>
+      <div className='ml-auto flex items-center gap-3'>
         {action}
-        <span className='text-sm font-semibold tabular-nums text-gray-900'>
-          {formatCurrency(total)}
-        </span>
+        {renderTotal(total, "text-sm")}
       </div>
     </div>
   );
@@ -715,24 +673,137 @@ const SiteExpensesSection = ({
       aria-label={label}
       onClick={onClick}
       disabled={isViewer}
-      className='inline-flex h-7 items-center gap-1 rounded-md bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40'>
-      <Plus className='size-3.5' />
+      className='inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 text-xs font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 disabled:cursor-not-allowed disabled:opacity-40'>
+      <Plus className='size-3.5 text-gray-500' />
       Add expense
     </button>
   );
 
-  // Expenses spent on something with its own vendors, such as a contract
-  // order requirement: a group for each, then one for each of its vendors.
+  // Expenses spent on something with its own vendors, such as a job order or
+  // a contract order requirement: a card for each, with a band per vendor.
   type ExpenseGroup = {
     key: string;
-    Icon: React.ElementType;
+    // Its number, such as the job order's.
+    badge: string;
     title: string;
+    meta?: string;
     total: number;
     vendors: { id: number; name: string }[];
     records: ExpenseRecord[];
     vendorTotal: (vendorId: number) => number;
     onAdd: (vendorId: number) => void;
     actions?: React.ReactNode;
+  };
+
+  // In the colour of the process, as on the work order page.
+  const badgeTone = isBioremediation
+    ? "bg-blue-50 text-blue-700 ring-blue-200"
+    : "bg-purple-50 text-purple-700 ring-purple-200";
+
+  // One vendor on a group: a grey band with its total, then its expenses.
+  const renderVendorBand = (
+    group: ExpenseGroup,
+    vendor: { id: number; name: string },
+  ) => {
+    const key = `${group.key}-vendor-${vendor.id}`;
+    const name = capitalFirstLetter(vendor.name);
+    const vendorRecords = group.records.filter(
+      (r) => r.contractorId === vendor.id,
+    );
+    const count = vendorRecords.length;
+    const isOpen = count > 0 && !collapsedGroups.has(key);
+
+    return (
+      <div
+        key={key}
+        className='border-t border-gray-100 first:border-t-0'>
+        <div className='flex items-center gap-3 bg-gray-50/70 py-2 pl-3 pr-3'>
+          <button
+            type='button'
+            onClick={() => toggleGroup(key)}
+            aria-expanded={isOpen}
+            disabled={count === 0}
+            className='flex min-w-0 flex-1 items-center gap-2 pl-6 text-left disabled:cursor-default'>
+            {/* Kept in place when hidden, so the names line up. */}
+            <ChevronRight
+              className={cn(
+                "size-3.5 shrink-0 text-gray-400 transition-transform",
+                isOpen && "rotate-90",
+                count === 0 && "invisible",
+              )}
+            />
+            <HardHat className='size-3.5 shrink-0 text-gray-400' />
+            <span className='truncate text-[13px] font-medium text-gray-800'>
+              {name}
+            </span>
+            <span className='shrink-0 text-[11px] text-gray-400'>
+              {count === 0
+                ? "No expenses yet"
+                : `${count} expense${count !== 1 ? "s" : ""}`}
+            </span>
+          </button>
+          {renderAddExpenseButton(`Add expense under ${name}`, () =>
+            group.onAdd(vendor.id),
+          )}
+          {renderTotal(group.vendorTotal(vendor.id), "min-w-24 text-[13px]")}
+        </div>
+        {isOpen && renderRecordsTable(vendorRecords, false)}
+      </div>
+    );
+  };
+
+  // A job order or order requirement, as a card with a band for each vendor.
+  const renderGroupCard = (group: ExpenseGroup) => {
+    const isOpen = !collapsedGroups.has(group.key);
+
+    return (
+      <div
+        key={group.key}
+        className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
+        <div className='flex items-center gap-3 px-3 py-2.5'>
+          <button
+            type='button'
+            onClick={() => toggleGroup(group.key)}
+            aria-expanded={isOpen}
+            className='flex min-w-0 flex-1 items-center gap-2 text-left'>
+            <ChevronRight
+              className={cn(
+                "size-4 shrink-0 text-gray-400 transition-transform",
+                isOpen && "rotate-90",
+              )}
+            />
+            <span
+              className={cn(
+                "shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+                badgeTone,
+              )}>
+              {group.badge}
+            </span>
+            <span className='truncate text-sm font-medium text-gray-900'>
+              {group.title}
+            </span>
+            {group.meta && (
+              <span className='hidden shrink-0 text-xs text-gray-400 md:inline'>
+                {group.meta}
+              </span>
+            )}
+          </button>
+          {group.actions}
+          {renderTotal(group.total, "min-w-24 text-sm")}
+        </div>
+        {isOpen && (
+          <div className='border-t border-gray-100'>
+            {group.vendors.length === 0 ? (
+              <p className='py-2.5 pl-9 pr-3 text-xs text-gray-400'>
+                No vendors on this yet.
+              </p>
+            ) : (
+              group.vendors.map((vendor) => renderVendorBand(group, vendor))
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   // The grouped sections, then vendor expenses in no group (recorded before
@@ -743,6 +814,7 @@ const SiteExpensesSection = ({
   }: {
     sections: {
       key: string;
+      Icon: React.ElementType;
       title: string;
       meta: string;
       emptyText: string;
@@ -774,57 +846,24 @@ const SiteExpensesSection = ({
         {sections.map((section) => (
           <section
             key={section.key}
-            className='space-y-1'>
+            className='space-y-2'>
             {renderSectionHeader({
+              Icon: section.Icon,
               title: section.title,
               meta: section.meta,
               total: section.groups.reduce((sum, group) => sum + group.total, 0),
               action: section.action,
             })}
-            {section.groups.length === 0 && emptyGroupText(section.emptyText)}
-            {section.groups.map((group) =>
-              renderVendorGroup({
-                groupKey: group.key,
-                Icon: group.Icon,
-                title: group.title,
-                total: group.total,
-                count: group.records.length,
-                actions: group.actions,
-                content: (
-                  <div className='space-y-1'>
-                    {group.vendors.length === 0 &&
-                      emptyGroupText("No vendors on this yet.")}
-                    {group.vendors.map((vendor) => {
-                      const name = capitalFirstLetter(vendor.name);
-                      const vendorRecords = group.records.filter(
-                        (r) => r.contractorId === vendor.id,
-                      );
-                      return renderVendorGroup({
-                        groupKey: `${group.key}-vendor-${vendor.id}`,
-                        Icon: HardHat,
-                        title: name,
-                        total: group.vendorTotal(vendor.id),
-                        count: vendorRecords.length,
-                        content:
-                          vendorRecords.length > 0
-                            ? renderRecordsBox(vendorRecords, false)
-                            : emptyGroupText(`No expenses under ${name} yet.`),
-                        actions: renderAddExpenseButton(
-                          `Add expense under ${name}`,
-                          () => group.onAdd(vendor.id),
-                        ),
-                      });
-                    })}
-                  </div>
-                ),
-              }),
-            )}
+            {section.groups.length === 0
+              ? emptyGroupText(section.emptyText)
+              : section.groups.map((group) => renderGroupCard(group))}
           </section>
         ))}
 
         {unassignedRecords.length > 0 && (
           <section className='space-y-2'>
             {renderSectionHeader({
+              Icon: HardHat,
               title: unassignedTitle,
               meta: `${unassignedRecords.length} expense${unassignedRecords.length !== 1 ? "s" : ""}`,
               total: expenseTotal - miscellaneousTotal - groupedTotal,
@@ -835,6 +874,7 @@ const SiteExpensesSection = ({
 
         <section className='space-y-2'>
           {renderSectionHeader({
+            Icon: ReceiptIndianRupee,
             title: "Miscellaneous",
             meta: `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
             total: miscellaneousTotal,
@@ -885,7 +925,7 @@ const SiteExpensesSection = ({
       : editingExpense?.activity_key === constants.OIL_ZAPPER.KEY);
 
   const emptyGroupText = (text: string) => (
-    <p className='py-1 text-xs text-gray-400'>
+    <p className='rounded-lg border border-dashed border-gray-200 px-3 py-2.5 text-xs text-gray-400'>
       {text}
     </p>
   );
@@ -1030,13 +1070,15 @@ const SiteExpensesSection = ({
             const items = orderItems.filter((item) => item.order_type === type);
             return {
               key: type,
+              Icon,
               title,
               meta: `${items.length} requirement${items.length !== 1 ? "s" : ""}`,
               emptyText: "No orders require anything at this site yet.",
               groups: items.map((item) => ({
                 key: `item-${item.id}`,
-                Icon,
-                title: `${orderItemTitle(item)} (${formatQty(Number(item.quantity))} ${item.unit})`,
+                badge: item.order_number,
+                title: itemLabel(item.item, item.description),
+                meta: `${formatQty(Number(item.quantity))} ${item.unit}`,
                 total: orderItemTotal(item.id),
                 vendors: item.vendors,
                 records: records.filter((r) => r.contractOrderItemId === item.id),
@@ -1053,13 +1095,15 @@ const SiteExpensesSection = ({
           sections: [
             {
               key: "job-orders",
-              title: "Job Orders",
+              Icon: ClipboardList,
+              title: "Job orders",
               meta: `${jobOrders.length} job order${jobOrders.length !== 1 ? "s" : ""}`,
               emptyText: "No job orders yet. Add one to record vendor expenses on it.",
               groups: jobOrders.map((jobOrder) => ({
                 key: `job-order-${jobOrder.id}`,
-                Icon: ClipboardList,
-                title: `${jobOrder.jo_number} · ${jobOrder.title}`,
+                badge: jobOrder.jo_number,
+                title: jobOrder.title,
+                meta: formatDateRange(jobOrder.start_date, jobOrder.end_date),
                 total: summary?.byJobOrder?.[String(jobOrder.id)] ?? 0,
                 vendors: jobOrder.vendors,
                 records: records.filter((r) => r.jobOrderId === jobOrder.id),
