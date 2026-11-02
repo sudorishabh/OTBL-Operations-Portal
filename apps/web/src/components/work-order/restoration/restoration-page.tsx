@@ -1,10 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, File, Plus, Rows3 } from "lucide-react";
+import { CheckCircle2, File, Plus } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import CustomButton from "@/components/shared/btn";
@@ -160,22 +159,12 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
         )}
 
         {rates.length > 0 && (
-          <section className={cn(PANEL, "space-y-2")}>
-            <div className='flex items-center gap-2'>
-              <Rows3 className='size-3.5 text-gray-400' />
-              <h2 className='text-[13px] font-semibold text-gray-800'>
-                Schedule of rates
-              </h2>
-              <span className='text-xs text-gray-400'>
-                with the quantity expenses have used
-              </span>
-            </div>
-            <RestorationRatesSection
-              restorationId={restoration.id}
-              rates={rates}
-              estimatedTotal={estimatedTotal}
-            />
-          </section>
+          <RestorationRatesSection
+            restorationId={restoration.id}
+            rates={rates}
+            estimatedTotal={estimatedTotal}
+            className={PANEL}
+          />
         )}
 
         <RestorationMonthlyExpenses
