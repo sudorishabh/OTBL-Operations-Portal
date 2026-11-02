@@ -21,6 +21,8 @@ interface Props {
   // Documents already saved on the record (edit forms).
   existing?: StoredDocument[];
   onRemoveExisting?: (index: number) => void;
+  // What a saved document's row says beside its name; "Saved" by default.
+  existingMeta?: (index: number) => React.ReactNode;
   allowedExtensions?: string[];
   maxSizeMB?: number;
   maxFiles?: number;
@@ -99,6 +101,7 @@ const DocumentsField = ({
   onFilesChange,
   existing = [],
   onRemoveExisting,
+  existingMeta = () => "Saved",
   allowedExtensions,
   maxSizeMB,
   maxFiles = MAX_DOCUMENTS,
@@ -139,7 +142,7 @@ const DocumentsField = ({
             <FileRow
               key={`saved-${doc.url}-${index}`}
               name={documentName(doc, index)}
-              meta='Saved'
+              meta={existingMeta(index)}
               onOpen={() => openDocument(doc)}
               onRemove={
                 onRemoveExisting && !isUploading
