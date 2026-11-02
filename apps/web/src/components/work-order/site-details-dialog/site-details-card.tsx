@@ -7,16 +7,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-import { capitalFirstLetter, constants } from "@pkg/utils";
+import { capitalFirstLetter } from "@pkg/utils";
 import { format } from "date-fns";
 import { useIsAdmin } from "@/contexts/AuthContext";
-import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
-import SiteSorAvailability from "./site-sor-availability";
-import SiteActivities from "./site-activities";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
-import SiteCompletionCertificate from "./site-completion-certificate";
 import EditSiteDatesDialog from "./edit-site-dates-dialog";
-import SiteMeasurementSheets from "./site-measurement-sheets";
 
 interface WorkOrderSiteDetails {
   id: number;
@@ -88,14 +83,10 @@ const SiteDetailsCard = ({
   ]
     .map((part) => part ?? "N/A")
     .join(", ");
-  const isBioremediation =
-    siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
-  // A site completes once its expenses use up the planned oil zapper; only
-  // then is its completion certificate taken.
+  // A bioremediation site completes once its TPH drops below the target.
   const status = siteDetails?.is_completed
     ? "completed"
     : (siteDetails?.status ?? "pending");
-  const showCertificate = !!siteDetails?.id && !!siteDetails.is_completed;
 
   return (
     <div className='bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-5 border'>
@@ -149,43 +140,6 @@ const SiteDetailsCard = ({
       {siteDetails?.id && (
         <div className='mt-4'>
           <WoSiteOperatorsSection woSiteId={siteDetails.id} />
-        </div>
-      )}
-
-      {siteDetails?.id && (
-        <SiteSorAvailability
-          woSiteId={siteDetails.id}
-          className='mt-4 pt-4 border-t border-gray-200/50'
-        />
-      )}
-
-      {siteDetails?.id && (
-        <div className='mt-4 pt-4 border-t border-gray-200/50'>
-          <SiteActivities
-            woSiteId={siteDetails.id}
-            processType={siteDetails.process_type}
-          />
-        </div>
-      )}
-
-      {isBioremediation && siteDetails?.id && (
-        <div className='mt-4 pt-4 border-t border-gray-200/50'>
-          <MobilizationCertificate woSiteId={siteDetails.id} />
-        </div>
-      )}
-
-      <div
-        className={`mt-4 pt-4 border-t border-gray-200/50 grid grid-cols-1 gap-5 ${showCertificate ? "md:grid-cols-2" : ""}`}>
-        <SiteMeasurementSheets woSiteId={siteDetails?.id} />
-
-        {showCertificate && (
-          <SiteCompletionCertificate woSiteId={siteDetails!.id} />
-        )}
-      </div>
-
-      {isBioremediation && siteDetails?.id && (
-        <div className='mt-4 pt-4 border-t border-gray-200/50'>
-          <ZeroDaySample woSiteId={siteDetails.id} />
         </div>
       )}
     </div>

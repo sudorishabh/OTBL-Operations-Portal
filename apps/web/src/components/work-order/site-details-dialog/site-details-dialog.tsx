@@ -6,7 +6,7 @@ import { capitalFirstLetter, constants } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import SiteDetailsCard from "./site-details-card";
 import SiteExpensesSection from "./site-expenses-section";
-import { BioremediationSections } from "./bioremediation-sections";
+import SiteDetailsTabs from "./site-details-tabs";
 import AddSiteVendor from "./add-site-vendor";
 import RemoveSiteVendor from "./remove-site-vendor";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
@@ -81,29 +81,34 @@ const SiteDetailDialog = () => {
         />
 
         {woSiteId > 0 && siteDetails && !contractorsQuery.isLoading ? (
-          <div className='space-y-6'>
-            <SiteExpensesSection
-              woSiteId={woSiteId}
-              processType={siteDetails?.process_type}
-              splitByContractor={isBioremediation}
-              contractors={contractors}
-              headerActions={
-                isBioremediation && (
-                  <AddSiteVendor woSiteId={woSiteId} contractors={contractors} />
-                )
-              }
-              emptyVendorActions={
-                isBioremediation
-                  ? (vendor) => (
-                      <RemoveSiteVendor woSiteId={woSiteId} vendor={vendor} />
-                    )
-                  : undefined
-              }
-            />
-            {isBioremediation && (
-              <BioremediationSections woSiteId={woSiteId} />
-            )}
-          </div>
+          <SiteDetailsTabs
+            woSiteId={woSiteId}
+            processType={siteDetails.process_type}
+            isCompleted={!!siteDetails.is_completed}
+            execution={
+              <SiteExpensesSection
+                woSiteId={woSiteId}
+                processType={siteDetails.process_type}
+                splitByContractor={isBioremediation}
+                contractors={contractors}
+                headerActions={
+                  isBioremediation && (
+                    <AddSiteVendor
+                      woSiteId={woSiteId}
+                      contractors={contractors}
+                    />
+                  )
+                }
+                emptyVendorActions={
+                  isBioremediation
+                    ? (vendor) => (
+                        <RemoveSiteVendor woSiteId={woSiteId} vendor={vendor} />
+                      )
+                    : undefined
+                }
+              />
+            }
+          />
         ) : (
           <div className='text-center py-8 text-gray-400 text-sm'>
             Loading site details...
