@@ -66,9 +66,30 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
     0,
   );
 
-  const renderBody = () => {
+  // Set up, the restoration is one panel that opens its dialog.
+  if (restoration) {
+    return (
+      <>
+        <RestorationCard
+          workOrder={workOrder}
+          restoration={restoration}
+          rates={rates}
+          estimatedTotal={estimatedTotal}
+          onOpen={() => setParam("dialog", "restoration")}
+        />
+        <RestorationDialog
+          workOrder={workOrder}
+          restoration={restoration}
+          rates={rates}
+          estimatedTotal={estimatedTotal}
+        />
+      </>
+    );
+  }
+
+  const renderState = () => {
     if (restorationQuery.isLoading) {
-      return <Skeleton className='h-28 w-full rounded-xl' />;
+      return <Skeleton className='h-20 w-full rounded-lg' />;
     }
 
     if (restorationQuery.isError) {
@@ -83,48 +104,25 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
     }
 
     // Work orders created before restoration was set up automatically.
-    if (!restoration) {
-      return (
-        <div className='flex flex-col items-start gap-3 rounded-xl border border-dashed border-gray-300 p-4 sm:flex-row sm:items-center sm:justify-between'>
-          <p className='text-sm text-gray-600'>
-            Restoration isn&apos;t set up for this work order yet.{" "}
-            {isManager
-              ? "Set it up to manage its operators, expenses and completion."
-              : "The office manager can set it up."}
-          </p>
-          {isManager && (
-            <CustomButton
-              variant='primary'
-              Icon={RotateCcw}
-              text='Set up restoration'
-              loading={setUpMutation.isPending}
-              onClick={() =>
-                setUpMutation.mutate({ work_order_id: workOrder.id })
-              }
-              disableForViewer
-            />
-          )}
-        </div>
-      );
-    }
-
     return (
-      <>
-        <RestorationCard
-          workOrder={workOrder}
-          restoration={restoration}
-          rates={rates}
-          estimatedTotal={estimatedTotal}
-          onOpen={() => setParam("dialog", "restoration")}
-        />
-
-        <RestorationDialog
-          workOrder={workOrder}
-          restoration={restoration}
-          rates={rates}
-          estimatedTotal={estimatedTotal}
-        />
-      </>
+      <div className='flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between'>
+        <p className='text-sm text-gray-600'>
+          Restoration isn&apos;t set up for this work order yet.{" "}
+          {isManager
+            ? "Set it up to manage its operators, expenses and completion."
+            : "The office manager can set it up."}
+        </p>
+        {isManager && (
+          <CustomButton
+            variant='primary'
+            Icon={RotateCcw}
+            text='Set up restoration'
+            loading={setUpMutation.isPending}
+            onClick={() => setUpMutation.mutate({ work_order_id: workOrder.id })}
+            disableForViewer
+          />
+        )}
+      </div>
     );
   };
 
@@ -134,9 +132,9 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
         Icon={RotateCcw}
         tone='restoration'
         title='Restoration'
-        description='Done across the whole work order, without sites.'
+        description='Across the whole work order'
       />
-      {renderBody()}
+      {renderState()}
     </section>
   );
 };

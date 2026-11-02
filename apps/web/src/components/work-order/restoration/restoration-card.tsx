@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ClipboardList,
   HardHat,
+  RotateCcw,
 } from "lucide-react";
 import { capitalFirstLetter } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
@@ -15,6 +16,7 @@ import { toDocuments } from "@/lib/documents";
 import type { JobOrder } from "./job-order-dialog";
 import type { RestorationRate } from "./restoration-rates-table";
 import type { Restoration } from "./restoration-section";
+import { PROCESS_TONES } from "../process-section-header";
 
 interface Props {
   workOrder: any;
@@ -55,9 +57,9 @@ const activityTone = (used: number, estimated: number) => {
   return { bar: "bg-gray-200", text: "text-gray-400" };
 };
 
-// The work order's restoration at a glance: where it stands, what has been
-// spent, and how far each activity has got, in the order the work is done.
-// The whole card opens the restoration dialog.
+// The work order's restoration section, as one panel: where it stands, what
+// has been spent, and how far each activity has got, in the order the work is
+// done. The whole panel opens the restoration dialog.
 const RestorationCard = ({
   workOrder,
   restoration,
@@ -103,39 +105,49 @@ const RestorationCard = ({
   const isOverBudget = estimatedTotal > 0 && spent > estimatedTotal;
 
   return (
-    <div className='group relative rounded-xl border border-gray-200 bg-white shadow-sm transition-colors duration-200 hover:border-purple-300 focus-within:border-purple-300 focus-within:ring-2 focus-within:ring-purple-500/30'>
-      <div className='flex flex-wrap items-start justify-between gap-x-8 gap-y-3 px-4 pb-3.5 pt-4'>
-        <div className='min-w-0'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <h3 className='text-[15px] font-semibold tracking-tight text-gray-900'>
-              {/* Stretched over the card, so the whole card opens the dialog. */}
-              <button
-                type='button'
-                onClick={onOpen}
-                className='text-left outline-none transition-colors after:absolute after:inset-0 after:rounded-xl group-hover:text-purple-700'>
-                Restoration work
-              </button>
-            </h3>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
-                status.style,
-              )}>
-              {status.label}
-            </span>
+    <section className='group relative rounded-lg border border-gray-200 bg-white transition-colors duration-200 hover:border-purple-300 focus-within:border-purple-300 focus-within:ring-2 focus-within:ring-purple-500/30'>
+      <div className='flex flex-wrap items-center justify-between gap-x-8 gap-y-4 px-6 pb-5 pt-6'>
+        <div className='flex min-w-0 items-center gap-3'>
+          <div
+            className={cn(
+              "shrink-0 rounded-lg p-2 ring-1",
+              PROCESS_TONES.restoration.icon,
+            )}>
+            <RotateCcw className='size-4' />
           </div>
-          <p className='mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500'>
-            <span className='inline-flex items-center gap-1.5'>
-              <CalendarDays className='size-3.5 text-gray-400' />
-              {formatDateRange(workOrder.start_date, workOrder.end_date)}
-            </span>
-            {note && <span className={note.tone}>{note.text}</span>}
-          </p>
+          <div className='min-w-0'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <h2 className='text-md font-semibold text-gray-900'>
+                {/* Stretched over the panel, so all of it opens the dialog. */}
+                <button
+                  type='button'
+                  onClick={onOpen}
+                  className='text-left outline-none transition-colors after:absolute after:inset-0 after:rounded-lg group-hover:text-purple-700'>
+                  Restoration
+                </button>
+              </h2>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+                  status.style,
+                )}>
+                {status.label}
+              </span>
+            </div>
+            <p className='mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500'>
+              <span>Across the whole work order</span>
+              <span className='inline-flex items-center gap-1.5'>
+                <CalendarDays className='size-3.5 text-gray-400' />
+                {formatDateRange(workOrder.start_date, workOrder.end_date)}
+              </span>
+              {note && <span className={note.tone}>{note.text}</span>}
+            </p>
+          </div>
         </div>
 
         <div className='flex items-center gap-3'>
           {estimatedTotal > 0 && (
-            <div className='w-48 sm:text-right'>
+            <div className='w-56 sm:text-right'>
               <p className='text-sm tabular-nums text-gray-500'>
                 <span
                   className={cn(
@@ -173,7 +185,7 @@ const RestorationCard = ({
             return (
               <li
                 key={rate.activity}
-                className='flex items-center gap-3 px-4 py-2.5 lg:block lg:py-3'>
+                className='flex items-center gap-3 px-6 py-3 lg:block lg:py-4'>
                 <p className='flex min-w-0 flex-1 gap-1.5 text-xs font-medium leading-4 text-gray-700 lg:min-h-8'>
                   <span className='tabular-nums text-gray-400'>{index + 1}</span>
                   <span className='line-clamp-2'>{rate.label}</span>
@@ -196,13 +208,13 @@ const RestorationCard = ({
           })}
         </ol>
       ) : (
-        <p className='border-t border-gray-100 px-4 py-3 text-xs text-gray-400'>
+        <p className='border-t border-gray-100 px-6 py-3 text-xs text-gray-400'>
           The schedule of rates has no restoration activities.
         </p>
       )}
 
       {/* Who the work is given to, through job orders. */}
-      <div className='flex flex-wrap items-center gap-x-5 gap-y-1 rounded-b-xl border-t border-gray-100 bg-gray-50/60 px-4 py-2.5 text-xs text-gray-600'>
+      <div className='flex flex-wrap items-center gap-x-5 gap-y-1 rounded-b-lg border-t border-gray-100 bg-gray-50/60 px-6 py-3 text-xs text-gray-600'>
         <span className='inline-flex items-center gap-1.5'>
           <ClipboardList className='size-3.5 text-gray-400' />
           {jobOrders.length === 0
@@ -235,7 +247,7 @@ const RestorationCard = ({
           </span>
         )}
       </div>
-    </div>
+    </section>
   );
 };
 
