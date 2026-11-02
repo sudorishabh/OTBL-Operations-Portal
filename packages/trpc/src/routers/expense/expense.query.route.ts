@@ -63,6 +63,7 @@ export const expenseQueryRouter = router({
               contractor_name: contractorTable.name,
               contract_order_item_id:
                 workOrderSiteExpenseTable.contract_order_item_id,
+              job_order_id: workOrderSiteExpenseTable.job_order_id,
               activity_key: workOrderSiteExpenseTable.activity_key,
               quantity: workOrderSiteExpenseTable.quantity,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
@@ -151,6 +152,7 @@ export const expenseQueryRouter = router({
               contractor_id: workOrderSiteExpenseTable.contractor_id,
               contract_order_item_id:
                 workOrderSiteExpenseTable.contract_order_item_id,
+              job_order_id: workOrderSiteExpenseTable.job_order_id,
               amount: workOrderSiteExpenseTable.amount,
             })
             .from(workOrderSiteExpenseTable)
@@ -163,6 +165,9 @@ export const expenseQueryRouter = router({
           // for each vendor under it.
           const byOrderItem: Record<string, number> = {};
           const byOrderItemVendor: Record<string, number> = {};
+          // The same for restoration job orders.
+          const byJobOrder: Record<string, number> = {};
+          const byJobOrderVendor: Record<string, number> = {};
 
           for (const row of activityRows) {
             const contractorKey = row.contractor_id
@@ -178,6 +183,14 @@ export const expenseQueryRouter = router({
                 (byOrderItem[itemKey] ?? 0) + Number(row.amount || 0);
               byOrderItemVendor[vendorKey] =
                 (byOrderItemVendor[vendorKey] ?? 0) + Number(row.amount || 0);
+            }
+            if (row.job_order_id) {
+              const jobKey = String(row.job_order_id);
+              const vendorKey = `${jobKey}:${contractorKey}`;
+              byJobOrder[jobKey] =
+                (byJobOrder[jobKey] ?? 0) + Number(row.amount || 0);
+              byJobOrderVendor[vendorKey] =
+                (byJobOrderVendor[vendorKey] ?? 0) + Number(row.amount || 0);
             }
 
             if (!row.activity_key) continue;
@@ -201,6 +214,8 @@ export const expenseQueryRouter = router({
             byContractor,
             byOrderItem,
             byOrderItemVendor,
+            byJobOrder,
+            byJobOrderVendor,
           };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching expense summary");
