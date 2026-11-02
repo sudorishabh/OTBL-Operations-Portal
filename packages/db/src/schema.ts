@@ -518,6 +518,8 @@ export const bioSampleTable = mysqlTable("bio_samples", {
   }).notNull(),
 
   application_month: varchar("application_month", { length: 255 }).notNull(),
+  // The day the sample was taken; older samples only have created_at.
+  sampled_on: timestamp("sampled_on"),
 
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
@@ -541,6 +543,8 @@ export const bioOilZappingTable = mysqlTable("bio_oil_zapping", {
     precision: 20,
     scale: 2,
   }),
+  // The day the oil zapper was applied; older entries only have created_at.
+  applied_on: timestamp("applied_on"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
