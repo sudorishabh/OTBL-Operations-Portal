@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SiteSorCompletion from "./site-sor-completion";
 import { BioremediationSections } from "./bioremediation-sections";
-import SiteMeasurementSheets from "./site-measurement-sheets";
 import SiteCompletionCertificate from "./site-completion-certificate";
 
 interface Props {
@@ -71,15 +70,11 @@ const SiteDetailsTabs = ({
           />
         )}
         {/* The certificate is only taken once the site is complete. */}
-        <div
-          className={cn(
-            sectionClass,
-            "grid grid-cols-1 gap-5",
-            isCompleted && "md:grid-cols-2",
-          )}>
-          <SiteMeasurementSheets woSiteId={woSiteId} />
-          {isCompleted && <SiteCompletionCertificate woSiteId={woSiteId} />}
-        </div>
+        {isCompleted && (
+          <div className={cn(sectionClass, "grid grid-cols-1 gap-5 md:grid-cols-2")}>
+            <SiteCompletionCertificate woSiteId={woSiteId} />
+          </div>
+        )}
       </TabsContent>
     </Tabs>
   );

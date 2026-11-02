@@ -10,6 +10,7 @@ import EditSiteDatesDialog from "./edit-site-dates-dialog";
 import SiteSorAvailability from "./site-sor-availability";
 import SiteEstimate from "./site-estimate";
 import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
+import SiteMeasurementSheets from "./site-measurement-sheets";
 
 interface WorkOrderSiteDetails {
   id: number;
@@ -89,6 +90,8 @@ const SiteDetailsCard = ({
     ? "completed"
     : (siteDetails?.status ?? "pending");
   const note = scheduleNote(status, siteDetails?.date, siteDetails?.end_date);
+  const isBioremediation =
+    siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
 
   return (
     <section className='rounded-lg border border-gray-200 bg-white'>
@@ -167,19 +170,30 @@ const SiteDetailsCard = ({
         />
       )}
 
-      {/* How the site was set up: the team moving on, and the baseline
-          sample taken before treatment starts. */}
-      {siteDetails?.id &&
-        siteDetails.process_type === constants.WO_PROCESS.BIOREMEDIATION && (
-          <div className='grid grid-cols-1 gap-x-6 gap-y-5 border-t border-gray-100 px-5 py-4 md:grid-cols-2'>
-            <div className='min-w-0'>
-              <MobilizationCertificate woSiteId={siteDetails.id} />
-            </div>
-            <div className='min-w-0'>
-              <ZeroDaySample woSiteId={siteDetails.id} />
-            </div>
+      {/* The site's documents. For bioremediation, how it was set up: the
+          team moving on, and the baseline sample taken before treatment
+          starts. Then the measurements behind its quantities. */}
+      {siteDetails?.id && (
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-x-6 gap-y-5 border-t border-gray-100 px-5 py-4",
+            isBioremediation && "md:grid-cols-2 xl:grid-cols-3",
+          )}>
+          {isBioremediation && (
+            <>
+              <div className='min-w-0'>
+                <MobilizationCertificate woSiteId={siteDetails.id} />
+              </div>
+              <div className='min-w-0'>
+                <ZeroDaySample woSiteId={siteDetails.id} />
+              </div>
+            </>
+          )}
+          <div className='min-w-0'>
+            <SiteMeasurementSheets woSiteId={siteDetails.id} />
           </div>
-        )}
+        </div>
+      )}
     </section>
   );
 };
