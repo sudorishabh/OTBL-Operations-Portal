@@ -115,7 +115,6 @@ const RestorationHeader = ({
       <WoSiteOperatorsSection
         woSiteId={restoration.id}
         subject='restoration'
-        variant='inline'
         className='border-t border-gray-100 px-5 py-4'
       />
     </section>

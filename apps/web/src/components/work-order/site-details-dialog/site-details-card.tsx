@@ -142,7 +142,6 @@ const SiteDetailsCard = ({
       {siteDetails?.id && (
         <WoSiteOperatorsSection
           woSiteId={siteDetails.id}
-          variant='inline'
           className='border-t border-gray-100 px-5 py-4'
         />
       )}
