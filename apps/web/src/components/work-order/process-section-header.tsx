@@ -33,7 +33,7 @@ const ProcessSectionHeader = ({
         <Icon className='size-4' />
       </div>
       <div>
-        <h2 className='text-md font-semibold text-gray-900'>{title}</h2>
+        <h2 className='text-base font-semibold text-gray-900'>{title}</h2>
         <p className='text-xs text-gray-500'>{description}</p>
       </div>
     </div>

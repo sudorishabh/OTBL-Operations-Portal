@@ -117,7 +117,7 @@ const RestorationCard = ({
           </div>
           <div className='min-w-0'>
             <div className='flex flex-wrap items-center gap-2'>
-              <h2 className='text-md font-semibold text-gray-900'>
+              <h2 className='text-base font-semibold text-gray-900'>
                 {/* Stretched over the panel, so all of it opens the dialog. */}
                 <button
                   type='button'
