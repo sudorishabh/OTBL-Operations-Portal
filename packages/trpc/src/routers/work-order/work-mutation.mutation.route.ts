@@ -490,4 +490,37 @@ export const workOrderMutationRouter = router({
         });
       }),
     ),
+
+  // Admins can correct the dates a site runs over. The restoration row runs
+  // over its work order's dates, so it changes with the work order instead.
+  updateWorkOrderSiteDates: adminProcedure
+    .input(workOrderSchemas.updateWorkOrderSiteDatesSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const [woSite] = await ctx.db
+          .select({ site_id: workOrderSiteTable.site_id })
+          .from(workOrderSiteTable)
+          .where(eq(workOrderSiteTable.id, input.id));
+
+        if (!woSite) {
+          throw notFound("Work order site", input.id);
+        }
+        if (woSite.site_id === null) {
+          throw businessRule(
+            "Restoration runs over the work order's dates. Edit the work order to change them.",
+          );
+        }
+
+        try {
+          await ctx.db
+            .update(workOrderSiteTable)
+            .set({ date: input.date, end_date: input.end_date })
+            .where(eq(workOrderSiteTable.id, input.id));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Updating work order site dates");
+        }
+      }),
+    ),
 });
