@@ -1,17 +1,13 @@
-import { Badge } from "@/components/ui/badge";
 import React from "react";
-import {
-  Calendar,
-  MapPin,
-  FolderOpen,
-  ChevronRight,
-} from "lucide-react";
+import { CalendarDays, ChevronRight, FolderOpen, MapPin } from "lucide-react";
 
-import { capitalFirstLetter } from "@pkg/utils";
-import { format } from "date-fns";
+import { constants } from "@pkg/utils";
+import { cn } from "@/lib/utils";
+import { formatDateRange, scheduleNote } from "@/lib/wo-site-display";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import EditSiteDatesDialog from "./edit-site-dates-dialog";
+import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 
 interface WorkOrderSiteDetails {
   id: number;
@@ -56,6 +52,22 @@ interface Props {
   onOpenOperatorUploads?: () => void;
 }
 
+// Matches the site cards on the work order page.
+const STATUS_STYLES: Record<
+  WorkOrderSiteDetails["status"],
+  { label: string; pill: string }
+> = {
+  pending: { label: "Pending", pill: "bg-amber-50 text-amber-700 ring-amber-200" },
+  completed: {
+    label: "Complete",
+    pill: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  },
+  cancelled: {
+    label: "Cancelled",
+    pill: "bg-rose-50 text-rose-700 ring-rose-200",
+  },
+};
+
 const SiteDetailsCard = ({
   siteDetails,
   operatorUploadsCount = 0,
@@ -63,86 +75,92 @@ const SiteDetailsCard = ({
 }: Props) => {
   const isAdmin = useIsAdmin();
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-emerald-50 text-emerald-600 border-emerald-100";
-      case "cancelled":
-        return "bg-red-50 text-red-600 border-red-100";
-      default:
-        return "bg-amber-50 text-amber-600 border-amber-100";
-    }
-  };
-
-  const formatDate = (value: string | undefined) =>
-    value ? format(new Date(value), "dd MMM yyyy") : "N/A";
   const address = [
     siteDetails?.site?.address,
     siteDetails?.site?.city,
     siteDetails?.site?.state,
   ]
-    .map((part) => part ?? "N/A")
+    .filter(Boolean)
     .join(", ");
   // A bioremediation site completes once its TPH drops below the target.
   const status = siteDetails?.is_completed
     ? "completed"
     : (siteDetails?.status ?? "pending");
+  const note = scheduleNote(status, siteDetails?.date, siteDetails?.end_date);
 
   return (
-    <div className='bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-5 border'>
-      <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
-        <div className='flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-2 text-xs text-gray-700'>
-          <h3 className='text-xs font-medium text-gray-500 uppercase tracking-wide'>
-            Site Information
-          </h3>
-          <span className='inline-flex items-center gap-1.5 whitespace-nowrap font-medium'>
-            <Calendar className='w-3.5 h-3.5 text-gray-400' />
-            {formatDate(siteDetails?.date)}
-            <span className='text-gray-400'>→</span>
-            {formatDate(siteDetails?.end_date)}
-            {isAdmin && siteDetails && (
-              <EditSiteDatesDialog
-                woSiteId={siteDetails.id}
-                date={siteDetails.date}
-                endDate={siteDetails.end_date}
-              />
-            )}
-          </span>
-          <span
-            className='inline-flex min-w-0 max-w-full items-center gap-1.5'
-            title={address}>
-            <MapPin className='w-3.5 h-3.5 shrink-0 text-gray-400' />
-            <span className='truncate'>{address}</span>
-          </span>
+    <section className='rounded-lg border border-gray-200 bg-white'>
+      <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-4'>
+        <div className='min-w-0 flex-1'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <h3 className='text-sm font-semibold text-gray-900'>
+              Site information
+            </h3>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+                STATUS_STYLES[status].pill,
+              )}>
+              {STATUS_STYLES[status].label}
+            </span>
+          </div>
+          <div className='mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500'>
+            <span className='inline-flex items-center gap-1.5 whitespace-nowrap'>
+              <CalendarDays className='size-3.5 text-gray-400' />
+              {formatDateRange(siteDetails?.date, siteDetails?.end_date)}
+              {isAdmin && siteDetails && (
+                <EditSiteDatesDialog
+                  woSiteId={siteDetails.id}
+                  date={siteDetails.date}
+                  endDate={siteDetails.end_date}
+                />
+              )}
+            </span>
+            {note && <span className={note.tone}>{note.text}</span>}
+            <span
+              className='inline-flex min-w-0 max-w-full items-center gap-1.5'
+              title={address || undefined}>
+              <MapPin className='size-3.5 shrink-0 text-gray-400' />
+              <span className='truncate'>{address || "No address"}</span>
+            </span>
+          </div>
         </div>
-        <div className='flex items-center gap-2'>
-          {operatorUploadsCount > 0 && onOpenOperatorUploads && (
-            <button
-              type='button'
-              onClick={onOpenOperatorUploads}
-              title='View operator uploads'
-              className='group inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-white px-2.5 py-1 text-[10px] font-semibold text-emerald-700 shadow-xs cursor-pointer hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-sm active:scale-[0.98] transition-all'>
-              <FolderOpen className='size-3' />
-              <span>
-                {operatorUploadsCount} operator{" "}
-                {operatorUploadsCount === 1 ? "upload" : "uploads"}
-              </span>
-              <ChevronRight className='size-3 -mr-0.5 transition-transform group-hover:translate-x-0.5' />
-            </button>
-          )}
-          <Badge
-            className={`text-[10px] border ${getStatusColor(status)}`}>
-            {capitalFirstLetter(status)}
-          </Badge>
-        </div>
+        {operatorUploadsCount > 0 && onOpenOperatorUploads && (
+          <button
+            type='button'
+            onClick={onOpenOperatorUploads}
+            title='View operator uploads'
+            className='group inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+            <FolderOpen className='size-3.5 text-gray-400' />
+            {operatorUploadsCount} operator{" "}
+            {operatorUploadsCount === 1 ? "upload" : "uploads"}
+            <ChevronRight className='-mr-0.5 size-3.5 text-gray-400 transition-transform group-hover:translate-x-0.5' />
+          </button>
+        )}
       </div>
 
       {siteDetails?.id && (
-        <div className='mt-4'>
-          <WoSiteOperatorsSection woSiteId={siteDetails.id} />
-        </div>
+        <WoSiteOperatorsSection
+          woSiteId={siteDetails.id}
+          variant='inline'
+          className='border-t border-gray-100 px-5 py-4'
+        />
       )}
-    </div>
+
+      {/* How the site was set up: the team moving on, and the baseline
+          sample taken before treatment starts. */}
+      {siteDetails?.id &&
+        siteDetails.process_type === constants.WO_PROCESS.BIOREMEDIATION && (
+          <div className='grid grid-cols-1 gap-x-6 gap-y-5 border-t border-gray-100 px-5 py-4 md:grid-cols-2'>
+            <div className='min-w-0'>
+              <MobilizationCertificate woSiteId={siteDetails.id} />
+            </div>
+            <div className='min-w-0'>
+              <ZeroDaySample woSiteId={siteDetails.id} />
+            </div>
+          </div>
+        )}
+    </section>
   );
 };
 

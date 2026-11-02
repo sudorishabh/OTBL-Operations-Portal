@@ -97,12 +97,12 @@ export const MobilizationCertificate = ({ woSiteId }: Props) => {
     <div className='space-y-3'>
       <div>
         <div className='flex items-center gap-2'>
-          <Truck className='w-3.5 h-3.5 text-emerald-500' />
+          <Truck className='size-3.5 text-gray-400' />
           <span className='text-xs font-medium text-gray-700'>
             Mobilization Certificate
           </span>
         </div>
-        <p className='mt-0.5 text-[10px] text-gray-400'>
+        <p className='mt-0.5 text-[11px] text-gray-400'>
           Certifies the team and equipment have moved onto the site.
         </p>
       </div>
@@ -124,7 +124,6 @@ export const MobilizationCertificate = ({ woSiteId }: Props) => {
         }}
         isUploading={isUploading}
         progress={progress}
-        className='rounded-xl'
       />
 
       {files.length > 0 && (
@@ -225,40 +224,40 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
     <div className='space-y-3'>
       <div>
         <div className='flex items-center gap-2'>
-          <FlaskConical className='w-3.5 h-3.5 text-emerald-500' />
+          <FlaskConical className='size-3.5 text-gray-400' />
           <span className='text-xs font-medium text-gray-700'>
             0-Day Bio Sample Report
           </span>
         </div>
-        <p className='mt-0.5 text-[10px] text-gray-400'>
+        <p className='mt-0.5 text-[11px] text-gray-400'>
           Taken before the first application, as the site's baseline TPH.
         </p>
       </div>
 
       {bioremediationDataQuery.isLoading ? (
-        <div className='flex justify-center py-4 text-slate-400'>
+        <div className='flex justify-center py-4 text-gray-400'>
           <Loader2 className='size-5 animate-spin' />
         </div>
       ) : sample ? (
-        <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs'>
-          <div className='flex flex-wrap items-center gap-4'>
-            <span className='inline-flex items-center rounded-md border border-emerald-100 bg-emerald-50 px-2 py-1 font-mono text-[10px] text-emerald-700'>
-              TPH: {sample.tph_value}
+        <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 text-xs'>
+          <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5'>
+            <span className='rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-emerald-700 ring-1 ring-inset ring-emerald-200'>
+              TPH {sample.tph_value}
             </span>
             <DocumentsMenu
               documents={sampleDocuments}
               align='start'>
               <button
                 type='button'
-                className='inline-flex cursor-pointer items-center gap-1.5 text-blue-600 transition-colors hover:text-blue-800 hover:underline'>
-                <FileText className='size-3.5' />
+                className='inline-flex cursor-pointer items-center gap-1.5 font-medium text-gray-700 transition-colors hover:text-emerald-700 hover:underline'>
+                <FileText className='size-3.5 text-gray-400' />
                 {sampleDocuments.length === 1
-                  ? "View Doc"
-                  : `${sampleDocuments.length} Docs`}
+                  ? "View report"
+                  : `${sampleDocuments.length} reports`}
               </button>
             </DocumentsMenu>
-            <span className='text-slate-500'>
-              Added {format(new Date(sample.created_at), "dd MMM yyyy")}
+            <span className='text-gray-500'>
+              Added {format(new Date(sample.created_at), "d MMM yy")}
             </span>
           </div>
           <Button
@@ -270,8 +269,9 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
                 deleteSample.mutate({ id: sample.id });
               }
             }}
-            className='h-8 w-8 p-0 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500'>
-            <Trash2 className='size-4' />
+            title='Delete zero day sample'
+            className='h-7 w-7 p-0 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500'>
+            <Trash2 className='size-3.5' />
           </Button>
         </div>
       ) : (
@@ -282,12 +282,11 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
             onFilesChange={setFiles}
             isUploading={isUploading}
             progress={progress}
-            className='rounded-xl'
           />
           <div className='flex flex-wrap items-end justify-between gap-3'>
             <div className='w-full sm:w-48'>
-              <label className='mb-1 block text-[10px] font-medium text-slate-600'>
-                TPH Value
+              <label className='mb-1 block text-xs text-gray-500'>
+                TPH value
               </label>
               <Input
                 inputMode='decimal'

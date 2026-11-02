@@ -83,12 +83,12 @@ const SiteCompletionCertificate = ({ woSiteId }: Props) => {
     <div className='space-y-3'>
       <div>
         <div className='flex items-center gap-2'>
-          <FileCheck className='w-3.5 h-3.5 text-emerald-500' />
+          <FileCheck className='size-3.5 text-gray-400' />
           <span className='text-xs font-medium text-gray-700'>
             Completion Certificate
           </span>
         </div>
-        <p className='mt-0.5 text-[10px] text-gray-400'>
+        <p className='mt-0.5 text-[11px] text-gray-400'>
           The signed certificate for the finished site.
         </p>
       </div>
@@ -110,7 +110,6 @@ const SiteCompletionCertificate = ({ woSiteId }: Props) => {
         }}
         isUploading={isUploading}
         progress={progress}
-        className='rounded-xl'
       />
 
       {files.length > 0 && (

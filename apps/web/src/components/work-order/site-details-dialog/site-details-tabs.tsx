@@ -4,7 +4,6 @@ import { Calculator, CheckCircle2, Receipt } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 import SiteSorAvailability from "./site-sor-availability";
 import SiteActivities from "./site-activities";
 import SiteSorCompletion from "./site-sor-completion";
@@ -71,16 +70,6 @@ const SiteDetailsTabs = ({
             processType={processType}
           />
         </div>
-        {isBioremediation && (
-          <>
-            <div className={sectionClass}>
-              <MobilizationCertificate woSiteId={woSiteId} />
-            </div>
-            <div className={sectionClass}>
-              <ZeroDaySample woSiteId={woSiteId} />
-            </div>
-          </>
-        )}
       </TabsContent>
 
       <TabsContent value='execution'>{execution}</TabsContent>

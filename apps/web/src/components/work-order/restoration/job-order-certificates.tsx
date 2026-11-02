@@ -102,7 +102,7 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
         }}>
         <div className='space-y-4 py-2'>
           <DocumentsField
-            label='Completion certificates'
+            label='Upload completion certificates'
             files={isViewer ? [] : files}
             onFilesChange={setFiles}
             existing={savedDocuments}

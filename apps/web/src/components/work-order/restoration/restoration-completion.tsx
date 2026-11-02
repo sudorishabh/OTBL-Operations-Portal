@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { FileCheck, Upload } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import CustomButton from "@/components/shared/btn";
@@ -82,13 +83,16 @@ const RestorationCompletion = ({ restoration }: Props) => {
   };
 
   return (
-    <div className='space-y-3 rounded-xl border border-slate-200 bg-gray-100/50 p-4'>
+    <div className='space-y-3 rounded-lg border border-gray-200 bg-white p-4'>
       <div>
-        <h4 className='text-sm font-semibold text-gray-800'>
-          Completion certificate
-        </h4>
-        <p className='text-xs text-gray-500'>
-          Attach the signed certificate for the restoration.
+        <div className='flex items-center gap-2'>
+          <FileCheck className='size-3.5 text-gray-400' />
+          <h4 className='text-xs font-medium text-gray-700'>
+            Completion certificate
+          </h4>
+        </div>
+        <p className='mt-0.5 text-[11px] text-gray-400'>
+          The signed certificate for the finished restoration.
         </p>
       </div>
 
@@ -109,13 +113,13 @@ const RestorationCompletion = ({ restoration }: Props) => {
         }}
         isUploading={isUploading}
         progress={progress}
-        className='rounded-xl'
       />
 
       {files.length > 0 && (
         <div className='flex justify-end'>
           <CustomButton
             variant='primary'
+            Icon={Upload}
             text='Upload certificate'
             loading={isSaving}
             disabled={isSaving}

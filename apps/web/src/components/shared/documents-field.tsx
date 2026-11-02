@@ -21,6 +21,8 @@ interface Props {
   // Documents already saved on the record (edit forms).
   existing?: StoredDocument[];
   onRemoveExisting?: (index: number) => void;
+  // What a saved document's row says beside its name; "Saved" by default.
+  existingMeta?: (index: number) => React.ReactNode;
   allowedExtensions?: string[];
   maxSizeMB?: number;
   maxFiles?: number;
@@ -51,13 +53,13 @@ const FileRow = ({
   const { Icon, bg, text } = getFileTypeStyle(name);
 
   return (
-    <li className='flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2'>
+    <li className='flex items-center gap-2.5 px-2.5 py-1.5'>
       <span
         className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-md",
+          "flex size-6 shrink-0 items-center justify-center rounded",
           bg,
         )}>
-        <Icon className={cn("size-4", text)} />
+        <Icon className={cn("size-3.5", text)} />
       </span>
       <div className='min-w-0 flex-1'>
         {onOpen ? (
@@ -65,25 +67,25 @@ const FileRow = ({
             type='button'
             onClick={onOpen}
             title={name}
-            className='block max-w-full cursor-pointer truncate text-left text-sm font-medium text-gray-700 hover:text-emerald-700 hover:underline'>
+            className='block max-w-full cursor-pointer truncate text-left text-xs font-medium text-gray-700 hover:text-emerald-700 hover:underline'>
             {name}
           </button>
         ) : (
           <p
-            className='truncate text-sm font-medium text-gray-700'
+            className='truncate text-xs font-medium text-gray-700'
             title={name}>
             {name}
           </p>
         )}
-        <p className='text-xs text-gray-400'>{meta}</p>
       </div>
+      <span className='shrink-0 text-[11px] text-gray-400'>{meta}</span>
       {onRemove && (
         <button
           type='button'
           onClick={onRemove}
           aria-label={removeLabel}
           title={removeLabel}
-          className='flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500'>
+          className='flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500'>
           <X className='size-3.5' />
         </button>
       )}
@@ -99,6 +101,7 @@ const DocumentsField = ({
   onFilesChange,
   existing = [],
   onRemoveExisting,
+  existingMeta = () => "Saved",
   allowedExtensions,
   maxSizeMB,
   maxFiles = MAX_DOCUMENTS,
@@ -134,12 +137,12 @@ const DocumentsField = ({
       )}
 
       {totalCount > 0 && (
-        <ul className='space-y-1.5'>
+        <ul className='divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white'>
           {existing.map((doc, index) => (
             <FileRow
               key={`saved-${doc.url}-${index}`}
               name={documentName(doc, index)}
-              meta='Saved'
+              meta={existingMeta(index)}
               onOpen={() => openDocument(doc)}
               onRemove={
                 onRemoveExisting && !isUploading
@@ -153,7 +156,16 @@ const DocumentsField = ({
             <FileRow
               key={`pending-${file.name}-${file.lastModified}-${index}`}
               name={file.name}
-              meta={`${formatFileSize(file.size)}, uploads when you save`}
+              meta={
+                <>
+                  {formatFileSize(file.size)}
+                  <span
+                    className='ml-2 text-amber-600'
+                    title='Uploads when you save'>
+                    Not saved
+                  </span>
+                </>
+              }
               onRemove={
                 isUploading
                   ? undefined
@@ -171,17 +183,12 @@ const DocumentsField = ({
             value={progress}
             className='h-1.5 flex-1'
           />
-          <span className='text-xs tabular-nums text-gray-500'>
+          <span className='text-[11px] tabular-nums text-gray-500'>
             Uploading {progress}%
           </span>
         </div>
       )}
 
-      {totalCount > 0 && (
-        <p className='text-xs text-gray-400'>
-          {totalCount} of {maxFiles} files
-        </p>
-      )}
     </div>
   );
 };
