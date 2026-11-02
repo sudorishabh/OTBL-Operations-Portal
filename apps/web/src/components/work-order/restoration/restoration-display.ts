@@ -2,6 +2,20 @@ import { capitalFirstLetter } from "@pkg/utils";
 import type { JobOrder } from "./job-order-dialog";
 import type { Restoration } from "./restoration-section";
 
+// Allowance for decimal rounding when comparing quantities.
+export const QTY_EPSILON = 0.001;
+
+export const percentOf = (part: number, whole: number) =>
+  whole > 0 ? Math.min(100, (part / whole) * 100) : 0;
+
+// How far one activity's schedule of rates quantity has been used.
+export const activityTone = (used: number, estimated: number) => {
+  if (used > estimated + QTY_EPSILON) return { bar: "bg-rose-500", text: "text-rose-600" };
+  if (used + QTY_EPSILON >= estimated) return { bar: "bg-emerald-500", text: "text-emerald-700" };
+  if (used > 0) return { bar: "bg-purple-500", text: "text-gray-600" };
+  return { bar: "bg-gray-200", text: "text-gray-400" };
+};
+
 const STATUS_STYLES = {
   complete: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   inProgress: "bg-purple-50 text-purple-700 ring-purple-200",

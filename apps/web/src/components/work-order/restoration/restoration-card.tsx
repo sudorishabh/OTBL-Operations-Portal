@@ -17,7 +17,12 @@ import type { JobOrder } from "./job-order-dialog";
 import type { RestorationRate } from "./restoration-rates-table";
 import type { Restoration } from "./restoration-section";
 import { PROCESS_TONES } from "../process-section-header";
-import { jobOrderVendorNames, restorationStatus } from "./restoration-display";
+import {
+  activityTone,
+  jobOrderVendorNames,
+  percentOf,
+  restorationStatus,
+} from "./restoration-display";
 
 interface Props {
   workOrder: any;
@@ -28,9 +33,6 @@ interface Props {
   href: string;
 }
 
-// Allowance for decimal rounding when comparing quantities.
-const QTY_EPSILON = 0.001;
-
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -40,17 +42,6 @@ const formatCurrency = (amount: number) =>
 
 const formatQty = (value: number) =>
   new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
-
-const percentOf = (part: number, whole: number) =>
-  whole > 0 ? Math.min(100, (part / whole) * 100) : 0;
-
-// How far one activity's schedule of rates quantity has been used.
-const activityTone = (used: number, estimated: number) => {
-  if (used > estimated + QTY_EPSILON) return { bar: "bg-rose-500", text: "text-rose-600" };
-  if (used + QTY_EPSILON >= estimated) return { bar: "bg-emerald-500", text: "text-emerald-700" };
-  if (used > 0) return { bar: "bg-purple-500", text: "text-gray-600" };
-  return { bar: "bg-gray-200", text: "text-gray-400" };
-};
 
 // The work order's restoration section, as one panel: where it stands, what
 // has been spent, and how far each activity has got, in the order the work is
