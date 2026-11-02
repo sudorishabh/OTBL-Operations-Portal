@@ -277,9 +277,8 @@ const AddExpenseDialog = ({
   const handleSaved = (message: string) => {
     utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: workOrderSiteId });
     utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: workOrderSiteId });
-    // Using up the schedule of rates completes a restoration, or reopens it,
-    // and using up the planned oil zapper does the same for a bioremediation
-    // site.
+    // Using up the schedule of rates completes a restoration, or reopens it.
+    // A bioremediation site's oil zapper stock changes with its expenses.
     utils.restorationQuery.getRestoration.invalidate();
     utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: workOrderSiteId });
     utils.workOrderQuery.getWorkOrderDetails.invalidate();
