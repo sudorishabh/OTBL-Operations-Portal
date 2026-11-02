@@ -1,10 +1,9 @@
 "use client";
 import React from "react";
-import { Calculator, CheckCircle2, Receipt } from "lucide-react";
+import { CheckCircle2, Receipt } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import SiteActivities from "./site-activities";
 import SiteSorCompletion from "./site-sor-completion";
 import { BioremediationSections } from "./bioremediation-sections";
 import SiteMeasurementSheets from "./site-measurement-sheets";
@@ -20,8 +19,8 @@ interface Props {
 
 const sectionClass = "pt-4 border-t border-gray-200/60 first:pt-0 first:border-t-0";
 
-// A site's work in three stages: what it is estimated to take, what is
-// spent carrying it out, and how its completion is proven.
+// A site's work after its estimate: what is done and spent carrying it out,
+// and how its completion is proven.
 const SiteDetailsTabs = ({
   woSiteId,
   processType,
@@ -33,15 +32,9 @@ const SiteDetailsTabs = ({
   return (
     <Tabs
       key={woSiteId}
-      defaultValue='estimation'
+      defaultValue='execution'
       className='gap-4'>
-      <TabsList className='grid w-full sm:w-[420px] grid-cols-3 h-8'>
-        <TabsTrigger
-          value='estimation'
-          className='gap-2 text-xs text-gray-800'>
-          <Calculator className='size-3.5 text-gray-500' />
-          Estimation
-        </TabsTrigger>
+      <TabsList className='grid w-full sm:w-[280px] grid-cols-2 h-8'>
         <TabsTrigger
           value='execution'
           className='gap-2 text-xs text-gray-800'>
@@ -55,13 +48,6 @@ const SiteDetailsTabs = ({
           Completion
         </TabsTrigger>
       </TabsList>
-
-      <TabsContent value='estimation'>
-        <SiteActivities
-          woSiteId={woSiteId}
-          processType={processType}
-        />
-      </TabsContent>
 
       {/* The work carried out at a bioremediation site, then what it cost. */}
       <TabsContent

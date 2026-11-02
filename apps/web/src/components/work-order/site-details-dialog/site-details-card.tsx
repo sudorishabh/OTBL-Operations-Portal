@@ -8,6 +8,7 @@ import { useIsAdmin } from "@/contexts/AuthContext";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import EditSiteDatesDialog from "./edit-site-dates-dialog";
 import SiteSorAvailability from "./site-sor-availability";
+import SiteEstimate from "./site-estimate";
 import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 
 interface WorkOrderSiteDetails {
@@ -152,6 +153,16 @@ const SiteDetailsCard = ({
       {siteDetails?.id && (
         <SiteSorAvailability
           woSiteId={siteDetails.id}
+          className='border-t border-gray-100 px-5 py-4'
+        />
+      )}
+
+      {/* What the site is estimated to take, which sets its share of the
+          work order's schedule of rates. */}
+      {siteDetails?.id && (
+        <SiteEstimate
+          woSiteId={siteDetails.id}
+          processType={siteDetails.process_type}
           className='border-t border-gray-100 px-5 py-4'
         />
       )}

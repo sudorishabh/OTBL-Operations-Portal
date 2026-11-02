@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { constants } from "@pkg/utils";
 import { Calculator, Pencil } from "lucide-react";
 import DocumentsField from "@/components/shared/documents-field";
@@ -460,12 +461,14 @@ const EstimateForm = ({
 
 // The site's estimate: its document, and the quantities it sets for each of
 // the site's activities.
-const SiteActivities = ({
+const SiteEstimate = ({
   woSiteId,
   processType,
+  className,
 }: {
   woSiteId: number;
   processType: string | undefined;
+  className?: string;
 }) => {
   const siteActivitiesQuery =
     trpc.workOrderSiteQuery.getSiteActivities.useQuery(
@@ -497,7 +500,7 @@ const SiteActivities = ({
   );
 
   return (
-    <div className='space-y-3'>
+    <div className={cn("space-y-3", className)}>
       <div>
         <div className='flex items-center gap-2'>
           <Calculator className='w-3.5 h-3.5 text-emerald-500' />
@@ -527,4 +530,4 @@ const SiteActivities = ({
   );
 };
 
-export default SiteActivities;
+export default SiteEstimate;
