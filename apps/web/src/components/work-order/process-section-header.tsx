@@ -4,11 +4,9 @@ import { cn } from "@/lib/utils";
 // Each process keeps the colour of its badge on the work order details card.
 export const PROCESS_TONES = {
   bioremediation: {
-    section: "border-l-blue-500",
     icon: "bg-blue-50 text-blue-700 ring-blue-100",
   },
   restoration: {
-    section: "border-l-purple-500",
     icon: "bg-purple-50 text-purple-700 ring-purple-100",
   },
 } as const;
@@ -35,7 +33,7 @@ const ProcessSectionHeader = ({
         <Icon className='size-4' />
       </div>
       <div>
-        <h2 className='text-md font-semibold text-gray-900'>{title}</h2>
+        <h2 className='text-base font-semibold text-gray-900'>{title}</h2>
         <p className='text-xs text-gray-500'>{description}</p>
       </div>
     </div>

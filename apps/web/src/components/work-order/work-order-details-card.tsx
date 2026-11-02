@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import {
   Building2,
@@ -62,31 +61,47 @@ interface Props {
   } | null;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  completed: "bg-green-100 text-green-800 border-green-200",
-  cancelled: "bg-red-100 text-red-800 border-red-200",
-  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+const STATUS_STYLES: Record<Props["workOrder"]["status"], string> = {
+  completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
+  pending: "bg-amber-50 text-amber-700 ring-amber-200",
 };
 
 const PROCESS_STYLES: Record<string, string> = {
-  [constants.WO_PROCESS.BIOREMEDIATION]:
-    "bg-blue-100 text-blue-800 border-blue-200",
-  [constants.WO_PROCESS.RESTORATION]:
-    "bg-purple-100 text-purple-800 border-purple-200",
+  [constants.WO_PROCESS.BIOREMEDIATION]: "bg-blue-50 text-blue-700 ring-blue-200",
+  [constants.WO_PROCESS.RESTORATION]: "bg-purple-50 text-purple-700 ring-purple-200",
   [constants.WO_PROCESS.BIOREMEDIATION_RESTORATION]:
-    "bg-orange-100 text-orange-800 border-orange-200",
+    "bg-orange-50 text-orange-700 ring-orange-200",
 };
+
+// A small outlined pill, as the process sections use for status.
+const Pill = ({
+  className,
+  title,
+  children,
+}: {
+  className: string;
+  title?: string;
+  children: React.ReactNode;
+}) => (
+  <span
+    title={title}
+    className={cn(
+      "rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+      className,
+    )}>
+    {children}
+  </span>
+);
 
 const Empty = () => <span className='text-gray-300'>&mdash;</span>;
 
 // Dense label/value pair used across the detail grid.
 const Field = ({ label, value }: { label: string; value?: string | null }) => (
   <div className='min-w-0'>
-    <div className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
-      {label}
-    </div>
+    <div className='text-xs text-gray-500'>{label}</div>
     <p
-      className='mt-0.5 truncate text-[14px] font-medium text-gray-700'
+      className='mt-0.5 truncate text-[13px] font-medium text-gray-800'
       title={value || undefined}>
       {value || <Empty />}
     </p>
@@ -107,19 +122,17 @@ const Metric = ({
   valueClass?: string;
   hintClass?: string;
 }) => (
-  <div className='min-w-0 px-4 py-2.5'>
-    <div className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
-      {label}
-    </div>
+  <div className='min-w-0 px-6 py-3'>
+    <div className='text-xs text-gray-500'>{label}</div>
     <div
       className={cn(
-        "mt-0.5 truncate text-[16px] font-semibold leading-tight",
+        "mt-0.5 truncate text-sm font-semibold tabular-nums leading-tight",
         valueClass,
       )}>
       {value}
     </div>
     {/* Fixed height keeps tiles aligned when a metric has no qualifier. */}
-    <div className={cn("h-4 truncate text-[12px] leading-4", hintClass)}>
+    <div className={cn("h-4 truncate text-[11px] leading-4", hintClass)}>
       {hint}
     </div>
   </div>
@@ -159,33 +172,31 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
   const hasNotes = !!(workOrder.description || workOrder.remarks);
 
   return (
-    <div className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+    <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
       {/* Identity */}
-      <div className='flex flex-wrap items-start justify-between gap-x-4 gap-y-3 px-4 py-3'>
-        <div className='flex min-w-0 items-start gap-3'>
-          <div className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 ring-1 ring-inset ring-emerald-100'>
-            <FileText className='size-4 text-emerald-600' />
+      <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-6 py-5'>
+        <div className='flex min-w-0 items-center gap-3'>
+          <div className='shrink-0 rounded-lg bg-emerald-50 p-2 text-emerald-700 ring-1 ring-emerald-100'>
+            <FileText className='size-4' />
           </div>
           <div className='min-w-0'>
             <h2
-              className='truncate text-[16px] font-semibold tracking-tight text-gray-900'
+              className='truncate text-base font-semibold text-gray-900'
               title={workOrder.title}>
               {capitalFirstLetter(workOrder.title)}
             </h2>
-            <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-gray-500'>
+            <div className='mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500'>
               <span className='font-mono font-medium text-gray-700'>
                 {workOrder.code.toUpperCase()}
               </span>
-              <span className='text-gray-300'>&middot;</span>
-              <span className='inline-flex min-w-0 items-center gap-1'>
-                <Building2 className='size-3 shrink-0 text-gray-400' />
+              <span className='inline-flex min-w-0 items-center gap-1.5'>
+                <Building2 className='size-3.5 shrink-0 text-gray-400' />
                 <span className='truncate'>
                   {workOrder.office_name || <Empty />}
                 </span>
               </span>
-              <span className='text-gray-300'>&middot;</span>
-              <span className='inline-flex items-center gap-1'>
-                <CalendarDays className='size-3 shrink-0 text-gray-400' />
+              <span className='inline-flex items-center gap-1.5'>
+                <CalendarDays className='size-3.5 shrink-0 text-gray-400' />
                 {startDate}
               </span>
             </div>
@@ -195,34 +206,33 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
         <div className='flex flex-wrap items-center gap-1.5'>
           {workOrder.status !== "cancelled" &&
             (workOrder.is_approved ? (
-              <Badge
-                className='border border-emerald-200 bg-emerald-100 text-emerald-800'
+              <Pill
+                className='bg-emerald-50 text-emerald-700 ring-emerald-200'
                 title={
                   workOrder.approved_by_name
                     ? `Approved by ${workOrder.approved_by_name}`
                     : "Approved"
                 }>
                 Approved
-              </Badge>
+              </Pill>
             ) : (
-              <Badge
-                className='border border-amber-200 bg-amber-100 text-amber-800'
-                title='Draft · awaiting approval'>
+              <Pill
+                className='bg-amber-50 text-amber-700 ring-amber-200'
+                title='Draft, awaiting approval'>
                 Draft
-              </Badge>
+              </Pill>
             ))}
-          <Badge className={cn("border", STATUS_STYLES[workOrder.status])}>
+          <Pill className={STATUS_STYLES[workOrder.status]}>
             {capitalFirstLetter(workOrder.status)}
-          </Badge>
+          </Pill>
           {workOrder.process_type && (
-            <Badge
-              className={cn(
-                "border",
+            <Pill
+              className={
                 PROCESS_STYLES[workOrder.process_type] ??
-                  "bg-gray-100 text-gray-800 border-gray-200",
-              )}>
+                "bg-gray-50 text-gray-700 ring-gray-200"
+              }>
               {processLabel}
-            </Badge>
+            </Pill>
           )}
           <DocumentsMenu
             documents={documents}
@@ -230,7 +240,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
             <button
               type='button'
               title='View work order documents'
-              className='inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+              className='inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
               <ExternalLink className='size-3' />
               {documents.length === 1
                 ? "Document"
@@ -287,7 +297,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       </div>
 
       {/* Details */}
-      <div className='grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-3 sm:grid-cols-4 xl:grid-cols-7'>
+      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-4 xl:grid-cols-7'>
         <Field
           label='Agreement'
           value={workOrder.agreement_number?.toUpperCase()}
@@ -325,7 +335,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       </div>
 
       {hasNotes && (
-        <div className='flex items-start gap-2 border-t border-gray-100 px-4 py-2 text-[13px]'>
+        <div className='flex items-start gap-2 border-t border-gray-100 px-6 py-2.5 text-xs'>
           <div
             className={cn(
               "min-w-0 flex-1 space-y-1 text-gray-600",
@@ -333,17 +343,13 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
             )}>
             {workOrder.description && (
               <p className='leading-relaxed'>
-                <span className='font-semibold uppercase tracking-[0.08em] text-gray-400'>
-                  Description{" "}
-                </span>
+                <span className='font-medium text-gray-500'>Description </span>
                 {capitalFirstLetter(workOrder.description)}
               </p>
             )}
             {workOrder.remarks && (
               <p className='leading-relaxed'>
-                <span className='font-semibold uppercase tracking-[0.08em] text-gray-400'>
-                  Remarks{" "}
-                </span>
+                <span className='font-medium text-gray-500'>Remarks </span>
                 {capitalFirstLetter(workOrder.remarks)}
               </p>
             )}
@@ -359,12 +365,10 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       )}
 
       {workOrder.cancellation_reason && (
-        <div className='flex items-start gap-2 border-t border-rose-100 bg-rose-50/70 px-4 py-2 text-[13px]'>
+        <div className='flex items-start gap-2 border-t border-rose-100 bg-rose-50/70 px-6 py-2.5 text-xs'>
           <Ban className='mt-0.5 size-3.5 shrink-0 text-rose-500' />
           <p className='min-w-0 leading-relaxed text-rose-700'>
-            <span className='font-semibold uppercase tracking-[0.08em] text-rose-500'>
-              Cancelled{" "}
-            </span>
+            <span className='font-medium text-rose-600'>Cancelled </span>
             {workOrder.cancellation_reason}
           </p>
         </div>
