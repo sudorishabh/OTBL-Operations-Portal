@@ -46,6 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import Link from "next/link";
 import VendorDialog from "./vendor-dialog";
 import { CONTRACTOR_LABELS, type ContractorType } from "./contractor-labels";
 
@@ -194,7 +195,11 @@ const VendorPage = ({ type }: Props) => {
                 className='border-gray-100'>
                 <TableCell className={cellClass}>
                   <p className='font-medium text-gray-900'>
-                    {capitalFirstLetter(vendor.name)}
+                    <Link
+                      href={`${labels.path}/${vendor.id}`}
+                      className='hover:text-emerald-700 hover:underline'>
+                      {capitalFirstLetter(vendor.name)}
+                    </Link>
                   </p>
                   {vendor.address && (
                     <p
