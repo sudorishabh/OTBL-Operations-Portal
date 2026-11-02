@@ -29,7 +29,7 @@ import toast from "react-hot-toast";
 import DeferredFilePicker from "@/components/shared/deferred-file-picker";
 import CustomButton from "@/components/shared/btn";
 import { useIsViewer } from "@/contexts/AuthContext";
-import { MobilizationDocuments, ZeroDaySample } from "./site-mobilization";
+import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 import SiteSorAvailability from "./site-sor-availability";
 import SiteActivities from "./site-activities";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
@@ -257,7 +257,7 @@ const SiteDetailsCard = ({
 
       {isBioremediation && siteDetails?.id && (
         <div className='mt-4 pt-4 border-t border-gray-200/50'>
-          <MobilizationDocuments woSiteId={siteDetails.id} />
+          <MobilizationCertificate woSiteId={siteDetails.id} />
         </div>
       )}
 
