@@ -9,7 +9,6 @@ import {
   HardHat,
   RotateCcw,
 } from "lucide-react";
-import { capitalFirstLetter } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatDateRange, scheduleNote } from "@/lib/wo-site-display";
@@ -18,6 +17,7 @@ import type { JobOrder } from "./job-order-dialog";
 import type { RestorationRate } from "./restoration-rates-table";
 import type { Restoration } from "./restoration-section";
 import { PROCESS_TONES } from "../process-section-header";
+import { jobOrderVendorNames, restorationStatus } from "./restoration-display";
 
 interface Props {
   workOrder: any;
@@ -43,13 +43,6 @@ const formatQty = (value: number) =>
 
 const percentOf = (part: number, whole: number) =>
   whole > 0 ? Math.min(100, (part / whole) * 100) : 0;
-
-const STATUS_STYLES = {
-  complete: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  inProgress: "bg-purple-50 text-purple-700 ring-purple-200",
-  notStarted: "bg-gray-50 text-gray-600 ring-gray-200",
-  cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
-} as const;
 
 // How far one activity's schedule of rates quantity has been used.
 const activityTone = (used: number, estimated: number) => {
@@ -82,25 +75,12 @@ const RestorationCard = ({
     work_order_site_id: restoration.id,
   });
   const jobOrders = (jobOrdersQuery.data ?? []) as JobOrder[];
-  const vendorNames = [
-    ...new Map(
-      jobOrders.flatMap((jobOrder) =>
-        jobOrder.vendors.map((vendor) => [vendor.id, vendor.name] as const),
-      ),
-    ).values(),
-  ].map((name) => capitalFirstLetter(name));
+  const vendorNames = jobOrderVendorNames(jobOrders);
   const certifiedCount = jobOrders.filter(
     (jobOrder) => toDocuments(jobOrder.documents).length > 0,
   ).length;
 
-  const isCancelled = restoration.status === "cancelled";
-  const status = isCancelled
-    ? { label: "Cancelled", style: STATUS_STYLES.cancelled }
-    : restoration.is_completed
-      ? { label: "Complete", style: STATUS_STYLES.complete }
-      : spent > 0
-        ? { label: "In progress", style: STATUS_STYLES.inProgress }
-        : { label: "Not started", style: STATUS_STYLES.notStarted };
+  const status = restorationStatus(restoration, spent);
   const note = restoration.is_completed
     ? null
     : scheduleNote(restoration.status, workOrder.start_date, workOrder.end_date);
