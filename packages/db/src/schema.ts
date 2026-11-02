@@ -33,6 +33,7 @@ const {
   PROPOSAL_STATUS,
   WORK_ORDER_STATUS,
   CONTRACT_ORDER_TYPE,
+  CONTRACTOR_TYPE,
 } = constants;
 
 export const userTable = mysqlTable(
@@ -567,6 +568,13 @@ export const contractorTable = mysqlTable(
     address: varchar("address", { length: 500 }),
     gst_number: varchar("gst_number", { length: 15 }),
     pan_number: varchar("pan_number", { length: 10 }),
+    // A vendor supplies material; a sub-contractor carries out a service.
+    type: varchar("type", {
+      length: 50,
+      enum: [CONTRACTOR_TYPE.VENDOR, CONTRACTOR_TYPE.SUB_CONTRACTOR],
+    })
+      .notNull()
+      .default(CONTRACTOR_TYPE.VENDOR),
     status: varchar("status", {
       length: 50,
       enum: [STATUS.ACTIVE, STATUS.INACTIVE],
@@ -576,7 +584,10 @@ export const contractorTable = mysqlTable(
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
-  (table) => [index("contractor_name_idx").on(table.name)],
+  (table) => [
+    index("contractor_name_idx").on(table.name),
+    index("contractor_type_idx").on(table.type),
+  ],
 );
 
 // The vendors a work order site's work is ordered to; restoration and

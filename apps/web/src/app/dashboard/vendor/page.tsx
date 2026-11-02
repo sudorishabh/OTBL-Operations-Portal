@@ -2,10 +2,11 @@ import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import React, { Suspense } from "react";
 import CreateVendorButton from "@/components/vendor/create-vendor-btn";
 import VendorPage from "@/components/vendor/vendor-page";
+import { CONTRACTOR_LABELS } from "@/components/vendor/contractor-labels";
 import { MultiRoleProtectedRoute } from "@/components/auth";
 import { constants } from "@pkg/utils";
 
-const { ROLES } = constants;
+const { ROLES, CONTRACTOR_TYPE } = constants;
 
 const page = () => {
   return (
@@ -18,14 +19,14 @@ const page = () => {
       ]}>
       <PageWrapper
         title='Vendors'
-        description='Contractors your offices give restoration work to'
+        description={CONTRACTOR_LABELS[CONTRACTOR_TYPE.VENDOR].description}
         button={
           <Suspense fallback={null}>
-            <CreateVendorButton />
+            <CreateVendorButton type={CONTRACTOR_TYPE.VENDOR} />
           </Suspense>
         }>
         <Suspense fallback={null}>
-          <VendorPage />
+          <VendorPage type={CONTRACTOR_TYPE.VENDOR} />
         </Suspense>
       </PageWrapper>
     </MultiRoleProtectedRoute>

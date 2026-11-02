@@ -31,6 +31,7 @@ export const contractorMutationRouter = router({
               address: optionalText(input.address) ?? null,
               gst_number: optionalText(input.gst_number) ?? null,
               pan_number: optionalText(input.pan_number) ?? null,
+              type: input.type,
             })
             .$returningId();
 
@@ -76,6 +77,7 @@ export const contractorMutationRouter = router({
               address: optionalText(input.address),
               gst_number: optionalText(input.gst_number),
               pan_number: optionalText(input.pan_number),
+              type: input.type,
             })
             .where(eq(contractorTable.id, id));
 

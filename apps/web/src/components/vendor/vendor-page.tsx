@@ -46,7 +46,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import Link from "next/link";
 import VendorDialog from "./vendor-dialog";
+import { CONTRACTOR_LABELS, type ContractorType } from "./contractor-labels";
 
 type Vendor = {
   id: number;
@@ -76,7 +78,15 @@ const ALL = "all";
 const headClass = "h-10 px-4 sm:h-10 sm:px-4 text-xs font-medium text-gray-500";
 const cellClass = "px-4 py-3 sm:px-4 sm:py-3 text-sm text-gray-700";
 
-const VendorPage = () => {
+interface Props {
+  type: ContractorType;
+}
+
+// The vendors or sub-contractors page: one list, filtered to its type.
+const VendorPage = ({ type }: Props) => {
+  const labels = CONTRACTOR_LABELS[type];
+  const lowerOne = labels.one.toLowerCase();
+  const lowerMany = labels.many.toLowerCase();
   const { setParams } = useHandleParams();
   const isManager = useIsManager();
   const utils = trpc.useUtils();
@@ -90,6 +100,7 @@ const VendorPage = () => {
     limit: PAGE_SIZE,
     search: debouncedSearch.trim() || undefined,
     status: status === ALL ? undefined : (status as "active" | "inactive"),
+    type,
   };
 
   // Loaded pages belong to one query input; changing it starts over at page 1.
@@ -116,7 +127,7 @@ const VendorPage = () => {
 
   const deleteVendor = trpc.contractorMutation.deleteContractor.useMutation({
     onSuccess: () => {
-      toast.success("Vendor deleted");
+      toast.success(`${labels.one} deleted`);
       utils.contractorQuery.invalidate();
     },
     onError: (error: { message: string }) => toast.error(error.message),
@@ -155,11 +166,11 @@ const VendorPage = () => {
       return (
         <NoFetchData
           Icon={HardHat}
-          title={isFiltered ? "No matching vendors" : "No vendors yet"}
+          title={isFiltered ? `No matching ${lowerMany}` : `No ${lowerMany} yet`}
           description={
             isFiltered
               ? "Try another search or clear the filters."
-              : "Add the contractors restoration work is ordered to."
+              : labels.description
           }
         />
       );
@@ -170,7 +181,7 @@ const VendorPage = () => {
         <Table>
           <TableHeader>
             <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
-              <TableHead className={headClass}>Vendor</TableHead>
+              <TableHead className={headClass}>{labels.one}</TableHead>
               <TableHead className={headClass}>Contact</TableHead>
               <TableHead className={headClass}>GST / PAN</TableHead>
               <TableHead className={headClass}>Status</TableHead>
@@ -184,7 +195,11 @@ const VendorPage = () => {
                 className='border-gray-100'>
                 <TableCell className={cellClass}>
                   <p className='font-medium text-gray-900'>
-                    {capitalFirstLetter(vendor.name)}
+                    <Link
+                      href={`${labels.path}/${vendor.id}`}
+                      className='hover:text-emerald-700 hover:underline'>
+                      {capitalFirstLetter(vendor.name)}
+                    </Link>
                   </p>
                   {vendor.address && (
                     <p
@@ -239,13 +254,13 @@ const VendorPage = () => {
                             })
                           }>
                           <Pencil className='mr-2 h-4 w-4' />
-                          Edit vendor
+                          Edit {lowerOne}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className='text-red-600 focus:text-red-600'
                           onClick={() => setDeleting(vendor)}>
                           <Trash2 className='mr-2 h-4 w-4' />
-                          Delete vendor
+                          Delete {lowerOne}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -266,7 +281,7 @@ const VendorPage = () => {
         )}
         <div className='border-t px-4 py-2 text-xs text-muted-foreground'>
           Showing {vendors.length} of {pagination?.total ?? vendors.length}{" "}
-          vendors
+          {lowerMany}
         </div>
       </div>
     );
@@ -281,7 +296,7 @@ const VendorPage = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder='Search by name, contact, email or GST'
-            aria-label='Search vendors'
+            aria-label={`Search ${lowerMany}`}
             className='h-9 bg-white pl-9'
           />
         </div>
@@ -311,7 +326,7 @@ const VendorPage = () => {
 
       {renderList()}
 
-      <VendorDialog />
+      <VendorDialog type={type} />
 
       <AlertDialog
         open={!!deleting}
@@ -320,7 +335,7 @@ const VendorPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleting?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Expenses and restorations recorded with this vendor keep their
+              Expenses and orders recorded with this {lowerOne} keep their
               amounts but no longer name it. To keep its history, set it to
               inactive instead.
             </AlertDialogDescription>
@@ -332,7 +347,7 @@ const VendorPage = () => {
               onClick={() =>
                 deleting && deleteVendor.mutate({ id: deleting.id })
               }>
-              Delete vendor
+              Delete {lowerOne}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
