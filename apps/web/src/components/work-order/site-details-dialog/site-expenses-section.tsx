@@ -41,6 +41,7 @@ import {
   FileText,
   ShoppingCart,
   Wrench,
+  ClipboardList,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
@@ -54,6 +55,7 @@ import AddExpenseDialog, {
 import DocumentsMenu from "@/components/shared/documents-menu";
 import OilZapperStockTable from "./oil-zapper-stock-table";
 import { itemLabel } from "../contract-orders/contract-orders-section";
+import type { JobOrder } from "../restoration/job-order-dialog";
 import {
   documentName,
   openDocument,
@@ -75,6 +77,7 @@ type ExpenseRecord = {
   contractorId: number | null;
   contractorName: string | null;
   contractOrderItemId: number | null;
+  jobOrderId: number | null;
   invoiceNumber: string | null;
   documents: StoredDocument[];
   amount: number;
@@ -169,6 +172,8 @@ interface Props {
   headerActions?: React.ReactNode;
   // Shown on a vendor with no expenses, such as a button to remove it.
   emptyVendorActions?: (vendor: { id: number; name: string }) => React.ReactNode;
+  // Shown on each restoration job order, such as edit and delete buttons.
+  jobOrderActions?: (jobOrder: JobOrder) => React.ReactNode;
 }
 
 const SiteExpensesSection = ({
@@ -179,6 +184,7 @@ const SiteExpensesSection = ({
   showEstimateTable = true,
   headerActions,
   emptyVendorActions,
+  jobOrderActions,
 }: Props) => {
   const utils = trpc.useUtils();
   const isViewer = useIsViewer();
@@ -191,8 +197,10 @@ const SiteExpensesSection = ({
   // What a new expense starts under, when added from a vendor or from
   // Miscellaneous.
   const [addUnder, setAddUnder] = useState<number | "miscellaneous" | null>(null);
-  // The contract order requirement a bioremediation expense is spent on.
+  // The contract order requirement a bioremediation expense is spent on, or
+  // the job order a restoration one is.
   const [dialogOrderItemId, setDialogOrderItemId] = useState<number | null>(null);
+  const [dialogJobOrderId, setDialogJobOrderId] = useState<number | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const [expensePage, setExpensePage] = useState(1);
@@ -226,6 +234,13 @@ const SiteExpensesSection = ({
   );
   const orderItems = (orderItemsQuery.data ?? []) as SiteOrderItem[];
 
+  // Restoration vendor expenses are spent on its job orders.
+  const jobOrdersQuery = trpc.jobOrderQuery.getJobOrders.useQuery(
+    { work_order_site_id: woSiteId },
+    { enabled: !!woSiteId && processType === constants.WO_PROCESS.RESTORATION },
+  );
+  const jobOrders = (jobOrdersQuery.data ?? []) as JobOrder[];
+
   const expensesQuery = trpc.expenseQuery.getExpenses.useQuery(
     { work_order_site_id: woSiteId, page: expensePage },
     { enabled: !!woSiteId },
@@ -256,6 +271,7 @@ const SiteExpensesSection = ({
   const exceededTotal = summary?.exceededTotal ?? 0;
 
   const isBioremediation = processType === "bioremediation";
+  const isRestoration = processType === constants.WO_PROCESS.RESTORATION;
   const estimateType = "estimate_sub-wo";
 
   const activityOptions: ActivityOption[] = useMemo(() => {
@@ -300,6 +316,7 @@ const SiteExpensesSection = ({
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
     setDialogOrderItemId(expense.contract_order_item_id ?? null);
+    setDialogJobOrderId(expense.job_order_id ?? null);
     setDialogOpen(true);
   };
 
@@ -308,15 +325,18 @@ const SiteExpensesSection = ({
     setEditingExpense(null);
     setAddUnder(null);
     setDialogOrderItemId(null);
+    setDialogJobOrderId(null);
   };
 
   const openAddExpense = (
     under: number | "miscellaneous" | null = null,
     orderItemId: number | null = null,
+    jobOrderId: number | null = null,
   ) => {
     setEditingExpense(null);
     setAddUnder(under);
     setDialogOrderItemId(orderItemId);
+    setDialogJobOrderId(jobOrderId);
     setDialogOpen(true);
   };
 
@@ -365,6 +385,7 @@ const SiteExpensesSection = ({
         contractorId: exp.contractor_id ?? null,
         contractorName: exp.contractor_name ?? null,
         contractOrderItemId: exp.contract_order_item_id ?? null,
+        jobOrderId: exp.job_order_id ?? null,
         invoiceNumber: exp.invoice_number ?? null,
         documents: toDocuments(exp.documents),
         amount: Number(exp.amount),
@@ -862,6 +883,8 @@ const SiteExpensesSection = ({
   // a miscellaneous one has none.
   const dialogOrderItem =
     orderItems.find((item) => item.id === dialogOrderItemId) ?? null;
+  const dialogJobOrder =
+    jobOrders.find((jobOrder) => jobOrder.id === dialogJobOrderId) ?? null;
   const editingVendor =
     editingExpense?.contractor_id && editingExpense.contractor_name
       ? [{ id: editingExpense.contractor_id, name: editingExpense.contractor_name }]
@@ -870,9 +893,13 @@ const SiteExpensesSection = ({
     ? dialogOrderItem
       ? dialogOrderItem.vendors
       : editingVendor
-    : splitByContractor
-      ? contractors
-      : undefined;
+    : isRestoration
+      ? dialogJobOrder
+        ? dialogJobOrder.vendors
+        : editingVendor
+      : splitByContractor
+        ? contractors
+        : undefined;
   // Oil zapper is procured through a purchase of it; an older vendor expense
   // may also carry some.
   const dialogProcuresOilZapper =
@@ -1004,9 +1031,9 @@ const SiteExpensesSection = ({
             </Select>
           )}
           {headerActions}
-          {/* Bioremediation expenses are added under an order or as
-              miscellaneous, from their groups below. */}
-          {!isBioremediation && (
+          {/* Bioremediation and restoration expenses are added under an
+              order or job order, or as miscellaneous, from their groups. */}
+          {!isBioremediation && !isRestoration && (
             <CustomButton
               text='Add Expense'
               variant='primary'
@@ -1044,6 +1071,31 @@ const SiteExpensesSection = ({
             };
           }),
           unassignedTitle: "Vendor expenses not on an order",
+        })
+      ) : isRestoration ? (
+        renderGroupedExpenses({
+          sections: [
+            {
+              key: "job-orders",
+              title: "Job Orders",
+              meta: `${jobOrders.length} job order${jobOrders.length !== 1 ? "s" : ""}`,
+              emptyText: "No job orders yet. Add one to record vendor expenses on it.",
+              groups: jobOrders.map((jobOrder) => ({
+                key: `job-order-${jobOrder.id}`,
+                Icon: ClipboardList,
+                title: `${jobOrder.jo_number} · ${jobOrder.title}`,
+                total: summary?.byJobOrder?.[String(jobOrder.id)] ?? 0,
+                vendors: jobOrder.vendors,
+                records: records.filter((r) => r.jobOrderId === jobOrder.id),
+                vendorTotal: (vendorId: number) =>
+                  summary?.byJobOrderVendor?.[`${jobOrder.id}:${vendorId}`] ?? 0,
+                onAdd: (vendorId: number) =>
+                  openAddExpense(vendorId, null, jobOrder.id),
+                actions: jobOrderActions?.(jobOrder),
+              })),
+            },
+          ],
+          unassignedTitle: "Vendor expenses not on a job order",
         })
       ) : splitByContractor ? (
         <div className='space-y-6'>
@@ -1158,6 +1210,14 @@ const SiteExpensesSection = ({
         orderItem={
           dialogOrderItem
             ? { id: dialogOrderItem.id, label: orderItemTitle(dialogOrderItem) }
+            : null
+        }
+        jobOrder={
+          dialogJobOrder
+            ? {
+                id: dialogJobOrder.id,
+                label: `${dialogJobOrder.jo_number} · ${dialogJobOrder.title}`,
+              }
             : null
         }
       />
