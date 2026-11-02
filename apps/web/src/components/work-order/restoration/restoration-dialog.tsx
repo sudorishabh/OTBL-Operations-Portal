@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Plus } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import DialogWindow from "@/components/shared/dialog-window";
@@ -8,8 +8,9 @@ import useHandleParams from "@/hooks/useHandleParams";
 import WoSiteOperatorsSection from "../site-details-dialog/wo-site-operators-section";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
-import AddSiteVendor from "../site-details-dialog/add-site-vendor";
-import RemoveSiteVendor from "../site-details-dialog/remove-site-vendor";
+import CustomButton from "@/components/shared/btn";
+import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
+import JobOrderActions from "./job-order-actions";
 import RestorationSummary from "./restoration-summary";
 import RestorationCompletion from "./restoration-completion";
 import RestorationRatesSection from "./restoration-rates-section";
@@ -35,6 +36,13 @@ const RestorationDialog = ({
   const { getParam, setParam, deleteParams } = useHandleParams();
   const isOpen = getParam("dialog") === "restoration";
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [jobOrderDialogOpen, setJobOrderDialogOpen] = useState(false);
+  const [editingJobOrder, setEditingJobOrder] = useState<JobOrder | null>(null);
+
+  const openJobOrderDialog = (jobOrder: JobOrder | null) => {
+    setEditingJobOrder(jobOrder);
+    setJobOrderDialogOpen(true);
+  };
 
   const operatorUploadsQuery =
     trpc.workOrderSiteQuery.getOperatorUploads.useQuery(
@@ -98,23 +106,37 @@ const RestorationDialog = ({
           />
         )}
 
+        {/* Vendor expenses are recorded on the job order they are spent on. */}
         <SiteExpensesSection
           woSiteId={restoration.id}
           processType={WO_PROCESS.RESTORATION}
-          splitByContractor
-          contractors={restoration.contractors}
           showEstimateTable={false}
           headerActions={
-            <AddSiteVendor
-              woSiteId={restoration.id}
-              contractors={restoration.contractors}
+            <CustomButton
+              variant='outline'
+              Icon={Plus}
+              text='New job order'
+              onClick={() => openJobOrderDialog(null)}
+              className='h-8 text-xs'
+              disableForViewer
             />
           }
-          emptyVendorActions={(vendor) => (
-            <RemoveSiteVendor woSiteId={restoration.id} vendor={vendor} />
+          jobOrderActions={(jobOrder) => (
+            <JobOrderActions
+              restorationId={restoration.id}
+              jobOrder={jobOrder}
+              onEdit={() => openJobOrderDialog(jobOrder)}
+            />
           )}
         />
       </div>
+
+      <JobOrderDialog
+        restorationId={restoration.id}
+        open={jobOrderDialogOpen}
+        onClose={() => setJobOrderDialogOpen(false)}
+        editing={editingJobOrder}
+      />
 
       {isOpen && (
         <SiteOperatorUploadsDialog
