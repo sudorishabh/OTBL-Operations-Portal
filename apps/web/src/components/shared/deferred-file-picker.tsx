@@ -59,6 +59,8 @@ interface DeferredFilePickerProps {
   // Multiple mode: the cap, and how many files the parent already holds.
   maxFiles?: number;
   fileCount?: number;
+  // "row" drops the zone's own border, to sit as the last row of a list.
+  variant?: "zone" | "row";
 }
 
 const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
@@ -79,11 +81,13 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
   multiple = false,
   maxFiles = MAX_DOCUMENTS,
   fileCount = 0,
+  variant = "zone",
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const remainingSlots = Math.max(maxFiles - fileCount, 0);
   const isFull = multiple && remainingSlots === 0;
+  const isRow = variant === "row";
 
   const validateFile = useCallback(
     (file: File): boolean => {
@@ -202,7 +206,11 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
   return (
     <div className={cn("w-full", className)}>
       {isFull ? (
-        <div className='flex h-9 items-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-2.5 text-[11px] text-gray-500'>
+        <div
+          className={cn(
+            "flex h-9 items-center bg-gray-50 px-2.5 text-[11px] text-gray-500",
+            !isRow && "rounded-lg border border-dashed border-gray-200",
+          )}>
           <span className='truncate'>
             All {maxFiles} files added. Remove one to add another.
           </span>
@@ -224,11 +232,16 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
             }
           }}
           className={cn(
-            "group flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-dashed px-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/30",
+            "group flex h-9 cursor-pointer items-center gap-2 px-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/30",
+            isRow
+              ? "focus-visible:ring-inset"
+              : "rounded-lg border border-dashed",
             isDragActive
               ? "border-primary bg-primary/5"
-              : "border-gray-300 hover:border-primary/50 hover:bg-gray-50/60",
-            isUploadBgWhite && !isDragActive && "bg-white",
+              : isRow
+                ? "bg-gray-50/60 hover:bg-gray-50"
+                : "border-gray-300 hover:border-primary/50 hover:bg-gray-50/60",
+            !isRow && isUploadBgWhite && !isDragActive && "bg-white",
           )}>
           <input
             type='file'
