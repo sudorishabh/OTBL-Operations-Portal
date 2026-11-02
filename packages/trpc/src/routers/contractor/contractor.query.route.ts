@@ -1,5 +1,6 @@
 import { and, asc, count, eq, like, or } from "drizzle-orm";
 import { schema } from "@pkg/db";
+import { vendorSchemas } from "@pkg/schema";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import { fromDatabaseError, notFound } from "../../errors";
@@ -23,7 +24,7 @@ const searchWhere = (search: string | undefined) => {
 };
 
 export const contractorQueryRouter = router({
-  // Every vendor, paginated, for the Vendors page.
+  // Every vendor or sub-contractor, paginated, for their pages.
   getVendors: protectedProcedure
     .input(
       z.object({
@@ -31,11 +32,12 @@ export const contractorQueryRouter = router({
         limit: z.number().min(1).max(100).default(20),
         search: z.string().optional(),
         status: z.enum(["active", "inactive"]).optional(),
+        type: vendorSchemas.contractorTypeEnum.optional(),
       }),
     )
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { page, limit, search, status } = input;
+        const { page, limit, search, status, type } = input;
 
         if (!(await canUseVendors(ctx))) {
           return {
@@ -52,6 +54,7 @@ export const contractorQueryRouter = router({
 
         const where = and(
           status ? eq(contractorTable.status, status) : undefined,
+          type ? eq(contractorTable.type, type) : undefined,
           searchWhere(search),
         );
 

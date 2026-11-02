@@ -7,7 +7,7 @@ import {
 } from "../validators";
 import { constants } from "@pkg/utils";
 
-const { STATUS } = constants;
+const { STATUS, CONTRACTOR_TYPE } = constants;
 
 // Vendors are stored in the contractors table: a vendor is the contractor a
 // work order's restoration is ordered to. They're shared by every office.
@@ -43,7 +43,15 @@ const vendorFields = {
 
 export const vendorStatusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
-export const createVendorSchema = z.object(vendorFields);
+export const contractorTypeEnum = z.enum([
+  CONTRACTOR_TYPE.VENDOR,
+  CONTRACTOR_TYPE.SUB_CONTRACTOR,
+]);
+
+export const createVendorSchema = z.object({
+  ...vendorFields,
+  type: contractorTypeEnum.default(CONTRACTOR_TYPE.VENDOR),
+});
 
 // Fields left out keep their value.
 export const updateVendorSchema = z
@@ -52,4 +60,5 @@ export const updateVendorSchema = z
   .extend({
     id: positiveIntValidator,
     status: vendorStatusEnum.optional(),
+    type: contractorTypeEnum.optional(),
   });
