@@ -149,6 +149,8 @@ export const expenseQueryRouter = router({
               quantity: workOrderSiteExpenseTable.quantity,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
+              contract_order_item_id:
+                workOrderSiteExpenseTable.contract_order_item_id,
               amount: workOrderSiteExpenseTable.amount,
             })
             .from(workOrderSiteExpenseTable)
@@ -157,6 +159,10 @@ export const expenseQueryRouter = router({
           const byActivity: Record<string, { totalAmount: number; exceededAmount: number; totalQuantity: number; count: number }> = {};
           // Totals per contractor id; expenses under none are keyed "none".
           const byContractor: Record<string, number> = {};
+          // Totals per contract order item id, and per "itemId:contractorId"
+          // for each vendor under it.
+          const byOrderItem: Record<string, number> = {};
+          const byOrderItemVendor: Record<string, number> = {};
 
           for (const row of activityRows) {
             const contractorKey = row.contractor_id
@@ -164,6 +170,15 @@ export const expenseQueryRouter = router({
               : "none";
             byContractor[contractorKey] =
               (byContractor[contractorKey] ?? 0) + Number(row.amount || 0);
+
+            if (row.contract_order_item_id) {
+              const itemKey = String(row.contract_order_item_id);
+              const vendorKey = `${itemKey}:${contractorKey}`;
+              byOrderItem[itemKey] =
+                (byOrderItem[itemKey] ?? 0) + Number(row.amount || 0);
+              byOrderItemVendor[vendorKey] =
+                (byOrderItemVendor[vendorKey] ?? 0) + Number(row.amount || 0);
+            }
 
             if (!row.activity_key) continue;
             if (!byActivity[row.activity_key]) {
@@ -184,6 +199,8 @@ export const expenseQueryRouter = router({
             incomeTotal,
             byActivity,
             byContractor,
+            byOrderItem,
+            byOrderItemVendor,
           };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching expense summary");
