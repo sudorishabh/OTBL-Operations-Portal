@@ -7,8 +7,6 @@ import useHandleParams from "@/hooks/useHandleParams";
 import SiteDetailsCard from "./site-details-card";
 import SiteExpensesSection from "./site-expenses-section";
 import SiteDetailsTabs from "./site-details-tabs";
-import AddSiteVendor from "./add-site-vendor";
-import RemoveSiteVendor from "./remove-site-vendor";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 
 const SiteDetailDialog = () => {
@@ -24,16 +22,6 @@ const SiteDetailDialog = () => {
     );
 
   const siteDetails = siteDetailsQuery.data;
-  const isBioremediation =
-    siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
-
-  // Bioremediation sites keep their own vendors, as restoration does.
-  const contractorsQuery =
-    trpc.siteContractorQuery.getSiteContractors.useQuery(
-      { work_order_site_id: woSiteId },
-      { enabled: !!woSiteId && isOpenDialog && isBioremediation },
-    );
-  const contractors = contractorsQuery.data ?? [];
 
   const processLabel = constants.processTypeOptions.find(
     (option) => option.value === siteDetails?.process_type,
@@ -80,32 +68,16 @@ const SiteDetailDialog = () => {
           }
         />
 
-        {woSiteId > 0 && siteDetails && !contractorsQuery.isLoading ? (
+        {woSiteId > 0 && siteDetails ? (
           <SiteDetailsTabs
             woSiteId={woSiteId}
             processType={siteDetails.process_type}
             isCompleted={!!siteDetails.is_completed}
             execution={
+              // A bioremediation site's vendors come from its orders.
               <SiteExpensesSection
                 woSiteId={woSiteId}
                 processType={siteDetails.process_type}
-                splitByContractor={isBioremediation}
-                contractors={contractors}
-                headerActions={
-                  isBioremediation && (
-                    <AddSiteVendor
-                      woSiteId={woSiteId}
-                      contractors={contractors}
-                    />
-                  )
-                }
-                emptyVendorActions={
-                  isBioremediation
-                    ? (vendor) => (
-                        <RemoveSiteVendor woSiteId={woSiteId} vendor={vendor} />
-                      )
-                    : undefined
-                }
               />
             }
           />
