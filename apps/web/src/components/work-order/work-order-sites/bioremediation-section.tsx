@@ -2,7 +2,14 @@
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { FlaskConical, LayoutGrid, List, Plus } from "lucide-react";
+import {
+  FlaskConical,
+  LayoutGrid,
+  List,
+  MapPin,
+  Plus,
+  ShoppingCart,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import useHandleParams from "@/hooks/useHandleParams";
 import CustomButton from "@/components/shared/btn";
@@ -31,6 +38,8 @@ interface Pagination {
 
 const SITES_QUERY_LIMIT = 12;
 
+type SectionTab = "sites" | "orders";
+
 const normalizeSiteStatus = (
   input: unknown,
 ): "pending" | "completed" | "cancelled" => {
@@ -51,6 +60,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
   const [sitesList, setSitesList] = useState<any[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
+  const [tab, setTab] = useState<SectionTab>("sites");
 
   const isWorkOrderCompleted = workOrder.status === "completed";
 
@@ -152,84 +162,134 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
 
   const siteCount = pagination?.total || 0;
 
+  const siteActions = (
+    <>
+      <Tabs
+        value={viewMode}
+        onValueChange={(val) => setViewMode(val as "card" | "table")}>
+        <TabsList className='grid w-36 grid-cols-2 h-8'>
+          <TabsTrigger
+            value='card'
+            className='gap-2 text-xs text-gray-800'>
+            <LayoutGrid className='size-3.5 text-gray-500' />
+            Card
+          </TabsTrigger>
+          <TabsTrigger
+            value='table'
+            className='gap-2 text-xs text-gray-800'>
+            <List className='size-3.5 text-gray-500' />
+            Table
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {scheduleOfRates.length > 0 && (
+        <CustomButton
+          variant='primary'
+          Icon={Plus}
+          text='Create Site'
+          onClick={handleCreateSiteDialog}
+          disabled={isWorkOrderCompleted}
+          disableForViewer
+        />
+      )}
+    </>
+  );
+
+  const sitesContent =
+    sitesList.length > 0 ? (
+      <div className='relative'>
+        <Tabs
+          value={viewMode}
+          className='w-full'>
+          <TabsContent value='card'>
+            <WOSitesCard
+              sites={sitesList}
+              handleSiteDetails={handleSiteDetails}
+            />
+          </TabsContent>
+          <TabsContent value='table'>
+            <SitesTable
+              sites={sitesList}
+              onSiteClick={handleSiteDetails}
+            />
+          </TabsContent>
+        </Tabs>
+        {isFetchingMore && <WorkOrderSitesSkeleton />}
+        {/* Only while more sites are left to load. */}
+        {!isFetchingMore && pagination?.hasMore && (
+          <div className='mt-4 flex flex-col items-center gap-2'>
+            <LoadMoreBtn
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+              loading={false}
+            />
+            <span className='text-xs text-gray-500'>
+              Showing {sitesList.length} of {pagination.total} sites
+            </span>
+          </div>
+        )}
+      </div>
+    ) : (
+      <p className='rounded-lg border border-dashed py-8 text-center text-xs text-gray-500'>
+        No sites yet. Create one to estimate and treat its contaminated soil.
+      </p>
+    );
+
   return (
     <section className='rounded-lg border bg-white p-6'>
       <ProcessSectionHeader
         Icon={FlaskConical}
         tone='bioremediation'
         title='Bioremediation'
-        description={`Done site by site, ${siteCount} ${siteCount === 1 ? "site" : "sites"} so far`}>
-        <Tabs
-          value={viewMode}
-          onValueChange={(val) => setViewMode(val as "card" | "table")}>
-          <TabsList className='grid w-36 grid-cols-2 h-8'>
-            <TabsTrigger
-              value='card'
-              className='gap-2 text-xs text-gray-800'>
-              <LayoutGrid className='size-3.5 text-gray-500' />
-              Card
-            </TabsTrigger>
-            <TabsTrigger
-              value='table'
-              className='gap-2 text-xs text-gray-800'>
-              <List className='size-3.5 text-gray-500' />
-              Table
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        {scheduleOfRates.length > 0 && (
-          <CustomButton
-            variant='primary'
-            Icon={Plus}
-            text='Create Site'
-            onClick={handleCreateSiteDialog}
-            disabled={isWorkOrderCompleted}
-            disableForViewer
-          />
-        )}
-      </ProcessSectionHeader>
+        description='Done site by site, through purchase and work orders'
+      />
 
-      {sitesList.length > 0 ? (
-        <div className='relative'>
+      {/* The sites, and the orders giving out their work, a tab each with
+          its own actions beside the tabs. */}
+      <ContractOrdersSection workOrderId={workOrder.id}>
+        {({ actions: orderActions, table: ordersTable, count: orderCount }) => (
           <Tabs
-            value={viewMode}
-            className='w-full'>
-            <TabsContent value='card'>
-              <WOSitesCard
-                sites={sitesList}
-                handleSiteDetails={handleSiteDetails}
-              />
+            value={tab}
+            onValueChange={(value) => setTab(value as SectionTab)}>
+            <div className='flex flex-wrap items-center justify-between gap-3'>
+              <TabsList className='h-8'>
+                <TabsTrigger
+                  value='sites'
+                  className='gap-2 px-3 text-xs text-gray-800'>
+                  <MapPin className='size-3.5 text-gray-500' />
+                  Sites
+                  <span className='tabular-nums text-gray-400'>
+                    {siteCount}
+                  </span>
+                </TabsTrigger>
+                {/* Orders list what each site needs, so wait for a site. */}
+                <TabsTrigger
+                  value='orders'
+                  disabled={sitesList.length === 0}
+                  className='gap-2 px-3 text-xs text-gray-800'>
+                  <ShoppingCart className='size-3.5 text-gray-500' />
+                  Purchase and work orders
+                  <span className='tabular-nums text-gray-400'>
+                    {orderCount}
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+              <div className='flex flex-wrap items-center gap-2'>
+                {tab === "sites" ? siteActions : orderActions}
+              </div>
+            </div>
+            <TabsContent
+              value='sites'
+              className='mt-4'>
+              {sitesContent}
             </TabsContent>
-            <TabsContent value='table'>
-              <SitesTable
-                sites={sitesList}
-                onSiteClick={handleSiteDetails}
-              />
+            <TabsContent
+              value='orders'
+              className='mt-4'>
+              {ordersTable}
             </TabsContent>
           </Tabs>
-          {isFetchingMore && <WorkOrderSitesSkeleton />}
-          {/* Only while more sites are left to load. */}
-          {!isFetchingMore && pagination?.hasMore && (
-            <div className='mt-4 flex flex-col items-center gap-2'>
-              <LoadMoreBtn
-                onClick={() => setCurrentPage((prev) => prev + 1)}
-                loading={false}
-              />
-              <span className='text-xs text-gray-500'>
-                Showing {sitesList.length} of {pagination.total} sites
-              </span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <p className='rounded-lg border border-dashed py-8 text-center text-xs text-gray-500'>
-          No sites yet. Create one to estimate and treat its contaminated soil.
-        </p>
-      )}
-
-      {sitesList.length > 0 && (
-        <ContractOrdersSection workOrderId={workOrder.id} />
-      )}
+        )}
+      </ContractOrdersSection>
 
       <CreateWorkOrderSiteDialog
         workOrder={workOrder}
