@@ -160,12 +160,12 @@ export const createWorkOrderSchema = baseWorkOrderSchema.extend({
   client_id: positiveIntValidator,
 });
 
+// The process type and schedule of rates shape the work order's sites and
+// restoration, so an edit covers only its details and documents.
 export const updateWorkOrderSchema = baseWorkOrderSchema
-  .partial()
+  .omit({ process_type: true, schedule_of_rates: true })
   .extend({
     id: positiveIntValidator,
-    status: workOrderStatusEnum.optional(),
-    cancellation_reason: z.string().optional(),
   })
   .refine(
     (data) => {
