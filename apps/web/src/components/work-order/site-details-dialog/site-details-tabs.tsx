@@ -61,6 +61,19 @@ const SiteDetailsTabs = ({
       <TabsContent
         value='estimation'
         className='space-y-4'>
+        {/* Mobilization comes first: the team moves on and the baseline
+            sample is taken before the estimate. */}
+        {isBioremediation && (
+          <div
+            className={cn(sectionClass, "grid grid-cols-1 gap-5 md:grid-cols-2")}>
+            <div className='min-w-0'>
+              <MobilizationCertificate woSiteId={woSiteId} />
+            </div>
+            <div className='min-w-0'>
+              <ZeroDaySample woSiteId={woSiteId} />
+            </div>
+          </div>
+        )}
         <SiteSorAvailability
           woSiteId={woSiteId}
           className={sectionClass}
@@ -71,16 +84,6 @@ const SiteDetailsTabs = ({
             processType={processType}
           />
         </div>
-        {isBioremediation && (
-          <>
-            <div className={sectionClass}>
-              <MobilizationCertificate woSiteId={woSiteId} />
-            </div>
-            <div className={sectionClass}>
-              <ZeroDaySample woSiteId={woSiteId} />
-            </div>
-          </>
-        )}
       </TabsContent>
 
       <TabsContent value='execution'>{execution}</TabsContent>
