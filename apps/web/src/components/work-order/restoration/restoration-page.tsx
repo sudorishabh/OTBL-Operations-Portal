@@ -18,6 +18,7 @@ import NoFetchData from "@/components/shared/no-fetch-data";
 import WorkOrderDetailsSkeleton from "@/components/skeleton/work-order/work-order-details-skeleton";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
+import { workOrderPath, type WorkOrderFrom } from "../work-order-path";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
 import JobOrderCertificates from "./job-order-certificates";
@@ -40,7 +41,7 @@ const NO_RATES: any[] = [];
 interface Props {
   workOrderId: string;
   // Which work order page to go back to.
-  from: "list" | "client";
+  from: WorkOrderFrom;
 }
 
 // The one place restoration work is managed, as it has no sites.
@@ -76,12 +77,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
     setJobOrderDialogOpen(true);
   };
 
-  const goBack = () =>
-    router.push(
-      from === "client"
-        ? `/dashboard/client/workorder/${workOrderId}`
-        : `/dashboard/work-order/${workOrderId}`,
-    );
+  const goBack = () => router.push(workOrderPath(workOrderId, from));
 
   if (workOrderQuery.isLoading || restorationQuery.isLoading) {
     return <WorkOrderDetailsSkeleton />;
