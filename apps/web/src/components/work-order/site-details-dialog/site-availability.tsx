@@ -52,7 +52,7 @@ const Panel = ({
   note: string;
   children: React.ReactNode;
 }) => (
-  <div className='self-start overflow-hidden rounded-lg border border-gray-200 bg-white'>
+  <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
     <p className='flex flex-wrap items-baseline gap-x-2 border-b border-gray-100 px-3 py-2'>
       <span className='text-xs font-medium text-gray-700'>{title}</span>
       <span className='text-[11px] text-gray-400'>{note}</span>
@@ -215,11 +215,8 @@ const SiteAvailability = ({ woSiteId, processType, className }: Props) => {
           {stock ? ` and the site's ${OIL_ZAPPER.LABEL.toLowerCase()}` : ""}.
         </p>
       </div>
-      <div
-        className={cn(
-          "grid grid-cols-1 gap-3",
-          sorActivities.length > 0 && stock && "lg:grid-cols-2",
-        )}>
+      {/* One above the other. */}
+      <div className='space-y-3'>
         {sorActivities.length > 0 && <SorPanel activities={sorActivities} />}
         {stock && <StockPanel stock={stock} />}
       </div>

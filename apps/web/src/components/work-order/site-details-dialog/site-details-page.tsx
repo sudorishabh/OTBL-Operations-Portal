@@ -12,6 +12,7 @@ import WorkOrderDetailsSkeleton from "@/components/skeleton/work-order/work-orde
 import { workOrderPath, type WorkOrderFrom } from "../work-order-path";
 import SiteDetailsCard from "./site-details-card";
 import SiteExecution from "./site-execution";
+import SiteAvailability from "./site-availability";
 import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 
 interface Props {
@@ -96,6 +97,13 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
           onOpenOperatorUploads={() =>
             setParam("site-dialog", "operator-uploads")
           }
+        />
+
+        {/* A panel of its own, absent until there is something to show. */}
+        <SiteAvailability
+          woSiteId={siteDetails.id}
+          processType={siteDetails.process_type}
+          className='rounded-lg border border-gray-200 bg-white p-5'
         />
 
         <section className='rounded-lg border border-gray-200 bg-white p-5'>
