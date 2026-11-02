@@ -9,6 +9,10 @@ import { validators } from "@pkg/schema";
 import { constants } from "@pkg/utils";
 import { syncRestorationCompletion } from "../restoration/restoration-row";
 import { syncBioremediationCompletion } from "../work-order-site/bioremediation-completion";
+import {
+  getOilZapperStock,
+  OIL_ZAPPER_EPSILON,
+} from "../work-order-site/oil-zapper-stock";
 
 const {
   workOrderSiteTable,
@@ -145,6 +149,29 @@ async function assertQuantityAllowed(
   }
 }
 
+// The oil zapper an expense procures, if it is an oil zapper expense.
+const procuredOilZapper = (
+  activityKey: string | null | undefined,
+  quantity: string | null | undefined,
+) => (activityKey === OIL_ZAPPER.KEY ? parseFloat(quantity ?? "0") || 0 : 0);
+
+// A site's procured oil zapper can't drop below what its oil zapping entries
+// have already applied.
+async function assertProcuredCoversUsed(
+  ctx: any,
+  siteId: number,
+  procuredChange: number,
+) {
+  if (procuredChange >= 0) return;
+
+  const stock = await getOilZapperStock(ctx.db, siteId);
+  if (stock.procured + procuredChange + OIL_ZAPPER_EPSILON < stock.used) {
+    throw businessRule(
+      `${stock.used.toFixed(2)} ${OIL_ZAPPER.UNIT} of oil zapper has already been applied on this site, so its procured quantity can't drop below that.`,
+    );
+  }
+}
+
 // An expense can't end before it starts.
 const endsOnOrAfterStart = (value: { start_date?: string; end_date?: string }) =>
   !value.start_date ||
@@ -270,18 +297,32 @@ export const expenseMutationRouter = router({
           throw notFound("Expense", id);
         }
 
+        const prev = existing[0]!;
+        const effectiveActivityKey =
+          updateData.activity_key !== undefined
+            ? updateData.activity_key
+            : prev.activity_key;
+        const effectiveQuantity =
+          updateData.quantity !== undefined ? updateData.quantity : prev.quantity;
+
         // Checked only when the update touches the vendor or the quantity.
         if (updateData.contractor_id !== undefined || updateData.quantity !== undefined) {
-          const before = existing[0]!;
           await assertQuantityAllowed(
             ctx,
-            before.work_order_site_id,
+            prev.work_order_site_id,
             updateData.contractor_id !== undefined
               ? updateData.contractor_id
-              : before.contractor_id,
-            updateData.quantity !== undefined ? updateData.quantity : before.quantity,
+              : prev.contractor_id,
+            effectiveQuantity,
           );
         }
+
+        await assertProcuredCoversUsed(
+          ctx,
+          prev.work_order_site_id,
+          procuredOilZapper(effectiveActivityKey, effectiveQuantity) -
+            procuredOilZapper(prev.activity_key, prev.quantity),
+        );
 
         try {
           const setData: Record<string, unknown> = {};
@@ -289,13 +330,6 @@ export const expenseMutationRouter = router({
           if (updateData.activity_key !== undefined) setData.activity_key = updateData.activity_key;
           if (updateData.quantity !== undefined) setData.quantity = updateData.quantity;
 
-          const prev = existing[0]!;
-          const effectiveActivityKey =
-            updateData.activity_key !== undefined
-              ? updateData.activity_key
-              : prev.activity_key;
-          const effectiveQuantity =
-            updateData.quantity !== undefined ? updateData.quantity : prev.quantity;
           const autoExceeded = await computeIsExceeded(
             ctx,
             prev.work_order_site_id,
@@ -346,12 +380,19 @@ export const expenseMutationRouter = router({
           throw notFound("Expense", input.id);
         }
 
+        const expense = existing[0]!;
+        await assertProcuredCoversUsed(
+          ctx,
+          expense.work_order_site_id,
+          -procuredOilZapper(expense.activity_key, expense.quantity),
+        );
+
         try {
           await ctx.db
             .delete(workOrderSiteExpenseTable)
             .where(eq(workOrderSiteExpenseTable.id, input.id));
 
-          await syncSiteCompletion(ctx, existing[0]!.work_order_site_id);
+          await syncSiteCompletion(ctx, expense.work_order_site_id);
 
           return { success: true };
         } catch (error) {
