@@ -28,12 +28,13 @@ import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import toast from "react-hot-toast";
 import DeferredFilePicker from "@/components/shared/deferred-file-picker";
 import CustomButton from "@/components/shared/btn";
-import { useIsViewer } from "@/contexts/AuthContext";
+import { useIsAdmin, useIsViewer } from "@/contexts/AuthContext";
 import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 import SiteSorAvailability from "./site-sor-availability";
 import SiteActivities from "./site-activities";
 import WoSiteOperatorsSection from "./wo-site-operators-section";
 import SiteCompletionCertificate from "./site-completion-certificate";
+import EditSiteDatesDialog from "./edit-site-dates-dialog";
 
 interface WorkOrderSiteDetails {
   id: number;
@@ -84,6 +85,7 @@ const SiteDetailsCard = ({
   onOpenOperatorUploads,
 }: Props) => {
   const isViewer = useIsViewer();
+  const isAdmin = useIsAdmin();
   const [measurementSheetFiles, setMeasurementSheetFiles] = useState<File[]>(
     [],
   );
@@ -203,6 +205,13 @@ const SiteDetailsCard = ({
             {formatDate(siteDetails?.date)}
             <span className='text-gray-400'>→</span>
             {formatDate(siteDetails?.end_date)}
+            {isAdmin && siteDetails && (
+              <EditSiteDatesDialog
+                woSiteId={siteDetails.id}
+                date={siteDetails.date}
+                endDate={siteDetails.end_date}
+              />
+            )}
           </span>
           <span
             className='inline-flex min-w-0 max-w-full items-center gap-1.5'
