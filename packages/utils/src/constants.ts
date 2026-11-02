@@ -116,6 +116,18 @@ export const OIL_ZAPPER = {
   UNIT: "kg",
 } as const;
 
+// Who work is given to: a vendor supplies material, and a sub-contractor
+// carries out a service. Each has its own page.
+export const CONTRACTOR_TYPE = {
+  VENDOR: "vendor",
+  SUB_CONTRACTOR: "sub_contractor",
+} as const;
+
+export const contractorTypeOptions = [
+  { value: CONTRACTOR_TYPE.VENDOR, label: "Vendor" },
+  { value: CONTRACTOR_TYPE.SUB_CONTRACTOR, label: "Sub-contractor" },
+] as const;
+
 // The two kinds of order bioremediation work is given out through: a purchase
 // order buys material, and a work order subcontracts a service.
 export const CONTRACT_ORDER_TYPE = {
@@ -212,6 +224,8 @@ export default {
   ZERO_DAY_SAMPLE,
   OIL_ZAPPER,
   TPH_TARGET,
+  CONTRACTOR_TYPE,
+  contractorTypeOptions,
   CONTRACT_ORDER_TYPE,
   contractOrderTypeOptions,
   CONTRACT_ORDER_ITEMS,
