@@ -8,7 +8,6 @@ import { z } from "zod";
 import { validators } from "@pkg/schema";
 import { constants } from "@pkg/utils";
 import { syncRestorationCompletion } from "../restoration/restoration-row";
-import { syncBioremediationCompletion } from "../work-order-site/bioremediation-completion";
 import {
   getOilZapperStock,
   OIL_ZAPPER_EPSILON,
@@ -115,11 +114,10 @@ async function computeIsExceeded(
   return existingTotal + newQty > estimateQty + 0.001;
 }
 
-// Expenses complete a restoration by using up its schedule of rates, and a
-// bioremediation site by using up its planned oil zapper.
+// Expenses complete a restoration by using up its schedule of rates. A
+// bioremediation site completes on its TPH instead, so they don't touch it.
 async function syncSiteCompletion(ctx: any, siteId: number) {
   await syncRestorationCompletion(ctx.db, siteId);
-  await syncBioremediationCompletion(ctx.db, siteId);
 }
 
 // A miscellaneous expense, under none of a restoration's or bioremediation

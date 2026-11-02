@@ -591,9 +591,6 @@ export const workOrderSiteMutationRouter = router({
               .update(workOrderSiteTable)
               .set({ is_completed: true })
               .where(eq(workOrderSiteTable.id, work_order_site_id));
-          } else {
-            // A new oil zapper plan can complete or reopen the site.
-            await syncBioremediationCompletion(ctx.db, work_order_site_id);
           }
 
           return { success: true, message: "Contaminated Soil saved" };
@@ -634,6 +631,8 @@ export const workOrderSiteMutationRouter = router({
           tph_value: input.tph_value,
           application_month: input.application_month,
         });
+        // A TPH below the target completes the site.
+        await syncBioremediationCompletion(ctx.db, input.work_order_site_id);
         return {
           success: true,
           message: "Bio sample added successfully",
@@ -648,9 +647,20 @@ export const workOrderSiteMutationRouter = router({
   deleteBioSample: publicProcedure.input(deleteRecordSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       try {
+        const [sample] = await ctx.db
+          .select({ work_order_site_id: bioSampleTable.work_order_site_id })
+          .from(bioSampleTable)
+          .where(eq(bioSampleTable.id, input.id));
         await ctx.db
           .delete(bioSampleTable)
           .where(eq(bioSampleTable.id, input.id));
+        // Removing the latest sample can reopen the site.
+        if (sample) {
+          await syncBioremediationCompletion(
+            ctx.db,
+            sample.work_order_site_id,
+          );
+        }
         return { success: true, message: "Bio sample deleted successfully" };
       } catch (error) {
         throw fromDatabaseError(error, "Deleting bio sample");
