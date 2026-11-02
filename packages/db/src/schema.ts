@@ -605,6 +605,60 @@ export const workOrderSiteContractorTable = mysqlTable(
   ],
 );
 
+// A job order under a work order's restoration. Restoration work is given out
+// through job orders, each to one or more vendors, and each proven complete by
+// its own certificate.
+export const jobOrderTable = mysqlTable(
+  "job_orders",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    // The work order's restoration row.
+    work_order_site_id: int("work_order_site_id")
+      .notNull()
+      .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
+    jo_number: varchar("jo_number", { length: 255 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    start_date: timestamp("start_date").notNull(),
+    end_date: timestamp("end_date").notNull(),
+    description: text("description"),
+    // The job order's completion certificates.
+    documents: json("documents").$type<StoredDocumentRow[]>(),
+    created_by: int("created_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [
+    uniqueIndex("jo_wo_site_number_idx").on(
+      table.work_order_site_id,
+      table.jo_number,
+    ),
+  ],
+);
+
+// The vendors a job order is given to.
+export const jobOrderContractorTable = mysqlTable(
+  "job_order_contractors",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    job_order_id: int("job_order_id")
+      .notNull()
+      .references(() => jobOrderTable.id, { onDelete: "cascade" }),
+    contractor_id: int("contractor_id")
+      .notNull()
+      .references(() => contractorTable.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("joc_job_order_contractor_idx").on(
+      table.job_order_id,
+      table.contractor_id,
+    ),
+    index("joc_contractor_idx").on(table.contractor_id),
+  ],
+);
+
 // A purchase order or subcontract work order that bioremediation work is
 // given out through. One order can cover several of the work order's sites.
 export const contractOrderTable = mysqlTable(
@@ -701,6 +755,10 @@ export const workOrderSiteExpenseTable = mysqlTable(
     }),
     // The contract order requirement the expense is spent on, if any.
     contract_order_item_id: int("contract_order_item_id"),
+    // The restoration job order the expense is spent on, if any.
+    job_order_id: int("job_order_id").references(() => jobOrderTable.id, {
+      onDelete: "set null",
+    }),
     title: varchar("title", { length: 500 }).notNull(),
     amount: decimal("amount", { precision: 20, scale: 2 }).notNull(),
     // The days the expense covers; one day when they match.
@@ -723,6 +781,7 @@ export const workOrderSiteExpenseTable = mysqlTable(
     index("expense_wo_site_idx").on(table.work_order_site_id),
     index("expense_contractor_idx").on(table.contractor_id),
     index("expense_contract_order_item_idx").on(table.contract_order_item_id),
+    index("expense_job_order_idx").on(table.job_order_id),
     // Named here, as the generated name is longer than MySQL allows.
     foreignKey({
       name: "expense_contract_order_item_fk",
