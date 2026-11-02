@@ -3,6 +3,7 @@ import React from "react";
 import { trpc } from "@/lib/trpc";
 import CollapsiblePreview from "@/components/shared/collapsible-preview";
 import RestorationRatesTable, {
+  type ActivityUsage,
   type RestorationRate,
 } from "./restoration-rates-table";
 
@@ -12,8 +13,8 @@ interface Props {
   estimatedTotal: number;
 }
 
-// The restoration schedule of rates, with the quantity its expenses have
-// used, shown half height until opened.
+// The restoration schedule of rates, with the quantity and money its expenses
+// have used, shown half height until opened.
 const RestorationRatesSection = ({
   restorationId,
   rates,
@@ -22,21 +23,16 @@ const RestorationRatesSection = ({
   const expenseSummaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery({
     work_order_site_id: restorationId,
   });
-  const byActivity: Record<string, { totalQuantity: number }> =
+  const usageByActivity: Record<string, ActivityUsage> =
     expenseSummaryQuery.data?.byActivity ?? {};
-  const usedQtyByActivity = Object.fromEntries(
-    Object.entries(byActivity).map(([activity, totals]) => [
-      activity,
-      totals.totalQuantity,
-    ]),
-  );
 
   return (
     <CollapsiblePreview expandLabel={`Show all ${rates.length} activities`}>
       <RestorationRatesTable
         rates={rates}
         estimatedTotal={estimatedTotal}
-        usedQtyByActivity={usedQtyByActivity}
+        usageByActivity={usageByActivity}
+        totalSpent={expenseSummaryQuery.data?.grandTotal ?? 0}
       />
     </CollapsiblePreview>
   );
