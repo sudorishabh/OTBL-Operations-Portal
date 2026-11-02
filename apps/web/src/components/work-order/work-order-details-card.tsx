@@ -12,6 +12,8 @@ import { capitalFirstLetter, constants, formatCurrency } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { toDocuments } from "@/lib/documents";
+import { useIsAdmin } from "@/contexts/AuthContext";
+import EditWorkOrderDialog from "./edit-work-order-dialog";
 
 interface Props {
   workOrder: {
@@ -125,6 +127,7 @@ const Metric = ({
 
 const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
+  const isAdmin = useIsAdmin();
 
   const income = Number(stats.totalBudgetAmount) || 0;
   const activitySpending = Number(stats.totalCompletionAmount) || 0;
@@ -234,6 +237,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
                 : `${documents.length} documents`}
             </button>
           </DocumentsMenu>
+          {isAdmin && <EditWorkOrderDialog workOrder={workOrder} />}
         </div>
       </div>
 
