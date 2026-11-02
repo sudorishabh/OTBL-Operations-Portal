@@ -61,6 +61,8 @@ export const expenseQueryRouter = router({
               work_order_site_id: workOrderSiteExpenseTable.work_order_site_id,
               contractor_id: workOrderSiteExpenseTable.contractor_id,
               contractor_name: contractorTable.name,
+              contract_order_item_id:
+                workOrderSiteExpenseTable.contract_order_item_id,
               activity_key: workOrderSiteExpenseTable.activity_key,
               quantity: workOrderSiteExpenseTable.quantity,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
