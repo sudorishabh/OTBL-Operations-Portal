@@ -11,6 +11,7 @@ import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import CustomButton from "@/components/shared/btn";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
+import JobOrderCertificates from "./job-order-certificates";
 import RestorationSummary from "./restoration-summary";
 import RestorationCompletion from "./restoration-completion";
 import RestorationRatesSection from "./restoration-rates-section";
@@ -125,8 +126,12 @@ const RestorationDialog = ({
             <JobOrderActions
               restorationId={restoration.id}
               jobOrder={jobOrder}
-              onEdit={() => openJobOrderDialog(jobOrder)}
-            />
+              onEdit={() => openJobOrderDialog(jobOrder)}>
+              <JobOrderCertificates
+                restorationId={restoration.id}
+                jobOrder={jobOrder}
+              />
+            </JobOrderActions>
           )}
         />
       </div>
