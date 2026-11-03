@@ -191,7 +191,7 @@ const SiteDetailsCard = ({
       {siteDetails?.id && (
         <WoSiteOperatorsSection
           woSiteId={siteDetails.id}
-          className='border-t border-gray-100'
+          className='border-t border-gray-100 px-5 py-4'
         />
       )}
 

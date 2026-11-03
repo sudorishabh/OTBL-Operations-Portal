@@ -53,7 +53,7 @@ const RestorationHeader = ({
     : scheduleNote(restoration.status, workOrder.start_date, workOrder.end_date);
 
   return (
-    <section className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
+    <section className='rounded-lg border border-gray-200 bg-white'>
       <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-4'>
         <div className='flex min-w-0 flex-1 items-center gap-3'>
           <div
@@ -115,7 +115,7 @@ const RestorationHeader = ({
       <WoSiteOperatorsSection
         woSiteId={restoration.id}
         subject='restoration'
-        className='border-t border-gray-100'
+        className='border-t border-gray-100 px-5 py-4'
       />
     </section>
   );

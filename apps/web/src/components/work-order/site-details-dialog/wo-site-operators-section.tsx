@@ -3,10 +3,9 @@
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import CustomButton from "@/components/shared/btn";
-import { Settings2 } from "lucide-react";
+import { Users, Settings2 } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
 import { useIsManager } from "@/contexts/AuthContext";
-import InfoSection from "./info-section";
 import WoSiteOperatorsDialog from "./wo-site-operators-dialog";
 
 type Props = {
@@ -40,12 +39,19 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
 
   const operators: AssignedOperator[] = data ?? [];
 
-  // A row of the site's or restoration's information card.
+  // Unboxed, as it sits inside the site's or restoration's information panel.
   return (
-    <InfoSection
-      title='Site operators'
-      description={`Only they can upload documents to this ${subject}.`}
-      actions={
+    <div className={className}>
+      <div className='mb-2 flex items-center justify-between gap-2'>
+        <div className='flex items-center gap-2'>
+          <Users className='size-3.5 text-gray-400' />
+          <span className='text-xs font-medium text-gray-700'>
+            Site operators
+          </span>
+          <span className='text-[11px] tabular-nums text-gray-400'>
+            {operators.length} assigned
+          </span>
+        </div>
         <CustomButton
           type='button'
           variant='outline'
@@ -55,8 +61,13 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
           className='h-7 px-2.5 text-xs'
           disableForViewer
         />
-      }
-      className={className}>
+      </div>
+
+      <p className='mb-2.5 text-[11px] text-gray-400'>
+        Only the operators assigned here can upload documents to this{" "}
+        {subject}.
+      </p>
+
       {isLoading ? (
         <div className='flex flex-wrap gap-2'>
           {Array.from({ length: 3 }).map((_, i) => (
@@ -67,7 +78,11 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
           ))}
         </div>
       ) : operators.length === 0 ? (
-        <p className='text-xs text-gray-400'>No operators assigned yet.</p>
+        <p className='text-xs text-muted-foreground'>
+          No operators assigned yet. Use{" "}
+          <span className='font-medium'>Manage operators</span> to assign Site
+          Operators to this {subject}.
+        </p>
       ) : (
         <div className='flex flex-wrap gap-2'>
           {operators.map((o) => (
@@ -88,7 +103,7 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
         setOpen={setDialogOpen}
         woSiteId={woSiteId}
       />
-    </InfoSection>
+    </div>
   );
 };
 
