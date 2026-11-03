@@ -4,6 +4,10 @@ import * as jobOrderSchemas from "./job-order.schema";
 
 export type JobOrderInput = z.input<typeof jobOrderSchemas.baseJobOrderSchema>;
 
+export type JobOrderValues = z.output<
+  typeof jobOrderSchemas.baseJobOrderSchema
+>;
+
 export type CreateJobOrderInput = z.output<
   typeof jobOrderSchemas.createJobOrderSchema
 >;

@@ -1,7 +1,7 @@
 import { and, count, eq, inArray, notInArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
-import { jobOrderSchemas } from "@pkg/schema";
+import { jobOrderSchemas, type jobOrderTypes } from "@pkg/schema";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import { assertOfficeManager } from "../../helper/office-permissions";
@@ -92,6 +92,27 @@ async function countJobOrderExpenses(
 
 const unique = (ids: number[]) => [...new Set(ids)];
 
+// The job order's fields as they are saved. Blank answers are saved as
+// nothing, and activity rows left blank are dropped.
+const jobOrderValues = (input: jobOrderTypes.JobOrderValues) => ({
+  jo_number: input.jo_number,
+  title: input.title,
+  start_date: input.start_date,
+  end_date: input.end_date,
+  description: input.description || null,
+  issued_by: input.issued_by || null,
+  rc_noa_number: input.rc_noa_number || null,
+  rc_noa_date: input.rc_noa_date ?? null,
+  ola_number: input.ola_number || null,
+  po_number: input.po_number || null,
+  installation_name: input.installation_name,
+  location: input.location,
+  mobilization_date: input.mobilization_date ?? null,
+  activities: (input.activities ?? []).filter(
+    (row) => row.quantity || row.completion_date,
+  ),
+});
+
 export const jobOrderMutationRouter = router({
   createJobOrder: protectedProcedure
     .input(jobOrderSchemas.createJobOrderSchema)
@@ -104,12 +125,8 @@ export const jobOrderMutationRouter = router({
         try {
           const id = await ctx.db.transaction(async (tx) => {
             const [result] = await tx.insert(jobOrderTable).values({
+              ...jobOrderValues(input),
               work_order_site_id: input.work_order_site_id,
-              jo_number: input.jo_number,
-              title: input.title,
-              start_date: input.start_date,
-              end_date: input.end_date,
-              description: input.description || null,
               documents: [],
               created_by: Number(ctx.user!.sub),
             });
@@ -162,13 +179,7 @@ export const jobOrderMutationRouter = router({
           await ctx.db.transaction(async (tx) => {
             await tx
               .update(jobOrderTable)
-              .set({
-                jo_number: input.jo_number,
-                title: input.title,
-                start_date: input.start_date,
-                end_date: input.end_date,
-                description: input.description || null,
-              })
+              .set(jobOrderValues(input))
               .where(eq(jobOrderTable.id, input.id));
 
             await tx
