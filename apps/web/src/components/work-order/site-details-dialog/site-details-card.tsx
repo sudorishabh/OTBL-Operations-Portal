@@ -167,14 +167,13 @@ const SiteDetailsCard = ({
       {/* The site's documents. For bioremediation, how it was set up: the
           team moving on, and the baseline sample taken before treatment
           starts. Then the measurements behind its quantities, and the
-          certificate, only taken once the site is complete. */}
+          certificate, only taken once the site is complete. Two to a row, so
+          each has room for its description and its upload. */}
       {siteDetails?.id && (
         <div
           className={cn(
             "grid grid-cols-1 gap-x-6 gap-y-5 border-t border-gray-100 px-5 py-4",
             documentCount >= 2 && "md:grid-cols-2",
-            documentCount === 3 && "xl:grid-cols-3",
-            documentCount >= 4 && "xl:grid-cols-4",
           )}>
           {isBioremediation && (
             <>
