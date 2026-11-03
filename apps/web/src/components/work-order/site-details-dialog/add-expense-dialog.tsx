@@ -90,6 +90,9 @@ interface Props {
   orderItem?: { id: number; label: string } | null;
   // The restoration job order the expense is spent on, likewise.
   jobOrder?: { id: number; label: string } | null;
+  // Why the activities are the ones offered, shown under their list. An
+  // expense must then be under one of them, even if there are none.
+  activitiesNote?: string;
 }
 
 // "Expense under" value for an expense under none of the contractors.
@@ -126,6 +129,7 @@ const AddExpenseDialog = ({
   fixedActivityKey,
   orderItem = null,
   jobOrder = null,
+  activitiesNote,
 }: Props) => {
   // What the expense is spent on, when it is on an order or job order.
   const spentOn = orderItem ?? jobOrder;
@@ -327,7 +331,7 @@ const AddExpenseDialog = ({
       toast.error("Choose which vendor this expense is under");
       return;
     }
-    if (activities.length > 0 && !selectedActivityKey) {
+    if ((activities.length > 0 || activitiesNote) && !selectedActivityKey) {
       toast.error("Please select an activity");
       return;
     }
@@ -552,7 +556,7 @@ const AddExpenseDialog = ({
             </fieldset>
           )}
 
-          {activities.length > 0 && (
+          {(activities.length > 0 || activitiesNote) && (
             <div className='space-y-1.5'>
               <div
                 className={cn(
@@ -568,12 +572,19 @@ const AddExpenseDialog = ({
                       open={isActivityPickerOpen}
                       onOpenChange={setIsActivityPickerOpen}
                       value={selectedActivityKey}
+                      disabled={activities.length === 0}
                       onValueChange={(v) => {
                         setSelectedActivityKey(v);
                         setQuantity("");
                       }}>
                       <SelectTrigger className='h-9 w-full text-sm'>
-                        <SelectValue placeholder='Select activity this expense belongs to...' />
+                        <SelectValue
+                          placeholder={
+                            activities.length === 0
+                              ? "No activities to choose"
+                              : "Select activity this expense belongs to..."
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {activities.map((a) => (
@@ -583,6 +594,9 @@ const AddExpenseDialog = ({
                         ))}
                       </SelectContent>
                     </Select>
+                    {activitiesNote && (
+                      <p className='text-[11px] text-gray-400'>{activitiesNote}</p>
+                    )}
                   </div>
                 )}
 
