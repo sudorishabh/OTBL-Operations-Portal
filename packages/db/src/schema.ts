@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
   json,
+  foreignKey,
 } from "drizzle-orm/mysql-core";
 import { constants } from "@pkg/utils";
 
@@ -26,7 +27,23 @@ export type TransportationSlabsRow = Record<
   { quantity: number; rate: number }
 >;
 
-const { ROLES, STATUS, PROPOSAL_STATUS, WORK_ORDER_STATUS } = constants;
+// One row of a job order form's or completion certificate's activity table:
+// the quantity as written on it (a measurement, yes, no or "To be assessed
+// later"), and the date its work is due or was done, as yyyy-MM-dd.
+export type JobOrderActivityRow = {
+  key: (typeof constants.JOB_ORDER_ACTIVITIES)[number]["key"];
+  quantity: string;
+  completion_date: string | null;
+};
+
+const {
+  ROLES,
+  STATUS,
+  PROPOSAL_STATUS,
+  WORK_ORDER_STATUS,
+  CONTRACT_ORDER_TYPE,
+  CONTRACTOR_TYPE,
+} = constants;
 
 export const userTable = mysqlTable(
   "users",
@@ -354,9 +371,10 @@ export const workOrderSiteTable = mysqlTable(
     client_id: int("client_id")
       .notNull()
       .references(() => clientTable.id, { onDelete: "cascade" }),
-    site_id: int("site_id")
-      .notNull()
-      .references(() => siteTable.id, { onDelete: "cascade" }),
+    // Null for a work order's restoration row, which has no physical site.
+    site_id: int("site_id").references(() => siteTable.id, {
+      onDelete: "cascade",
+    }),
     date: timestamp("date").notNull(),
     end_date: timestamp("end_date").notNull(),
     process_type: varchar("process_type", {
@@ -453,12 +471,11 @@ export const workOrderSiteDocsTable = mysqlTable("work_order_site_docs", {
 
   type: varchar("type", {
     enum: [
-      "sub_wo",
       "estimate",
       "completion",
       "measurement_sheet",
-      "bills",
       "completion_certificate",
+      "mobilization",
     ],
     length: 255,
   }).notNull(),
@@ -466,133 +483,6 @@ export const workOrderSiteDocsTable = mysqlTable("work_order_site_docs", {
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
-export const cleaningUpSoilAreaTable = mysqlTable("clean_soil_area", {
-  id: int("id").autoincrement().primaryKey(),
-  site_activity_id: int("site_activity_id").references(
-    () => siteActivityTable.id,
-    { onDelete: "cascade" },
-  ),
-  work_order_site_id: int("work_order_site_id")
-    .notNull()
-    .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
-  estimated_quantity: decimal("estimated_quantity", {
-    precision: 20,
-    scale: 2,
-  }).notNull(),
-  amount: decimal("amount", { precision: 20, scale: 2 }),
-  transportation_km: decimal("transportation_km", {
-    precision: 10,
-    scale: 2,
-  }),
-  type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
-    length: 255,
-  }).notNull(),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
-});
-export const liftingRecoveryOilSlushTable = mysqlTable("lifting_oil_slush", {
-  id: int("id").autoincrement().primaryKey(),
-  site_activity_id: int("site_activity_id").references(
-    () => siteActivityTable.id,
-    { onDelete: "cascade" },
-  ),
-  work_order_site_id: int("work_order_site_id")
-    .notNull()
-    .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
-  estimated_quantity: decimal("estimated_quantity", {
-    precision: 20,
-    scale: 2,
-  }).notNull(),
-  amount: decimal("amount", { precision: 20, scale: 2 }),
-  transportation_km: decimal("transportation_km", {
-    precision: 10,
-    scale: 2,
-  }),
-  type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
-    length: 255,
-  }).notNull(),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
-});
-export const excavationContSoilTable = mysqlTable("excav_cont_soil", {
-  id: int("id").autoincrement().primaryKey(),
-  site_activity_id: int("site_activity_id").references(
-    () => siteActivityTable.id,
-    { onDelete: "cascade" },
-  ),
-  work_order_site_id: int("work_order_site_id")
-    .notNull()
-    .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
-  estimated_quantity: decimal("estimated_quantity", {
-    precision: 20,
-    scale: 2,
-  }).notNull(),
-  amount: decimal("amount", { precision: 20, scale: 2 }),
-  transportation_km: decimal("transportation_km", {
-    precision: 10,
-    scale: 2,
-  }),
-  type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
-    length: 255,
-  }).notNull(),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
-});
-
-export const transportationContSoilTable = mysqlTable("trans_cont_soil", {
-  id: int("id").autoincrement().primaryKey(),
-  site_activity_id: int("site_activity_id").references(
-    () => siteActivityTable.id,
-    { onDelete: "cascade" },
-  ),
-  work_order_site_id: int("work_order_site_id")
-    .notNull()
-    .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
-  estimated_quantity: decimal("estimated_quantity", {
-    precision: 20,
-    scale: 2,
-  }).notNull(),
-  amount: decimal("amount", { precision: 20, scale: 2 }),
-  transportation_km: decimal("transportation_km", {
-    precision: 10,
-    scale: 2,
-  }),
-  type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
-    length: 255,
-  }).notNull(),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
-});
-
-export const refillingExcavatedContSoilTable = mysqlTable("refill_excav_soil", {
-  id: int("id").autoincrement().primaryKey(),
-  site_activity_id: int("site_activity_id").references(
-    () => siteActivityTable.id,
-    { onDelete: "cascade" },
-  ),
-  work_order_site_id: int("work_order_site_id")
-    .notNull()
-    .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
-  estimated_quantity: decimal("estimated_quantity", {
-    precision: 20,
-    scale: 2,
-  }).notNull(),
-  amount: decimal("amount", { precision: 20, scale: 2 }),
-  transportation_km: decimal("transportation_km", {
-    precision: 10,
-    scale: 2,
-  }),
-  type: varchar("type", {
-    enum: ["estimate_sub-wo", "completion"],
-    length: 255,
-  }).notNull(),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
-});
 export const bioremediationContSoilTable = mysqlTable("biorem_cont_soil", {
   id: int("id").autoincrement().primaryKey(),
   site_activity_id: int("site_activity_id").references(
@@ -609,6 +499,11 @@ export const bioremediationContSoilTable = mysqlTable("biorem_cont_soil", {
   amount: decimal("amount", { precision: 20, scale: 2 }),
   transportation_km: decimal("transportation_km", {
     precision: 10,
+    scale: 2,
+  }),
+  // Planned oil zapper, in kg, for the estimated soil.
+  oil_zapper_quantity: decimal("oil_zapper_quantity", {
+    precision: 20,
     scale: 2,
   }),
   type: varchar("type", {
@@ -640,6 +535,8 @@ export const bioSampleTable = mysqlTable("bio_samples", {
   }).notNull(),
 
   application_month: varchar("application_month", { length: 255 }).notNull(),
+  // The day the sample was taken; older samples only have created_at.
+  sampled_on: timestamp("sampled_on"),
 
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
@@ -663,23 +560,30 @@ export const bioOilZappingTable = mysqlTable("bio_oil_zapping", {
     precision: 20,
     scale: 2,
   }),
+  // The day the oil zapper was applied; older entries only have created_at.
+  applied_on: timestamp("applied_on"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
+// Vendors: the contractors work is ordered to, shared by every office.
 export const contractorTable = mysqlTable(
   "contractors",
   {
     id: int("id").autoincrement().primaryKey(),
-    office_id: int("office_id")
-      .notNull()
-      .references(() => officeTable.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 255 }).notNull(),
     contact_number: varchar("contact_number", { length: 15 }),
     email: varchar("email", { length: 320 }),
     address: varchar("address", { length: 500 }),
     gst_number: varchar("gst_number", { length: 15 }),
     pan_number: varchar("pan_number", { length: 10 }),
+    // A vendor supplies material; a sub-contractor carries out a service.
+    type: varchar("type", {
+      length: 50,
+      enum: [CONTRACTOR_TYPE.VENDOR, CONTRACTOR_TYPE.SUB_CONTRACTOR],
+    })
+      .notNull()
+      .default(CONTRACTOR_TYPE.VENDOR),
     status: varchar("status", {
       length: 50,
       enum: [STATUS.ACTIVE, STATUS.INACTIVE],
@@ -690,8 +594,190 @@ export const contractorTable = mysqlTable(
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
   (table) => [
-    index("contractor_office_idx").on(table.office_id),
     index("contractor_name_idx").on(table.name),
+    index("contractor_type_idx").on(table.type),
+  ],
+);
+
+// The vendors a work order site's work is ordered to; restoration and
+// bioremediation sites can each have several.
+export const workOrderSiteContractorTable = mysqlTable(
+  "wo_site_contractors",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    work_order_site_id: int("work_order_site_id")
+      .notNull()
+      .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
+    contractor_id: int("contractor_id")
+      .notNull()
+      .references(() => contractorTable.id, { onDelete: "cascade" }),
+    assigned_by: int("assigned_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("wosc_wo_site_contractor_idx").on(
+      table.work_order_site_id,
+      table.contractor_id,
+    ),
+    index("wosc_contractor_idx").on(table.contractor_id),
+  ],
+);
+
+// A job order under a work order's restoration. Restoration work is given out
+// through job orders, each to one or more vendors, and each proven complete by
+// its own certificate.
+export const jobOrderTable = mysqlTable(
+  "job_orders",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    // The work order's restoration row.
+    work_order_site_id: int("work_order_site_id")
+      .notNull()
+      .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
+    jo_number: varchar("jo_number", { length: 255 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    start_date: timestamp("start_date").notNull(),
+    end_date: timestamp("end_date").notNull(),
+    description: text("description"),
+    // The client's job order form, issued by the installation manager. Older
+    // job orders were saved without it.
+    issued_by: varchar("issued_by", { length: 255 }),
+    rc_noa_number: varchar("rc_noa_number", { length: 255 }),
+    rc_noa_date: timestamp("rc_noa_date"),
+    ola_number: varchar("ola_number", { length: 255 }),
+    po_number: varchar("po_number", { length: 255 }),
+    installation_name: varchar("installation_name", { length: 255 }),
+    location: varchar("location", { length: 255 }),
+    // Only for ex-situ bioremediation jobs.
+    mobilization_date: timestamp("mobilization_date"),
+    activities: json("activities").$type<JobOrderActivityRow[]>(),
+    // The work as done, for the client's work completion certificate: the
+    // actual quantities and dates, and the date the job was finished.
+    completed_on: timestamp("completed_on"),
+    completion_activities: json("completion_activities").$type<
+      JobOrderActivityRow[]
+    >(),
+    // The job order's completion certificates.
+    documents: json("documents").$type<StoredDocumentRow[]>(),
+    created_by: int("created_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [
+    uniqueIndex("jo_wo_site_number_idx").on(
+      table.work_order_site_id,
+      table.jo_number,
+    ),
+  ],
+);
+
+// The vendors a job order is given to.
+export const jobOrderContractorTable = mysqlTable(
+  "job_order_contractors",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    job_order_id: int("job_order_id")
+      .notNull()
+      .references(() => jobOrderTable.id, { onDelete: "cascade" }),
+    contractor_id: int("contractor_id")
+      .notNull()
+      .references(() => contractorTable.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("joc_job_order_contractor_idx").on(
+      table.job_order_id,
+      table.contractor_id,
+    ),
+    index("joc_contractor_idx").on(table.contractor_id),
+  ],
+);
+
+// A purchase order or subcontract work order that bioremediation work is
+// given out through. One order can cover several of the work order's sites.
+export const contractOrderTable = mysqlTable(
+  "contract_orders",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    work_order_id: int("work_order_id")
+      .notNull()
+      .references(() => workOrderTable.id, { onDelete: "cascade" }),
+    type: varchar("type", {
+      length: 50,
+      enum: [CONTRACT_ORDER_TYPE.PURCHASE_ORDER, CONTRACT_ORDER_TYPE.WORK_ORDER],
+    }).notNull(),
+    order_number: varchar("order_number", { length: 255 }).notNull(),
+    order_date: timestamp("order_date").notNull(),
+    description: text("description"),
+    documents: json("documents").$type<StoredDocumentRow[]>(),
+    created_by: int("created_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [
+    uniqueIndex("co_wo_type_number_idx").on(
+      table.work_order_id,
+      table.type,
+      table.order_number,
+    ),
+  ],
+);
+
+// What a contract order requires at one of its sites, such as oil zapper or
+// a JCB, and how much.
+export const contractOrderItemTable = mysqlTable(
+  "contract_order_items",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    contract_order_id: int("contract_order_id")
+      .notNull()
+      .references(() => contractOrderTable.id, { onDelete: "cascade" }),
+    work_order_site_id: int("work_order_site_id")
+      .notNull()
+      .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
+    item: varchar("item", { length: 100 }).notNull(),
+    // Names the item when it is "other".
+    description: varchar("description", { length: 255 }),
+    quantity: decimal("quantity", { precision: 20, scale: 2 }).notNull(),
+    unit: varchar("unit", { length: 20 }).notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [
+    index("coi_contract_order_idx").on(table.contract_order_id),
+    index("coi_wo_site_idx").on(table.work_order_site_id),
+  ],
+);
+
+// The vendors a contract order is given to.
+export const contractOrderContractorTable = mysqlTable(
+  "contract_order_contractors",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    contract_order_id: int("contract_order_id").notNull(),
+    contractor_id: int("contractor_id")
+      .notNull()
+      .references(() => contractorTable.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    // Named here, as the generated name is longer than MySQL allows.
+    foreignKey({
+      name: "coc_contract_order_fk",
+      columns: [table.contract_order_id],
+      foreignColumns: [contractOrderTable.id],
+    }).onDelete("cascade"),
+    uniqueIndex("coc_order_contractor_idx").on(
+      table.contract_order_id,
+      table.contractor_id,
+    ),
+    index("coc_contractor_idx").on(table.contractor_id),
   ],
 );
 
@@ -702,24 +788,21 @@ export const workOrderSiteExpenseTable = mysqlTable(
     work_order_site_id: int("work_order_site_id")
       .notNull()
       .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
-    expense_type: varchar("expense_type", {
-      length: 50,
-      enum: [
-        "contractor_payment",
-        "labour",
-        "material",
-        "equipment",
-        "miscellaneous",
-      ],
-    }).notNull(),
     contractor_id: int("contractor_id").references(() => contractorTable.id, {
       onDelete: "set null",
     }),
-    description: varchar("description", { length: 500 }).notNull(),
+    // The contract order requirement the expense is spent on, if any.
+    contract_order_item_id: int("contract_order_item_id"),
+    // The restoration job order the expense is spent on, if any.
+    job_order_id: int("job_order_id").references(() => jobOrderTable.id, {
+      onDelete: "set null",
+    }),
+    title: varchar("title", { length: 500 }).notNull(),
     amount: decimal("amount", { precision: 20, scale: 2 }).notNull(),
-    expense_date: timestamp("expense_date").notNull(),
+    // The days the expense covers; one day when they match.
+    start_date: timestamp("start_date").notNull(),
+    end_date: timestamp("end_date").notNull(),
     invoice_number: varchar("invoice_number", { length: 100 }),
-    notes: text("notes"),
     activity_key: varchar("activity_key", { length: 100 }),
     quantity: decimal("quantity", { precision: 20, scale: 4 }),
     is_exceeded: tinyint("is_exceeded").notNull().default(0),
@@ -735,7 +818,14 @@ export const workOrderSiteExpenseTable = mysqlTable(
   (table) => [
     index("expense_wo_site_idx").on(table.work_order_site_id),
     index("expense_contractor_idx").on(table.contractor_id),
-    index("expense_type_idx").on(table.expense_type),
-    index("expense_date_idx").on(table.expense_date),
+    index("expense_contract_order_item_idx").on(table.contract_order_item_id),
+    index("expense_job_order_idx").on(table.job_order_id),
+    // Named here, as the generated name is longer than MySQL allows.
+    foreignKey({
+      name: "expense_contract_order_item_fk",
+      columns: [table.contract_order_item_id],
+      foreignColumns: [contractOrderItemTable.id],
+    }).onDelete("set null"),
+    index("expense_start_date_idx").on(table.start_date),
   ],
 );

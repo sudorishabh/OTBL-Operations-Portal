@@ -22,6 +22,7 @@ const {
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { hasPhysicalSite, siteNameOrRestoration } from "../../helper/restoration";
 import { USER_ROLES } from "../../authorization";
 import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
@@ -31,16 +32,12 @@ const {
   workOrderSiteTable,
   workOrderSiteDocsTable,
   clientTable,
+  parentClientTable,
   officeTable,
   siteTable,
   workOrderSiteUserTable,
   userTable,
   scheduleOfRatesTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
   bioremediationContSoilTable,
   workOrderSiteExpenseTable,
 } = schema;
@@ -389,9 +386,11 @@ export const workOrderQueryRouter = router({
             : eq(workOrderSiteTable.id, -1)
           : undefined;
 
-        const woSiteWhere = siteRowFilter
-          ? and(eq(workOrderSiteTable.work_order_id, id), siteRowFilter)
-          : eq(workOrderSiteTable.work_order_id, id);
+        const woSiteWhere = and(
+          eq(workOrderSiteTable.work_order_id, id),
+          hasPhysicalSite,
+          siteRowFilter,
+        );
 
         const [totalResult] = await ctx.db
           .select({ count: count() })
@@ -632,6 +631,7 @@ export const workOrderQueryRouter = router({
             description: workOrderTable.description,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
+            parent_client_name: parentClientTable.name,
             office_id: workOrderTable.office_id,
             office_name: officeTable.name,
             start_date: workOrderTable.start_date,
@@ -658,6 +658,10 @@ export const workOrderQueryRouter = router({
           })
           .from(workOrderTable)
           .leftJoin(clientTable, eq(workOrderTable.client_id, clientTable.id))
+          .leftJoin(
+            parentClientTable,
+            eq(clientTable.parent_client_id, parentClientTable.id),
+          )
           .leftJoin(officeTable, eq(workOrderTable.office_id, officeTable.id))
           .where(eq(workOrderTable.id, id))
           .orderBy(desc(workOrderTable.created_at));
@@ -687,7 +691,8 @@ export const workOrderQueryRouter = router({
           .select({
             wo_site_id: workOrderSiteTable.id,
             site_id: siteTable.id,
-            site_name: siteTable.name,
+            site_name: siteNameOrRestoration,
+            process_type: workOrderSiteTable.process_type,
             site_address: siteTable.address,
             site_city: siteTable.city,
             site_state: siteTable.state,
@@ -746,119 +751,36 @@ export const workOrderQueryRouter = router({
 
         const woSiteIds = woSites.map((s: any) => s.wo_site_id);
 
+        // Only bioremediation records completion quantities and income;
+        // restoration tracks its expenses alone.
         let allCompletions: any[] = [];
         if (woSiteIds.length > 0) {
-          const [
-            cleanSoilAreaExp,
-            liftingOilExp,
-            excavSoilExp,
-            transSoilExp,
-            refillSoilExp,
-            bioremSoilExp,
-          ] = await Promise.all([
-            ctx.db
-              .select()
-              .from(cleaningUpSoilAreaTable)
-              .where(
-                and(
-                  inArray(
-                    cleaningUpSoilAreaTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(cleaningUpSoilAreaTable.type, "completion" as any),
-                ),
+          const bioremSoilExp = await ctx.db
+            .select()
+            .from(bioremediationContSoilTable)
+            .where(
+              and(
+                inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
+                eq(bioremediationContSoilTable.type, "completion" as any),
               ),
-            ctx.db
-              .select()
-              .from(liftingRecoveryOilSlushTable)
-              .where(
-                and(
-                  inArray(
-                    liftingRecoveryOilSlushTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(liftingRecoveryOilSlushTable.type, "completion" as any),
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(excavationContSoilTable)
-              .where(
-                and(
-                  inArray(
-                    excavationContSoilTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(excavationContSoilTable.type, "completion" as any),
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(transportationContSoilTable)
-              .where(
-                and(
-                  inArray(
-                    transportationContSoilTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(transportationContSoilTable.type, "completion" as any),
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(refillingExcavatedContSoilTable)
-              .where(
-                and(
-                  inArray(
-                    refillingExcavatedContSoilTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(refillingExcavatedContSoilTable.type, "completion" as any),
-                ),
-              ),
-            ctx.db
-              .select()
-              .from(bioremediationContSoilTable)
-              .where(
-                and(
-                  inArray(
-                    bioremediationContSoilTable.work_order_site_id,
-                    woSiteIds,
-                  ),
-                  eq(bioremediationContSoilTable.type, "completion" as any),
-                ),
-              ),
-          ]);
+            );
 
-          const mapCompletion = (items: any[], activityName: string) =>
-            items.map((item) => ({
-              ...item,
-              activity_name: activityName,
-            }));
-
-          allCompletions = [
-            ...mapCompletion(cleanSoilAreaExp, "clean_soil_area"),
-            ...mapCompletion(liftingOilExp, "lifting_oil_slush"),
-            ...mapCompletion(excavSoilExp, "excav_cont_soil"),
-            ...mapCompletion(transSoilExp, "trans_cont_soil"),
-            ...mapCompletion(refillSoilExp, "refill_excav_soil"),
-            ...mapCompletion(bioremSoilExp, "biorem_cont_soil"),
-          ];
+          allCompletions = bioremSoilExp.map((item: any) => ({
+            ...item,
+            activity_name: "biorem_cont_soil",
+          }));
         }
 
         type SiteExpenseAgg = {
           total: number;
           exceededTotal: number;
-          byType: Record<string, number>;
           count: number;
         };
         const siteExpenseMap = new Map<number, SiteExpenseAgg>();
-        const woExpenseByType: Record<string, number> = {};
         let woExpenseTotal = 0;
         let woExceededTotal = 0;
         let expenseRows: {
           work_order_site_id: number;
-          expense_type: string;
           amount: string | null;
           is_exceeded: number | null;
         }[] = [];
@@ -868,7 +790,6 @@ export const workOrderQueryRouter = router({
             .select({
               work_order_site_id:
                 workOrderSiteExpenseTable.work_order_site_id,
-              expense_type: workOrderSiteExpenseTable.expense_type,
               amount: workOrderSiteExpenseTable.amount,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
             })
@@ -885,15 +806,12 @@ export const workOrderQueryRouter = router({
             const isExceeded = !!row.is_exceeded;
             woExpenseTotal += amt;
             if (isExceeded) woExceededTotal += amt;
-            woExpenseByType[row.expense_type] =
-              (woExpenseByType[row.expense_type] || 0) + amt;
 
             let siteAgg = siteExpenseMap.get(row.work_order_site_id);
             if (!siteAgg) {
               siteAgg = {
                 total: 0,
                 exceededTotal: 0,
-                byType: {},
                 count: 0,
               };
               siteExpenseMap.set(row.work_order_site_id, siteAgg);
@@ -901,8 +819,6 @@ export const workOrderQueryRouter = router({
             siteAgg.total += amt;
             if (isExceeded) siteAgg.exceededTotal += amt;
             siteAgg.count += 1;
-            siteAgg.byType[row.expense_type] =
-              (siteAgg.byType[row.expense_type] || 0) + amt;
           }
         }
 
@@ -919,7 +835,6 @@ export const workOrderQueryRouter = router({
             siteExpenseMap.get(woSite.wo_site_id) ?? {
               total: 0,
               exceededTotal: 0,
-              byType: {} as Record<string, number>,
               count: 0,
             };
 
@@ -933,6 +848,7 @@ export const workOrderQueryRouter = router({
               pincode: woSite.site_pincode,
             },
             wo_site_id: woSite.wo_site_id,
+            process_type: woSite.process_type,
             start_date: woSite.start_date,
             end_date: woSite.end_date,
             status: woSite.status,
@@ -944,7 +860,6 @@ export const workOrderQueryRouter = router({
             total_completion_amount: totalCompletionAmount.toString(),
             total_expenses: expAgg.total.toString(),
             total_exceeded_expenses: expAgg.exceededTotal.toString(),
-            expense_by_type: expAgg.byType,
             expense_entry_count: expAgg.count,
             created_at: woSite.created_at,
             users: sitesUsers[index],
@@ -973,13 +888,13 @@ export const workOrderQueryRouter = router({
           sites: sitesWithDetails,
           scheduleOfRates,
           stats: {
-            total_sites: sitesWithDetails.length,
+            total_sites: sitesWithDetails.filter((s) => s.site.id != null)
+              .length,
           },
           work_order_expense_summary: {
             total_expenses: woExpenseTotal,
             exceeded_total: woExceededTotal,
             regular_total: woExpenseTotal - woExceededTotal,
-            by_type: woExpenseByType,
             expense_entry_count: expenseRows.length,
             total_income: totalIncomeFromSites,
             net_surplus: totalIncomeFromSites - woExpenseTotal,

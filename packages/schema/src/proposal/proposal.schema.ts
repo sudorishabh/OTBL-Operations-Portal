@@ -24,7 +24,8 @@ export const createProposalSchema = baseProposalSchema.extend({
   client_id: positiveIntValidator,
 });
 
-export const updateProposalSchema = createProposalSchema.extend({
+// A proposal stays with its client, so only its own details are edited.
+export const updateProposalSchema = baseProposalSchema.extend({
   proposal_id: positiveIntValidator,
 });
 

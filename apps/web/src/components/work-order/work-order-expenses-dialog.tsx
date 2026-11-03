@@ -1,8 +1,9 @@
 "use client";
 import React, { useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { toDocuments } from "@/lib/documents";
-import { format } from "date-fns";
+import { formatDateRange } from "@/lib/wo-site-display";
 import {
   AlertTriangle,
   ExternalLink,
@@ -16,7 +17,6 @@ import DialogWindow from "@/components/shared/dialog-window";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
 import { formatCurrency } from "@pkg/utils";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -33,7 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EXPENSE_TYPE_LABELS } from "./site-details-dialog/add-expense-dialog";
 
 interface Props {
   workOrderId: number;
@@ -47,13 +46,14 @@ const formatActivityLabel = (key: string) =>
     .join(" ");
 
 const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
-  const { getParam, deleteParams, setParams } = useHandleParams();
+  const { getParam, deleteParams } = useHandleParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const isOpen = getParam("dialog") === "all-expenses";
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [siteFilter, setSiteFilter] = useState<string>("__all__");
-  const [typeFilter, setTypeFilter] = useState<string>("__all__");
   const [onlyExceeded, setOnlyExceeded] = useState(false);
 
   const query = trpc.expenseQuery.getExpensesByWorkOrder.useQuery(
@@ -78,12 +78,10 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
     return expenses.filter((e: any) => {
       if (siteFilter !== "__all__" && String(e.work_order_site_id) !== siteFilter)
         return false;
-      if (typeFilter !== "__all__" && e.expense_type !== typeFilter) return false;
       if (onlyExceeded && !e.is_exceeded) return false;
       if (!q) return true;
       const hay = [
-        e.description,
-        e.notes,
+        e.title,
         e.contractor_name,
         e.invoice_number,
         e.site_name,
@@ -94,7 +92,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [expenses, search, siteFilter, typeFilter, onlyExceeded]);
+  }, [expenses, search, siteFilter, onlyExceeded]);
 
   const totals = useMemo(() => {
     let total = 0;
@@ -118,8 +116,16 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
     deleteParams(["dialog"]);
   };
 
-  const openSite = (woSiteId: number) => {
-    setParams({ dialog: "site-details", "wo-site-id": String(woSiteId) });
+  // The site's page, or the restoration's, which has no site.
+  const openSite = (expense: {
+    work_order_site_id: number;
+    site_id: number | null;
+  }) => {
+    router.push(
+      expense.site_id == null
+        ? `${pathname}/restoration`
+        : `${pathname}/sites/${expense.work_order_site_id}`,
+    );
   };
 
   return (
@@ -175,7 +181,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder='Search description, contractor, invoice…'
+              placeholder='Search title, contractor, invoice…'
               className='h-9 pl-8 text-xs'
             />
           </div>
@@ -189,20 +195,6 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
               {siteOptions.map((s) => (
                 <SelectItem key={s.id} value={String(s.id)}>
                   {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className='h-9 text-xs w-[160px]'>
-              <SelectValue placeholder='Type' />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='__all__'>All types</SelectItem>
-              {Object.entries(EXPENSE_TYPE_LABELS).map(([v, label]) => (
-                <SelectItem key={v} value={v}>
-                  {label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -226,16 +218,13 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
             <TableHeader>
               <TableRow className='border-b bg-slate-50/60'>
                 <TableHead className='h-9 px-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
-                  Date
+                  Dates
                 </TableHead>
                 <TableHead className='h-9 px-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
                   Site
                 </TableHead>
                 <TableHead className='h-9 px-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
                   Activity
-                </TableHead>
-                <TableHead className='h-9 px-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
-                  Type
                 </TableHead>
                 <TableHead className='h-9 px-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
                   Contractor
@@ -247,7 +236,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                   Amount
                 </TableHead>
                 <TableHead className='h-9 px-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
-                  Description
+                  Title
                 </TableHead>
                 <TableHead className='h-9 px-3 text-center text-[10px] font-semibold text-slate-500 uppercase tracking-wider'>
                   Doc
@@ -258,7 +247,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={8}
                     className='text-center py-10 text-slate-400 italic'>
                     {query.isLoading
                       ? "Loading…"
@@ -276,14 +265,12 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                       key={e.id}
                       className={`border-b last:border-0 hover:bg-slate-50/60 transition-colors ${isExceeded ? "bg-orange-50/30" : ""}`}>
                       <TableCell className='px-3 py-2 whitespace-nowrap text-slate-600'>
-                        {e.expense_date
-                          ? format(new Date(e.expense_date), "dd MMM yyyy")
-                          : "—"}
+                        {formatDateRange(e.start_date, e.end_date)}
                       </TableCell>
                       <TableCell className='px-3 py-2'>
                         <button
                           type='button'
-                          onClick={() => openSite(e.work_order_site_id)}
+                          onClick={() => openSite(e)}
                           className='text-slate-700 font-medium hover:text-blue-600 inline-flex items-center gap-1 transition-colors'>
                           {e.site_name || `Site ${e.site_id}`}
                           <ExternalLink className='size-3 opacity-60' />
@@ -293,13 +280,6 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                         {e.activity_key
                           ? formatActivityLabel(e.activity_key)
                           : "—"}
-                      </TableCell>
-                      <TableCell className='px-3 py-2'>
-                        <Badge
-                          variant='outline'
-                          className='text-[10px] font-normal bg-white'>
-                          {EXPENSE_TYPE_LABELS[e.expense_type] ?? e.expense_type}
-                        </Badge>
                       </TableCell>
                       <TableCell className='px-3 py-2 text-slate-600'>
                         {e.contractor_name ?? "—"}
@@ -319,7 +299,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                         </div>
                       </TableCell>
                       <TableCell className='px-3 py-2 text-slate-600 max-w-[260px] truncate'>
-                        {e.description || "—"}
+                        {e.title || "—"}
                       </TableCell>
                       <TableCell className='px-3 py-2 text-center'>
                         {documents.length > 0 ? (

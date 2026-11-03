@@ -15,6 +15,7 @@ import {
   XCircle,
   Briefcase,
   ExternalLink,
+  Pencil,
 } from "lucide-react";
 import React from "react";
 import toast from "react-hot-toast";
@@ -151,6 +152,15 @@ const ProposalDetailDialog = () => {
                       }
                     />
                   </>
+                )}
+                {/* Only admins manage proposals, and they can edit any. */}
+                {canManage && (
+                  <CustomButton
+                    variant='outline'
+                    text='Edit'
+                    Icon={Pencil}
+                    onClick={() => setParam("dialog", "edit-proposal")}
+                  />
                 )}
                 <DocumentsMenu documents={proposalDocuments}>
                   <CustomButton

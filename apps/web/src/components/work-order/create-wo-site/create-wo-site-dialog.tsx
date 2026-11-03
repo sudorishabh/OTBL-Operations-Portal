@@ -1,13 +1,6 @@
 import { Button } from "@/components/ui/button";
 import DialogWindow from "@/components/shared/dialog-window";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form } from "@/components/ui/form";
 import { trpc } from "@/lib/trpc";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { workOrderSchemas } from "@pkg/schema";
@@ -15,7 +8,7 @@ import { capitalFirstLetter, constants } from "@pkg/utils";
 import Input from "@/components/shared/input";
 import { format } from "date-fns";
 
-const { WO_PROCESS, allActivityOptions } = constants;
+const { allActivityOptions } = constants;
 
 const { createWorkOrderSiteSchema } = workOrderSchemas;
 import {
@@ -24,15 +17,12 @@ import {
   Building2,
   Search,
   Check,
-  FlaskConical,
-  RotateCcw,
-  Settings,
+  CalendarDays,
 } from "lucide-react";
 import React, { useMemo, useState, useEffect } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Checkbox } from "@/components/ui/checkbox";
 import toast from "react-hot-toast";
 import useHandleParams from "@/hooks/useHandleParams";
 import CustomButton from "@/components/shared/btn";
@@ -63,10 +53,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
     defaultValues: {
       work_order_id: workOrder.id,
       client_id: workOrder.client_id,
-      process_type:
-        workOrder.process_type === WO_PROCESS.BIOREMEDIATION_RESTORATION
-          ? ""
-          : workOrder.process_type || "",
       selected_activities: [],
       new_site: undefined,
     },
@@ -185,6 +171,24 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
 
   const createSiteMutation = trpc.siteMutation.createSite.useMutation();
 
+  // A site only does bioremediation, so it takes the work order's
+  // bioremediation activities without the user picking them.
+  const bioremediationActivities = useMemo(() => {
+    const bioremediation = new Set(
+      allActivityOptions
+        .filter((activity) => activity.isBioremediation)
+        .map((activity) => activity.value),
+    );
+
+    return (scheduleOfRates ?? []).flatMap((sor: any) => {
+      const name =
+        typeof sor.activity === "object" ? sor.activity.name : sor.activity;
+      return bioremediation.has(name)
+        ? [{ name, unit: sor.unit, schedule_of_rate_id: sor.id }]
+        : [];
+    });
+  }, [scheduleOfRates]);
+
   const onSubmit = async (data: z.infer<typeof createWorkOrderSiteSchema>) => {
     try {
       if (siteChoice === "new" && data.new_site) {
@@ -206,69 +210,17 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
         return;
       }
 
-      console.log(data);
-
-      addSiteMutation.mutate(data);
+      addSiteMutation.mutate({
+        ...data,
+        selected_activities: bioremediationActivities,
+      });
     } catch (error) {
       console.error(error);
       toast.error("An error occurred");
     }
   };
 
-  const canSelectProcessType =
-    workOrder.process_type === WO_PROCESS.BIOREMEDIATION_RESTORATION;
-
-  const selectedProcessType = watch("process_type");
   const selectedSiteId = watch("site_id");
-
-  const siteProcessTypeOptions = useMemo(() => {
-    if (workOrder.process_type === WO_PROCESS.BIOREMEDIATION_RESTORATION) {
-      return [
-        { value: WO_PROCESS.BIOREMEDIATION, label: "Bioremediation" },
-        { value: WO_PROCESS.RESTORATION, label: "Restoration" },
-      ];
-    }
-    return [];
-  }, [workOrder.process_type]);
-
-  const activityMetadataMap = useMemo(() => {
-    const map = new Map<string, { unit: string; id: number }>();
-    scheduleOfRates?.forEach((sor: any) => {
-      const activityName =
-        typeof sor.activity === "object" ? sor.activity.name : sor.activity;
-      map.set(activityName, { unit: sor.unit, id: sor.id });
-    });
-    return map;
-  }, [scheduleOfRates]);
-
-  const activityOptions = useMemo(() => {
-    if (!scheduleOfRates) return [];
-
-    const sorActivities = scheduleOfRates.map((sor: any) =>
-      typeof sor.activity === "object" ? sor.activity.name : sor.activity,
-    );
-
-    return allActivityOptions
-      .filter((activity) => {
-        if (!sorActivities.includes(activity.value)) return false;
-
-        if (!selectedProcessType) return true;
-
-        if (selectedProcessType === WO_PROCESS.BIOREMEDIATION) {
-          return activity.isBioremediation === true;
-        }
-
-        if (selectedProcessType === WO_PROCESS.RESTORATION) {
-          return activity.isBioremediation === false;
-        }
-
-        return true;
-      })
-      .map((activity) => ({
-        id: activity.value,
-        label: activity.label,
-      }));
-  }, [scheduleOfRates, selectedProcessType]);
 
   return (
     <DialogWindow
@@ -276,7 +228,7 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
       setOpen={(open) => {
         if (!open) handleDialogClose();
       }}
-      title='Add Work Order Site'
+      title='Add Bioremediation Site'
       size='lg'>
       <Form {...form}>
         <form
@@ -317,145 +269,32 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                   <div className='h-px w-full bg-slate-100 mb-6' />
                   <div className='flex items-center gap-2 mb-4'>
                     <div className='p-1.5 bg-slate-100 rounded-lg text-slate-500'>
-                      <Settings className='w-3.5 h-3.5' />
+                      <CalendarDays className='w-3.5 h-3.5' />
                     </div>
                     <h4 className='text-xs font-bold text-slate-800 uppercase tracking-widest'>
-                      Technical Details & Schedule
+                      Schedule
                     </h4>
                   </div>
                   <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-                    <FormField
+                    <Input
                       control={control}
-                      name='process_type'
-                      render={({ field }) => (
-                        <FormItem className='col-span-2'>
-                          <FormLabel className='text-xs text-gray-800 mb-2 block'>
-                            Site Process Type
-                          </FormLabel>
-                          <FormControl>
-                            {canSelectProcessType ? (
-                              <div className='grid grid-cols-2 gap-3'>
-                                {[
-                                  {
-                                    value: WO_PROCESS.BIOREMEDIATION,
-                                    label: "Bioremediation",
-                                    icon: FlaskConical,
-                                    color: "blue",
-                                    desc: "Biological treatment",
-                                  },
-                                  {
-                                    value: WO_PROCESS.RESTORATION,
-                                    label: "Restoration",
-                                    icon: RotateCcw,
-                                    color: "emerald",
-                                    desc: "Land & area recovery",
-                                  },
-                                ].map((option) => {
-                                  const isSelected =
-                                    field.value === option.value;
-                                  const Icon = option.icon;
-                                  const colorClass =
-                                    option.color === "blue"
-                                      ? isSelected
-                                        ? "border-blue-200 bg-blue-50/50 ring-1 ring-blue-700/20"
-                                        : "hover:border-blue-200"
-                                      : isSelected
-                                        ? "border-emerald-200 bg-emerald-50/50 ring-1 ring-emerald-700/20"
-                                        : "hover:border-emerald-200";
-
-                                  return (
-                                    <button
-                                      key={option.value}
-                                      type='button'
-                                      onClick={() => {
-                                        field.onChange(option.value);
-                                        setValue("selected_activities", []);
-                                      }}
-                                      className={`group cursor-pointer flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-300 ${colorClass} ${
-                                        isSelected
-                                          ? "shadow-md shadow-slate-200/50"
-                                          : "border-gray-200/70 bg-gray-50"
-                                      }`}>
-                                      <div
-                                        className={`p-2.5 rounded-xl transition-colors duration-300 ${
-                                          isSelected
-                                            ? option.color === "blue"
-                                              ? "bg-blue-100 text-blue-800"
-                                              : "bg-emerald-100 text-emerald-800"
-                                            : "bg-slate-50 text-slate-400 group-hover:bg-slate-100"
-                                        }`}>
-                                        <Icon className='w-5 h-5' />
-                                      </div>
-                                      <div className='flex flex-col text-left '>
-                                        <span
-                                          className={`text-sm font-bold tracking-tight ${
-                                            isSelected
-                                              ? option.color === "blue"
-                                                ? "text-blue-800"
-                                                : "text-emerald-800"
-                                              : "text-slate-600"
-                                          }`}>
-                                          {option.label}
-                                        </span>
-                                        <span className='text-[10px] text-slate-400 font-medium'>
-                                          {option.desc}
-                                        </span>
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div className='flex items-center gap-4 p-4 bg-slate-50/50 rounded-2xl border border-slate-200/60 w-full group transition-all hover:bg-slate-50'>
-                                <div className='p-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-400 group-hover:text-primary transition-colors'>
-                                  {field.value === WO_PROCESS.BIOREMEDIATION ? (
-                                    <FlaskConical className='w-5 h-5 text-blue-500' />
-                                  ) : (
-                                    <RotateCcw className='w-5 h-5 text-emerald-500' />
-                                  )}
-                                </div>
-                                <div className='flex flex-col'>
-                                  <span className='text-sm font-bold text-slate-700 uppercase tracking-tight'>
-                                    {field.value === WO_PROCESS.BIOREMEDIATION
-                                      ? "Bioremediation"
-                                      : "Restoration"}
-                                  </span>
-                                  <span className='text-[10px] text-slate-400 font-medium'>
-                                    Process fixed by Work Order
-                                  </span>
-                                </div>
-                                <div className='ml-auto px-2.5 py-1 bg-slate-200/50 rounded-lg text-[10px] font-bold text-slate-500 uppercase tracking-wider'>
-                                  Fixed
-                                </div>
-                              </div>
-                            )}
-                          </FormControl>
-                          <FormMessage className='text-xs font-medium' />
-                        </FormItem>
-                      )}
+                      fieldName='date'
+                      Label='Start Date'
+                      isDate
+                      formatDisplay={(val) =>
+                        val ? format(new Date(val), "yyyy-MM-dd") : ""
+                      }
                     />
 
-                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 col-span-2'>
-                      <Input
-                        control={control}
-                        fieldName='date'
-                        Label='Start Date'
-                        isDate
-                        formatDisplay={(val) =>
-                          val ? format(new Date(val), "yyyy-MM-dd") : ""
-                        }
-                      />
-
-                      <Input
-                        control={control}
-                        fieldName='end_date'
-                        Label='End Date'
-                        isDate
-                        formatDisplay={(val) =>
-                          val ? format(new Date(val), "yyyy-MM-dd") : ""
-                        }
-                      />
-                    </div>
+                    <Input
+                      control={control}
+                      fieldName='end_date'
+                      Label='End Date'
+                      isDate
+                      formatDisplay={(val) =>
+                        val ? format(new Date(val), "yyyy-MM-dd") : ""
+                      }
+                    />
                   </div>
                 </div>
 
@@ -616,110 +455,6 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                     </div>
                   </div>
                 )}
-
-                <div className='space-y-4 border border-slate-100 rounded-2xl p-6 bg-slate-50/30'>
-                  <div className='flex items-center justify-between'>
-                    <FormLabel className='text-xs font-bold text-slate-500 uppercase tracking-widest'>
-                      Site Activities
-                    </FormLabel>
-                    {selectedProcessType && (
-                      <div className='px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[10px] font-bold text-slate-400 uppercase'>
-                        {activityOptions.length} available
-                      </div>
-                    )}
-                  </div>
-
-                  {canSelectProcessType && !selectedProcessType ? (
-                    <div className='flex flex-col items-center justify-center p-8 bg-white border-2 border-dashed border-slate-100 rounded-2xl'>
-                      <div className='p-3 bg-slate-50 rounded-full mb-3'>
-                        <FlaskConical className='w-6 h-6 text-slate-300' />
-                      </div>
-                      <p className='text-sm text-slate-400 font-medium text-center max-w-[200px]'>
-                        Please select a process type above to view activities.
-                      </p>
-                    </div>
-                  ) : activityOptions.length === 0 ? (
-                    <div className='flex flex-col items-center justify-center p-8 bg-white border-2 border-dashed border-slate-100 rounded-2xl'>
-                      <p className='text-sm text-slate-400 italic font-medium'>
-                        No activities found for this process.
-                      </p>
-                    </div>
-                  ) : (
-                    <FormField
-                      control={form.control}
-                      name='selected_activities'
-                      render={({ field }) => (
-                        <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                          {activityOptions.map((activity) => {
-                            const isChecked = field.value?.some(
-                              (a) => a.name === activity.id,
-                            );
-                            return (
-                              <FormItem
-                                key={activity.id}
-                                className={`flex flex-row items-stretch space-x-3 space-y-0 p-3 rounded-xl border transition-all duration-200 ${
-                                  isChecked
-                                    ? selectedProcessType ===
-                                      WO_PROCESS.BIOREMEDIATION
-                                      ? "bg-blue-50/30 border-blue-600 shadow-sm ring-1 ring-blue-600/10"
-                                      : selectedProcessType ===
-                                          WO_PROCESS.RESTORATION
-                                        ? "bg-emerald-50/30 border-emerald-600 shadow-sm ring-1 ring-emerald-600/10"
-                                        : "bg-white border-primary shadow-sm ring-1 ring-primary/10"
-                                    : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/50"
-                                }`}>
-                                <div className='flex items-center'>
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={isChecked}
-                                      onCheckedChange={(checked) => {
-                                        const current = field.value || [];
-                                        if (checked) {
-                                          field.onChange([
-                                            ...current,
-                                            {
-                                              name: activity.id,
-                                              unit:
-                                                activityMetadataMap.get(
-                                                  activity.id,
-                                                )?.unit || "",
-                                              schedule_of_rate_id:
-                                                activityMetadataMap.get(
-                                                  activity.id,
-                                                )?.id || 0,
-                                            },
-                                          ]);
-                                        } else {
-                                          field.onChange(
-                                            current.filter(
-                                              (a) => a.name !== activity.id,
-                                            ),
-                                          );
-                                        }
-                                      }}
-                                      className={`transition-all ${
-                                        selectedProcessType ===
-                                        WO_PROCESS.BIOREMEDIATION
-                                          ? "data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                                          : selectedProcessType ===
-                                              WO_PROCESS.RESTORATION
-                                            ? "data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
-                                            : "data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                      }`}
-                                    />
-                                  </FormControl>
-                                </div>
-                                <FormLabel className='text-sm font-bold text-slate-600 cursor-pointer flex-1 py-1 leading-tight select-none flex items-center h-full m-0'>
-                                  {activity.label}
-                                </FormLabel>
-                              </FormItem>
-                            );
-                          })}
-                        </div>
-                      )}
-                    />
-                  )}
-                </div>
 
                 <div className='flex justify-end items-center gap-4 pt-6 border-t border-slate-100'>
                   <Button

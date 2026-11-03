@@ -59,6 +59,8 @@ interface DeferredFilePickerProps {
   // Multiple mode: the cap, and how many files the parent already holds.
   maxFiles?: number;
   fileCount?: number;
+  // "row" drops the zone's own border, to sit as the last row of a list.
+  variant?: "zone" | "row";
 }
 
 const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
@@ -79,11 +81,13 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
   multiple = false,
   maxFiles = MAX_DOCUMENTS,
   fileCount = 0,
+  variant = "zone",
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const remainingSlots = Math.max(maxFiles - fileCount, 0);
   const isFull = multiple && remainingSlots === 0;
+  const isRow = variant === "row";
 
   const validateFile = useCallback(
     (file: File): boolean => {
@@ -190,12 +194,26 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
+  const types =
+    allowedExtensions
+      .slice(0, 3)
+      .map((ext) => ext.replace(".", "").toUpperCase())
+      .join(", ") + (allowedExtensions.length > 3 ? " and more" : "");
+  const hint = multiple
+    ? `${types}, up to ${remainingSlots} ${remainingSlots === 1 ? "file" : "files"} of ${maxSizeMB} MB`
+    : `${types}, up to ${maxSizeMB} MB`;
+
   return (
     <div className={cn("w-full", className)}>
       {isFull ? (
-        <div className='rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-500'>
-          You&apos;ve added the maximum of {maxFiles} files. Remove one to add
-          another.
+        <div
+          className={cn(
+            "flex h-9 items-center bg-gray-50 px-2.5 text-[11px] text-gray-500",
+            !isRow && "rounded-lg border border-dashed border-gray-200",
+          )}>
+          <span className='truncate'>
+            All {maxFiles} files added. Remove one to add another.
+          </span>
         </div>
       ) : !selectedFile ? (
         <div
@@ -205,6 +223,8 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
           onDrop={handleDrop}
           role='button'
           tabIndex={0}
+          aria-label={label}
+          title={`Accepts ${allowedExtensions.join(", ")}`}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
@@ -212,11 +232,16 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
             }
           }}
           className={cn(
-            "group border-2 border-dashed rounded-lg px-4 py-4 flex items-center gap-3 cursor-pointer transition-colors",
+            "group flex h-9 cursor-pointer items-center gap-2 px-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/30",
+            isRow
+              ? "focus-visible:ring-inset"
+              : "rounded-lg border border-dashed",
             isDragActive
               ? "border-primary bg-primary/5"
-              : "border-gray-300 hover:border-primary/40 hover:bg-gray-50/50",
-            isUploadBgWhite && !isDragActive && "bg-white",
+              : isRow
+                ? "bg-gray-50/60 hover:bg-gray-50"
+                : "border-gray-300 hover:border-primary/50 hover:bg-gray-50/60",
+            !isRow && isUploadBgWhite && !isDragActive && "bg-white",
           )}>
           <input
             type='file'
@@ -226,76 +251,69 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
             accept={allowedExtensions.join(",")}
             multiple={multiple}
           />
-          <div
+          <Upload
             className={cn(
-              "shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors",
+              "size-3.5 shrink-0 transition-colors",
               isDragActive
-                ? "bg-primary/10"
-                : "bg-gray-100 group-hover:bg-primary/10",
-            )}>
-            <Upload
-              className={cn(
-                "h-4 w-4 transition-colors",
-                isDragActive
-                  ? "text-primary"
-                  : "text-gray-400 group-hover:text-primary/70",
-              )}
-            />
-          </div>
-          <div className='min-w-0'>
-            <p className='text-sm font-medium text-gray-700'>{label}</p>
-            <p className='text-xs text-gray-400 mt-0.5'>
-              {multiple
-                ? `Drop up to ${remainingSlots} ${remainingSlots === 1 ? "file" : "files"} here or click to browse. Accepts `
-                : "Drop a file here or click to browse. Accepts "}
-              {allowedExtensions
-                .slice(0, 3)
-                .join(", ")
-                .replace(/\./g, "")
-                .toUpperCase()}
-              {allowedExtensions.length > 3 ? " and more" : ""}
-              {multiple ? ", each up to " : ", up to "}
-              {maxSizeMB}MB.
-            </p>
-          </div>
+                ? "text-primary"
+                : "text-gray-400 group-hover:text-primary/70",
+            )}
+          />
+          {/* One line: the label keeps its room, the hint takes what's left. */}
+          <p className='flex min-w-0 flex-1 items-baseline gap-2'>
+            <span className='max-w-full shrink-0 truncate text-xs font-medium text-gray-700'>
+              {isDragActive ? "Drop to add" : label}
+            </span>
+            <span className='min-w-0 truncate text-[11px] text-gray-400'>
+              {hint}
+            </span>
+          </p>
+          {/* The whole zone opens the picker; this only shows that it does. */}
+          <span
+            aria-hidden
+            className='shrink-0 text-[11px] font-medium text-gray-500 transition-colors group-hover:text-primary'>
+            Browse
+          </span>
         </div>
       ) : (
         <div
           className={cn(
-            "border rounded-lg px-3 py-2.5 bg-white flex items-center gap-3 transition-colors",
+            "flex items-center gap-2 rounded-lg border bg-white px-2.5 py-1.5 transition-colors",
             isUploaded ? "border-emerald-200" : "border-gray-200",
           )}>
           <div className='relative shrink-0'>
             <div
               className={cn(
-                "h-10 w-10 rounded-md flex items-center justify-center",
+                "flex size-6 items-center justify-center rounded",
                 getFileTypeStyle(selectedFile.name).bg,
               )}>
               {isUploading || isDeleting ? (
                 <Loader2
                   className={cn(
-                    "h-4 w-4 animate-spin",
+                    "size-3.5 animate-spin",
                     isDeleting ? "text-red-500" : "text-primary",
                   )}
                 />
               ) : (
                 (() => {
                   const { Icon, text } = getFileTypeStyle(selectedFile.name);
-                  return <Icon className={cn("h-4 w-4", text)} />;
+                  return <Icon className={cn("size-3.5", text)} />;
                 })()
               )}
             </div>
             {isUploaded && !isDeleting && (
-              <CheckCircle className='absolute -bottom-1 -right-1 h-4 w-4 text-emerald-600 bg-white rounded-full' />
+              <CheckCircle className='absolute -bottom-1 -right-1 size-3.5 rounded-full bg-white text-emerald-600' />
             )}
           </div>
 
           <div className='flex-1 min-w-0'>
             <div className='flex items-baseline gap-2'>
-              <span className='text-sm font-medium text-gray-700 truncate max-w-[220px]'>
+              <span
+                className='min-w-0 truncate text-xs font-medium text-gray-700'
+                title={selectedFile.name}>
                 {selectedFile.name}
               </span>
-              <span className='text-xs text-gray-400 shrink-0'>
+              <span className='shrink-0 text-[11px] text-gray-400'>
                 {formatFileSize(selectedFile.size)}
               </span>
             </div>
@@ -306,16 +324,16 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
                   className='h-1.5 flex-1 max-w-[160px]'
                   indicatorClassName='bg-primary'
                 />
-                <span className='text-xs text-gray-400 tabular-nums'>
+                <span className='text-[11px] tabular-nums text-gray-400'>
                   {uploadProgress}%
                 </span>
               </div>
             )}
             {isDeleting && (
-              <span className='text-xs text-red-500'>Removing file…</span>
+              <span className='text-[11px] text-red-500'>Removing file…</span>
             )}
             {!isUploading && !isUploaded && !isDeleting && (
-              <span className='inline-flex items-center gap-1.5 mt-0.5 text-xs text-amber-700 bg-amber-50 rounded-full px-2 py-0.5'>
+              <span className='inline-flex items-center gap-1.5 text-[11px] text-amber-700'>
                 <span className='w-1.5 h-1.5 bg-amber-500 rounded-full' />
                 Ready to upload
               </span>
@@ -357,7 +375,9 @@ const DeferredFilePicker: React.FC<DeferredFilePickerProps> = ({
         </div>
       )}
 
-      {helperText && <p className='text-xs text-gray-400 mt-1'>{helperText}</p>}
+      {helperText && (
+        <p className='mt-1 text-[11px] text-gray-400'>{helperText}</p>
+      )}
     </div>
   );
 };
