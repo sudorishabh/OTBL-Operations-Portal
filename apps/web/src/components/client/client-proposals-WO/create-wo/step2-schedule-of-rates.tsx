@@ -33,6 +33,10 @@ const formatAmount = (value: number) =>
 const formatQuantity = (value: number) =>
   value.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
+// A computed value shown in place of an input.
+const derivedValueClass =
+  "pr-3 text-right text-sm font-semibold tabular-nums text-gray-900";
+
 const isTransportation = (activity: string) =>
   activity === WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL;
 
@@ -47,6 +51,8 @@ const activitiesForProcess = (processType?: string) => {
   return allActivityOptions;
 };
 
+const emptySlab = { quantity: 0, rate: 0 };
+
 const emptyRow = (
   option: ActivityOption,
 ): workOrderTypes.ScheduleOfRateInput => ({
@@ -58,7 +64,11 @@ const emptyRow = (
   unit_rate_inc_gst: 0,
   total_cost: 0,
   ...(isTransportation(option.value) && {
-    transportation_slabs: { up_to_5_km: 0, over_20_km: 0, over_40_km: 0 },
+    transportation_slabs: {
+      up_to_5_km: { ...emptySlab },
+      over_20_km: { ...emptySlab },
+      over_40_km: { ...emptySlab },
+    },
   }),
 });
 
@@ -70,7 +80,8 @@ interface NumberFieldProps {
   label: string;
   prefix?: string;
   onValueChange: () => void;
-  className?: string;
+  // Smaller field for the transportation slab rows.
+  compact?: boolean;
 }
 
 // A numeric field that starts blank rather than showing 0.
@@ -79,7 +90,7 @@ const NumberField = ({
   label,
   prefix,
   onValueChange,
-  className,
+  compact,
 }: NumberFieldProps) => {
   const { control } = useFormContext<FormValues>();
   const { field } = useController({ control, name });
@@ -90,7 +101,11 @@ const NumberField = ({
   return (
     <div className='relative'>
       {prefix && (
-        <span className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400'>
+        <span
+          className={cn(
+            "pointer-events-none absolute top-1/2 -translate-y-1/2 text-gray-400",
+            compact ? "left-2.5 text-xs" : "left-3 text-sm",
+          )}>
           {prefix}
         </span>
       )}
@@ -111,9 +126,9 @@ const NumberField = ({
           onValueChange();
         }}
         className={cn(
-          "h-9 bg-white text-right tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-          prefix && "pl-7",
-          className,
+          "bg-white text-right tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+          compact ? "h-8 text-xs shadow-none md:text-xs" : "h-9",
+          prefix && (compact ? "pl-6" : "pl-7"),
         )}
       />
     </div>
@@ -178,19 +193,24 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
     );
   };
 
-  // Transportation's quantity is the total of its distance slabs.
+  // Transportation's quantity and RC rate are the totals of its distance slabs.
   const sumTransportSlabs = (index: number) => {
     const slabs = form.getValues(
       `schedule_of_rates.${index}.transportation_slabs`,
     );
-    const total = Object.values(slabs ?? {}).reduce(
-      (sum, qty) => sum + (Number(qty) || 0),
-      0,
-    );
+    const slabList = slabs ? Object.values(slabs) : [];
+    const total = (key: "quantity" | "rate") =>
+      Number(
+        slabList
+          .reduce((sum, slab) => sum + (Number(slab[key]) || 0), 0)
+          .toFixed(2),
+      );
+
     form.setValue(
       `schedule_of_rates.${index}.estimated_quantity`,
-      Number(total.toFixed(2)),
+      total("quantity"),
     );
+    form.setValue(`schedule_of_rates.${index}.rc_unit_rate`, total("rate"));
     calculateRates(index);
   };
 
@@ -238,13 +258,12 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
                 const hasSlabs = isTransportation(field.activity.name);
                 const row = scheduleOfRates[index];
                 const quantity = Number(row?.estimated_quantity) || 0;
+                const rcRate = Number(row?.rc_unit_rate) || 0;
                 const rateWithGst = Number(row?.unit_rate_inc_gst) || 0;
                 const total = Number(row?.total_cost) || 0;
 
                 return (
-                  <div
-                    key={field.id}
-                    className={cn(hasSlabs && "pb-3")}>
+                  <div key={field.id}>
                     <div className={cn(ROW_GRID, "py-3")}>
                       <div>
                         <p className='text-sm font-medium text-gray-900'>
@@ -252,7 +271,8 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
                         </p>
                         {hasSlabs && (
                           <p className='mt-0.5 text-xs text-gray-500'>
-                            Quantity is the total of the distance slabs.
+                            Quantity and RC rate are the totals of the
+                            distance slabs below.
                           </p>
                         )}
                       </div>
@@ -262,8 +282,8 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
                       {hasSlabs ? (
                         <output
                           aria-label={`${label} estimated quantity`}
-                          className='flex h-9 items-center justify-end rounded-md bg-gray-50 px-3 text-sm font-medium tabular-nums text-gray-800'>
-                          {formatQuantity(quantity)}
+                          className={derivedValueClass}>
+                          {quantity ? formatQuantity(quantity) : "-"}
                         </output>
                       ) : (
                         <NumberField
@@ -272,12 +292,20 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
                           onValueChange={() => calculateRates(index)}
                         />
                       )}
-                      <NumberField
-                        name={`schedule_of_rates.${index}.rc_unit_rate`}
-                        label={`${label} RC rate`}
-                        prefix='₹'
-                        onValueChange={() => calculateRates(index)}
-                      />
+                      {hasSlabs ? (
+                        <output
+                          aria-label={`${label} RC rate`}
+                          className={derivedValueClass}>
+                          {rcRate ? formatAmount(rcRate) : "-"}
+                        </output>
+                      ) : (
+                        <NumberField
+                          name={`schedule_of_rates.${index}.rc_unit_rate`}
+                          label={`${label} RC rate`}
+                          prefix='₹'
+                          onValueChange={() => calculateRates(index)}
+                        />
+                      )}
                       <span className='text-right text-sm tabular-nums text-gray-600'>
                         {rateWithGst ? formatAmount(rateWithGst) : "-"}
                       </span>
@@ -286,25 +314,37 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
                       </span>
                     </div>
 
-                    {hasSlabs &&
-                      TRANSPORT_SLABS.map((slab) => (
-                        <div
-                          key={slab.key}
-                          className={ROW_GRID}>
-                          <span className='ml-2 flex items-center self-stretch border-l border-gray-200 py-1 pl-4 text-xs text-gray-600'>
-                            {slab.label}
-                          </span>
-                          <span />
-                          <div className='py-1'>
-                            <NumberField
-                              name={`schedule_of_rates.${index}.transportation_slabs.${slab.key}`}
-                              label={`${label} ${slab.label} quantity`}
-                              onValueChange={() => sumTransportSlabs(index)}
-                              className='h-8'
-                            />
+                    {hasSlabs && (
+                      <div className='border-t border-dashed border-gray-200 bg-gray-50/80 py-2'>
+                        {TRANSPORT_SLABS.map((slab) => (
+                          <div
+                            key={slab.key}
+                            className={ROW_GRID}>
+                            <span className='ml-2 flex items-center self-stretch border-l border-gray-300 pl-4 text-xs text-gray-600'>
+                              {slab.label}
+                            </span>
+                            <span />
+                            <div className='py-1'>
+                              <NumberField
+                                name={`schedule_of_rates.${index}.transportation_slabs.${slab.key}.quantity`}
+                                label={`${label} ${slab.label} quantity`}
+                                onValueChange={() => sumTransportSlabs(index)}
+                                compact
+                              />
+                            </div>
+                            <div className='py-1'>
+                              <NumberField
+                                name={`schedule_of_rates.${index}.transportation_slabs.${slab.key}.rate`}
+                                label={`${label} ${slab.label} rate`}
+                                prefix='₹'
+                                onValueChange={() => sumTransportSlabs(index)}
+                                compact
+                              />
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}

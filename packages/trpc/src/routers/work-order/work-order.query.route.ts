@@ -22,6 +22,7 @@ const {
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { readTransportationSlabs } from "../../helper/transportation-slabs";
 import { hasPhysicalSite, siteNameOrRestoration } from "../../helper/restoration";
 import { USER_ROLES } from "../../authorization";
 import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
@@ -886,7 +887,12 @@ export const workOrderQueryRouter = router({
           },
           canManage,
           sites: sitesWithDetails,
-          scheduleOfRates,
+          scheduleOfRates: scheduleOfRates.map((row) => ({
+            ...row,
+            transportation_slabs: readTransportationSlabs(
+              row.transportation_slabs,
+            ),
+          })),
           stats: {
             total_sites: sitesWithDetails.filter((s) => s.site.id != null)
               .length,

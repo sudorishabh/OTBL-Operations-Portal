@@ -225,12 +225,13 @@ export const workOrderMutationRouter = router({
             row.activity ===
             constants.WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL;
           if (isTransport) {
-            const slabTotal = Object.values(
-              rate.transportation_slabs ?? {},
-            ).reduce((sum, qty) => sum + qty, 0);
+            const slabs = Object.values(rate.transportation_slabs ?? {});
+            const slabTotal = (key: "quantity" | "rate") =>
+              slabs.reduce((sum, slab) => sum + slab[key], 0);
             if (
               !rate.transportation_slabs ||
-              Math.abs(slabTotal - rate.estimated_quantity) > SLAB_EPSILON
+              Math.abs(slabTotal("quantity") - rate.estimated_quantity) >
+                SLAB_EPSILON
             ) {
               throw validationError(
                 "Transportation quantity must equal the sum of its distance slabs",
@@ -238,6 +239,20 @@ export const workOrderMutationRouter = router({
                   {
                     field: "transportation_slabs",
                     message: "Quantity must equal the sum of the distance slabs",
+                  },
+                ],
+              );
+            }
+            if (
+              Math.abs(slabTotal("rate") - rate.rc_unit_rate) > SLAB_EPSILON
+            ) {
+              throw validationError(
+                "Transportation RC rate must equal the sum of its distance slab rates",
+                [
+                  {
+                    field: "transportation_slabs",
+                    message:
+                      "RC rate must equal the sum of the distance slab rates",
                   },
                 ],
               );

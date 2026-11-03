@@ -21,10 +21,10 @@ export type StoredDocumentRow = {
   name?: string | null;
 };
 
-// Transported quantity per distance slab on a transportation SOR row.
+// Transported quantity and rate per distance slab on a transportation SOR row.
 export type TransportationSlabsRow = Record<
   (typeof constants.TRANSPORT_SLABS)[number]["key"],
-  number
+  { quantity: number; rate: number }
 >;
 
 // One row of a job order form's or completion certificate's activity table:

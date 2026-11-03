@@ -46,13 +46,16 @@ export const woActivitySchemaWithId = woActivitySchema.extend({
   schedule_of_rate_id: positiveIntValidator,
 });
 
-const slabQuantityValidator = z.number().min(0, "Quantity cannot be negative");
+const transportationSlabSchema = z.object({
+  quantity: z.number().min(0, "Quantity cannot be negative"),
+  rate: z.number().min(0, "Rate cannot be negative"),
+});
 
-// Transported quantity per distance slab (see TRANSPORT_SLABS).
+// Transported quantity and rate per distance slab (see TRANSPORT_SLABS).
 export const transportationSlabsSchema = z.object({
-  up_to_5_km: slabQuantityValidator,
-  over_20_km: slabQuantityValidator,
-  over_40_km: slabQuantityValidator,
+  up_to_5_km: transportationSlabSchema,
+  over_20_km: transportationSlabSchema,
+  over_40_km: transportationSlabSchema,
 });
 
 export const scheduleOfRateSchema = z
@@ -88,19 +91,25 @@ export const scheduleOfRateSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["transportation_slabs"],
-        message: "Enter the quantity for each distance slab",
+        message: "Enter the quantity and rate for each distance slab",
       });
       return;
     }
-    const slabTotal = Object.values(sor.transportation_slabs).reduce(
-      (sum, qty) => sum + qty,
-      0,
-    );
-    if (Math.abs(slabTotal - sor.estimated_quantity) > 0.005) {
+    const slabs = Object.values(sor.transportation_slabs);
+    const totalQuantity = slabs.reduce((sum, slab) => sum + slab.quantity, 0);
+    const totalRate = slabs.reduce((sum, slab) => sum + slab.rate, 0);
+    if (Math.abs(totalQuantity - sor.estimated_quantity) > 0.005) {
       ctx.addIssue({
         code: "custom",
         path: ["estimated_quantity"],
         message: "Quantity must equal the sum of the distance slabs",
+      });
+    }
+    if (Math.abs(totalRate - sor.rc_unit_rate) > 0.005) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["rc_unit_rate"],
+        message: "RC rate must equal the sum of the distance slab rates",
       });
     }
   });
