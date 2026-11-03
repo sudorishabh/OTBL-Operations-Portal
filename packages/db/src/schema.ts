@@ -27,6 +27,15 @@ export type TransportationSlabsRow = Record<
   number
 >;
 
+// One row of a job order form's activity table: the quantity as written on the
+// form (a measurement, yes, no or "To be assessed later"), and the date its
+// work is due, as yyyy-MM-dd.
+export type JobOrderActivityRow = {
+  key: (typeof constants.JOB_ORDER_ACTIVITIES)[number]["key"];
+  quantity: string;
+  completion_date: string | null;
+};
+
 const {
   ROLES,
   STATUS,
@@ -632,6 +641,18 @@ export const jobOrderTable = mysqlTable(
     start_date: timestamp("start_date").notNull(),
     end_date: timestamp("end_date").notNull(),
     description: text("description"),
+    // The client's job order form, issued by the installation manager. Older
+    // job orders were saved without it.
+    issued_by: varchar("issued_by", { length: 255 }),
+    rc_noa_number: varchar("rc_noa_number", { length: 255 }),
+    rc_noa_date: timestamp("rc_noa_date"),
+    ola_number: varchar("ola_number", { length: 255 }),
+    po_number: varchar("po_number", { length: 255 }),
+    installation_name: varchar("installation_name", { length: 255 }),
+    location: varchar("location", { length: 255 }),
+    // Only for ex-situ bioremediation jobs.
+    mobilization_date: timestamp("mobilization_date"),
+    activities: json("activities").$type<JobOrderActivityRow[]>(),
     // The job order's completion certificates.
     documents: json("documents").$type<StoredDocumentRow[]>(),
     created_by: int("created_by").references(() => userTable.id, {
