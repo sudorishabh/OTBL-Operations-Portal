@@ -92,8 +92,13 @@ async function countJobOrderExpenses(
 
 const unique = (ids: number[]) => [...new Set(ids)];
 
+// Activity rows with nothing written against them aren't saved.
+const filledActivities = (
+  activities: jobOrderTypes.JobOrderValues["activities"],
+) => (activities ?? []).filter((row) => row.quantity || row.completion_date);
+
 // The job order's fields as they are saved. Blank answers are saved as
-// nothing, and activity rows left blank are dropped.
+// nothing.
 const jobOrderValues = (input: jobOrderTypes.JobOrderValues) => ({
   jo_number: input.jo_number,
   title: input.title,
@@ -108,9 +113,7 @@ const jobOrderValues = (input: jobOrderTypes.JobOrderValues) => ({
   installation_name: input.installation_name,
   location: input.location,
   mobilization_date: input.mobilization_date ?? null,
-  activities: (input.activities ?? []).filter(
-    (row) => row.quantity || row.completion_date,
-  ),
+  activities: filledActivities(input.activities),
 });
 
 export const jobOrderMutationRouter = router({
@@ -204,6 +207,28 @@ export const jobOrderMutationRouter = router({
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Updating job order");
+        }
+      }),
+    ),
+
+  setJobOrderCompletion: protectedProcedure
+    .input(jobOrderSchemas.setJobOrderCompletionSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const jobOrder = await getJobOrder(ctx, input.id);
+        await assertManagesRestoration(ctx, jobOrder.work_order_site_id);
+
+        try {
+          await ctx.db
+            .update(jobOrderTable)
+            .set({
+              completed_on: input.completed_on ?? null,
+              completion_activities: filledActivities(input.activities),
+            })
+            .where(eq(jobOrderTable.id, input.id));
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Saving job order completion");
         }
       }),
     ),
