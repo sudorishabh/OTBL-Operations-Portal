@@ -53,6 +53,7 @@ import AddExpenseDialog, {
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { itemLabel } from "../contract-orders/contract-orders-section";
 import type { JobOrder } from "../restoration/job-order-dialog";
+import { jobOrderSorActivities } from "../restoration/restoration-display";
 import {
   documentName,
   openDocument,
@@ -942,6 +943,26 @@ const SiteExpensesSection = ({
     (dialogOrderItem
       ? dialogOrderItem.item === constants.OIL_ZAPPER.KEY
       : editingExpense?.activity_key === constants.OIL_ZAPPER.KEY);
+  // A job order's expenses are under the activities it gives out. An expense
+  // being edited keeps its own activity, so it still shows.
+  const dialogJobOrderActivities = dialogJobOrder
+    ? jobOrderSorActivities(dialogJobOrder)
+    : null;
+  const dialogActivities =
+    dialogProcuresOilZapper || !isBioremediation
+      ? activityOptions.filter(
+          (activity) =>
+            !dialogJobOrderActivities ||
+            dialogJobOrderActivities.has(activity.key) ||
+            activity.key === editingExpense?.activity_key,
+        )
+      : [];
+  const dialogActivitiesNote =
+    dialogJobOrder && dialogJobOrderActivities
+      ? dialogActivities.length > 0
+        ? `Only the activities job order ${dialogJobOrder.jo_number} gives out.`
+        : `Job order ${dialogJobOrder.jo_number} gives out none of the schedule of rates activities. Edit the job order to add them.`
+      : undefined;
 
   const emptyGroupText = (text: string) => (
     <p className='rounded-lg border border-dashed border-gray-200 px-3 py-2.5 text-xs text-gray-400'>
@@ -1185,7 +1206,8 @@ const SiteExpensesSection = ({
         defaultContractorId={typeof addUnder === "number" ? addUnder : null}
         startsMiscellaneous={addUnder === "miscellaneous"}
         fixedActivityKey={dialogProcuresOilZapper ? constants.OIL_ZAPPER.KEY : undefined}
-        activities={dialogProcuresOilZapper || !isBioremediation ? activityOptions : []}
+        activities={dialogActivities}
+        activitiesNote={dialogActivitiesNote}
         orderItem={
           dialogOrderItem
             ? { id: dialogOrderItem.id, label: orderItemTitle(dialogOrderItem) }

@@ -32,6 +32,7 @@ const {
   workOrderSiteTable,
   workOrderSiteDocsTable,
   clientTable,
+  parentClientTable,
   officeTable,
   siteTable,
   workOrderSiteUserTable,
@@ -630,6 +631,7 @@ export const workOrderQueryRouter = router({
             description: workOrderTable.description,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
+            parent_client_name: parentClientTable.name,
             office_id: workOrderTable.office_id,
             office_name: officeTable.name,
             start_date: workOrderTable.start_date,
@@ -656,6 +658,10 @@ export const workOrderQueryRouter = router({
           })
           .from(workOrderTable)
           .leftJoin(clientTable, eq(workOrderTable.client_id, clientTable.id))
+          .leftJoin(
+            parentClientTable,
+            eq(clientTable.parent_client_id, parentClientTable.id),
+          )
           .leftJoin(officeTable, eq(workOrderTable.office_id, officeTable.id))
           .where(eq(workOrderTable.id, id))
           .orderBy(desc(workOrderTable.created_at));

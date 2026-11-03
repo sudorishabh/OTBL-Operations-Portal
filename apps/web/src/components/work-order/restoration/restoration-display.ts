@@ -1,6 +1,8 @@
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, constants } from "@pkg/utils";
 import type { JobOrder } from "./job-order-dialog";
 import type { Restoration } from "./restoration-section";
+
+const { JOB_ORDER_ACTIVITIES } = constants;
 
 // Allowance for decimal rounding when comparing quantities.
 export const QTY_EPSILON = 0.001;
@@ -46,3 +48,21 @@ export const jobOrderVendorNames = (jobOrders: JobOrder[]) =>
       ),
     ).values(),
   ].map((name) => capitalFirstLetter(name));
+
+// The schedule of rates activities a job order gives out: those of its form's
+// rows not answered "No". Null for a job order whose form names no activities,
+// such as one saved before the form, so its expenses can be under any.
+export const jobOrderSorActivities = (
+  jobOrder: Pick<JobOrder, "activities">,
+): Set<string> | null => {
+  const rows = jobOrder.activities ?? [];
+  if (rows.length === 0) return null;
+  return new Set(
+    rows
+      .filter((row) => !/^no\.?$/i.test(row.quantity.trim()))
+      .flatMap((row) => {
+        const activity = JOB_ORDER_ACTIVITIES.find((a) => a.key === row.key);
+        return activity ? [activity.sorActivity] : [];
+      }),
+  );
+};

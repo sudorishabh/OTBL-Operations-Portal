@@ -272,11 +272,11 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
             isUploading={isUploading}
             progress={progress}
           />
-          <div className='flex flex-wrap items-end justify-between gap-3'>
-            <div className='w-full sm:w-48'>
-              <label className='mb-1 block text-xs text-gray-500'>
+          <div className='flex flex-wrap items-end gap-2'>
+            <label className='block w-full sm:w-40'>
+              <span className='mb-1 block text-[11px] text-gray-500'>
                 TPH value
-              </label>
+              </span>
               <Input
                 inputMode='decimal'
                 value={tphValue}
@@ -287,9 +287,9 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
                   }
                 }}
                 placeholder='0.00'
-                className='h-9 bg-white'
+                className='h-8 bg-white text-[13px] tabular-nums'
               />
-            </div>
+            </label>
             <CustomButton
               variant='primary'
               Icon={FlaskConical}
@@ -297,6 +297,7 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
               loading={isSaving}
               disabled={isSaving}
               onClick={save}
+              className='h-8 px-3 text-xs'
               disableForViewer
             />
           </div>
