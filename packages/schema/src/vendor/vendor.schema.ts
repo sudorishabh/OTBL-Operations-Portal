@@ -2,7 +2,7 @@ import z from "zod";
 import {
   optionalEmailValidator,
   optionalGstNumberValidator,
-  optionalMobileValidator,
+  optionalContactNumberValidator,
   positiveIntValidator,
 } from "../validators";
 import { constants } from "@pkg/utils";
@@ -30,7 +30,7 @@ const vendorFields = {
     .trim()
     .min(2, "Name must be at least 2 characters")
     .max(255, "Name cannot exceed 255 characters"),
-  contact_number: optionalMobileValidator,
+  contact_number: optionalContactNumberValidator,
   email: optionalEmailValidator,
   address: z
     .string()
