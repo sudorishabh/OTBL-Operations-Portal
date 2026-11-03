@@ -56,7 +56,7 @@ export const baseJobOrderSchema = z
     end_date: dateValidator,
     description: longDescriptionValidator,
     // The client's job order form, as the installation manager issues it.
-    issued_by: optionalText("Issued by"),
+    issued_by: optionalText("Issuing office"),
     rc_noa_number: optionalText("RC NOA number"),
     rc_noa_date: dateValidator.nullable().optional(),
     ola_number: optionalText("OLA number"),
