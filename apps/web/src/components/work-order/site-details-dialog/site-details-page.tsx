@@ -103,6 +103,7 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
         <SiteAvailability
           woSiteId={siteDetails.id}
           processType={siteDetails.process_type}
+          isCompleted={!!siteDetails.is_completed}
           className='rounded-lg border border-gray-200 bg-white p-5'
         />
 

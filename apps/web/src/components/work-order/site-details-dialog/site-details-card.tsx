@@ -10,7 +10,6 @@ import EditSiteDatesDialog from "./edit-site-dates-dialog";
 import SiteEstimate from "./site-estimate";
 import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 import SiteMeasurementSheets from "./site-measurement-sheets";
-import SiteSorCompletion from "./site-sor-completion";
 import SiteCompletionCertificate from "./site-completion-certificate";
 
 interface WorkOrderSiteDetails {
@@ -161,16 +160,6 @@ const SiteDetailsCard = ({
         <SiteEstimate
           woSiteId={siteDetails.id}
           processType={siteDetails.process_type}
-          className='border-t border-gray-100 px-5 py-4'
-        />
-      )}
-
-      {/* How much of the site's SOR share is used: all of it once the
-          latest bio sample's TPH is below the target. */}
-      {siteDetails?.id && isBioremediation && (
-        <SiteSorCompletion
-          woSiteId={siteDetails.id}
-          isCompleted={isCompleted}
           className='border-t border-gray-100 px-5 py-4'
         />
       )}

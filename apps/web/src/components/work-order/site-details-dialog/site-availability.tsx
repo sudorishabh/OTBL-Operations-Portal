@@ -1,14 +1,18 @@
 "use client";
 import React from "react";
+import { CheckCircle2 } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
-const { OIL_ZAPPER, WO_PROCESS } = constants;
+const { OIL_ZAPPER, TPH_TARGET, WO_PROCESS, WO_UNITS, ZERO_DAY_SAMPLE } =
+  constants;
 
 interface Props {
   woSiteId: number;
   processType: string;
+  // A bioremediation site completes once its TPH drops below the target.
+  isCompleted: boolean;
   className?: string;
 }
 
@@ -25,6 +29,15 @@ interface OilZapperStock {
   procured: number;
   used: number;
   left: number;
+  // The site's share of the schedule of rates, set by its estimate.
+  sorQuantity: number | null;
+}
+
+interface Figure {
+  label: string;
+  value: number;
+  tone?: string;
+  title?: string;
 }
 
 const formatQty = (value: number) =>
@@ -36,6 +49,9 @@ const formatName = (name: string) =>
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
+const sampleDate = (sample: any) =>
+  new Date(sample.sampled_on ?? sample.created_at).getTime();
+
 const percentOf = (part: number, whole: number) =>
   whole > 0 ? Math.min(100, (part / whole) * 100) : 0;
 
@@ -46,19 +62,47 @@ const barTone = (usedPct: number) =>
 const Panel = ({
   title,
   note,
+  aside,
   children,
 }: {
   title: string;
   note: string;
+  // Shown at the right of the title, such as a status.
+  aside?: React.ReactNode;
   children: React.ReactNode;
 }) => (
   <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
-    <p className='flex flex-wrap items-baseline gap-x-2 border-b border-gray-100 px-3 py-2'>
-      <span className='text-xs font-medium text-gray-700'>{title}</span>
-      <span className='text-[11px] text-gray-400'>{note}</span>
-    </p>
+    <div className='flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2'>
+      <p className='flex min-w-0 flex-wrap items-baseline gap-x-2'>
+        <span className='text-xs font-medium text-gray-700'>{title}</span>
+        <span className='text-[11px] text-gray-400'>{note}</span>
+      </p>
+      {aside}
+    </div>
     {children}
   </div>
+);
+
+// A panel's quantities side by side, on the same four columns in every panel
+// so the stacked panels line up.
+const Figures = ({ figures, unit }: { figures: Figure[]; unit: string }) => (
+  <dl className='grid grid-cols-2 gap-x-4 gap-y-2 px-3 py-2.5 sm:grid-cols-4'>
+    {figures.map((figure) => (
+      <div
+        key={figure.label}
+        title={figure.title}>
+        <dt className='text-[11px] text-gray-400'>{figure.label}</dt>
+        <dd
+          className={cn(
+            "text-sm font-semibold tabular-nums text-gray-900",
+            figure.tone,
+          )}>
+          {formatQty(figure.value)}{" "}
+          <span className='text-xs font-normal text-gray-400'>{unit}</span>
+        </dd>
+      </div>
+    ))}
+  </dl>
 );
 
 // Each activity's schedule of rates across the work order: used and left.
@@ -125,7 +169,7 @@ const StockPanel = ({ stock }: { stock: OilZapperStock & { estimated: number } }
   const unit = OIL_ZAPPER.UNIT;
   const isOverProcured = stock.procured > stock.estimated;
   const usedPct = percentOf(stock.used, stock.procured);
-  const figures = [
+  const figures: Figure[] = [
     { label: "Estimated", value: stock.estimated },
     {
       label: "Procured",
@@ -147,23 +191,10 @@ const StockPanel = ({ stock }: { stock: OilZapperStock & { estimated: number } }
     <Panel
       title={`${OIL_ZAPPER.LABEL} stock`}
       note='procured from expenses, used by oil zapping'>
-      <dl className='grid grid-cols-2 gap-x-4 gap-y-2 px-3 py-2.5 sm:grid-cols-4'>
-        {figures.map((figure) => (
-          <div
-            key={figure.label}
-            title={figure.title}>
-            <dt className='text-[11px] text-gray-400'>{figure.label}</dt>
-            <dd
-              className={cn(
-                "text-sm font-semibold tabular-nums text-gray-900",
-                figure.tone,
-              )}>
-              {formatQty(figure.value)}{" "}
-              <span className='text-xs font-normal text-gray-400'>{unit}</span>
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <Figures
+        figures={figures}
+        unit={unit}
+      />
       <div className='flex items-center gap-2 border-t border-gray-100 px-3 py-2'>
         <div className='h-1 flex-1 overflow-hidden rounded-full bg-gray-100'>
           <div
@@ -179,10 +210,79 @@ const StockPanel = ({ stock }: { stock: OilZapperStock & { estimated: number } }
   );
 };
 
+// The site's share of the schedule of rates. It is used in full once
+// treatment is achieved: the latest bio sample's TPH is below the target.
+const SorCompletionPanel = ({
+  woSiteId,
+  sorQuantity,
+  isCompleted,
+}: {
+  woSiteId: number;
+  sorQuantity: number | null;
+  isCompleted: boolean;
+}) => {
+  const bioremediationDataQuery =
+    trpc.workOrderSiteQuery.getBioremediationData.useQuery(
+      { work_order_site_id: woSiteId },
+      { enabled: !!woSiteId },
+    );
+  const latestSample = (bioremediationDataQuery.data?.bioSamples ?? [])
+    .filter((sample: any) => sample.application_month !== ZERO_DAY_SAMPLE)
+    .sort((a: any, b: any) => sampleDate(b) - sampleDate(a))[0];
+
+  const used = isCompleted && sorQuantity !== null ? sorQuantity : 0;
+  const available = sorQuantity !== null ? sorQuantity - used : 0;
+
+  return (
+    <Panel
+      title='SOR completion'
+      note={`this site's share, used in full once the TPH is below ${TPH_TARGET}`}
+      aside={
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+            isCompleted
+              ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+              : "bg-gray-50 text-gray-600 ring-gray-200",
+          )}>
+          {isCompleted && <CheckCircle2 className='size-3' />}
+          {latestSample
+            ? `Latest TPH ${latestSample.tph_value}`
+            : "No monthly sample yet"}
+        </span>
+      }>
+      {sorQuantity === null ? (
+        <p className='px-3 py-2.5 text-xs text-gray-400'>
+          Save the site&apos;s estimate to allocate its share of the schedule of
+          rates.
+        </p>
+      ) : (
+        <Figures
+          unit={WO_UNITS.MT}
+          figures={[
+            { label: "Site's SOR", value: sorQuantity },
+            { label: "Used", value: used },
+            {
+              label: "Available",
+              value: available,
+              tone: available > 0 ? undefined : "text-emerald-700",
+            },
+          ]}
+        />
+      )}
+    </Panel>
+  );
+};
+
 // What the site can still draw on: the work order's schedule of rates for
-// its activities and, at a bioremediation site, its oil zapper. Hidden until
-// there is either to show.
-const SiteAvailability = ({ woSiteId, processType, className }: Props) => {
+// its activities and, at a bioremediation site, its share of it and its oil
+// zapper. Hidden until there is something to show.
+const SiteAvailability = ({
+  woSiteId,
+  processType,
+  isCompleted,
+  className,
+}: Props) => {
   const isBioremediation = processType === WO_PROCESS.BIOREMEDIATION;
 
   const activitiesQuery = trpc.workOrderSiteQuery.getSiteActivities.useQuery(
@@ -204,20 +304,30 @@ const SiteAvailability = ({ woSiteId, processType, className }: Props) => {
       ? { ...stockData, estimated: stockData.estimated }
       : null;
 
-  if (sorActivities.length === 0 && !stock) return null;
+  // Every bioremediation site has a share once its stock is loaded, even if
+  // its estimate hasn't set it yet.
+  const hasSorShare = isBioremediation && !!stockData;
+
+  if (sorActivities.length === 0 && !hasSorShare) return null;
 
   return (
     <section className={cn("space-y-3", className)}>
       <div>
         <h3 className='text-sm font-semibold text-gray-900'>Availability</h3>
         <p className='text-xs text-gray-500'>
-          What is left of the schedule of rates
-          {stock ? ` and the site's ${OIL_ZAPPER.LABEL.toLowerCase()}` : ""}.
+          What is left for this site to draw on.
         </p>
       </div>
       {/* One above the other. */}
       <div className='space-y-3'>
         {sorActivities.length > 0 && <SorPanel activities={sorActivities} />}
+        {hasSorShare && (
+          <SorCompletionPanel
+            woSiteId={woSiteId}
+            sorQuantity={stockData.sorQuantity}
+            isCompleted={isCompleted}
+          />
+        )}
         {stock && <StockPanel stock={stock} />}
       </div>
     </section>
