@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import toast from "react-hot-toast";
+import { constants } from "@pkg/utils";
 import { parseApiError } from "@pkg/trpc/errors";
 
 interface UploadedFile {
@@ -20,7 +21,7 @@ interface UseUploadDocumentOptions {
 
 export const useUploadDocument = ({
   folderPath,
-  allowedExtensions = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt"],
+  allowedExtensions = constants.DOCUMENT_EXTENSIONS,
   maxSizeMB = 10,
   onUploadComplete,
   onFileChange,

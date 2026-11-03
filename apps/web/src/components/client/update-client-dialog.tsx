@@ -26,6 +26,7 @@ import { z } from "zod";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useApiError } from "@/hooks/useApiError";
 import toast from "react-hot-toast";
+import ParentClientField from "@/components/clients/parent-client-field";
 
 const updateClientFormSchema = clientSchemas.createClientSchema.extend({
   status: z.enum(["active", "inactive"]).optional(),
@@ -83,6 +84,7 @@ const UpdateClientDialog = ({ clientId }: Props) => {
   const form = useForm<UpdateClientFormInput>({
     resolver: zodResolver(updateClientFormSchema),
     defaultValues: {
+      parent_client_id: null,
       name: "",
       address: "",
       state: "",
@@ -109,6 +111,7 @@ const UpdateClientDialog = ({ clientId }: Props) => {
   useEffect(() => {
     if (clientData?.client && isOpen) {
       form.reset({
+        parent_client_id: clientData.client.parent_client_id ?? null,
         name: clientData.client.name,
         address: clientData.client.address,
         state: clientData.client.state,
@@ -200,6 +203,10 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                   </h3>
                 </div>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                  <div className='col-span-2'>
+                    <ParentClientField />
+                  </div>
+
                   <div className='col-span-2'>
                     <Input
                       control={form.control}

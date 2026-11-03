@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import { cn } from "@/lib/utils";
 import { useUploadDocument } from "@/hooks/useUploadDocument";
+import { constants } from "@pkg/utils";
 
 interface UploadedFile {
   id: string;
@@ -30,7 +31,7 @@ const UploadDoc: React.FC<UploadDocProps> = ({
   onUploadingChange,
   folderPath,
   label = "Upload Document",
-  allowedExtensions = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt"],
+  allowedExtensions = constants.DOCUMENT_EXTENSIONS,
   maxSizeMB = 50,
   className,
 }) => {

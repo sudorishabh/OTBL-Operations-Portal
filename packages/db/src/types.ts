@@ -2,6 +2,7 @@ import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { constants } from "@pkg/utils";
 import {
   userTable,
+  parentClientTable,
   clientTable,
   proposalTable,
   officeTable,
@@ -25,6 +26,9 @@ const {
 
 export type User = InferSelectModel<typeof userTable>;
 export type NewUser = InferInsertModel<typeof userTable>;
+
+export type ParentClient = InferSelectModel<typeof parentClientTable>;
+export type NewParentClient = InferInsertModel<typeof parentClientTable>;
 
 export type Client = InferSelectModel<typeof clientTable>;
 export type NewClient = InferInsertModel<typeof clientTable>;

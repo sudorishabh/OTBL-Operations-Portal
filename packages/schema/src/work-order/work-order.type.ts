@@ -4,7 +4,9 @@ import {
   createWorkOrderSchema,
   updateWorkOrderSchema,
   scheduleOfRateSchema,
+  transportationSlabsSchema,
 } from "./work-order.schema";
+import type { StoredDocument } from "../validators";
 
 export type workOrderType = {
   id: number;
@@ -18,7 +20,7 @@ export type workOrderType = {
   start_date: string;
   end_date: string;
   handing_over_date: string;
-  document_key: string;
+  documents: StoredDocument[] | null;
   process_type: "bioremediation" | "restoration" | "bioremediation_restoration";
   description: string | null;
   job_number: string;
@@ -44,13 +46,16 @@ export type ScheduleOfRateType = {
   gst_percentage: string;
   unit_rate_inc_gst: string;
   total_cost: string;
-  transportation_km: string;
+  // Legacy distance, no longer entered on new work orders.
+  transportation_km: string | null;
+  transportation_slabs: TransportationSlabs | null;
   created_at: string;
   updated_at: string;
 };
 
 export type BaseWorkOrderInput = z.input<typeof baseWorkOrderSchema>;
 export type ScheduleOfRateInput = z.input<typeof scheduleOfRateSchema>;
+export type TransportationSlabs = z.infer<typeof transportationSlabsSchema>;
 
 export type BaseWorkOrderOutput = z.output<typeof baseWorkOrderSchema>;
 export type CreateWorkOrderType = z.infer<typeof createWorkOrderSchema>;

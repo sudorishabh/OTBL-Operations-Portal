@@ -15,9 +15,12 @@ import {
   XCircle,
   Briefcase,
   ExternalLink,
+  Pencil,
 } from "lucide-react";
 import React from "react";
 import toast from "react-hot-toast";
+import DocumentsMenu from "@/components/shared/documents-menu";
+import { toDocuments } from "@/lib/documents";
 
 const ProposalDetailDialog = () => {
   const { getParam, deleteParams, deleteParam, setParam } = useHandleParams();
@@ -35,6 +38,8 @@ const ProposalDetailDialog = () => {
 
   const proposal = data?.proposal;
   const workOrder = data?.workOrder;
+  const proposalDocuments = toDocuments(proposal?.documents);
+  const workOrderDocuments = toDocuments(workOrder?.documents);
   const canManage = data?.canManage ?? false;
 
   const status = proposal?.status;
@@ -148,14 +153,26 @@ const ProposalDetailDialog = () => {
                     />
                   </>
                 )}
-                {proposal.document_key && (
+                {/* Only admins manage proposals, and they can edit any. */}
+                {canManage && (
                   <CustomButton
                     variant='outline'
-                    text='View Proposal Document'
-                    Icon={FileText}
-                    onClick={() => window.open(proposal.document_key, "_blank")}
+                    text='Edit'
+                    Icon={Pencil}
+                    onClick={() => setParam("dialog", "edit-proposal")}
                   />
                 )}
+                <DocumentsMenu documents={proposalDocuments}>
+                  <CustomButton
+                    variant='outline'
+                    text={
+                      proposalDocuments.length === 1
+                        ? "View Proposal Document"
+                        : `View Proposal Documents (${proposalDocuments.length})`
+                    }
+                    Icon={FileText}
+                  />
+                </DocumentsMenu>
               </div>
             </div>
 
@@ -225,17 +242,18 @@ const ProposalDetailDialog = () => {
                         </span>
                       </div>
                     </div>
-                    {workOrder.document_key && (
+                    <DocumentsMenu documents={workOrderDocuments}>
                       <CustomButton
                         variant='outline'
-                        text='View WO Document'
-                        Icon={ExternalLink}
-                        onClick={() =>
-                          window.open(workOrder.document_key, "_blank")
+                        text={
+                          workOrderDocuments.length === 1
+                            ? "View WO Document"
+                            : `View WO Documents (${workOrderDocuments.length})`
                         }
+                        Icon={ExternalLink}
                         className='shrink-0'
                       />
-                    )}
+                    </DocumentsMenu>
                   </div>
 
                   <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>

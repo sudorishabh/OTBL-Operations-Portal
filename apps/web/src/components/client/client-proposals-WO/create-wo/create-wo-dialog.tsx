@@ -11,11 +11,19 @@ import { useHandleParams } from "@/hooks/useHandleParams";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import { useApiError } from "@/hooks/useApiError";
 import { useParams } from "next/navigation";
-import { workOrderSchemas, type workOrderTypes } from "@pkg/schema";
+import { workOrderSchemas } from "@pkg/schema";
+import { toStoredDocument } from "@/lib/documents";
 import Step1BasicDetails from "./step1-basic-details";
 import Step2ScheduleOfRates from "./step2-schedule-of-rates";
 import StepperCreateWO from "./stepper-create-wo";
-import { ZodError } from "zod";
+import { z } from "zod";
+
+// Documents are picked as files and uploaded on submit, so the form omits them.
+const workOrderFormSchema = workOrderSchemas.baseWorkOrderSchema.omit({
+  documents: true,
+});
+type WorkOrderFormInput = z.input<typeof workOrderFormSchema>;
+type WorkOrderFormValues = z.output<typeof workOrderFormSchema>;
 
 interface Props {
   proposalTitle: string;
@@ -23,7 +31,8 @@ interface Props {
 
 const CreateWODialog = ({ proposalTitle }: Props) => {
   const [step, setStep] = useState(1);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [filesError, setFilesError] = useState("");
   const params = useParams();
   const clientId = params?.clientId ? Number(params.clientId) : 0;
   const { deleteParams, getParam } = useHandleParams();
@@ -33,22 +42,18 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
   const isOpenDialog = dialogQuery === "create-workorder" && proposalId;
 
   const {
-    uploadFile,
-    deleteFile,
+    uploadFiles,
     isUploading,
-    isDeleting,
     progress,
     reset: resetUpload,
   } = useSharePointUpload({
     folderPath: "/WorkOrders",
-    conflictBehavior: "replace",
+    // The folder is shared by all work orders; never overwrite another's file.
+    conflictBehavior: "rename",
   });
 
-  const [uploadedUrl, setUploadedUrl] = useState<string>("");
-  const [uploadedFileId, setUploadedFileId] = useState<string>("");
-
-  const form = useForm<workOrderTypes.BaseWorkOrderInput>({
-    resolver: zodResolver(workOrderSchemas.baseWorkOrderSchema),
+  const form = useForm<WorkOrderFormInput, unknown, WorkOrderFormValues>({
+    resolver: zodResolver(workOrderFormSchema),
     defaultValues: {
       code: "",
       agreement_number: "",
@@ -57,7 +62,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
       start_date: undefined,
       end_date: undefined,
       handing_over_date: undefined,
-      document_key: "",
       process_type: undefined,
       description: "",
       schedule_of_rates: [],
@@ -97,7 +101,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
         start_date: undefined,
         end_date: undefined,
         handing_over_date: undefined,
-        document_key: "",
         process_type: undefined,
         description: "",
         job_number: "",
@@ -109,46 +112,16 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
         schedule_of_rates: [],
       });
       setStep(1);
-      setSelectedFile(null);
-      setUploadedUrl("");
-      setUploadedFileId("");
+      setFiles([]);
+      setFilesError("");
       resetUpload();
     }, 500);
   }, [deleteParams, form, isUploading, resetUpload]);
 
-  const handleFileSelect = useCallback(
-    (file: File | null) => {
-      setSelectedFile(file);
-      if (file) {
-        setUploadedUrl("");
-        setUploadedFileId("");
-        form.setValue("document_key", `pending:${file.name}`, {
-          shouldValidate: true,
-        });
-      } else {
-        if (!uploadedUrl) {
-          form.setValue("document_key", "", { shouldValidate: true });
-        }
-      }
-    },
-    [form, uploadedUrl],
-  );
-
-  const handleDeleteFile = useCallback(async () => {
-    if (uploadedFileId) {
-      try {
-        await deleteFile(uploadedFileId);
-      } catch (error) {
-        console.error("Failed to delete file from SharePoint", error);
-      }
-    }
-
-    setSelectedFile(null);
-    setUploadedUrl("");
-    setUploadedFileId("");
-    form.setValue("document_key", "", { shouldValidate: true });
-    resetUpload();
-  }, [form, resetUpload, deleteFile, uploadedFileId]);
+  const handleFilesChange = (nextFiles: File[]) => {
+    setFiles(nextFiles);
+    if (nextFiles.length > 0) setFilesError("");
+  };
 
   const handleNextStep = async () => {
     const isValid = await form.trigger([
@@ -159,7 +132,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
       "start_date",
       "end_date",
       "handing_over_date",
-      "document_key",
       "process_type",
       "job_number",
       "joint_estimate_number",
@@ -168,7 +140,10 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
       "land_owner_name",
       "remarks",
     ]);
-    if (isValid) {
+    if (files.length === 0) {
+      setFilesError("Upload at least one document");
+    }
+    if (isValid && files.length > 0) {
       setStep(2);
     } else {
       toast.error("Please fill in all required fields before proceeding.");
@@ -177,37 +152,17 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      let documentPath = values.document_key;
+      const uploaded = await uploadFiles(files);
+      if (!uploaded) return;
 
-      if (selectedFile && !uploadedUrl && documentPath.startsWith("pending:")) {
-        const uploadResult = await uploadFile(selectedFile);
-        if (!uploadResult) {
-          return;
-        }
-        documentPath = uploadResult.webUrl;
-        setUploadedUrl(documentPath);
-        setUploadedFileId(uploadResult.id);
-      } else if (uploadedUrl) {
-        documentPath = uploadedUrl;
-      }
-
-      if (documentPath.startsWith("pending:")) {
-        toast.error("Please upload a document");
-        return;
-      }
-
-      console.log("Submitting work order:", values);
       await createWorkOrder.mutateAsync({
         ...values,
         proposal_id: Number(proposalId),
         client_id: clientId,
-        document_key: documentPath,
+        documents: uploaded.map(toStoredDocument),
       });
       handleCloseDialog();
     } catch (error) {
-      if (uploadedFileId) {
-        await deleteFile(uploadedFileId);
-      }
       toast.error("Error submitting form. Please try again.");
     }
   });
@@ -242,14 +197,11 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
           <StepperCreateWO steps={steps} />
           {step === 1 && (
             <Step1BasicDetails
-              selectedFile={selectedFile}
-              handleFileSelect={handleFileSelect}
+              files={files}
+              onFilesChange={handleFilesChange}
+              filesError={filesError}
               isUploading={isUploading}
               progress={progress}
-              uploadedFile={!!uploadedUrl}
-              documentUrl={uploadedUrl}
-              deleteFile={handleDeleteFile}
-              isDeleting={isDeleting}
               onNext={handleNextStep}
               onCancel={handleCloseDialog}
             />

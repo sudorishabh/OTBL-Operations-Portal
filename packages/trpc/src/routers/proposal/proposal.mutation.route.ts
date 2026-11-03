@@ -39,6 +39,8 @@ export const proposalMutationRouter = router({
         try {
           const result = await ctx.db.insert(proposalTable).values({
             ...input,
+            // Legacy single-document column, kept until it is dropped.
+            document_key: input.documents[0]!.url,
             status: constants.PROPOSAL_STATUS.PENDING,
           });
 
@@ -48,6 +50,50 @@ export const proposalMutationRouter = router({
           };
         } catch (error) {
           throw fromDatabaseError(error, "Creating proposal");
+        }
+      }),
+    ),
+
+  // Admins can correct a proposal whatever its status.
+  updateProposal: adminProcedure
+    .input(proposalSchemas.updateProposalSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const { proposal_id, ...details } = input;
+
+        const [proposal] = await ctx.db
+          .select({ id: proposalTable.id })
+          .from(proposalTable)
+          .where(eq(proposalTable.id, proposal_id));
+
+        if (!proposal) {
+          throw notFound("Proposal", proposal_id);
+        }
+
+        const [office] = await ctx.db
+          .select({ id: officeTable.id })
+          .from(officeTable)
+          .where(eq(officeTable.id, details.office_id));
+
+        if (!office) {
+          throw notFound("Office", details.office_id, {
+            userMessage: "The selected office doesn't exist.",
+          });
+        }
+
+        try {
+          await ctx.db
+            .update(proposalTable)
+            .set({
+              ...details,
+              // Legacy single-document column, kept until it is dropped.
+              document_key: details.documents[0]!.url,
+            })
+            .where(eq(proposalTable.id, proposal_id));
+
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Updating proposal");
         }
       }),
     ),

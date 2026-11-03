@@ -23,8 +23,9 @@ import {
   formatDateRange,
   scheduleNote,
   statusOf,
+  workLocation,
 } from "@/lib/wo-site-display";
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, constants } from "@pkg/utils";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -41,6 +42,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
+
+const { MAX_DOCUMENTS, PHOTO_EXTENSIONS } = constants;
 
 type PendingItem = { file: File; description: string };
 
@@ -265,9 +268,10 @@ export default function WoSiteOperatorUploadPage() {
     siteDetails.date,
     siteDetails.end_date,
   );
-  const address =
-    [site?.address, site?.city, site?.state].filter(Boolean).join(", ") ||
-    "Location not set";
+  const address = workLocation(
+    siteDetails.process_type,
+    [site?.address, site?.city, site?.state].filter(Boolean).join(", "),
+  );
   const extras = [
     workOrder?.area ? { label: "Area", value: workOrder.area } : null,
     siteDetails.process_type
@@ -363,7 +367,7 @@ export default function WoSiteOperatorUploadPage() {
 
       <Section
         title='Add documents'
-        description='Measurement sheets, bills and site photos. Files are stored in SharePoint.'>
+        description='PDF documents such as measurement sheets and bills, or site photos from the camera. Files are stored in SharePoint.'>
         <div className='flex flex-col gap-2 sm:flex-row sm:items-stretch'>
           <div className='flex-1'>
             <DeferredFilePicker
@@ -371,6 +375,7 @@ export default function WoSiteOperatorUploadPage() {
               selectedFile={null}
               onFileSelect={handleFileSelect}
               multiple={true}
+              fileCount={pendingItems.length}
               isUploadBgWhite={true}
             />
           </div>
@@ -378,12 +383,21 @@ export default function WoSiteOperatorUploadPage() {
           <input
             ref={cameraInputRef}
             type='file'
-            accept='image/*'
+            accept={PHOTO_EXTENSIONS.join(",")}
             capture='environment'
             className='hidden'
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) handleFileSelect(file);
+              const isPhoto =
+                !!file &&
+                PHOTO_EXTENSIONS.some((ext) =>
+                  file.name.toLowerCase().endsWith(ext),
+                );
+              if (file && !isPhoto) {
+                toast.error("Photos must be JPG or PNG");
+              } else if (file) {
+                handleFileSelect(file);
+              }
               e.target.value = "";
             }}
           />
@@ -391,18 +405,15 @@ export default function WoSiteOperatorUploadPage() {
           <button
             type='button'
             onClick={() => cameraInputRef.current?.click()}
-            className='group flex w-full shrink-0 cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-white px-4 py-4 text-left transition-colors hover:border-emerald-400 hover:bg-gray-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 sm:w-auto'>
-            <span className='flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 transition-colors group-hover:bg-emerald-50'>
-              <Camera className='size-4 text-gray-400 transition-colors group-hover:text-emerald-600' />
-            </span>
-            <span className='min-w-0'>
-              <span className='block text-sm font-medium text-gray-700'>
-                Take a photo
-              </span>
-              <span className='mt-0.5 block text-xs text-gray-400'>
-                Use the camera on this device.
-              </span>
-            </span>
+            disabled={pendingItems.length >= MAX_DOCUMENTS}
+            title={
+              pendingItems.length >= MAX_DOCUMENTS
+                ? `You can add up to ${MAX_DOCUMENTS} files at a time`
+                : "Use the camera on this device"
+            }
+            className='group flex h-9 w-full shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-700 transition-colors hover:border-emerald-400 hover:bg-gray-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto'>
+            <Camera className='size-3.5 text-gray-400 transition-colors group-hover:text-emerald-600' />
+            Take a photo
           </button>
         </div>
 

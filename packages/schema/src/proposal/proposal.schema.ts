@@ -4,7 +4,7 @@ import {
   titleValidator,
   longDescriptionValidator,
   positiveIntValidator,
-  documentKeyValidator,
+  documentsValidator,
   dateValidator,
   pageValidator,
   limitValidator,
@@ -15,7 +15,7 @@ export const baseProposalSchema = z.object({
   code: codeValidator,
   title: titleValidator,
   description: longDescriptionValidator,
-  document_key: documentKeyValidator,
+  documents: documentsValidator,
   office_id: positiveIntValidator,
   proposal_submission_date: dateValidator,
 });
@@ -24,7 +24,8 @@ export const createProposalSchema = baseProposalSchema.extend({
   client_id: positiveIntValidator,
 });
 
-export const updateProposalSchema = createProposalSchema.extend({
+// A proposal stays with its client, so only its own details are edited.
+export const updateProposalSchema = baseProposalSchema.extend({
   proposal_id: positiveIntValidator,
 });
 

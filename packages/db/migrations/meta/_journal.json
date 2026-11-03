@@ -8,6 +8,139 @@
       "when": 1786953606961,
       "tag": "0000_harsh_tomorrow_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1792053849375,
+      "tag": "0001_add_documents_lists",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1792055862380,
+      "tag": "0002_add_parent_clients",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1792057131252,
+      "tag": "0003_add_sor_transportation_slabs",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1792067701414,
+      "tag": "0004_restoration_sites_and_contractor",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1792071030306,
+      "tag": "0005_shared_vendors",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1792071900348,
+      "tag": "0006_restoration_contractors",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1792072327107,
+      "tag": "0007_drop_work_order_site_contractor",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1792075207014,
+      "tag": "0008_drop_restoration_activity_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1792130238426,
+      "tag": "0009_drop_expense_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1792130349192,
+      "tag": "0010_drop_expense_notes",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1792130446599,
+      "tag": "0011_expense_start_end_dates",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1792132531483,
+      "tag": "0012_rename_expense_description_to_title",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1792148221354,
+      "tag": "0013_oil_zapper_quantity",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1792161287149,
+      "tag": "0014_backfill_bioremediation_site_contractors",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "5",
+      "when": 1793598039629,
+      "tag": "0015_treatment_dates",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1793598613859,
+      "tag": "0016_contract_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1793599408952,
+      "tag": "0017_job_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1793599421720,
+      "tag": "0018_backfill_restoration_job_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1793600072969,
+      "tag": "0019_contractor_type",
+      "breakpoints": true
     }
   ]
 }

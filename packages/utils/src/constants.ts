@@ -85,45 +85,122 @@ export const WO_UNITS = {
   M_SQUARE: "m²",
   M_CUBE: "m³",
   MT: "MT",
+  KM_M_CUBE: "km/m³",
 } as const;
 
 export const unitOptions = [
   { value: WO_UNITS.M_SQUARE, label: "m² (Square Meter)" },
   { value: WO_UNITS.M_CUBE, label: "m³ (Cubic Meter)" },
   { value: WO_UNITS.MT, label: "MT (Metric Ton)" },
+  { value: WO_UNITS.KM_M_CUBE, label: "km/m³ (Per km per Cubic Meter)" },
 ];
+
+// Distance slabs a transportation SOR quantity is split into; their sum is
+// the activity's estimated quantity.
+export const TRANSPORT_SLABS = [
+  { key: "up_to_5_km", label: "Up to 5 KM" },
+  { key: "over_20_km", label: "More than 20 KM" },
+  { key: "over_40_km", label: "More than 40 KM (additional per km)" },
+] as const;
+
+// The bio sample taken at mobilization, before the first application. It is
+// stored as the bio sample whose application month is this label.
+export const ZERO_DAY_SAMPLE = "Zero Day";
+
+// The oil zapper applied at a bioremediation site. Its planned quantity is set
+// with the site's estimate, and expenses are logged against it like an
+// activity.
+export const OIL_ZAPPER = {
+  KEY: "oil_zapper",
+  LABEL: "Oil Zapper",
+  UNIT: "kg",
+} as const;
+
+// Who work is given to: a vendor supplies material, and a sub-contractor
+// carries out a service. Each has its own page.
+export const CONTRACTOR_TYPE = {
+  VENDOR: "vendor",
+  SUB_CONTRACTOR: "sub_contractor",
+} as const;
+
+export const contractorTypeOptions = [
+  { value: CONTRACTOR_TYPE.VENDOR, label: "Vendor" },
+  { value: CONTRACTOR_TYPE.SUB_CONTRACTOR, label: "Sub-contractor" },
+] as const;
+
+// The two kinds of order bioremediation work is given out through: a purchase
+// order buys material, and a work order subcontracts a service.
+export const CONTRACT_ORDER_TYPE = {
+  PURCHASE_ORDER: "purchase_order",
+  WORK_ORDER: "work_order",
+} as const;
+
+export const contractOrderTypeOptions = [
+  { value: CONTRACT_ORDER_TYPE.PURCHASE_ORDER, label: "Purchase Order" },
+  { value: CONTRACT_ORDER_TYPE.WORK_ORDER, label: "Work Order (Subcontract)" },
+] as const;
+
+// What a contract order can require at a site. Oil zapper bought through a
+// purchase order is the site's procured oil zapper.
+export const CONTRACT_ORDER_ITEMS = [
+  { key: OIL_ZAPPER.KEY, label: OIL_ZAPPER.LABEL, unit: OIL_ZAPPER.UNIT },
+  { key: "jcb", label: "JCB", unit: "hours" },
+  { key: "labour", label: "Labour", unit: "man-days" },
+  { key: "transport", label: "Transport", unit: "trips" },
+  { key: "other", label: "Other", unit: "Nos" },
+] as const;
+
+// A bioremediation site's treatment is achieved once a bio sample's TPH drops
+// below this target; its share of the schedule of rates is then used.
+export const TPH_TARGET = 0.5;
 
 export const GST_PERCENTAGE = 18;
 
+// Most documents a user can upload at once, or attach to one record.
+export const MAX_DOCUMENTS = 10;
+
+// Every document upload is PDF only.
+export const DOCUMENT_EXTENSIONS = [".pdf"];
+
+// The one exception: site photos taken with the operator page camera.
+export const PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png"];
+
+// Every activity is billed in one fixed unit.
 export const allActivityOptions = [
   {
     value: WO_ACTIVITIES.clean_soil_area,
     label: "Cleaning Up Soil Area",
+    unit: WO_UNITS.M_SQUARE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL,
     label: "Lifting Oily Slush / Recovery of Oil",
+    unit: WO_UNITS.M_CUBE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL,
     label: "Excavation Oil Contaminated Soil",
+    unit: WO_UNITS.M_CUBE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
     label: "Transportation Contaminated Soil",
+    unit: WO_UNITS.KM_M_CUBE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND,
     label: "Refilling Excavated Oil Contaminated Soil Land",
+    unit: WO_UNITS.M_CUBE,
     isBioremediation: false,
   },
   {
     value: WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL,
     label: "Bioremediation Oil Contaminated Soil",
+    unit: WO_UNITS.MT,
     isBioremediation: true,
   },
 ];
@@ -138,8 +215,20 @@ export default {
   WO_ACTIVITIES,
   WO_UNITS,
   GST_PERCENTAGE,
+  MAX_DOCUMENTS,
+  DOCUMENT_EXTENSIONS,
+  PHOTO_EXTENSIONS,
   processTypeOptions,
   unitOptions,
+  TRANSPORT_SLABS,
+  ZERO_DAY_SAMPLE,
+  OIL_ZAPPER,
+  TPH_TARGET,
+  CONTRACTOR_TYPE,
+  contractorTypeOptions,
+  CONTRACT_ORDER_TYPE,
+  contractOrderTypeOptions,
+  CONTRACT_ORDER_ITEMS,
   allActivityOptions,
   ACTIVITY_TYPE,
   ACTIVITY_PHASE,

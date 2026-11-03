@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import CustomButton from "@/components/shared/btn";
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, computeSorFullyConsumed } from "@pkg/utils";
 import {
   Briefcase,
   Clock,
@@ -24,37 +24,14 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { type workOrderTypes } from "@pkg/schema";
 import { trpc } from "@/lib/trpc";
 import { useIsAdmin } from "@/contexts/AuthContext";
+import DocumentsMenu from "@/components/shared/documents-menu";
+import { toDocuments } from "@/lib/documents";
 
 interface Props {
   workOrder: workOrderTypes.workOrderType | null;
   proposalId: number;
   proposalTitle: string;
 }
-
-const SOR_ACTIVITY_TO_COMPLETION_ACTIVITY: Record<string, string> = {
-  clean_soil_area: "clean_soil_area",
-  lifting_oily_slush_or_recovery_of_oil: "lifting_oil_slush",
-  excavation_oil_contaminated_soil: "excav_cont_soil",
-  transportation_contaminated_soil: "trans_cont_soil",
-  refilling_excavated_oil_contaminated_soil_land: "refill_excav_soil",
-  bioremediation_oil_contaminated_soil: "biorem_cont_soil",
-};
-
-const activityKey = (name: string) => {
-  const v = (name || "").trim().toLowerCase();
-  return v
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/_+/g, "_");
-};
-
-const toNumberSafe = (val: unknown) => {
-  const n =
-    typeof val === "string"
-      ? Number(val.replace(/,/g, "").trim())
-      : Number(val);
-  return Number.isFinite(n) ? n : 0;
-};
 
 const getStatusConfig = (status: string) => {
   switch (status) {
@@ -114,6 +91,7 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
   const { setParams } = useHandleParams();
   const router = useRouter();
   const isAdmin = useIsAdmin();
+  const documents = toDocuments(workOrder?.documents);
 
   const { data: woDetails } = trpc.workOrderQuery.getWorkOrderDetails.useQuery(
     { id: Number(workOrder?.id) },
@@ -133,27 +111,9 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
         return woDetails.workOrder.status || workOrder.status;
       }
 
-      const usedQtyByActivity: Record<string, number> = (sites || []).reduce(
-        (acc: Record<string, number>, s: any) => {
-          for (const c of s.completions || []) {
-            const key = activityKey(c.activity_name);
-            acc[key] = (acc[key] || 0) + toNumberSafe(c.estimated_quantity);
-          }
-          return acc;
-        },
-        {},
-      );
-
-      const isSORFullyUsed = scheduleOfRates.every((item: any) => {
-        const completionActivity =
-          SOR_ACTIVITY_TO_COMPLETION_ACTIVITY[item.activity] ?? item.activity;
-        const usedQty = usedQtyByActivity[activityKey(completionActivity)] ?? 0;
-        const sorQty = toNumberSafe(item.estimated_quantity);
-        if (sorQty <= 0) return true;
-        return usedQty + 1e-6 >= sorQty;
-      });
-
-      return isSORFullyUsed ? "completed" : "pending";
+      return computeSorFullyConsumed(scheduleOfRates, sites)
+        ? "completed"
+        : "pending";
     }
 
     return workOrder.status;
@@ -191,18 +151,23 @@ const WordOrderCard = ({ workOrder, proposalId, proposalTitle }: Props) => {
                 )}
               </div>
               <div className='flex items-center gap-1.5 sm:gap-2 shrink-0'>
-                {workOrder?.document_key && (
+                <DocumentsMenu documents={documents}>
                   <button
                     type='button'
-                    className='h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white border flex items-center justify-center transition-colors hover:bg-emerald-50 cursor-pointer'
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      window.open(workOrder.document_key, "_blank");
-                    }}>
+                    title={
+                      documents.length === 1
+                        ? "View document"
+                        : `View ${documents.length} documents`
+                    }
+                    className='relative h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white border flex items-center justify-center transition-colors hover:bg-emerald-50 cursor-pointer'>
                     <File className='h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-700' />
+                    {documents.length > 1 && (
+                      <span className='absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold leading-4 text-white'>
+                        {documents.length}
+                      </span>
+                    )}
                   </button>
-                )}
+                </DocumentsMenu>
                 <CustomButton
                   text='View'
                   arrowType='right'

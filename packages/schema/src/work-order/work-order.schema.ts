@@ -3,13 +3,16 @@ import {
   titleValidator,
   codeValidator,
   agreementNumberValidator,
-  documentKeyValidator,
+  documentsValidator,
   positiveIntValidator,
   longDescriptionValidator,
   searchQueryValidator,
   dateValidator,
 } from "../validators";
 import { createSiteSchema } from "../site/site.schema";
+import { constants } from "@pkg/utils";
+
+const { WO_ACTIVITIES, allActivityOptions } = constants;
 
 export const activityTypeEnum = z.enum(["insitu", "exsitu"]);
 
@@ -43,22 +46,64 @@ export const woActivitySchemaWithId = woActivitySchema.extend({
   schedule_of_rate_id: positiveIntValidator,
 });
 
-export const scheduleOfRateSchema = z.object({
-  activity: woActivitySchema,
-  unit: z
-    .string()
-    .min(1, "Unit is required")
-    .max(10, "Unit cannot exceed 10 characters"),
-  estimated_quantity: z.number().gt(0, "Quantity must be greater than zero"),
-  rc_unit_rate: z.number().gt(0, "Rate must be greater than zero"),
-  gst_percentage: z.number().min(1, "Min 1%"),
-  unit_rate_inc_gst: z.number().min(0, "Rate cannot be negative"),
-  total_cost: z.number().min(0, "Total cost cannot be negative"),
-  transportation_km: z
-    .number()
-    .min(0, "Distance cannot be negative")
-    .optional(),
+const slabQuantityValidator = z.number().min(0, "Quantity cannot be negative");
+
+// Transported quantity per distance slab (see TRANSPORT_SLABS).
+export const transportationSlabsSchema = z.object({
+  up_to_5_km: slabQuantityValidator,
+  over_20_km: slabQuantityValidator,
+  over_40_km: slabQuantityValidator,
 });
+
+export const scheduleOfRateSchema = z
+  .object({
+    activity: woActivitySchema,
+    unit: z
+      .string()
+      .min(1, "Unit is required")
+      .max(10, "Unit cannot exceed 10 characters"),
+    estimated_quantity: z.number().gt(0, "Quantity must be greater than zero"),
+    rc_unit_rate: z.number().gt(0, "Rate must be greater than zero"),
+    gst_percentage: z.number().min(1, "Min 1%"),
+    unit_rate_inc_gst: z.number().min(0, "Rate cannot be negative"),
+    total_cost: z.number().min(0, "Total cost cannot be negative"),
+    transportation_slabs: transportationSlabsSchema.optional(),
+  })
+  .superRefine((sor, ctx) => {
+    const fixedUnit = allActivityOptions.find(
+      (option) => option.value === sor.activity.name,
+    )?.unit;
+    if (fixedUnit && sor.unit !== fixedUnit) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["unit"],
+        message: `Unit must be ${fixedUnit}`,
+      });
+    }
+
+    if (sor.activity.name !== WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL) {
+      return;
+    }
+    if (!sor.transportation_slabs) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["transportation_slabs"],
+        message: "Enter the quantity for each distance slab",
+      });
+      return;
+    }
+    const slabTotal = Object.values(sor.transportation_slabs).reduce(
+      (sum, qty) => sum + qty,
+      0,
+    );
+    if (Math.abs(slabTotal - sor.estimated_quantity) > 0.005) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["estimated_quantity"],
+        message: "Quantity must equal the sum of the distance slabs",
+      });
+    }
+  });
 
 export const baseWorkOrderSchema = z.object({
   code: codeValidator,
@@ -72,7 +117,7 @@ export const baseWorkOrderSchema = z.object({
   start_date: dateValidator,
   end_date: dateValidator,
   handing_over_date: dateValidator,
-  document_key: documentKeyValidator,
+  documents: documentsValidator,
   process_type: processTypeEnum,
   description: longDescriptionValidator,
   job_number: z
@@ -115,12 +160,12 @@ export const createWorkOrderSchema = baseWorkOrderSchema.extend({
   client_id: positiveIntValidator,
 });
 
+// The process type and schedule of rates shape the work order's sites and
+// restoration, so an edit covers only its details and documents.
 export const updateWorkOrderSchema = baseWorkOrderSchema
-  .partial()
+  .omit({ process_type: true, schedule_of_rates: true })
   .extend({
     id: positiveIntValidator,
-    status: workOrderStatusEnum.optional(),
-    cancellation_reason: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -134,6 +179,22 @@ export const updateWorkOrderSchema = baseWorkOrderSchema
       path: ["end_date"],
     },
   );
+
+// A correction to one schedule of rates row. Its activity, unit and GST stay;
+// the rate including GST and the total are worked out again from these.
+export const updateScheduleOfRateRowSchema = z.object({
+  id: positiveIntValidator,
+  estimated_quantity: z.number().gt(0, "Quantity must be greater than zero"),
+  rc_unit_rate: z.number().gt(0, "Rate must be greater than zero"),
+  transportation_slabs: transportationSlabsSchema.optional(),
+});
+
+export const updateScheduleOfRatesSchema = z.object({
+  work_order_id: positiveIntValidator,
+  rates: z
+    .array(updateScheduleOfRateRowSchema)
+    .min(1, "At least one schedule of rate entry is required"),
+});
 
 export const approveWorkOrderSchema = z.object({
   id: positiveIntValidator,
@@ -184,7 +245,18 @@ export const createWorkOrderSiteSchema = z.object({
   site_id: positiveIntValidator.optional(),
   date: dateValidator,
   end_date: dateValidator,
-  process_type: z.string().min(1, "Process type is required"),
   selected_activities: z.array(woActivitySchemaWithId).optional(),
   new_site: createSiteSchema.optional(),
 });
+
+// An admin's correction to the dates a work order site runs over.
+export const updateWorkOrderSiteDatesSchema = z
+  .object({
+    id: positiveIntValidator,
+    date: dateValidator,
+    end_date: dateValidator,
+  })
+  .refine((data) => data.end_date >= data.date, {
+    message: "End date must be on or after start date",
+    path: ["end_date"],
+  });

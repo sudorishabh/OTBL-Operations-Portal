@@ -17,6 +17,14 @@ import { proposalMutationRouter } from "./routers/proposal/proposal.mutation.rou
 import { proposalQueryRouter } from "./routers/proposal/proposal.query.route";
 import { contractorQueryRouter } from "./routers/contractor/contractor.query.route";
 import { contractorMutationRouter } from "./routers/contractor/contractor.mutation.route";
+import { restorationQueryRouter } from "./routers/restoration/restoration.query.route";
+import { restorationMutationRouter } from "./routers/restoration/restoration.mutation.route";
+import { siteContractorQueryRouter } from "./routers/site-contractor/site-contractor.query.route";
+import { siteContractorMutationRouter } from "./routers/site-contractor/site-contractor.mutation.route";
+import { jobOrderQueryRouter } from "./routers/job-order/job-order.query.route";
+import { jobOrderMutationRouter } from "./routers/job-order/job-order.mutation.route";
+import { contractOrderQueryRouter } from "./routers/contract-order/contract-order.query.route";
+import { contractOrderMutationRouter } from "./routers/contract-order/contract-order.mutation.route";
 import { expenseQueryRouter } from "./routers/expense/expense.query.route";
 import { expenseMutationRouter } from "./routers/expense/expense.mutation.route";
 import { sharePointQueryRouter } from "./routers/sharepoint/sharepoint.query.route";
@@ -55,6 +63,18 @@ export const appRouter = router({
 
   contractorQuery: contractorQueryRouter,
   contractorMutation: contractorMutationRouter,
+
+  restorationQuery: restorationQueryRouter,
+  restorationMutation: restorationMutationRouter,
+
+  siteContractorQuery: siteContractorQueryRouter,
+  siteContractorMutation: siteContractorMutationRouter,
+
+  jobOrderQuery: jobOrderQueryRouter,
+  jobOrderMutation: jobOrderMutationRouter,
+
+  contractOrderQuery: contractOrderQueryRouter,
+  contractOrderMutation: contractOrderMutationRouter,
 
   expenseQuery: expenseQueryRouter,
   expenseMutation: expenseMutationRouter,

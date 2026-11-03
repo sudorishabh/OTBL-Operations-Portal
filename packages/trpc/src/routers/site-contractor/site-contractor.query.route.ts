@@ -1,0 +1,59 @@
+import { asc, eq } from "drizzle-orm";
+import { schema } from "@pkg/db";
+import { router } from "../../trpc";
+import { protectedProcedure } from "../../core";
+import {
+  assertCanAccessWorkOrderSite,
+  getAccessScope,
+} from "../../access-scope";
+import { fromDatabaseError } from "../../errors";
+import { handleQuery } from "../../helper/typed-handler";
+import { z } from "zod";
+
+const { workOrderSiteContractorTable, contractorTable } = schema;
+
+export const siteContractorQueryRouter = router({
+  // Every vendor a site's work is ordered to, in the order assigned.
+  getSiteContractors: protectedProcedure
+    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrderSite(
+          ctx.db,
+          scope,
+          input.work_order_site_id,
+        );
+
+        try {
+          return await ctx.db
+            .select({
+              id: contractorTable.id,
+              name: contractorTable.name,
+              contact_number: contractorTable.contact_number,
+              email: contractorTable.email,
+              gst_number: contractorTable.gst_number,
+              status: contractorTable.status,
+            })
+            .from(workOrderSiteContractorTable)
+            .innerJoin(
+              contractorTable,
+              eq(workOrderSiteContractorTable.contractor_id, contractorTable.id),
+            )
+            .where(
+              eq(
+                workOrderSiteContractorTable.work_order_site_id,
+                input.work_order_site_id,
+              ),
+            )
+            .orderBy(asc(workOrderSiteContractorTable.id));
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching site contractors");
+        }
+      }),
+    ),
+});

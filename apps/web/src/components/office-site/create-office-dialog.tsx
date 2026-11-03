@@ -6,18 +6,7 @@ import { Form } from "@/components/ui/form";
 import { trpc } from "@/lib/trpc";
 import CustomButton from "@/components/shared/btn";
 import CustomForm from "@/components/shared/form";
-import {
-  CheckCircle2,
-  Mail,
-  Search,
-  Building2,
-  MapPin,
-  Hash,
-  Globe,
-  Users,
-  UserCheck,
-  X,
-} from "lucide-react";
+import { CheckCircle2, Mail, Search, Users, UserCheck, X } from "lucide-react";
 import toast from "react-hot-toast";
 import Input from "@/components/shared/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { officeSchemas, officeTypes } from "@pkg/schema";
 import { capitalizeEachWord, constants } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
+import OfficeInfoFields from "./office-info-fields";
 
 const { ROLES } = constants;
 
@@ -154,63 +144,7 @@ const CreateOfficeDialog = () => {
               </h3>
             </div>
 
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <Input
-                control={form.control}
-                fieldName='name'
-                Label='Office Name'
-                LabelIcon={Building2}
-                placeholder='Enter office name'
-              />
-
-              <Input
-                control={form.control}
-                fieldName='email'
-                Label='Email'
-                LabelIcon={Mail}
-                type='email'
-                placeholder='Enter email'
-              />
-            </div>
-
-            <Input
-              control={form.control}
-              fieldName='address'
-              Label='Address'
-              LabelIcon={MapPin}
-              placeholder='Enter address'
-            />
-
-            <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-              <Input
-                control={form.control}
-                fieldName='state'
-                Label='State'
-                LabelIcon={Globe}
-                placeholder='Enter state'
-              />
-              <Input
-                control={form.control}
-                fieldName='city'
-                Label='City'
-                LabelIcon={Globe}
-                placeholder='Enter city'
-              />
-              <Input
-                control={form.control}
-                fieldName='pincode'
-                Label='Pincode'
-                LabelIcon={Hash}
-                placeholder='Enter pincode'
-              />
-              <Input
-                control={form.control}
-                fieldName='gst_number'
-                Label='GST Number'
-                LabelIcon={Hash}
-                placeholder='Enter GST number'
-              />
-            </div>
+            <OfficeInfoFields />
           </div>
 
           <div className='mt-8 space-y-6'>

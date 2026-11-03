@@ -57,7 +57,7 @@ const Btn = ({
       break;
     case "outline":
       variantStyle =
-        "bg-white text-gray-800 shadow-none hover:bg-gray-50 cursor-pointer border border-gray-300/70 shadow-s transition-all duration-200  h-8 text-[0.813rem]";
+        "bg-white text-gray-800 shadow-none hover:bg-gray-50 cursor-pointer border border-gray-300 shadow-s transition-all duration-200  h-8 text-[0.813rem]";
       break;
   }
 
@@ -95,7 +95,7 @@ const Btn = ({
             onClick={onClick}
             title={accessibleName}
             className={cn(
-              "group h-8 inline-flex items-center gap-2 rounded-full border border-gray-300/70 bg-white pl-3 pr-1 text-[0.813rem] font-medium text-gray-700 cursor-pointer transition-all duration-200 hover:border-emerald-600/40 hover:shadow-sm",
+              "group h-8 inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white pl-3 pr-1 text-[0.813rem] font-medium text-gray-700 cursor-pointer transition-all duration-200 hover:border-emerald-600/40 hover:shadow-sm",
               className,
             )}>
             {text}
@@ -110,7 +110,7 @@ const Btn = ({
             title={accessibleName}
             aria-label={accessibleName}
             className={cn(
-              "h-8 w-8 rounded-full bg-white border group-hover:border-0 flex items-center justify-center group hover:bg-emerald-600 relative cursor-pointer transition-all duration-200 hover:shadow-sm",
+              "h-8 w-8 rounded-full bg-white border border-gray-300 group-hover:border-0 flex items-center justify-center group hover:bg-emerald-600 relative cursor-pointer transition-all duration-200 hover:shadow-sm",
               className,
             )}
             onClick={onClick}

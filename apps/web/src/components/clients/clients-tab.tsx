@@ -2,6 +2,7 @@ import { useClientManagementContext } from "@/contexts/ClientManagementContext";
 import { trpc } from "@/lib/trpc";
 import React from "react";
 import ClientCard from "./client-card";
+import ParentClientGroup from "./parent-client-group";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import { Webhook } from "lucide-react";
 import ClientsSkeleton from "../skeleton/clients/clients-skeleton";
@@ -18,6 +19,8 @@ interface ClientContact {
 
 interface Client {
   id: number;
+  parent_client_id: number | null;
+  parent_client_name: string | null;
   name: string;
   email: string;
   contact_number: string;
@@ -50,6 +53,54 @@ interface ClientContactsTableProps {
 interface Props {
   tab: string;
 }
+
+type ParentClient = { id: number; name: string };
+
+type ClientGroup = { parentClient: ParentClient; branches: Client[] };
+
+// Branches sit under their main client; clients without one stay standalone.
+const groupClients = (
+  clients: Client[],
+  parentClients: ParentClient[],
+  showEmptyGroups: boolean,
+) => {
+  const groups = new Map<number, ClientGroup>(
+    parentClients.map((parentClient) => [
+      parentClient.id,
+      { parentClient, branches: [] },
+    ]),
+  );
+  const standalone: Client[] = [];
+
+  for (const client of clients) {
+    if (!client.parent_client_id) {
+      standalone.push(client);
+      continue;
+    }
+
+    let group = groups.get(client.parent_client_id);
+    if (!group) {
+      // Main client list not refreshed yet; fall back to the joined name.
+      group = {
+        parentClient: {
+          id: client.parent_client_id,
+          name: client.parent_client_name ?? "",
+        },
+        branches: [],
+      };
+      groups.set(client.parent_client_id, group);
+    }
+    group.branches.push(client);
+  }
+
+  return {
+    groups: [...groups.values()]
+      .filter((group) => showEmptyGroups || group.branches.length > 0)
+      .sort((a, b) => a.parentClient.name.localeCompare(b.parentClient.name)),
+    standalone,
+  };
+};
+
 const ClientsTab = ({ tab }: Props) => {
   const isClientTab = tab === "clients";
 
@@ -70,7 +121,12 @@ const ClientsTab = ({ tab }: Props) => {
     },
   );
 
-  if (isLoading) {
+  const { data: parentClients, isLoading: isParentClientsLoading } =
+    trpc.clientQuery.getParentClients.useQuery(undefined, {
+      enabled: isClientTab,
+    });
+
+  if (isLoading || isParentClientsLoading) {
     return <ClientsSkeleton />;
   }
 
@@ -83,9 +139,17 @@ const ClientsTab = ({ tab }: Props) => {
     );
   }
 
-  const hasClients = clients && clients.length > 0;
+  // While searching or filtering, only show main clients with matching branches.
+  const hasActiveFilters =
+    clientSearchQuery.trim() !== "" || clientFilters.status !== "all";
 
-  if (!hasClients) {
+  const { groups, standalone } = groupClients(
+    (clients ?? []) as Client[],
+    (parentClients ?? []) as ParentClient[],
+    !hasActiveFilters,
+  );
+
+  if (groups.length === 0 && standalone.length === 0) {
     return (
       <NoFetchData
         Icon={Webhook}
@@ -96,16 +160,35 @@ const ClientsTab = ({ tab }: Props) => {
   }
 
   return (
-    <div
-      className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1
-     gap-4'>
-      {clients?.map((client: Client) => (
-        <ClientCard
-          key={client.id}
-          client={client}
-          contactsCount={client.contacts_count ?? 0}
+    <div className='space-y-4'>
+      {groups.map(({ parentClient, branches }) => (
+        <ParentClientGroup
+          key={parentClient.id}
+          parentClient={parentClient}
+          branches={branches}
         />
       ))}
+
+      {standalone.length > 0 && (
+        <div className='space-y-3'>
+          {groups.length > 0 && (
+            <h3 className='pt-3 text-sm font-medium text-gray-500'>
+              Clients without a main client
+              <span className='ml-1.5 tabular-nums text-gray-400'>
+                {standalone.length}
+              </span>
+            </h3>
+          )}
+          <div className='space-y-3'>
+            {standalone.map((client) => (
+              <ClientCard
+                key={client.id}
+                client={client}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

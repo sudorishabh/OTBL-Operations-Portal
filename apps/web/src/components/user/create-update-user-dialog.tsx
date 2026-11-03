@@ -31,6 +31,14 @@ interface CreatedCredentials {
   role: string;
 }
 
+const createUserResolver = zodResolver(userSchemas.createUserSchema);
+// In edit mode a blank password keeps the user's current one.
+const editUserResolver = zodResolver(
+  userSchemas.createUserSchema.extend({
+    password: userSchemas.updateUserSchema.shape.password.unwrap(),
+  }),
+);
+
 const CreateUpdateUserDialog = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [createdCredentials, setCreatedCredentials] =
@@ -48,7 +56,7 @@ const CreateUpdateUserDialog = () => {
   const trpcUtils = trpc.useUtils();
 
   const form = useForm<userTypes.CreateUserType>({
-    resolver: zodResolver(userSchemas.createUserSchema),
+    resolver: isEditMode ? editUserResolver : createUserResolver,
     defaultValues: {
       name: "",
       email: "",
@@ -68,10 +76,16 @@ const CreateUpdateUserDialog = () => {
     },
   );
 
+  const invalidateUserQueries = () => {
+    trpcUtils.userQuery.getAllUser.invalidate();
+    trpcUtils.userQuery.getCategories8User.invalidate();
+    trpcUtils.userQuery.getUserById.invalidate();
+  };
+
   const registerMutation = trpc.userMutation.createUserByAdmin.useMutation({
     onSuccess: (data: any, variables: any) => {
       toast.success("User registered successfully");
-      trpcUtils.userQuery.getAllUser.invalidate();
+      invalidateUserQueries();
 
       setCreatedCredentials({
         name: variables.name,
@@ -93,6 +107,7 @@ const CreateUpdateUserDialog = () => {
   const editUserMutation = trpc.userMutation.updateUserByAdmin.useMutation({
     onSuccess: () => {
       toast.success("User updated successfully");
+      invalidateUserQueries();
       handleCloseDialog();
     },
     onError: (error: any) => {
@@ -106,6 +121,7 @@ const CreateUpdateUserDialog = () => {
     } else {
       deleteParams(["id", "dialog-over"]);
     }
+    setShowPassword(false);
 
     setTimeout(() => {
       form.reset({
@@ -318,20 +334,23 @@ const CreateUpdateUserDialog = () => {
               placeholder='Enter email address'
             />
 
-            {!isEditMode && (
-              <Input
-                control={form.control}
-                fieldName='password'
-                Label='Password'
-                LabelIcon={KeyRound}
-                type={showPassword ? "text" : "password"}
-                placeholder='Enter password'
-                inputIconButton={{
-                  icon: showPassword ? Eye : EyeOff,
-                  onClick: () => setShowPassword((s: boolean) => !s),
-                }}
-              />
-            )}
+            <Input
+              control={form.control}
+              fieldName='password'
+              Label={isEditMode ? "New Password" : "Password"}
+              LabelIcon={KeyRound}
+              type={showPassword ? "text" : "password"}
+              placeholder={
+                isEditMode
+                  ? "Leave blank to keep current password"
+                  : "Enter password"
+              }
+              optional={isEditMode}
+              inputIconButton={{
+                icon: showPassword ? Eye : EyeOff,
+                onClick: () => setShowPassword((s: boolean) => !s),
+              }}
+            />
 
             <Input
               control={form.control}
@@ -369,6 +388,11 @@ const CreateUpdateUserDialog = () => {
                 text={isEditMode ? "Update" : "Create"}
                 variant='primary'
                 type='submit'
+                loading={
+                  isEditMode
+                    ? editUserMutation.isPending
+                    : registerMutation.isPending
+                }
                 disableForViewer
               />
             </div>

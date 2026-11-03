@@ -30,9 +30,8 @@ export function SiteOperatorUploadsDialog({
 }: Props) {
   const { getParam, deleteParam } = useHandleParams();
 
-  const open =
-    getParam("dialog") === "site-details" &&
-    getParam("site-dialog") === "operator-uploads";
+  // Opened over the site's or restoration's page.
+  const open = getParam("site-dialog") === "operator-uploads";
 
   const rows = useMemo(() => {
     return uploads.map((row) => ({
@@ -78,7 +77,7 @@ export function SiteOperatorUploadsDialog({
       isLoading={isLoading}>
       {rows.length === 0 && !isLoading ? (
         <p className='text-sm text-muted-foreground py-6 text-center'>
-          No operator documents uploaded yet for this site.
+          No operator documents uploaded yet.
         </p>
       ) : (
         <ScrollArea className='h-[min(420px,55vh)] pr-3'>

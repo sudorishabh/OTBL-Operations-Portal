@@ -3,7 +3,7 @@ import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "next/navigation";
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, computeSorFullyConsumed } from "@pkg/utils";
 import { format, isSameYear } from "date-fns";
 import {
   Search,
@@ -18,35 +18,12 @@ import React, { useMemo, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import CustomButton from "@/components/shared/btn";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
+import DocumentsMenu from "@/components/shared/documents-menu";
+import { toDocuments, type StoredDocument } from "@/lib/documents";
 
 interface Props {
   clientId: number;
 }
-
-const SOR_ACTIVITY_TO_COMPLETION_ACTIVITY: Record<string, string> = {
-  clean_soil_area: "clean_soil_area",
-  lifting_oily_slush_or_recovery_of_oil: "lifting_oil_slush",
-  excavation_oil_contaminated_soil: "excav_cont_soil",
-  transportation_contaminated_soil: "trans_cont_soil",
-  refilling_excavated_oil_contaminated_soil_land: "refill_excav_soil",
-  bioremediation_oil_contaminated_soil: "biorem_cont_soil",
-};
-
-const activityKey = (name: string) => {
-  const v = (name || "").trim().toLowerCase();
-  return v
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/_+/g, "_");
-};
-
-const toNumberSafe = (val: unknown) => {
-  const n =
-    typeof val === "string"
-      ? Number(val.replace(/,/g, "").trim())
-      : Number(val);
-  return Number.isFinite(n) ? n : 0;
-};
 
 const toDate = (date: Date | string | null | undefined) =>
   date ? new Date(date) : null;
@@ -159,24 +136,25 @@ const StageLabel = ({ children }: { children: React.ReactNode }) => (
 );
 
 const DocumentLink = ({
-  href,
+  documents,
   tone,
 }: {
-  href: string;
+  documents: StoredDocument[];
   tone: "sky" | "emerald";
 }) => (
-  <a
-    href={href}
-    target='_blank'
-    rel='noreferrer'
-    onClick={(e) => e.stopPropagation()}
-    className={cn(
-      "inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline",
-      tone === "sky" ? "text-sky-600" : "text-emerald-600",
-    )}>
-    <ExternalLink className='h-3.5 w-3.5' />
-    Document
-  </a>
+  <DocumentsMenu
+    documents={documents}
+    align='start'>
+    <button
+      type='button'
+      className={cn(
+        "inline-flex cursor-pointer items-center gap-1 font-medium underline-offset-2 hover:underline",
+        tone === "sky" ? "text-sky-600" : "text-emerald-600",
+      )}>
+      <ExternalLink className='h-3.5 w-3.5' />
+      {documents.length === 1 ? "Document" : `${documents.length} documents`}
+    </button>
+  </DocumentsMenu>
 );
 
 // One step of the proposal to work order run. `connected` draws the thread
@@ -232,29 +210,9 @@ const useResolvedWorkOrderStatus = (
         return woDetails.workOrder.status || workOrder.status;
       }
 
-      const usedQtyByActivity: Record<string, number> = (sites || []).reduce(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (acc: Record<string, number>, s: any) => {
-          for (const c of s.completions || []) {
-            const key = activityKey(c.activity_name);
-            acc[key] = (acc[key] || 0) + toNumberSafe(c.estimated_quantity);
-          }
-          return acc;
-        },
-        {},
-      );
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const isSORFullyUsed = scheduleOfRates.every((item: any) => {
-        const completionActivity =
-          SOR_ACTIVITY_TO_COMPLETION_ACTIVITY[item.activity] ?? item.activity;
-        const usedQty = usedQtyByActivity[activityKey(completionActivity)] ?? 0;
-        const sorQty = toNumberSafe(item.estimated_quantity);
-        if (sorQty <= 0) return true;
-        return usedQty + 1e-6 >= sorQty;
-      });
-
-      return isSORFullyUsed ? "completed" : "pending";
+      return computeSorFullyConsumed(scheduleOfRates, sites)
+        ? "completed"
+        : "pending";
     }
 
     return workOrder.status;
@@ -339,12 +297,10 @@ const ProposalRow = ({
             </div>
             <StageMeta>
               {submitted && <span>Submitted {submitted}</span>}
-              {proposal.document_key && (
-                <DocumentLink
-                  href={proposal.document_key}
-                  tone='sky'
-                />
-              )}
+              <DocumentLink
+                documents={toDocuments(proposal.documents)}
+                tone='sky'
+              />
               {workOrder && (
                 <button
                   type='button'
@@ -404,12 +360,10 @@ const ProposalRow = ({
                       Agreement {workOrder.agreement_number}
                     </span>
                   )}
-                  {workOrder.document_key && (
-                    <DocumentLink
-                      href={workOrder.document_key}
-                      tone='emerald'
-                    />
-                  )}
+                  <DocumentLink
+                    documents={toDocuments(workOrder.documents)}
+                    tone='emerald'
+                  />
                 </StageMeta>
               </>
             ) : (

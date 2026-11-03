@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { hashPassword, USER_ROLES, verifyPassword } from "@pkg/utils/auth";
 import { adminProcedure, protectedProcedure } from "../../middleware";
@@ -13,7 +13,7 @@ import {
 import { handleProtectedMutation } from "../../helper/typed-handler";
 import { userSchemas } from "@pkg/schema";
 
-const { userTable } = schema;
+const { userTable, officeUserTable, workOrderSiteUserTable } = schema;
 
 export const userMutationRouter = router({
   createUserByAdmin: adminProcedure
@@ -60,12 +60,12 @@ export const userMutationRouter = router({
       handleProtectedMutation(async ({ input, ctx }) => {
         const { id, password, ...rest } = input;
 
-        const existingUser = await ctx.db
+        const [existingUser] = await ctx.db
           .select()
           .from(userTable)
           .where(eq(userTable.id, id));
 
-        if (existingUser.length === 0) {
+        if (!existingUser) {
           throw notFound("User", id);
         }
 
@@ -78,11 +78,54 @@ export const userMutationRouter = router({
           });
         }
 
+        if (rest.email !== existingUser.email) {
+          const [emailOwner] = await ctx.db
+            .select({ id: userTable.id })
+            .from(userTable)
+            .where(and(eq(userTable.email, rest.email), ne(userTable.id, id)));
+
+          if (emailOwner) {
+            throw alreadyExists("User", rest.email, {
+              userMessage: "A user with this email already exists.",
+            });
+          }
+        }
+
         const updateData: Record<string, any> = { ...rest };
 
         if (!isAdmin) {
           delete updateData.role;
           delete updateData.status;
+        }
+
+        if (updateData.role && updateData.role !== existingUser.role) {
+          const [officeSeats, siteSeats] = await Promise.all([
+            ctx.db
+              .select({ id: officeUserTable.id })
+              .from(officeUserTable)
+              .where(eq(officeUserTable.user_id, id)),
+            ctx.db
+              .select({ id: workOrderSiteUserTable.id })
+              .from(workOrderSiteUserTable)
+              .where(eq(workOrderSiteUserTable.user_id, id)),
+          ]);
+
+          // Office seats and work-order-site pins are only valid for the role
+          // they were granted under, so they must be removed first.
+          if (officeSeats.length > 0 || siteSeats.length > 0) {
+            throw validationError(
+              "Cannot change the role of a user with office or site assignments",
+              [
+                {
+                  field: "role",
+                  message: "Remove this user's assignments first.",
+                },
+              ],
+              {
+                userMessage: `This user is assigned to ${officeSeats.length} office(s) and ${siteSeats.length} work order site(s). Remove those assignments before changing their role.`,
+              },
+            );
+          }
         }
 
         if (password) {

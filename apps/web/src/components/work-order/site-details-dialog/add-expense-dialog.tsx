@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import { trpc } from "@/lib/trpc";
 import {
   Dialog,
@@ -16,70 +16,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import CustomButton from "@/components/shared/btn";
-import DeferredFilePicker from "@/components/shared/deferred-file-picker";
+import DocumentsField from "@/components/shared/documents-field";
+import {
+  toDocuments,
+  toStoredDocument,
+  type StoredDocument,
+} from "@/lib/documents";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import {
   Plus,
   Save,
   Paperclip,
   AlertTriangle,
-  CheckCircle2,
-  X,
+  Check,
   HardHat,
-  Users,
-  Package,
-  Wrench,
-  MoreHorizontal,
+  ReceiptIndianRupee,
+  Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
-
-export const EXPENSE_TYPE_LABELS: Record<string, string> = {
-  contractor_payment: "Contractor Payment",
-  labour: "Labour",
-  material: "Material",
-  equipment: "Equipment",
-  miscellaneous: "Miscellaneous",
-};
-
-const EXPENSE_TYPE_ICONS: Record<string, React.ElementType> = {
-  contractor_payment: HardHat,
-  labour: Users,
-  material: Package,
-  equipment: Wrench,
-  miscellaneous: MoreHorizontal,
-};
-
-const EXPENSE_TYPE_COLORS: Record<string, string> = {
-  contractor_payment: "text-blue-600 bg-blue-50 border-blue-200",
-  labour: "text-orange-600 bg-orange-50 border-orange-200",
-  material: "text-purple-600 bg-purple-50 border-purple-200",
-  equipment: "text-cyan-600 bg-cyan-50 border-cyan-200",
-  miscellaneous: "text-gray-600 bg-gray-50 border-gray-200",
-};
-
-type ExpenseType =
-  | "contractor_payment"
-  | "labour"
-  | "material"
-  | "equipment"
-  | "miscellaneous";
-
-const NO_TYPE = "__none__" as const;
-
-type ExpenseTypeSelection = ExpenseType | typeof NO_TYPE;
-
-const resolveExpenseType = (t: ExpenseTypeSelection): ExpenseType =>
-  t === NO_TYPE ? "miscellaneous" : t;
-
-type ExpenseItem = {
-  id: string;
-  expense_type: ExpenseTypeSelection;
-  amount: string;
-};
+import { capitalFirstLetter } from "@pkg/utils";
+import { cn } from "@/lib/utils";
 
 export interface ActivityOption {
   key: string;
@@ -90,19 +49,21 @@ export interface ActivityOption {
 
 export interface Expense {
   id: number;
-  expense_type: string;
   contractor_id: number | null;
   contractor_name: string | null;
+  contract_order_item_id?: number | null;
+  job_order_id?: number | null;
   activity_key: string | null;
   quantity: string | null;
   is_exceeded: number | boolean | null;
-  description: string;
+  title: string;
   amount: string;
-  expense_date: string | Date;
+  start_date: string | Date;
+  end_date: string | Date;
   invoice_number: string | null;
-  notes: string | null;
-  document_url: string | null;
-  document_id: string | null;
+  documents: StoredDocument[] | null;
+  created_by_name?: string | null;
+  created_at?: string | Date;
 }
 
 interface Props {
@@ -110,104 +71,166 @@ interface Props {
   onClose: () => void;
   onSuccess?: () => void;
   workOrderSiteId: number;
-  officeId: number;
   editingExpense?: Expense | null;
   activities?: ActivityOption[];
   usedQtyByActivity?: Record<string, number>;
+  // The vendors the site's work is ordered to, for a site that keeps its own;
+  // an expense is recorded under one of them. Without them any active vendor
+  // can be picked.
+  contractors?: { id: number; name: string }[];
+  // The contractor a new expense starts under.
+  defaultContractorId?: number | null;
+  // A new expense starts as miscellaneous, under no vendor.
+  startsMiscellaneous?: boolean;
+  // The one activity every expense is recorded against, so none is picked:
+  // bioremediation's oil zapper.
+  fixedActivityKey?: string;
+  // The contract order requirement the expense is spent on. Its vendors are
+  // then the order's, and it can't be miscellaneous.
+  orderItem?: { id: number; label: string } | null;
+  // The restoration job order the expense is spent on, likewise.
+  jobOrder?: { id: number; label: string } | null;
 }
 
-const newItem = (): ExpenseItem => ({
-  id: Math.random().toString(36).slice(2),
-  expense_type: NO_TYPE,
-  amount: "",
-});
+// "Expense under" value for an expense under none of the contractors.
+const NOT_UNDER = "none";
 
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(v);
+const toDateInput = (value: string | Date = new Date()) =>
+  format(new Date(value), "yyyy-MM-dd");
+
+// A search box appears once a site has this many vendors.
+const VENDOR_SEARCH_FROM = 7;
+
+// "Sharma ext" -> "SE"; a single word gives its first two letters.
+const initialsOf = (name: string) => {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const letters =
+    words.length > 1 ? `${words[0]![0]}${words[1]![0]}` : (words[0] ?? "").slice(0, 2);
+  return letters.toUpperCase();
+};
+
+const formatQty = (value: number) =>
+  new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
 
 const AddExpenseDialog = ({
   open,
   onClose,
   onSuccess,
   workOrderSiteId,
-  officeId,
   editingExpense,
   activities = [],
   usedQtyByActivity = {},
+  contractors,
+  defaultContractorId = null,
+  startsMiscellaneous = false,
+  fixedActivityKey,
+  orderItem = null,
+  jobOrder = null,
 }: Props) => {
+  // What the expense is spent on, when it is on an order or job order.
+  const spentOn = orderItem ?? jobOrder;
   const utils = trpc.useUtils();
 
-  const [items, setItems] = useState<ExpenseItem[]>([newItem()]);
+  const [amount, setAmount] = useState("");
 
+  const siteVendors = contractors ?? [];
+  const picksAnyVendor = contractors === undefined;
+  // The vendor picked from all vendors, when the site keeps none of its own.
   const [contractorId, setContractorId] = useState<string>("");
+  // A contractor id, NOT_UNDER, or "" until chosen.
+  const [underId, setUnderId] = useState("");
+  const [vendorSearch, setVendorSearch] = useState("");
+  const underGroupName = useId();
   const [selectedActivityKey, setSelectedActivityKey] = useState<string>("");
+  const [isActivityPickerOpen, setIsActivityPickerOpen] = useState(false);
   const [quantity, setQuantity] = useState<string>("");
-  const [description, setDescription] = useState("");
-  const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [title, setTitle] = useState("");
+  const [startDate, setStartDate] = useState(() => toDateInput());
+  const [endDate, setEndDate] = useState(() => toDateInput());
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [notes, setNotes] = useState("");
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadedDocUrl, setUploadedDocUrl] = useState<string | null>(null);
-  const [uploadedDocId, setUploadedDocId] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  // Saved documents in edit mode. Removing one only detaches it: expenses
+  // recorded together share the same files.
+  const [savedDocuments, setSavedDocuments] = useState<StoredDocument[]>([]);
 
   const [showAddContractor, setShowAddContractor] = useState(false);
   const [newContractorName, setNewContractorName] = useState("");
   const [newContractorContact, setNewContractorContact] = useState("");
   const [newContractorGst, setNewContractorGst] = useState("");
 
-  const [isSavingMulti, setIsSavingMulti] = useState(false);
-
   const isEditing = !!editingExpense;
-  const hasContractorPayment = items.some((i) => i.expense_type === "contractor_payment");
+  const underContractor =
+    siteVendors.find((c) => String(c.id) === underId) ?? null;
+  const expenseContractorId = underContractor
+    ? underContractor.id
+    : picksAnyVendor && contractorId
+      ? Number(contractorId)
+      : null;
+  // A miscellaneous expense, under none of the site's vendors, uses up no
+  // activity quantity, so it takes none.
+  const isMiscellaneous =
+    !picksAnyVendor && (underId === NOT_UNDER || siteVendors.length === 0);
 
   const sharePointUpload = useSharePointUpload({
     folderPath: `/WorkOrders/Sites/${workOrderSiteId}/Expenses`,
+    conflictBehavior: "rename",
   });
 
   const resetDocumentState = useCallback(() => {
-    setSelectedFile(null);
-    setUploadedDocUrl(null);
-    setUploadedDocId(null);
+    setFiles([]);
+    setSavedDocuments([]);
     sharePointUpload.reset();
   }, [sharePointUpload]);
 
   useEffect(() => {
     if (editingExpense) {
-      setItems([{
-        id: String(editingExpense.id),
-        expense_type: editingExpense.expense_type as ExpenseType,
-        amount: editingExpense.amount,
-      }]);
+      setAmount(editingExpense.amount);
       setContractorId(editingExpense.contractor_id ? String(editingExpense.contractor_id) : "");
-      setSelectedActivityKey(editingExpense.activity_key ?? "");
+      const under = siteVendors.find(
+        (c) => c.id === editingExpense.contractor_id,
+      );
+      setUnderId(
+        under ? String(under.id) : siteVendors.length > 0 ? NOT_UNDER : "",
+      );
+      // An older expense keeps the activity it was recorded against.
+      setSelectedActivityKey(
+        editingExpense.activity_key ?? fixedActivityKey ?? "",
+      );
       setQuantity(editingExpense.quantity ?? "");
-      setDescription(editingExpense.description);
-      setExpenseDate(format(new Date(editingExpense.expense_date), "yyyy-MM-dd"));
+      setTitle(editingExpense.title);
+      setStartDate(toDateInput(editingExpense.start_date));
+      setEndDate(toDateInput(editingExpense.end_date));
       setInvoiceNumber(editingExpense.invoice_number ?? "");
-      setNotes(editingExpense.notes ?? "");
-      setUploadedDocUrl(editingExpense.document_url ?? null);
-      setUploadedDocId(editingExpense.document_id ?? null);
-      setSelectedFile(null);
+      setSavedDocuments(toDocuments(editingExpense.documents));
+      setFiles([]);
     } else {
-      setItems([newItem()]);
+      setAmount("");
       setContractorId("");
-      setSelectedActivityKey("");
+      // With one contractor it is the likely choice; with several, ask.
+      setUnderId(
+        startsMiscellaneous
+          ? NOT_UNDER
+          : defaultContractorId
+            ? String(defaultContractorId)
+            : siteVendors.length === 1
+              ? String(siteVendors[0]!.id)
+              : "",
+      );
+      setSelectedActivityKey(fixedActivityKey ?? "");
       setQuantity("");
-      setDescription("");
-      setExpenseDate(format(new Date(), "yyyy-MM-dd"));
+      setTitle("");
+      setStartDate(toDateInput());
+      setEndDate(toDateInput());
       setInvoiceNumber("");
-      setNotes("");
       resetDocumentState();
     }
     setShowAddContractor(false);
     setNewContractorName("");
     setNewContractorContact("");
     setNewContractorGst("");
+    setVendorSearch("");
+    setIsActivityPickerOpen(false);
   }, [editingExpense, open]);
 
   const selectedActivity = activities.find((a) => a.key === selectedActivityKey);
@@ -224,34 +247,34 @@ const AddExpenseDialog = ({
   const isQuotaExhausted = remainingQty !== null && remainingQty <= 0;
   const isExceededMode = !!selectedActivityKey && isQuotaExhausted;
   const enteredQty = quantity ? parseFloat(quantity) : 0;
+  const canEnterQuantity = !!selectedActivityKey && !isMiscellaneous;
   const qtyExceedsRemaining =
-    !isExceededMode && !!selectedActivityKey && !!quantity &&
+    !isExceededMode && canEnterQuantity && !!quantity &&
     remainingQty !== null && enteredQty > remainingQty;
-  const pctUsed = estimateQty && estimateQty > 0
-    ? Math.min(100, (alreadyUsedQty / estimateQty) * 100)
-    : 0;
-
-  const updateItem = (id: string, field: keyof ExpenseItem, value: string) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
-    );
+  const qtyUnit = selectedActivity?.unit ?? "Nos";
+  const fixedActivityLabel =
+    activities.find((a) => a.key === fixedActivityKey)?.label ?? null;
+  // What's left of the activity's quantity, or of the fixed activity's
+  // estimate still to procure.
+  const describeLeft = (amount: string, willBe = false) => {
+    const left = willBe ? "will be left" : "left";
+    return fixedActivityLabel
+      ? `${amount} of the estimated ${fixedActivityLabel} ${left} to procure`
+      : `${amount} ${left} on this activity`;
   };
-
-  const removeItem = (id: string) => {
-    setItems((prev) => (prev.length > 1 ? prev.filter((i) => i.id !== id) : prev));
-  };
-
-  const totalAmount = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
 
   const contractorsQuery = trpc.contractorQuery.getContractors.useQuery(
-    { office_id: officeId },
-    { enabled: open && !!officeId },
+    {},
+    { enabled: open && picksAnyVendor },
   );
-  const contractors = contractorsQuery.data?.contractors ?? [];
+  // Inactive vendors can't take new expenses, but an edit keeps its own.
+  const vendors = (contractorsQuery.data?.contractors ?? []).filter(
+    (c: any) => c.status === "active" || String(c.id) === contractorId,
+  );
 
   const createContractorMutation = trpc.contractorMutation.createContractor.useMutation({
     onSuccess: (data: any) => {
-      utils.contractorQuery.getContractors.invalidate({ office_id: officeId });
+      utils.contractorQuery.invalidate();
       setContractorId(String(data.id));
       setShowAddContractor(false);
       setNewContractorName("");
@@ -262,15 +285,28 @@ const AddExpenseDialog = ({
     onError: (e: any) => toast.error(e.message || "Failed to add contractor"),
   });
 
-  const createExpenseMutation = trpc.expenseMutation.createExpense.useMutation();
+  const handleSaved = (message: string) => {
+    utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: workOrderSiteId });
+    utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: workOrderSiteId });
+    utils.expenseQuery.getMonthlyExpenses.invalidate({ work_order_site_id: workOrderSiteId });
+    // Using up the schedule of rates completes a restoration, or reopens it.
+    // A bioremediation site's oil zapper stock changes with its expenses.
+    utils.restorationQuery.getRestoration.invalidate();
+    utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: workOrderSiteId });
+    utils.workOrderQuery.getWorkOrderDetails.invalidate();
+    utils.workOrderSiteQuery.getOilZapperStock.invalidate({ work_order_site_id: workOrderSiteId });
+    toast.success(message);
+    onSuccess?.();
+    onClose();
+  };
+
+  const createExpenseMutation = trpc.expenseMutation.createExpense.useMutation({
+    onSuccess: () =>
+      handleSaved(isExceededMode ? "Exceeded expense recorded" : "Expense recorded"),
+    onError: (e: any) => toast.error(e.message || "Failed to record expense"),
+  });
   const updateExpenseMutation = trpc.expenseMutation.updateExpense.useMutation({
-    onSuccess: () => {
-      utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: workOrderSiteId });
-      utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: workOrderSiteId });
-      toast.success("Expense updated");
-      onSuccess?.();
-      onClose();
-    },
+    onSuccess: () => handleSaved("Expense updated"),
     onError: (e: any) => toast.error(e.message || "Failed to update expense"),
   });
 
@@ -280,132 +316,147 @@ const AddExpenseDialog = ({
       return;
     }
     createContractorMutation.mutate({
-      office_id: officeId,
       name: newContractorName.trim(),
       contact_number: newContractorContact.trim() || undefined,
       gst_number: newContractorGst.trim() || undefined,
     });
   };
 
-  const handleFileSelect = useCallback((file: File | null) => {
-    setSelectedFile(file);
-    if (file) { setUploadedDocUrl(null); setUploadedDocId(null); }
-  }, []);
-
-  const handleDeleteUploadedDoc = useCallback(async () => {
-    if (uploadedDocId) await sharePointUpload.deleteFile(uploadedDocId);
-    setUploadedDocUrl(null);
-    setUploadedDocId(null);
-    setSelectedFile(null);
-  }, [uploadedDocId, sharePointUpload]);
-
   const handleSubmit = async () => {
+    if (siteVendors.length > 0 && !underId) {
+      toast.error("Choose which vendor this expense is under");
+      return;
+    }
     if (activities.length > 0 && !selectedActivityKey) {
       toast.error("Please select an activity");
       return;
     }
-    if (!description.trim()) { toast.error("Description is required"); return; }
-    if (!expenseDate) { toast.error("Date is required"); return; }
-
-    for (const item of items) {
-      if (!item.amount || isNaN(parseFloat(item.amount)) || parseFloat(item.amount) <= 0) {
-        const typeLabel =
-          item.expense_type === NO_TYPE
-            ? "this expense"
-            : EXPENSE_TYPE_LABELS[item.expense_type];
-        toast.error(`Enter a valid amount for ${typeLabel}`);
-        return;
-      }
+    const parsedAmount = parseFloat(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error("Enter a valid amount");
+      return;
     }
-
-    if (selectedActivityKey && !isExceededMode && quantity) {
-      const q = parseFloat(quantity);
-      if (isNaN(q) || q < 0) { toast.error("Quantity must be a positive number"); return; }
-      if (remainingQty !== null && q > remainingQty) {
-        toast.error(`Quantity cannot exceed the remaining ${remainingQty} for this activity`);
-        return;
-      }
+    if (!title.trim()) { toast.error("Title is required"); return; }
+    if (!startDate || !endDate) {
+      toast.error("Start and end dates are required");
+      return;
     }
-
-    let docUrl = uploadedDocUrl;
-    let docId = uploadedDocId;
-    if (selectedFile) {
-      const result = await sharePointUpload.uploadFile(selectedFile);
-      if (!result) return;
-      docUrl = result.webUrl;
-      docId = result.id;
-    }
-
-    const sharedPayload = {
-      activity_key: selectedActivityKey || null,
-      quantity: selectedActivityKey && quantity ? quantity : null,
-      is_exceeded: isExceededMode,
-      description: description.trim(),
-      expense_date: new Date(expenseDate).toISOString(),
-      invoice_number: invoiceNumber.trim() || null,
-      notes: notes.trim() || null,
-      document_url: docUrl ?? null,
-      document_id: docId ?? null,
-    };
-
-    if (isEditing && editingExpense) {
-      const item = items[0]!;
-      updateExpenseMutation.mutate({
-        id: editingExpense.id,
-        expense_type: resolveExpenseType(item.expense_type),
-        contractor_id:
-          item.expense_type === "contractor_payment" && contractorId
-            ? Number(contractorId)
-            : null,
-        amount: item.amount,
-        ...sharedPayload,
-      });
+    if (endDate < startDate) {
+      toast.error("End date can't be before the start date");
       return;
     }
 
-    setIsSavingMulti(true);
-    try {
-      await Promise.all(
-        items.map((item) =>
-          createExpenseMutation.mutateAsync({
-            work_order_site_id: workOrderSiteId,
-            expense_type: resolveExpenseType(item.expense_type),
-            contractor_id:
-              item.expense_type === "contractor_payment" && contractorId
-                ? Number(contractorId)
-                : null,
-            amount: item.amount,
-            ...sharedPayload,
-          }),
-        ),
-      );
-      toast.success(
-        items.length > 1
-          ? `${items.length} expense entries recorded`
-          : isExceededMode
-            ? "Exceeded expense recorded"
-            : "Expense recorded",
-      );
-      onSuccess?.();
-      onClose();
-      utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: workOrderSiteId });
-      utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: workOrderSiteId });
-    } catch (e: any) {
-      toast.error(e.message || "Failed to save expenses");
-    } finally {
-      setIsSavingMulti(false);
+    if (canEnterQuantity && quantity) {
+      const q = parseFloat(quantity);
+      if (isNaN(q) || q < 0) { toast.error("Quantity must be a positive number"); return; }
+      if (!isExceededMode && remainingQty !== null && q > remainingQty) {
+        toast.error(`Only ${describeLeft(`${formatQty(remainingQty)} ${qtyUnit}`)}`);
+        return;
+      }
     }
+
+    const uploaded = await sharePointUpload.uploadFiles(files);
+    if (!uploaded) return;
+    const documents = [...savedDocuments, ...uploaded.map(toStoredDocument)];
+
+    const payload = {
+      contractor_id: expenseContractorId,
+      contract_order_item_id: orderItem?.id ?? null,
+      job_order_id: jobOrder?.id ?? null,
+      activity_key: selectedActivityKey || null,
+      quantity: canEnterQuantity && quantity ? quantity : null,
+      is_exceeded: isExceededMode,
+      title: title.trim(),
+      amount,
+      start_date: new Date(startDate).toISOString(),
+      end_date: new Date(endDate).toISOString(),
+      invoice_number: invoiceNumber.trim() || null,
+      documents,
+    };
+
+    if (isEditing && editingExpense) {
+      updateExpenseMutation.mutate({ id: editingExpense.id, ...payload });
+      return;
+    }
+
+    createExpenseMutation.mutate({
+      work_order_site_id: workOrderSiteId,
+      ...payload,
+    });
   };
 
   const isUploadingDoc = sharePointUpload.isUploading;
   const isSaving =
-    isSavingMulti ||
+    createExpenseMutation.isPending ||
     updateExpenseMutation.isPending ||
     isUploadingDoc;
 
+  const vendorQuery = vendorSearch.trim().toLowerCase();
+  const shownVendors = vendorQuery
+    ? siteVendors.filter((c) => c.name.toLowerCase().includes(vendorQuery))
+    : siteVendors;
+
+  // One "Expense under" choice. A real radio underneath, so arrow keys move
+  // between the choices.
+  const renderUnderOption = ({
+    value,
+    label,
+    badge,
+    hint,
+    tile = false,
+  }: {
+    value: string;
+    label: string;
+    badge: React.ReactNode;
+    hint?: string;
+    tile?: boolean;
+  }) => {
+    const checked = underId === value;
+    return (
+      <label
+        key={value}
+        className={cn(
+          "flex min-w-0 cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-300",
+          checked
+            ? "bg-blue-50 font-medium text-blue-800"
+            : "text-gray-700 hover:bg-gray-50",
+          tile &&
+            cn(
+              "rounded-lg border",
+              checked ? "border-blue-200" : "border-dashed border-gray-300",
+            ),
+        )}>
+        <input
+          type='radio'
+          name={underGroupName}
+          value={value}
+          checked={checked}
+          onChange={() => {
+            setUnderId(value);
+            if (value === NOT_UNDER) setQuantity("");
+          }}
+          className='sr-only'
+        />
+        <span
+          aria-hidden
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-colors",
+            checked ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600",
+          )}>
+          {badge}
+        </span>
+        <span className='min-w-0 flex-1 truncate'>{label}</span>
+        {hint && (
+          <span className='shrink-0 text-xs font-normal text-gray-400'>{hint}</span>
+        )}
+        {checked && <Check className='size-4 shrink-0 text-blue-600' />}
+      </label>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className='max-w-lg w-full flex flex-col gap-0 p-0 overflow-hidden max-h-[92dvh]'>
+      <DialogContent className='w-full sm:max-w-2xl flex flex-col gap-0 p-0 overflow-hidden max-h-[92dvh]'>
 
         <DialogHeader
           className={`shrink-0 px-6 pt-5 pb-4 border-b ${isExceededMode ? "bg-orange-50" : ""}`}>
@@ -420,10 +471,14 @@ const AddExpenseDialog = ({
           </DialogTitle>
           <DialogDescription className='text-xs text-gray-500'>
             {isExceededMode
-              ? "This activity's estimated quantity is fully used. Will be recorded as exceeded."
-              : isEditing
-                ? "Update the expense details below."
-                : "Enter an amount and save — choosing an expense type is optional."}
+              ? fixedActivityLabel
+                ? `The estimated ${fixedActivityLabel} is fully procured. Will be recorded as exceeded.`
+                : "This activity's estimated quantity is fully used. Will be recorded as exceeded."
+              : spentOn
+                ? `Spent on ${spentOn.label}.`
+                : isEditing
+                  ? "Update the expense details below."
+                  : "Record an amount spent on this site."}
           </DialogDescription>
         </DialogHeader>
 
@@ -435,7 +490,8 @@ const AddExpenseDialog = ({
                 Exceeded — {selectedActivity?.label}
               </p>
               <p className='text-[10px] text-orange-600 mt-0.5'>
-                Est: {estimateQty} {selectedActivity?.unit ?? "Nos"} · Fully used ({alreadyUsedQty}).
+                Est: {estimateQty} {selectedActivity?.unit ?? "Nos"} · Fully{" "}
+                {fixedActivityLabel ? "procured" : "used"} ({alreadyUsedQty}).
                 Recording as over-budget.
               </p>
             </div>
@@ -444,139 +500,166 @@ const AddExpenseDialog = ({
 
         <div className='flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0'>
 
+          {siteVendors.length > 0 && (
+            <fieldset className='min-w-0'>
+              <legend className='mb-1.5 text-xs font-medium text-gray-700'>
+                Expense under <span className='text-red-500'>*</span>
+              </legend>
+
+              <div className='space-y-2'>
+                <div className='overflow-hidden rounded-lg border border-gray-200'>
+                  {siteVendors.length >= VENDOR_SEARCH_FROM && (
+                    <div className='relative border-b border-gray-100'>
+                      <Search className='pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-gray-400' />
+                      <input
+                        type='search'
+                        value={vendorSearch}
+                        onChange={(e) => setVendorSearch(e.target.value)}
+                        placeholder='Find a vendor'
+                        aria-label='Find a vendor'
+                        className='h-9 w-full bg-transparent pl-8 pr-3 text-sm outline-none placeholder:text-gray-400 focus:bg-gray-50/60'
+                      />
+                    </div>
+                  )}
+                  {/* Two columns that scroll inside a fixed height, however
+                      many vendors there are. */}
+                  <div className='grid max-h-44 grid-cols-1 gap-0.5 overflow-y-auto p-1 sm:grid-cols-2'>
+                    {shownVendors.map((c) =>
+                      renderUnderOption({
+                        value: String(c.id),
+                        label: capitalFirstLetter(c.name),
+                        badge: initialsOf(c.name),
+                      }),
+                    )}
+                    {shownVendors.length === 0 && (
+                      <p className='col-span-full px-2 py-2 text-xs text-gray-400'>
+                        No vendor matches &ldquo;{vendorSearch.trim()}&rdquo;.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* An order's expense is always under one of its vendors. */}
+                {!spentOn &&
+                  renderUnderOption({
+                    value: NOT_UNDER,
+                    label: "Miscellaneous",
+                    badge: <ReceiptIndianRupee className='size-3.5' />,
+                    hint: "Not under any vendor",
+                    tile: true,
+                  })}
+              </div>
+            </fieldset>
+          )}
+
           {activities.length > 0 && (
             <div className='space-y-1.5'>
-              <Label className='text-xs font-medium text-gray-700'>
-                Activity <span className='text-red-500'>*</span>
-              </Label>
-              <Select
-                value={selectedActivityKey}
-                onValueChange={(v) => {
-                  setSelectedActivityKey(v);
-                  setQuantity("");
-                }}>
-                <SelectTrigger className='h-9 text-sm'>
-                  <SelectValue placeholder='Select activity this expense belongs to...' />
-                </SelectTrigger>
-                <SelectContent>
-                  {activities.map((a) => {
-                    return (
-                      <SelectItem key={a.key} value={a.key} className='text-sm'>
-                        {a.label}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {selectedActivityKey && !isExceededMode && (
-            <div className='space-y-1.5'>
-              <Label className='text-xs font-medium text-gray-700'>
-                Quantity <span className='text-gray-400'>(optional)</span>
-              </Label>
-              <Input
-                type='number' min='0' step='0.01' placeholder='0.00'
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className='h-9 text-sm'
-              />
-            </div>
-          )}
-
-          <div className='space-y-2'>
-            <div className='flex items-center justify-between'>
-              <Label className='text-xs font-medium text-gray-700'>
-                Amount <span className='text-red-500'>*</span>
-                <span className='text-gray-400 font-normal'> · type optional</span>
-              </Label>
-              {totalAmount > 0 && (
-                <span className='text-xs font-semibold text-gray-700'>
-                  Total: {formatCurrency(totalAmount)}
-                </span>
-              )}
-            </div>
-
-            <div className='rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100'>
-              {items.map((item, idx) => {
-                const TypeIcon = EXPENSE_TYPE_ICONS[item.expense_type] ?? MoreHorizontal;
-                return (
-                  <div
-                    key={item.id}
-                    className={`flex items-center gap-2 px-3 py-2.5 ${EXPENSE_TYPE_COLORS[item.expense_type] ?? "bg-gray-50"} bg-opacity-30`}>
-                    <div className={`flex items-center justify-center w-7 h-7 rounded-md border shrink-0 ${EXPENSE_TYPE_COLORS[item.expense_type] ?? ""}`}>
-                      <TypeIcon className='w-3.5 h-3.5' />
-                    </div>
-
+              <div
+                className={cn(
+                  "grid grid-cols-1 gap-3",
+                  fixedActivityKey ? "sm:grid-cols-[16rem]" : "sm:grid-cols-[1fr_11rem]",
+                )}>
+                {!fixedActivityKey && (
+                  <div className='space-y-1.5'>
+                    <Label className='text-xs font-medium text-gray-700'>
+                      Activity <span className='text-red-500'>*</span>
+                    </Label>
                     <Select
-                      value={item.expense_type}
+                      open={isActivityPickerOpen}
+                      onOpenChange={setIsActivityPickerOpen}
+                      value={selectedActivityKey}
                       onValueChange={(v) => {
-                        updateItem(item.id, "expense_type", v);
-                        if (v !== "contractor_payment") setContractorId("");
+                        setSelectedActivityKey(v);
+                        setQuantity("");
                       }}>
-                      <SelectTrigger className='h-8 text-xs flex-1 min-w-0 bg-white border-gray-200'>
-                        <SelectValue />
+                      <SelectTrigger className='h-9 w-full text-sm'>
+                        <SelectValue placeholder='Select activity this expense belongs to...' />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={NO_TYPE} className='text-sm text-gray-500'>
-                          No specific type
-                        </SelectItem>
-                        {Object.entries(EXPENSE_TYPE_LABELS).map(([val, label]) => (
-                          <SelectItem key={val} value={val} className='text-sm'>{label}</SelectItem>
+                        {activities.map((a) => (
+                          <SelectItem key={a.key} value={a.key} className='text-sm'>
+                            {a.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
 
-                    <div className='relative shrink-0 w-32'>
-                      <span className='absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400'>₹</span>
-                      <Input
-                        type='number' min='0' step='0.01' placeholder='0.00'
-                        value={item.amount}
-                        onChange={(e) => updateItem(item.id, "amount", e.target.value)}
-                        className='h-8 text-xs pl-6 bg-white border-gray-200'
-                      />
-                    </div>
-
-                    {!isEditing && (
-                      <button
-                        type='button'
-                        onClick={() => removeItem(item.id)}
-                        disabled={items.length === 1}
-                        className='shrink-0 p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-20 disabled:cursor-not-allowed'>
-                        <X className='w-3.5 h-3.5' />
-                      </button>
+                {/* Always in place; it opens once an activity is chosen, and
+                    never for a miscellaneous expense. Until an activity is
+                    chosen a click on it opens the activity list instead. */}
+                <div className='space-y-1.5'>
+                  <Label className='text-xs font-medium text-gray-700'>
+                    {fixedActivityKey && selectedActivity
+                      ? `${selectedActivity.label} used`
+                      : "Quantity"}{" "}
+                    <span className='text-gray-400'>(optional)</span>
+                  </Label>
+                  <div
+                    className={cn(
+                      "relative",
+                      !selectedActivityKey && !isMiscellaneous && "cursor-pointer",
+                    )}
+                    onClick={() => {
+                      if (!selectedActivityKey && !isMiscellaneous) {
+                        setIsActivityPickerOpen(true);
+                      }
+                    }}>
+                    <Input
+                      type='number' min='0' step='0.01'
+                      placeholder={
+                        isMiscellaneous
+                          ? "Vendors only"
+                          : selectedActivityKey
+                            ? "0.00"
+                            : "Pick activity"
+                      }
+                      value={isMiscellaneous ? "" : quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      disabled={!canEnterQuantity}
+                      aria-invalid={qtyExceedsRemaining || undefined}
+                      className='h-9 pr-12 text-sm'
+                    />
+                    {canEnterQuantity && (
+                      <span className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400'>
+                        {qtyUnit}
+                      </span>
                     )}
                   </div>
-                );
-              })}
-            </div>
-
-            {!isEditing && (
-              <button
-                type='button'
-                onClick={() => setItems((prev) => [...prev, newItem()])}
-                className='flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 px-1 py-1 rounded hover:bg-blue-50 transition-colors'>
-                <Plus className='w-3.5 h-3.5' />
-                Add another expense
-              </button>
-            )}
-
-            {items.length > 1 && (
-              <div className='flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-xs'>
-                <span className='text-gray-500 font-medium'>
-                  {items.length} expense types
-                </span>
-                <span className='font-bold text-gray-800'>{formatCurrency(totalAmount)}</span>
+                </div>
               </div>
-            )}
-          </div>
 
-          {hasContractorPayment && (
+              {isMiscellaneous && (
+                <p className='text-xs text-gray-500'>
+                  {fixedActivityLabel
+                    ? `Miscellaneous expenses don't procure ${fixedActivityLabel}. Choose a vendor to record it.`
+                    : "Miscellaneous expenses don't record a quantity. Choose a vendor to deduct one from the activity."}
+                </p>
+              )}
+
+              {/* A quantity is used up from the activity's estimate. */}
+              {canEnterQuantity && !isExceededMode && remainingQty !== null && estimateQty !== null && (
+                <p
+                  className={cn(
+                    "text-xs",
+                    qtyExceedsRemaining ? "text-red-600" : "text-gray-500",
+                  )}>
+                  {qtyExceedsRemaining
+                    ? `Only ${describeLeft(`${formatQty(remainingQty)} ${qtyUnit}`)}.`
+                    : enteredQty > 0
+                      ? `${describeLeft(`${formatQty(remainingQty - enteredQty)} of ${formatQty(estimateQty)} ${qtyUnit}`, true)}.`
+                      : `${describeLeft(`${formatQty(remainingQty)} of ${formatQty(estimateQty)} ${qtyUnit}`)}.`}
+                </p>
+              )}
+            </div>
+          )}
+
+          {picksAnyVendor && (
             <div className='space-y-2 border border-blue-100 rounded-lg p-3 bg-blue-50/30'>
               <Label className='text-xs font-medium text-gray-700 flex items-center gap-1.5'>
                 <HardHat className='w-3 h-3 text-blue-500' />
-                Contractor
+                Vendor <span className='text-gray-400 font-normal'>(optional)</span>
               </Label>
               {!showAddContractor ? (
                 <div className='flex gap-2'>
@@ -585,10 +668,10 @@ const AddExpenseDialog = ({
                       <SelectValue placeholder='Select contractor...' />
                     </SelectTrigger>
                     <SelectContent>
-                      {contractors.length === 0 && (
+                      {vendors.length === 0 && (
                         <div className='px-3 py-2 text-xs text-gray-400'>No contractors yet</div>
                       )}
-                      {contractors.map((c: any) => (
+                      {vendors.map((c: any) => (
                         <SelectItem key={c.id} value={String(c.id)} className='text-sm'>
                           {c.name}
                           {c.gst_number && <span className='text-gray-400 ml-1'>· {c.gst_number}</span>}
@@ -645,12 +728,12 @@ const AddExpenseDialog = ({
 
           <div className='space-y-1.5'>
             <Label className='text-xs font-medium text-gray-700'>
-              Description <span className='text-red-500'>*</span>
+              Title <span className='text-red-500'>*</span>
             </Label>
             <Input
-              placeholder='e.g. Excavation work, Labour charges...'
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              placeholder='e.g. Excavation labour for week 2'
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               className='h-9 text-sm'
             />
           </div>
@@ -658,13 +741,17 @@ const AddExpenseDialog = ({
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
             <div className='space-y-1.5'>
               <Label className='text-xs font-medium text-gray-700'>
-                Date <span className='text-red-500'>*</span>
+                Amount <span className='text-red-500'>*</span>
               </Label>
-              <Input
-                type='date' value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-                className='h-9 text-sm'
-              />
+              <div className='relative'>
+                <span className='absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400'>₹</span>
+                <Input
+                  type='number' min='0' step='0.01' placeholder='0.00'
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className='h-9 pl-7 text-sm'
+                />
+              </div>
             </div>
             <div className='space-y-1.5'>
               <Label className='text-xs font-medium text-gray-700'>
@@ -678,36 +765,49 @@ const AddExpenseDialog = ({
             </div>
           </div>
 
-          <div className='space-y-1.5'>
-            <Label className='text-xs font-medium text-gray-700'>
-              Notes <span className='text-gray-400'>(optional)</span>
-            </Label>
-            <Textarea
-              placeholder='Any additional notes...'
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className='text-sm resize-none h-16'
-            />
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+            <div className='space-y-1.5'>
+              <Label className='text-xs font-medium text-gray-700'>
+                Start date <span className='text-red-500'>*</span>
+              </Label>
+              <Input
+                type='date' value={startDate}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setStartDate(next);
+                  // A later start takes the end with it, so the range stays valid.
+                  if (next && endDate < next) setEndDate(next);
+                }}
+                className='h-9 text-sm'
+              />
+            </div>
+            <div className='space-y-1.5'>
+              <Label className='text-xs font-medium text-gray-700'>
+                End date <span className='text-red-500'>*</span>
+              </Label>
+              <Input
+                type='date' value={endDate} min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+                className='h-9 text-sm'
+              />
+            </div>
           </div>
 
           <div className='space-y-1.5'>
             <Label className='text-xs font-medium text-gray-700 flex items-center gap-1.5'>
               <Paperclip className='w-3 h-3 text-gray-400' />
-              Supporting Document <span className='text-gray-400'>(optional)</span>
+              Supporting Documents <span className='text-gray-400'>(optional)</span>
             </Label>
-            <DeferredFilePicker
-              label='Attach invoice, bill, or receipt'
-              selectedFile={selectedFile}
-              onFileSelect={handleFileSelect}
+            <DocumentsField
+              label='Attach invoices, bills, or receipts'
+              files={files}
+              onFilesChange={setFiles}
+              existing={savedDocuments}
+              onRemoveExisting={(index) =>
+                setSavedDocuments((prev) => prev.filter((_, i) => i !== index))
+              }
               isUploading={isUploadingDoc}
-              uploadProgress={sharePointUpload.progress}
-              isUploaded={!!uploadedDocUrl}
-              uploadedUrl={uploadedDocUrl ?? undefined}
-              onDelete={handleDeleteUploadedDoc}
-              isDeleting={sharePointUpload.isDeleting}
-              isUploadBgWhite={true}
-              allowedExtensions={[".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png"]}
-              helperText='PDF, Word, Excel or image — max 50 MB.'
+              progress={sharePointUpload.progress}
             />
           </div>
         </div>
@@ -719,11 +819,9 @@ const AddExpenseDialog = ({
                 ? `Uploading… ${sharePointUpload.progress}%`
                 : isEditing
                   ? "Save Changes"
-                  : items.length > 1
-                    ? `Record ${items.length} Expenses`
-                    : isExceededMode
-                      ? "Record Exceeded Expense"
-                      : "Record Expense"
+                  : isExceededMode
+                    ? "Record Exceeded Expense"
+                    : "Record Expense"
             }
             variant='primary'
             Icon={Save}

@@ -18,40 +18,65 @@ import { trpc } from "@/lib/trpc";
 import CustomForm from "@/components/shared/form";
 import toast from "react-hot-toast";
 import { useHandleParams } from "@/hooks/useHandleParams";
-import DeferredFilePicker from "@/components/shared/deferred-file-picker";
+import DocumentsField from "@/components/shared/documents-field";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import { useApiError } from "@/hooks/useApiError";
-import { proposalSchemas, type proposalTypes } from "@pkg/schema";
+import {
+  toDocuments,
+  toStoredDocument,
+  type StoredDocument,
+} from "@/lib/documents";
+import { proposalSchemas } from "@pkg/schema";
 import { z } from "zod";
 
-type ProposalFormInput = z.input<typeof proposalSchemas.baseProposalSchema>;
+// Documents are picked as files and uploaded on submit, so the form omits them.
+const proposalFormSchema = proposalSchemas.baseProposalSchema.omit({
+  documents: true,
+});
+type ProposalFormInput = z.input<typeof proposalFormSchema>;
+type ProposalFormValues = z.output<typeof proposalFormSchema>;
+
+const EMPTY_FORM: ProposalFormInput = {
+  code: "",
+  title: "",
+  description: "",
+  office_id: undefined as unknown as number,
+  proposal_submission_date: undefined as unknown as Date,
+};
 
 interface Props {
   clientId: number;
 }
 
+// Adds a proposal, or edits one when opened with `edit-proposal`.
 const CreateProposalDialog = ({ clientId }: Props) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const { deleteParams, getParam } = useHandleParams();
+  const [files, setFiles] = useState<File[]>([]);
+  const [savedDocuments, setSavedDocuments] = useState<StoredDocument[]>([]);
+  const [filesError, setFilesError] = useState("");
+  const { deleteParams, getParam, setParam } = useHandleParams();
   const { handleError } = useApiError();
   const mode = getParam("dialog");
   const isAddMode = mode === "create-proposal";
-  const isOpenDialog = isAddMode;
+  const isEditMode = mode === "edit-proposal";
+  const isOpenDialog = isAddMode || isEditMode;
+  const proposalId = Number(getParam("proposal-id"));
+
+  const { data: editing } = trpc.proposalQuery.getProposalById.useQuery(
+    { proposal_id: proposalId },
+    { enabled: isEditMode && !!proposalId },
+  );
+  const editingProposal = isEditMode ? editing?.proposal : undefined;
 
   const {
-    uploadFile,
-    deleteFile,
+    uploadFiles,
     isUploading,
-    isDeleting,
     progress,
     reset: resetUpload,
   } = useSharePointUpload({
     folderPath: "/Proposals",
-    conflictBehavior: "replace",
+    // The folder is shared by all proposals; never overwrite another's file.
+    conflictBehavior: "rename",
   });
-
-  const [uploadedUrl, setUploadedUrl] = useState<string>("");
-  const [uploadedFileId, setUploadedFileId] = useState<string>("");
 
   const { data: officesData, isLoading: isLoadingOffices } =
     trpc.officeQuery.getOffices.useQuery(
@@ -59,20 +84,9 @@ const CreateProposalDialog = ({ clientId }: Props) => {
       { enabled: isOpenDialog },
     );
 
-  const form = useForm<
-    ProposalFormInput,
-    unknown,
-    proposalTypes.BaseProposalInput
-  >({
-    resolver: zodResolver(proposalSchemas.baseProposalSchema),
-    defaultValues: {
-      code: "",
-      title: "",
-      description: "",
-      document_key: "",
-      office_id: undefined,
-      proposal_submission_date: undefined,
-    },
+  const form = useForm<ProposalFormInput, unknown, ProposalFormValues>({
+    resolver: zodResolver(proposalFormSchema),
+    defaultValues: EMPTY_FORM,
   });
 
   const utils = trpc.useUtils();
@@ -88,123 +102,106 @@ const CreateProposalDialog = ({ clientId }: Props) => {
     },
   });
 
+  const updateProposal = trpc.proposalMutation.updateProposal.useMutation({
+    onSuccess: () => {
+      utils.proposalQuery.getProposalById.invalidate({
+        proposal_id: proposalId,
+      });
+      utils.proposalQuery.getProposalsByClient.invalidate();
+      utils.proposalQuery.getProposalsByClientPaginated.invalidate();
+      toast.success("Proposal updated");
+      handleCloseDialog();
+    },
+    onError: (error: any) => {
+      handleError(error, { showToast: true });
+    },
+  });
+
   const handleCloseDialog = useCallback(() => {
     if (isUploading) {
       toast.error("Please wait for the document to finish uploading.");
       return;
     }
-    deleteParams(["dialog"]);
+    // Editing was opened from the proposal's details, so return there.
+    if (isEditMode) {
+      setParam("dialog", "proposal-detail");
+    } else {
+      deleteParams(["dialog"]);
+    }
 
     setTimeout(() => {
-      form.reset({
-        code: "",
-        title: "",
-        description: "",
-        document_key: "",
-        office_id: undefined,
-        proposal_submission_date: undefined,
-      });
-      setSelectedFile(null);
-      setUploadedUrl("");
-      setUploadedFileId("");
+      form.reset(EMPTY_FORM);
+      setFiles([]);
+      setSavedDocuments([]);
+      setFilesError("");
       resetUpload();
     }, 500);
-  }, [deleteParams, form, isUploading, resetUpload]);
+  }, [deleteParams, form, isEditMode, isUploading, resetUpload, setParam]);
 
   useEffect(() => {
     if (isAddMode) {
-      form.reset({
-        code: "",
-        title: "",
-        description: "",
-        document_key: "",
-        office_id: undefined,
-        proposal_submission_date: undefined,
-      });
-      setSelectedFile(null);
-      setUploadedUrl("");
-      setUploadedFileId("");
+      form.reset(EMPTY_FORM);
+      setFiles([]);
+      setFilesError("");
       resetUpload();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAddMode]);
 
-  const handleFileSelect = useCallback(
-    (file: File | null) => {
-      setSelectedFile(file);
-      if (file) {
-        setUploadedUrl("");
-        setUploadedFileId("");
-        form.setValue("document_key", `pending:${file.name}`, {
-          shouldValidate: true,
-        });
-      } else {
-        if (!uploadedUrl) {
-          form.setValue("document_key", "", { shouldValidate: true });
-        }
-      }
-    },
-    [form, uploadedUrl],
-  );
-
-  const handleDeleteFile = useCallback(async () => {
-    if (uploadedFileId) {
-      try {
-        await deleteFile(uploadedFileId);
-      } catch (error) {
-        console.error("Failed to delete file from SharePoint", error);
-      }
-    }
-
-    setSelectedFile(null);
-    setUploadedUrl("");
-    setUploadedFileId("");
-    form.setValue("document_key", "", { shouldValidate: true });
+  useEffect(() => {
+    if (!editingProposal) return;
+    form.reset({
+      code: editingProposal.code,
+      title: editingProposal.title,
+      description: editingProposal.description ?? "",
+      office_id: editingProposal.office_id,
+      proposal_submission_date: new Date(
+        editingProposal.proposal_submission_date,
+      ),
+    });
+    setFiles([]);
+    setSavedDocuments(toDocuments(editingProposal.documents));
+    setFilesError("");
     resetUpload();
-  }, [form, resetUpload, deleteFile, uploadedFileId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingProposal]);
 
-  async function onSubmit(values: proposalTypes.BaseProposalInput) {
-    try {
-      let documentPath = values.document_key;
+  const handleFilesChange = (nextFiles: File[]) => {
+    setFiles(nextFiles);
+    if (nextFiles.length > 0) setFilesError("");
+  };
 
-      if (selectedFile && !uploadedUrl && documentPath.startsWith("pending:")) {
-        const uploadResult = await uploadFile(selectedFile);
-        if (!uploadResult) {
-          return;
-        }
-        documentPath = uploadResult.webUrl;
-        setUploadedUrl(documentPath);
-        setUploadedFileId(uploadResult.id);
-      } else if (uploadedUrl) {
-        documentPath = uploadedUrl;
-      }
-
-      if (documentPath.startsWith("pending:")) {
-        toast.error("Please upload a document");
-        return;
-      }
-
-      addProposal.mutate({
-        ...values,
-        client_id: clientId,
-        document_key: documentPath,
-      });
-    } catch (error) {
-      if (uploadedFileId) {
-        await deleteFile(uploadedFileId);
-      }
-      toast.error("Error submitting form. Please try again.");
+  async function onSubmit(values: ProposalFormValues) {
+    if (savedDocuments.length + files.length === 0) {
+      setFilesError("Upload at least one document");
+      return;
     }
+
+    const uploaded = files.length > 0 ? await uploadFiles(files) : [];
+    if (!uploaded) return;
+    const documents = [...savedDocuments, ...uploaded.map(toStoredDocument)];
+
+    if (isEditMode) {
+      updateProposal.mutate({ ...values, proposal_id: proposalId, documents });
+      return;
+    }
+
+    addProposal.mutate({ ...values, client_id: clientId, documents });
   }
 
   const offices = officesData?.offices ?? [];
   const isSubmitting =
-    form.formState.isSubmitting || addProposal.isPending || isUploading;
+    form.formState.isSubmitting ||
+    addProposal.isPending ||
+    updateProposal.isPending ||
+    isUploading;
 
   return (
     <DialogWindow
-      title='Add Proposal'
-      description='Add a new proposal'
+      title={isEditMode ? "Edit Proposal" : "Add Proposal"}
+      description={
+        isEditMode ? "Update the proposal's details" : "Add a new proposal"
+      }
       open={isOpenDialog}
       size='md'
       setOpen={handleCloseDialog}>
@@ -266,28 +263,22 @@ const CreateProposalDialog = ({ clientId }: Props) => {
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name='document_key'
-            render={() => (
-              <FormItem>
-                <FormControl>
-                  <DeferredFilePicker
-                    label='Proposal Document'
-                    selectedFile={selectedFile}
-                    onFileSelect={handleFileSelect}
-                    isUploading={isUploading}
-                    uploadProgress={progress}
-                    isUploaded={!!uploadedUrl}
-                    uploadedUrl={uploadedUrl}
-                    onDelete={handleDeleteFile}
-                    isDeleting={isDeleting}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          <div>
+            <DocumentsField
+              label='Proposal Documents'
+              files={files}
+              onFilesChange={handleFilesChange}
+              existing={savedDocuments}
+              onRemoveExisting={(index) =>
+                setSavedDocuments((prev) => prev.filter((_, i) => i !== index))
+              }
+              isUploading={isUploading}
+              progress={progress}
+            />
+            {filesError && (
+              <p className='mt-1 text-xs text-destructive'>{filesError}</p>
             )}
-          />
+          </div>
 
           <CustomButton
             type='submit'

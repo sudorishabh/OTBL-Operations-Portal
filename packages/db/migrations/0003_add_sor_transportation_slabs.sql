@@ -1,0 +1,1 @@
+ALTER TABLE `schedule_of_rates` ADD `transportation_slabs` json;

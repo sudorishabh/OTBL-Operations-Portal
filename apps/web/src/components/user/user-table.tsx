@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -28,6 +28,7 @@ import { MoreHorizontal } from "lucide-react";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import { useUserManagementContext } from "@/contexts/UserManagementContext";
 import { useIsViewer } from "@/contexts/AuthContext";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
@@ -38,104 +39,54 @@ import UserPageSkeleton from "../skeleton/user/user-tab-skeleton";
 import { toast } from "react-hot-toast";
 import Error from "@/components/shared/error";
 
-interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
-}
+const ALL_USERS_PAGE_SIZE = 50;
 
 const UserTable = () => {
   const { setParams } = useHandleParams();
   const isViewer = useIsViewer();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [allUsersList, setAllUsersList] = useState<userTypes.AllUserType[]>([]);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
 
   const { userNamesOrder, setUserNamesOrder, searchQuery, filters } =
     useUserManagementContext();
 
-  const allUsersQueryLimit = 50;
-
-  const {
-    data: allUsersData,
-    isLoading: isAllUserQueryLoading,
-    isError,
-    error,
-    dataUpdatedAt,
-  } = trpc.userQuery.getAllUser.useQuery({
-    page: currentPage,
-    limit: allUsersQueryLimit,
+  const queryInput = {
+    limit: ALL_USERS_PAGE_SIZE,
     searchQuery: searchQuery || undefined,
     role: filters.role,
     status: filters.status,
     userNamesOrder,
-  });
+  };
 
-  const { users, pagination: fetchedPagination } =
-    allUsersData ||
-    ({
-      users: [],
-      pagination: {
-        page: 1,
-        limit: allUsersQueryLimit,
-        total: 0,
-        totalPages: 1,
-        hasMore: false,
-      },
-    } as userTypes.AllUsersQueryType);
+  // Loaded pages belong to one query input; changing it starts over at page 1.
+  const queryKey = JSON.stringify(queryInput);
+  const [loadedPages, setLoadedPages] = useState({ queryKey, count: 1 });
+  const pageCount = loadedPages.queryKey === queryKey ? loadedPages.count : 1;
+
+  // Every loaded page stays an active query, so invalidating getAllUser
+  // refreshes the rows in place instead of appending a page twice.
+  const pageQueries: UseQueryResult<userTypes.AllUsersQueryType>[] =
+    trpc.useQueries((t: any) =>
+      Array.from({ length: pageCount }, (_, index) =>
+        t.userQuery.getAllUser({ ...queryInput, page: index + 1 }),
+      ),
+    );
+
+  const allUsersList = pageQueries.flatMap((query) => query.data?.users ?? []);
+  const pagination = pageQueries
+    .flatMap((query) => query.data?.pagination ?? [])
+    .at(-1);
+  const failedQuery = pageQueries.find((query) => query.isError);
 
   const isInitialLoading =
-    isAllUserQueryLoading &&
-    currentPage === 1 &&
+    pageQueries[0]?.isLoading &&
     searchQuery === "" &&
     filters.role === "all" &&
     filters.status === "all" &&
     userNamesOrder === "latest";
 
-  const isFetchingMore = isAllUserQueryLoading && currentPage > 1;
-
-  const prevFiltersRef = useRef({
-    searchQuery,
-    role: filters.role,
-    status: filters.status,
-  });
-
-  useEffect(() => {
-    const filtersChanged =
-      prevFiltersRef.current.searchQuery !== searchQuery ||
-      prevFiltersRef.current.role !== filters.role ||
-      prevFiltersRef.current.status !== filters.status;
-
-    if (filtersChanged) {
-      setCurrentPage(1);
-      setAllUsersList([]);
-      prevFiltersRef.current = {
-        searchQuery,
-        role: filters.role,
-        status: filters.status,
-      };
-    }
-  }, [searchQuery, filters.role, filters.status]);
-
-  useEffect(() => {
-    if (
-      !isAllUserQueryLoading &&
-      users &&
-      fetchedPagination?.page === currentPage
-    ) {
-      if (currentPage === 1) {
-        setAllUsersList(users);
-      } else {
-        setAllUsersList((prev) => [...prev, ...users]);
-      }
-      setPagination(fetchedPagination);
-    }
-  }, [dataUpdatedAt, currentPage]);
+  const isFetchingMore = pageCount > 1 && !!pageQueries.at(-1)?.isLoading;
 
   const handleLoadMore = () => {
-    setCurrentPage((prev) => prev + 1);
+    setLoadedPages({ queryKey, count: pageCount + 1 });
   };
 
   const getRoleBadgeVariant = (role: string) => {
@@ -189,11 +140,11 @@ const UserTable = () => {
 
   if (isInitialLoading) return <UserPageSkeleton />;
 
-  if (isError && error) {
+  if (failedQuery?.error) {
     return (
       <Error
         variant='default'
-        message={error.message}
+        message={failedQuery.error.message}
       />
     );
   }

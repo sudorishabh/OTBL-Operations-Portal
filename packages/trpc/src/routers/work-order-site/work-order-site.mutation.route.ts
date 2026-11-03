@@ -10,13 +10,21 @@ import {
 import { assertOfficeManager } from "../../helper/office-permissions";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
-import { fromDatabaseError, notFound, validationError } from "../../errors";
+import {
+  businessRule,
+  fromDatabaseError,
+  notFound,
+  validationError,
+} from "../../errors";
 import { constants } from "@pkg/utils";
+import { validators } from "@pkg/schema";
 import {
   getSharePointConfig,
   isSharePointConfigured,
 } from "../sharepoint/sharepoint.config";
 import { createSharePointService } from "../sharepoint/sharepoint.service";
+import { syncBioremediationCompletion } from "./bioremediation-completion";
+import { getOilZapperStock, OIL_ZAPPER_EPSILON } from "./oil-zapper-stock";
 
 const createSiteActivitySchema = z.object({
   work_order_site_id: z.number().positive(),
@@ -37,12 +45,11 @@ const createSiteDocumentSchema = z.object({
   document_url: z.string().min(1).max(255),
   document_id: z.string().min(1).max(255).optional(),
   type: z.enum([
-    "sub_wo",
     "estimate",
     "completion",
     "measurement_sheet",
-    "bills",
     "completion_certificate",
+    "mobilization",
   ]),
 });
 
@@ -54,26 +61,31 @@ const saveActivityDataSchema = z.object({
   estimated_quantity: z.string(),
   amount: z.string().optional(),
   transportation_km: z.string().optional(),
+  oil_zapper_quantity: z.string().optional(),
 });
 
 type SaveActivityData = z.infer<typeof saveActivityDataSchema>;
 
 const createBioSampleSchema = z.object({
   work_order_site_id: z.number().positive(),
-  tph_document_url: z.string(),
+  documents: validators.documentsValidator,
   tph_value: z.string(),
   application_month: z.string(),
+  // The day the sample was taken; today when left out.
+  sampled_on: validators.optionalDateValidator,
 });
 
 const createOilZappingSchema = z.object({
   work_order_site_id: z.number().positive(),
-  document_url: z.string().min(1, "Document URL is required"),
+  documents: validators.documentsValidator,
   estimated_quantity: z
     .string()
     .min(1, "Quantity is required")
     .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
       message: "Quantity must be a positive number",
     }),
+  // The day the oil zapper was applied; today when left out.
+  applied_on: validators.optionalDateValidator,
 });
 
 const deleteRecordSchema = z.object({
@@ -103,19 +115,6 @@ const saveBioremediationPhaseSchema = z.object({
     .optional(),
 });
 
-const saveRestorationPhaseSchema = z.object({
-  work_order_site_id: z.number().positive(),
-  phase: z.enum(["estimate_sub-wo", "completion"]),
-  document_url: z.string().optional(),
-  sub_wo_document_url: z.string().optional(),
-  estimate_document_url: z.string().optional(),
-  clean_soil_area: saveActivityDataSchema.optional(),
-  lifting_oil_slush: saveActivityDataSchema.optional(),
-  excav_cont_soil: saveActivityDataSchema.optional(),
-  trans_cont_soil: saveActivityDataSchema.optional(),
-  refill_excav_soil: saveActivityDataSchema.optional(),
-});
-
 const {
   siteActivityTable,
   workOrderTable,
@@ -127,11 +126,6 @@ const {
   bioremediationContSoilTable,
   bioSampleTable,
   bioOilZappingTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
 } = schema;
 
 export const workOrderSiteMutationRouter = router({
@@ -427,6 +421,21 @@ export const workOrderSiteMutationRouter = router({
     handleMutation(async ({ input, ctx }) => {
       const { work_order_site_id, document_url, document_id, type } = input;
 
+      // Estimate documents belong to an estimate, which restoration
+      // doesn't have.
+      if (type === "estimate") {
+        const [woSite] = await ctx.db
+          .select({ process_type: workOrderSiteTable.process_type })
+          .from(workOrderSiteTable)
+          .where(eq(workOrderSiteTable.id, work_order_site_id));
+
+        if (woSite?.process_type === constants.WO_PROCESS.RESTORATION) {
+          throw businessRule(
+            "Restoration has no estimate, so it takes no estimate documents.",
+          );
+        }
+      }
+
       try {
         const [result] = await ctx.db.insert(workOrderSiteDocsTable).values({
           work_order_site_id,
@@ -485,9 +494,8 @@ export const workOrderSiteMutationRouter = router({
     .input(
       z.object({
         work_order_site_id: z.number().positive(),
-        phase: z.enum(["sub_wo", "estimate", "completion", "estimate_sub-wo"]),
+        phase: z.enum(["estimate", "completion", "estimate_sub-wo"]),
         document_url: z.string().optional(),
-        sub_wo_document_url: z.string().optional(),
         estimate_document_url: z.string().optional(),
         data: saveActivityDataSchema,
       }),
@@ -499,7 +507,6 @@ export const workOrderSiteMutationRouter = router({
           phase,
           data,
           document_url,
-          sub_wo_document_url,
           estimate_document_url,
         } = input;
         try {
@@ -533,9 +540,6 @@ export const workOrderSiteMutationRouter = router({
 
           if (document_url && phase !== "estimate_sub-wo") {
             await upsertDoc(document_url, phase);
-          }
-          if (sub_wo_document_url) {
-            await upsertDoc(sub_wo_document_url, "sub_wo");
           }
           if (estimate_document_url) {
             await upsertDoc(estimate_document_url, "estimate");
@@ -602,13 +606,38 @@ export const workOrderSiteMutationRouter = router({
 
   createBioSample: publicProcedure.input(createBioSampleSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
+      // A site takes one zero day sample, its baseline TPH.
+      if (input.application_month === constants.ZERO_DAY_SAMPLE) {
+        const [existing] = await ctx.db
+          .select({ id: bioSampleTable.id })
+          .from(bioSampleTable)
+          .where(
+            and(
+              eq(bioSampleTable.work_order_site_id, input.work_order_site_id),
+              eq(bioSampleTable.application_month, constants.ZERO_DAY_SAMPLE),
+            ),
+          )
+          .limit(1);
+
+        if (existing) {
+          throw businessRule(
+            "This site already has a zero day sample. Delete it to add a new one.",
+          );
+        }
+      }
+
       try {
         const [result] = await ctx.db.insert(bioSampleTable).values({
           work_order_site_id: input.work_order_site_id,
-          tph_document_url: input.tph_document_url,
+          documents: input.documents,
+          // Legacy single-document column, kept until it is dropped.
+          tph_document_url: input.documents[0]!.url,
           tph_value: input.tph_value,
           application_month: input.application_month,
+          sampled_on: input.sampled_on ? new Date(input.sampled_on) : new Date(),
         });
+        // A TPH below the target completes the site.
+        await syncBioremediationCompletion(ctx.db, input.work_order_site_id);
         return {
           success: true,
           message: "Bio sample added successfully",
@@ -623,9 +652,20 @@ export const workOrderSiteMutationRouter = router({
   deleteBioSample: publicProcedure.input(deleteRecordSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
       try {
+        const [sample] = await ctx.db
+          .select({ work_order_site_id: bioSampleTable.work_order_site_id })
+          .from(bioSampleTable)
+          .where(eq(bioSampleTable.id, input.id));
         await ctx.db
           .delete(bioSampleTable)
           .where(eq(bioSampleTable.id, input.id));
+        // Removing the latest sample can reopen the site.
+        if (sample) {
+          await syncBioremediationCompletion(
+            ctx.db,
+            sample.work_order_site_id,
+          );
+        }
         return { success: true, message: "Bio sample deleted successfully" };
       } catch (error) {
         throw fromDatabaseError(error, "Deleting bio sample");
@@ -633,46 +673,35 @@ export const workOrderSiteMutationRouter = router({
     }),
   ),
 
+  // Oil zapping applies oil zapper the site has procured, so it can't apply
+  // more than is left.
   createOilZapping: publicProcedure.input(createOilZappingSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
-      try {
-        const estimateRows = await ctx.db
-          .select({ estimated_quantity: bioremediationContSoilTable.estimated_quantity })
-          .from(bioremediationContSoilTable)
-          .where(
-            and(
-              eq(bioremediationContSoilTable.work_order_site_id, input.work_order_site_id),
-              eq(bioremediationContSoilTable.type, "estimate_sub-wo" as any),
-            ),
-          );
+      const requested = parseFloat(input.estimated_quantity || "0") || 0;
+      if (!(requested > 0)) {
+        throw businessRule("Enter the oil zapper quantity applied.");
+      }
 
-        const estimateLimit = parseFloat(estimateRows[0]?.estimated_quantity || "0") || 0;
-        if (estimateLimit <= 0) {
-          throw new Error("Please save the Contaminated Soil estimate quantity first.");
-        }
-
-        const existingOil = await ctx.db
-          .select({ estimated_quantity: bioOilZappingTable.estimated_quantity })
-          .from(bioOilZappingTable)
-          .where(eq(bioOilZappingTable.work_order_site_id, input.work_order_site_id));
-
-        const currentTotal = existingOil.reduce(
-          (sum: number, r: any) => sum + (parseFloat(r.estimated_quantity || "0") || 0),
-          0,
+      const stock = await getOilZapperStock(ctx.db, input.work_order_site_id);
+      if (!(stock.procured > 0)) {
+        throw businessRule(
+          "No oil zapper has been procured for this site yet. Record its purchase as an expense first.",
         );
+      }
+      if (requested > stock.left + OIL_ZAPPER_EPSILON) {
+        throw businessRule(
+          `Only ${Math.max(0, stock.left).toFixed(2)} ${constants.OIL_ZAPPER.UNIT} of procured oil zapper is left to apply.`,
+        );
+      }
 
-        const remaining = estimateLimit - currentTotal;
-        if (remaining <= 0) {
-          throw new Error("Oil zapping limit already reached for this site.");
-        }
-
-        const requested = parseFloat(input.estimated_quantity || "0") || 0;
-        const capped = Math.min(requested, remaining);
-
+      try {
         const [result] = await ctx.db.insert(bioOilZappingTable).values({
           work_order_site_id: input.work_order_site_id,
-          document_url: input.document_url,
-          estimated_quantity: capped.toFixed(2),
+          documents: input.documents,
+          // Legacy single-document column, kept until it is dropped.
+          document_url: input.documents[0]!.url,
+          estimated_quantity: requested.toFixed(2),
+          applied_on: input.applied_on ? new Date(input.applied_on) : new Date(),
         });
         return {
           success: true,
@@ -906,164 +935,4 @@ export const workOrderSiteMutationRouter = router({
       }),
     ),
 
-  saveRestorationPhase: publicProcedure
-    .input(saveRestorationPhaseSchema)
-    .mutation(
-      handleMutation(async ({ input, ctx }) => {
-        const {
-          work_order_site_id,
-          phase,
-          document_url,
-          sub_wo_document_url,
-          estimate_document_url,
-          clean_soil_area,
-          lifting_oil_slush,
-          excav_cont_soil,
-          trans_cont_soil,
-          refill_excav_soil,
-        } = input;
-
-        const upsertDoc = async (tx: any, url: string, type: string) => {
-          const existingDoc = await tx
-            .select()
-            .from(workOrderSiteDocsTable)
-            .where(
-              and(
-                eq(
-                  workOrderSiteDocsTable.work_order_site_id,
-                  work_order_site_id,
-                ),
-                eq(workOrderSiteDocsTable.type, type as any),
-              ),
-            );
-
-          if (existingDoc.length > 0) {
-            await tx
-              .update(workOrderSiteDocsTable)
-              .set({ document_url: url })
-              .where(eq(workOrderSiteDocsTable.id, existingDoc[0]!.id));
-          } else {
-            await tx.insert(workOrderSiteDocsTable).values({
-              work_order_site_id,
-              type: type as any,
-              document_url: url,
-            });
-          }
-        };
-
-        const upsertActivity = async (
-          tx: any,
-          table: any,
-          data: SaveActivityData | undefined,
-          activityName: string,
-        ) => {
-          if (!data) return;
-
-          const sa = await tx
-            .select()
-            .from(siteActivityTable)
-            .where(
-              and(
-                eq(siteActivityTable.work_order_site_id, work_order_site_id),
-                eq(siteActivityTable.activity, activityName),
-              ),
-            );
-
-          const siteActivityId = sa[0]?.id;
-
-          const activityType =
-            phase === "completion" ? "completion" : "estimate_sub-wo";
-
-          const existing = await tx
-            .select()
-            .from(table)
-            .where(
-              and(
-                eq(table.work_order_site_id, work_order_site_id),
-                eq(table.type, activityType),
-              ),
-            );
-
-          if (existing.length > 0) {
-            await tx
-              .update(table)
-              .set({
-                estimated_quantity: data.estimated_quantity,
-                amount: data.amount,
-                transportation_km: data.transportation_km,
-                site_activity_id: siteActivityId,
-              })
-              .where(eq(table.id, existing[0]!.id));
-          } else {
-            await tx.insert(table).values({
-              work_order_site_id,
-              site_activity_id: siteActivityId,
-              type: activityType,
-              estimated_quantity: data.estimated_quantity,
-              amount: data.amount,
-              transportation_km: data.transportation_km,
-            });
-          }
-        };
-
-        try {
-          await ctx.db.transaction(async (tx: any) => {
-            if (document_url && phase !== "estimate_sub-wo") {
-              await upsertDoc(tx, document_url, phase);
-            }
-            if (sub_wo_document_url) {
-              await upsertDoc(tx, sub_wo_document_url, "sub_wo");
-            }
-            if (estimate_document_url) {
-              await upsertDoc(tx, estimate_document_url, "estimate");
-            }
-
-            await upsertActivity(
-              tx,
-              cleaningUpSoilAreaTable,
-              clean_soil_area,
-              "clean_soil_area",
-            );
-            await upsertActivity(
-              tx,
-              liftingRecoveryOilSlushTable,
-              lifting_oil_slush,
-              "lifting_oily_slush_or_recovery_of_oil",
-            );
-            await upsertActivity(
-              tx,
-              excavationContSoilTable,
-              excav_cont_soil,
-              "excavation_oil_contaminated_soil",
-            );
-            await upsertActivity(
-              tx,
-              transportationContSoilTable,
-              trans_cont_soil,
-              "transportation_contaminated_soil",
-            );
-            await upsertActivity(
-              tx,
-              refillingExcavatedContSoilTable,
-              refill_excav_soil,
-              "refilling_excavated_oil_contaminated_soil_land",
-            );
-
-            if (phase === "completion") {
-              await tx
-                .update(workOrderSiteTable)
-                .set({ is_completed: true })
-                .where(eq(workOrderSiteTable.id, work_order_site_id));
-            }
-          });
-
-          return {
-            success: true,
-            message: "Restoration phase data saved successfully",
-          };
-        } catch (error) {
-          throw fromDatabaseError(error, "Saving restoration phase data");
-        }
-      }),
-    ),
 });

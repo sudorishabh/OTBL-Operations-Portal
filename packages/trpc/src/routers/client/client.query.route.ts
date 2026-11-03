@@ -1,4 +1,14 @@
-import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  like,
+  or,
+} from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -11,25 +21,60 @@ import { clientSchemas } from "@pkg/schema";
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { hasPhysicalSite } from "../../helper/restoration";
 import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
 
 const {
+  parentClientTable,
   clientTable,
   clientContactTable,
   workOrderTable,
   workOrderSiteTable,
   proposalTable,
   scheduleOfRatesTable,
-  cleaningUpSoilAreaTable,
-  liftingRecoveryOilSlushTable,
-  excavationContSoilTable,
-  transportationContSoilTable,
-  refillingExcavatedContSoilTable,
   bioremediationContSoilTable
 } = schema;
 
 export const clientQueryRouter = router({
+  // Restricted users only see main clients that have a branch visible to them.
+  getParentClients: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const scope = await getAccessScope(
+        ctx.db,
+        Number(ctx.user!.sub),
+        ctx.user!.role,
+      );
+      const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
+
+      try {
+        if (scope.kind === "full") {
+          return await ctx.db
+            .select({ id: parentClientTable.id, name: parentClientTable.name })
+            .from(parentClientTable)
+            .orderBy(asc(parentClientTable.name));
+        }
+
+        if (!clientIds || clientIds.length === 0) return [];
+
+        return await ctx.db
+          .selectDistinct({
+            id: parentClientTable.id,
+            name: parentClientTable.name,
+          })
+          .from(parentClientTable)
+          .innerJoin(
+            clientTable,
+            eq(clientTable.parent_client_id, parentClientTable.id),
+          )
+          .where(inArray(clientTable.id, clientIds))
+          .orderBy(asc(parentClientTable.name));
+      } catch (error) {
+        throw fromDatabaseError(error, "Fetching main clients");
+      }
+    }),
+  ),
+
   totalClientAndContact: protectedProcedure.query(
     handleQuery(async ({ ctx }) => {
       try {
@@ -102,6 +147,7 @@ export const clientQueryRouter = router({
           like(clientTable.gst_number, `%${escapeLike(searchQuery)}%`),
           like(clientTable.city, `%${escapeLike(searchQuery)}%`),
           like(clientTable.contact_number, `%${escapeLike(searchQuery)}%`),
+          like(parentClientTable.name, `%${escapeLike(searchQuery)}%`),
         );
         clientQuery = clientQuery
           ? and(clientQuery, searchCondition)
@@ -120,8 +166,15 @@ export const clientQueryRouter = router({
 
       try {
         const clients = await ctx.db
-          .select()
+          .select({
+            ...getTableColumns(clientTable),
+            parent_client_name: parentClientTable.name,
+          })
           .from(clientTable)
+          .leftJoin(
+            parentClientTable,
+            eq(parentClientTable.id, clientTable.parent_client_id),
+          )
           .where(clientQuery)
           .orderBy(desc(clientTable.created_at));
 
@@ -154,7 +207,10 @@ export const clientQueryRouter = router({
               .from(workOrderTable)
               .leftJoin(
                 workOrderSiteTable,
-                eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+                and(
+                  eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+                  hasPhysicalSite,
+                ),
               )
               .where(inArray(workOrderTable.client_id, ids))
               .groupBy(workOrderTable.client_id),
@@ -188,8 +244,15 @@ export const clientQueryRouter = router({
         );
 
         const client = await ctx.db
-          .select()
+          .select({
+            ...getTableColumns(clientTable),
+            parent_client_name: parentClientTable.name,
+          })
           .from(clientTable)
+          .leftJoin(
+            parentClientTable,
+            eq(parentClientTable.id, clientTable.parent_client_id),
+          )
           .where(eq(clientTable.id, input.clientId));
 
         if (client.length === 0) {
@@ -255,11 +318,14 @@ export const clientQueryRouter = router({
 
         if (workOrderIds.length > 0) {
           const woSites = await ctx.db
-            .select({ id: workOrderSiteTable.id })
+            .select({
+              id: workOrderSiteTable.id,
+              site_id: workOrderSiteTable.site_id,
+            })
             .from(workOrderSiteTable)
             .where(inArray(workOrderSiteTable.work_order_id, workOrderIds));
 
-          siteCount = woSites.length;
+          siteCount = woSites.filter((s) => s.site_id != null).length;
 
           const sors = await ctx.db
             .select({ total_cost: scheduleOfRatesTable.total_cost })
@@ -270,80 +336,19 @@ export const clientQueryRouter = router({
 
           if (woSites.length > 0) {
             const woSiteIds = woSites.map(s => s.id);
-            const [
-              cleanSoilAreaExp,
-              liftingOilExp,
-              excavSoilExp,
-              transSoilExp,
-              refillSoilExp,
-              bioremSoilExp,
-            ] = await Promise.all([
-              ctx.db
-                .select({ amount: cleaningUpSoilAreaTable.amount })
-                .from(cleaningUpSoilAreaTable)
-                .where(
-                  and(
-                    inArray(cleaningUpSoilAreaTable.work_order_site_id, woSiteIds),
-                    eq(cleaningUpSoilAreaTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: liftingRecoveryOilSlushTable.amount })
-                .from(liftingRecoveryOilSlushTable)
-                .where(
-                  and(
-                    inArray(liftingRecoveryOilSlushTable.work_order_site_id, woSiteIds),
-                    eq(liftingRecoveryOilSlushTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: excavationContSoilTable.amount })
-                .from(excavationContSoilTable)
-                .where(
-                  and(
-                    inArray(excavationContSoilTable.work_order_site_id, woSiteIds),
-                    eq(excavationContSoilTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: transportationContSoilTable.amount })
-                .from(transportationContSoilTable)
-                .where(
-                  and(
-                    inArray(transportationContSoilTable.work_order_site_id, woSiteIds),
-                    eq(transportationContSoilTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: refillingExcavatedContSoilTable.amount })
-                .from(refillingExcavatedContSoilTable)
-                .where(
-                  and(
-                    inArray(refillingExcavatedContSoilTable.work_order_site_id, woSiteIds),
-                    eq(refillingExcavatedContSoilTable.type, "completion" as any)
-                  )
-                ),
-              ctx.db
-                .select({ amount: bioremediationContSoilTable.amount })
-                .from(bioremediationContSoilTable)
-                .where(
-                  and(
-                    inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
-                    eq(bioremediationContSoilTable.type, "completion" as any)
-                  )
-                ),
-            ]);
+            // Only bioremediation completion earns income; restoration
+            // tracks its expenses alone.
+            const bioremSoilExp = await ctx.db
+              .select({ amount: bioremediationContSoilTable.amount })
+              .from(bioremediationContSoilTable)
+              .where(
+                and(
+                  inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
+                  eq(bioremediationContSoilTable.type, "completion" as any)
+                )
+              );
 
-            const allAmounts = [
-              ...cleanSoilAreaExp,
-              ...liftingOilExp,
-              ...excavSoilExp,
-              ...transSoilExp,
-              ...refillSoilExp,
-              ...bioremSoilExp,
-            ];
-
-            totalExpenseAmount = allAmounts.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+            totalExpenseAmount = bioremSoilExp.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
           }
         }
 
