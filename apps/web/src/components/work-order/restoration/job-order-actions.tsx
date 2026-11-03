@@ -1,10 +1,18 @@
 "use client";
-import React from "react";
-import { FileDown, Loader2, Pencil, Trash2 } from "lucide-react";
+import React, { useState } from "react";
+import {
+  ClipboardCheck,
+  FileDown,
+  Loader2,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
 import { useIsViewer } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
+import JobOrderCompletionDialog from "./job-order-completion-dialog";
 import type { JobOrder, JobOrderWorkOrder } from "./job-order-dialog";
 import useJobOrderFormDownload from "./use-job-order-form-download";
 
@@ -20,8 +28,9 @@ interface Props {
 const iconButton =
   "rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40";
 
-// Download, edit and delete buttons on a job order's row. Anyone can download
-// its form. A job order with expenses can't be deleted; the server says so.
+// Download, completion, edit and delete buttons on a job order's row. Anyone
+// can download its forms. A job order with expenses can't be deleted; the
+// server says so.
 const JobOrderActions = ({
   restorationId,
   jobOrder,
@@ -31,6 +40,8 @@ const JobOrderActions = ({
 }: Props) => {
   const isViewer = useIsViewer();
   const { download, isDownloading } = useJobOrderFormDownload(workOrder);
+  const [completionOpen, setCompletionOpen] = useState(false);
+  const hasCompletion = jobOrder.completion_activities != null;
   const { handleError } = useApiError();
   const utils = trpc.useUtils();
 
@@ -59,6 +70,17 @@ const JobOrderActions = ({
           <FileDown className='size-3.5' />
         )}
       </button>
+      <button
+        type='button'
+        title={
+          hasCompletion
+            ? "Work completion certificate (work done saved)"
+            : "Work completion certificate"
+        }
+        onClick={() => setCompletionOpen(true)}
+        className={cn(iconButton, hasCompletion && "text-emerald-600")}>
+        <ClipboardCheck className='size-3.5' />
+      </button>
       {!isViewer && (
         <>
           <button
@@ -82,6 +104,14 @@ const JobOrderActions = ({
           </button>
         </>
       )}
+
+      <JobOrderCompletionDialog
+        restorationId={restorationId}
+        jobOrder={jobOrder}
+        workOrder={workOrder}
+        open={completionOpen}
+        onClose={() => setCompletionOpen(false)}
+      />
     </div>
   );
 };
