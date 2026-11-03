@@ -146,7 +146,7 @@ const VendorFormDialog = ({
                 control={form.control}
                 fieldName='contact_number'
                 Label='Contact Number'
-                placeholder='10 digit mobile number'
+                placeholder='98765 43210 or 011-23456789'
                 optional
               />
               <CustomInput
