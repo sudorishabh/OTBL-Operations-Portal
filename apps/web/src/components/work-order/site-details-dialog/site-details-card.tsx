@@ -160,7 +160,7 @@ const SiteDetailsCard = ({
         <SiteEstimate
           woSiteId={siteDetails.id}
           processType={siteDetails.process_type}
-          className='border-t border-gray-100 px-5 py-4'
+          className='border-t border-gray-100'
         />
       )}
 
