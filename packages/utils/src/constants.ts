@@ -103,45 +103,58 @@ export const TRANSPORT_SLABS = [
   { key: "over_40_km", label: "More than 40 KM (additional per km)" },
 ] as const;
 
-// The rows of the client's job order form, worded as on the form. A row with
-// no unit is answered yes or no, and transportation is given per distance in
-// the rows under it.
+// The rows of the client's job order form and its work completion
+// certificate, worded as on each. A row with no unit is answered yes or no,
+// and transportation is given per distance in the rows under it.
 export const JOB_ORDER_ACTIVITIES = [
   {
     key: "spill_cleaning",
     label:
       "Cleaning up of Spill Area upto 5 cm depth: Collection of floating free oil/slush from spill area (land/water body)",
     unit: "Sq. Meter",
+    completionLabel:
+      "Cleaning up of Spill Area upto 5 cm depth: Collection of floating free oil/slush from spill area (land/water body)",
+    completionUnit: "Sq. Meter",
     indent: false,
   },
   {
     key: "oily_slush_lifting",
     label: "Lifting of Oily Slush or Recovery of Oil or Slush",
     unit: "Cub. Meter",
+    completionLabel: "Lifting of Oily Slush or Recovery of Oil",
+    completionUnit: "Cub. Meter",
     indent: false,
   },
   {
     key: "excavation",
     label: "Excavation of Oil Contaminated Soil",
     unit: "Cub. Meter",
+    completionLabel: "Excavation of Oil Contaminated Soil",
+    completionUnit: "Cub. Meter",
     indent: false,
   },
   {
     key: "transportation",
     label: "Transportation of Oil Contaminated Soil/Floating Oil/Oily Sludge",
     unit: "",
+    completionLabel: "Transportation of Oil Contaminated Soil",
+    completionUnit: "",
     indent: false,
   },
   {
     key: "transportation_up_to_5_km",
     label: "Up to 5 km",
     unit: "Cub. Meter",
+    completionLabel: "Up to 5 km",
+    completionUnit: "Cub. Meter",
     indent: true,
   },
   {
     key: "transportation_6_to_20_km",
     label: "6-20 km",
     unit: "Cub. Meter",
+    completionLabel: "6-20 km",
+    completionUnit: "Cub. Meter",
     indent: true,
   },
   {
@@ -149,6 +162,9 @@ export const JOB_ORDER_ACTIVITIES = [
     label:
       "Re-filling of Excavation/Land/Dressing of Cleaning Surface by good soil",
     unit: "",
+    completionLabel:
+      "Re-filling of Excavated Oil Contaminated Soil land with Fresh Native Soil",
+    completionUnit: "Cub. Meter",
     indent: false,
   },
   {
@@ -156,6 +172,9 @@ export const JOB_ORDER_ACTIVITIES = [
     label:
       "Bio-remediation of Oil Contaminated Soil at designated Bio-remediation site (Vol=L*B*H)",
     unit: "Cub. Meter",
+    completionLabel:
+      "Bio-remediation of Oil Contaminated Soil at designated Bio-remediation site (Vol=L*B*H)",
+    completionUnit: "Cub. Meter",
     indent: false,
   },
   {
@@ -163,6 +182,9 @@ export const JOB_ORDER_ACTIVITIES = [
     label:
       "Bio-remediation of Oil Contaminated Soil at designated Bio-remediation site (MT=Vol*Density) Note: For estimation",
     unit: "Metric Ton",
+    completionLabel:
+      "Bio-remediation of Oil Contaminated Soil at designated Bio-remediation site (MT=Vol*Density) Note: Density as per lab test report.",
+    completionUnit: "Metric Ton",
     indent: false,
   },
 ] as const;
