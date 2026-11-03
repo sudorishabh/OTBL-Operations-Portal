@@ -4,7 +4,6 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { CheckCircle2, FileDown } from "lucide-react";
 import { jobOrderSchemas } from "@pkg/schema";
-import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
 import { cn } from "@/lib/utils";
@@ -14,20 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import JobOrderActivitiesTable, {
+  toActivityEntries,
+  toActivityRows,
   type JobOrderActivityEntries,
-  type JobOrderActivityKey,
+  type JobOrderActivityRow,
 } from "./job-order-activities-table";
 import type { JobOrderFormContent } from "./job-order-form-pdf";
 import useJobOrderFormDownload from "./use-job-order-form-download";
-
-const { JOB_ORDER_ACTIVITIES } = constants;
-
-// What is written against one activity row of the client's forms.
-interface JobOrderActivityRow {
-  key: JobOrderActivityKey;
-  quantity: string;
-  completion_date: string | null;
-}
 
 // A restoration job order as getJobOrders returns it. Job orders saved before
 // the client's forms were added have none of their fields.
@@ -135,16 +127,6 @@ const formValues = (
   po_number: contractSource?.po_number ?? "",
 });
 
-const toEntries = (
-  activities: JobOrder["activities"],
-): JobOrderActivityEntries =>
-  Object.fromEntries(
-    (activities ?? []).map((row) => [
-      row.key,
-      { quantity: row.quantity, completion_date: row.completion_date ?? "" },
-    ]),
-  );
-
 const Field = ({
   label,
   hint,
@@ -226,7 +208,7 @@ const JobOrderDialog = ({
     setValues(
       formValues(editing, editing ?? latestWithContract(jobOrders), workOrder),
     );
-    setActivities(toEntries(editing?.activities));
+    setActivities(toActivityEntries(editing?.activities));
     setVendorIds(editing?.vendors.map((vendor) => vendor.id) ?? []);
     setSaved(null);
   }, [open, editing]);
@@ -259,11 +241,7 @@ const JobOrderDialog = ({
       end_date: toDate(values.end_date),
       rc_noa_date: toDate(values.rc_noa_date) ?? null,
       mobilization_date: toDate(values.mobilization_date) ?? null,
-      activities: JOB_ORDER_ACTIVITIES.map(({ key }) => ({
-        key,
-        quantity: activities[key]?.quantity ?? "",
-        completion_date: activities[key]?.completion_date || null,
-      })),
+      activities: toActivityRows(activities),
       contractor_ids: vendorIds,
     });
     if (!parsed.success) {

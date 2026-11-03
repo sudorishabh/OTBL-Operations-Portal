@@ -19,6 +19,34 @@ export type JobOrderActivityEntries = Partial<
   Record<JobOrderActivityKey, JobOrderActivityEntry>
 >;
 
+// An activity row as it is saved, with only the rows something is written
+// against.
+export interface JobOrderActivityRow {
+  key: JobOrderActivityKey;
+  quantity: string;
+  completion_date: string | null;
+}
+
+export const toActivityEntries = (
+  rows: JobOrderActivityRow[] | null | undefined,
+): JobOrderActivityEntries =>
+  Object.fromEntries(
+    (rows ?? []).map((row) => [
+      row.key,
+      { quantity: row.quantity, completion_date: row.completion_date ?? "" },
+    ]),
+  );
+
+// Every row, in the form's order, to save.
+export const toActivityRows = (
+  entries: JobOrderActivityEntries,
+): JobOrderActivityRow[] =>
+  JOB_ORDER_ACTIVITIES.map(({ key }) => ({
+    key,
+    quantity: entries[key]?.quantity ?? "",
+    completion_date: entries[key]?.completion_date || null,
+  }));
+
 interface Props {
   entries: JobOrderActivityEntries;
   onChange: (key: JobOrderActivityKey, entry: JobOrderActivityEntry) => void;
