@@ -23,6 +23,11 @@ const { TRANSPORT_SLABS, WO_ACTIVITIES, allActivityOptions } = constants;
 
 type SlabKey = (typeof TRANSPORT_SLABS)[number]["key"];
 
+interface SlabDraft {
+  quantity: string;
+  rate: string;
+}
+
 export interface EditableScheduleOfRate {
   id: number;
   work_order_id: number;
@@ -41,7 +46,7 @@ interface RowDraft {
   gst: number;
   quantity: string;
   rate: string;
-  slabs: Record<SlabKey, string> | null;
+  slabs: Record<SlabKey, SlabDraft> | null;
 }
 
 interface Props {
@@ -64,19 +69,33 @@ const toDraft = (rate: EditableScheduleOfRate): RowDraft => ({
   rate: String(Number(rate.rc_unit_rate) || ""),
   slabs: isTransport(rate.activity)
     ? (Object.fromEntries(
-        TRANSPORT_SLABS.map((slab) => [
-          slab.key,
-          String(rate.transportation_slabs?.[slab.key] ?? 0),
-        ]),
-      ) as Record<SlabKey, string>)
+        TRANSPORT_SLABS.map((slab) => {
+          const saved = rate.transportation_slabs?.[slab.key];
+          return [
+            slab.key,
+            {
+              quantity: String(saved?.quantity ?? 0),
+              rate: String(saved?.rate ?? 0),
+            },
+          ];
+        }),
+      ) as Record<SlabKey, SlabDraft>)
     : null,
 });
 
-// A transport row's quantity is the total of its distance slabs.
+// A transport row's quantity and RC rate are the totals of its distance
+// slabs.
+const slabTotal = (row: RowDraft, key: keyof SlabDraft) =>
+  Object.values(row.slabs ?? {}).reduce(
+    (sum, slab) => sum + (Number(slab[key]) || 0),
+    0,
+  );
+
 const draftQuantity = (row: RowDraft) =>
-  row.slabs
-    ? Object.values(row.slabs).reduce((sum, qty) => sum + (Number(qty) || 0), 0)
-    : Number(row.quantity) || 0;
+  row.slabs ? slabTotal(row, "quantity") : Number(row.quantity) || 0;
+
+const draftRate = (row: RowDraft) =>
+  row.slabs ? slabTotal(row, "rate") : Number(row.rate) || 0;
 
 const DECIMAL_INPUT = /^[0-9]*[.]?[0-9]*$/;
 
@@ -117,13 +136,27 @@ const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
       prev.map((row) => (row.id === id ? { ...row, ...change } : row)),
     );
 
+  const updateSlab = (
+    row: RowDraft,
+    key: SlabKey,
+    field: keyof SlabDraft,
+    value: string,
+  ) => {
+    if (!row.slabs || !DECIMAL_INPUT.test(value)) return;
+    updateRow(row.id, {
+      slabs: { ...row.slabs, [key]: { ...row.slabs[key], [field]: value } },
+    });
+  };
+
   const save = () => {
     const invalid = rows.find(
-      (row) => !(draftQuantity(row) > 0) || !(Number(row.rate) > 0),
+      (row) => !(draftQuantity(row) > 0) || !(draftRate(row) > 0),
     );
     if (invalid) {
       toast.error(
-        `Enter a quantity and rate above zero for ${activityLabel(invalid.activity)}.`,
+        invalid.slabs
+          ? `Enter the distance slabs' quantities and rates for ${activityLabel(invalid.activity)}.`
+          : `Enter a quantity and rate above zero for ${activityLabel(invalid.activity)}.`,
       );
       return;
     }
@@ -133,12 +166,15 @@ const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
       rates: rows.map((row) => ({
         id: row.id,
         estimated_quantity: Number(draftQuantity(row).toFixed(2)),
-        rc_unit_rate: Number(row.rate),
+        rc_unit_rate: Number(draftRate(row).toFixed(2)),
         ...(row.slabs && {
           transportation_slabs: Object.fromEntries(
-            Object.entries(row.slabs).map(([key, qty]) => [
+            Object.entries(row.slabs).map(([key, slab]) => [
               key,
-              Number(qty) || 0,
+              {
+                quantity: Number(slab.quantity) || 0,
+                rate: Number(slab.rate) || 0,
+              },
             ]),
           ) as workOrderTypes.TransportationSlabs,
         }),
@@ -193,7 +229,8 @@ const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
               <TableBody>
                 {rows.map((row) => {
                   const quantity = draftQuantity(row);
-                  const rateIncGst = (Number(row.rate) || 0) * (1 + row.gst / 100);
+                  const rate = draftRate(row);
+                  const rateIncGst = rate * (1 + row.gst / 100);
                   return (
                     <TableRow
                       key={row.id}
@@ -214,17 +251,15 @@ const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
                                 </span>
                                 <Input
                                   inputMode='decimal'
-                                  value={row.slabs![slab.key]}
-                                  onChange={(e) => {
-                                    if (!DECIMAL_INPUT.test(e.target.value))
-                                      return;
-                                    updateRow(row.id, {
-                                      slabs: {
-                                        ...row.slabs!,
-                                        [slab.key]: e.target.value,
-                                      },
-                                    });
-                                  }}
+                                  value={row.slabs![slab.key].quantity}
+                                  onChange={(e) =>
+                                    updateSlab(
+                                      row,
+                                      slab.key,
+                                      "quantity",
+                                      e.target.value,
+                                    )
+                                  }
                                   className='h-8 text-xs'
                                 />
                               </label>
@@ -246,15 +281,42 @@ const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
                         )}
                       </TableCell>
                       <TableCell className='px-3 py-2'>
-                        <Input
-                          inputMode='decimal'
-                          value={row.rate}
-                          onChange={(e) => {
-                            if (!DECIMAL_INPUT.test(e.target.value)) return;
-                            updateRow(row.id, { rate: e.target.value });
-                          }}
-                          className='h-8 text-xs'
-                        />
+                        {/* A transport row's slab rates, beside their
+                            quantities, add up to its RC rate. */}
+                        {row.slabs ? (
+                          <div className='space-y-1.5'>
+                            {TRANSPORT_SLABS.map((slab) => (
+                              <Input
+                                key={slab.key}
+                                inputMode='decimal'
+                                aria-label={`${slab.label} rate`}
+                                value={row.slabs![slab.key].rate}
+                                onChange={(e) =>
+                                  updateSlab(
+                                    row,
+                                    slab.key,
+                                    "rate",
+                                    e.target.value,
+                                  )
+                                }
+                                className='h-8 text-xs'
+                              />
+                            ))}
+                            <p className='text-[10px] font-medium text-gray-600'>
+                              Total {formatAmount(rate)}
+                            </p>
+                          </div>
+                        ) : (
+                          <Input
+                            inputMode='decimal'
+                            value={row.rate}
+                            onChange={(e) => {
+                              if (!DECIMAL_INPUT.test(e.target.value)) return;
+                              updateRow(row.id, { rate: e.target.value });
+                            }}
+                            className='h-8 text-xs'
+                          />
+                        )}
                       </TableCell>
                       <TableCell className='px-3 py-2 text-right text-xs text-gray-600'>
                         {formatAmount(rateIncGst)}
