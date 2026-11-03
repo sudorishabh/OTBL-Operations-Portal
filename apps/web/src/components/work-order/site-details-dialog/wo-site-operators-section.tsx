@@ -6,6 +6,7 @@ import CustomButton from "@/components/shared/btn";
 import { Users, Settings2 } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
 import { useIsManager } from "@/contexts/AuthContext";
+import UploadSectionHeader from "@/components/shared/upload-section-header";
 import WoSiteOperatorsDialog from "./wo-site-operators-dialog";
 
 type Props = {
@@ -43,15 +44,12 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
   return (
     <div className={className}>
       <div className='mb-2 flex items-center justify-between gap-2'>
-        <div className='flex items-center gap-2'>
-          <Users className='size-3.5 text-gray-400' />
-          <span className='text-xs font-medium text-gray-700'>
-            Site operators
-          </span>
-          <span className='text-[11px] tabular-nums text-gray-400'>
-            {operators.length} assigned
-          </span>
-        </div>
+        <UploadSectionHeader
+          Icon={Users}
+          title='Site operators'
+          description={`Only they can upload documents to this ${subject}.`}
+          className='flex-1'
+        />
         <CustomButton
           type='button'
           variant='outline'
@@ -63,11 +61,6 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
         />
       </div>
 
-      <p className='mb-2.5 text-[11px] text-gray-400'>
-        Only the operators assigned here can upload documents to this{" "}
-        {subject}.
-      </p>
-
       {isLoading ? (
         <div className='flex flex-wrap gap-2'>
           {Array.from({ length: 3 }).map((_, i) => (
@@ -78,11 +71,7 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
           ))}
         </div>
       ) : operators.length === 0 ? (
-        <p className='text-xs text-muted-foreground'>
-          No operators assigned yet. Use{" "}
-          <span className='font-medium'>Manage operators</span> to assign Site
-          Operators to this {subject}.
-        </p>
+        <p className='text-xs text-gray-400'>No operators assigned yet.</p>
       ) : (
         <div className='flex flex-wrap gap-2'>
           {operators.map((o) => (
