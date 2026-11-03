@@ -262,7 +262,7 @@ export default function ProfilePage() {
                       Label='Contact number'
                       LabelIcon={Phone}
                       type='tel'
-                      placeholder='Mobile number'
+                      placeholder='98765 43210 or 011-23456789'
                       optional
                     />
                     <p className='text-xs text-muted-foreground'>

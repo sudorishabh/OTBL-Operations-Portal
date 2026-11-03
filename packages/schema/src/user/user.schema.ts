@@ -4,7 +4,7 @@ import {
   nameValidator,
   emailValidator,
   passwordValidator,
-  optionalMobileValidator,
+  optionalContactNumberValidator,
   pageValidator,
   limitValidator,
   searchQueryValidator,
@@ -28,7 +28,7 @@ export const createUserSchema = z.object({
   name: nameValidator,
   email: emailValidator,
   password: passwordValidator,
-  contact_number: optionalMobileValidator,
+  contact_number: optionalContactNumberValidator,
   role: userRoleEnum,
 });
 

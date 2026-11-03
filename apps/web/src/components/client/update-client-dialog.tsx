@@ -229,7 +229,7 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                     control={form.control}
                     fieldName='contact_number'
                     Label='Contact Number'
-                    placeholder='+91 1234567890'
+                    placeholder='98765 43210 or 011-23456789'
                     inputIcon={Phone}
                     optional
                   />
@@ -344,7 +344,7 @@ const UpdateClientDialog = ({ clientId }: Props) => {
                           control={contactForm.control}
                           fieldName='contact_number'
                           Label='Phone'
-                          placeholder='+91 1234567890'
+                          placeholder='98765 43210 or 011-23456789'
                           inputIcon={Phone}
                         />
 
