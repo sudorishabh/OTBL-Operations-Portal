@@ -103,6 +103,70 @@ export const TRANSPORT_SLABS = [
   { key: "over_40_km", label: "More than 40 KM (additional per km)" },
 ] as const;
 
+// The rows of the client's job order form, worded as on the form. A row with
+// no unit is answered yes or no, and transportation is given per distance in
+// the rows under it.
+export const JOB_ORDER_ACTIVITIES = [
+  {
+    key: "spill_cleaning",
+    label:
+      "Cleaning up of Spill Area upto 5 cm depth: Collection of floating free oil/slush from spill area (land/water body)",
+    unit: "Sq. Meter",
+    indent: false,
+  },
+  {
+    key: "oily_slush_lifting",
+    label: "Lifting of Oily Slush or Recovery of Oil or Slush",
+    unit: "Cub. Meter",
+    indent: false,
+  },
+  {
+    key: "excavation",
+    label: "Excavation of Oil Contaminated Soil",
+    unit: "Cub. Meter",
+    indent: false,
+  },
+  {
+    key: "transportation",
+    label: "Transportation of Oil Contaminated Soil/Floating Oil/Oily Sludge",
+    unit: "",
+    indent: false,
+  },
+  {
+    key: "transportation_up_to_5_km",
+    label: "Up to 5 km",
+    unit: "Cub. Meter",
+    indent: true,
+  },
+  {
+    key: "transportation_6_to_20_km",
+    label: "6-20 km",
+    unit: "Cub. Meter",
+    indent: true,
+  },
+  {
+    key: "refilling",
+    label:
+      "Re-filling of Excavation/Land/Dressing of Cleaning Surface by good soil",
+    unit: "",
+    indent: false,
+  },
+  {
+    key: "bioremediation_volume",
+    label:
+      "Bio-remediation of Oil Contaminated Soil at designated Bio-remediation site (Vol=L*B*H)",
+    unit: "Cub. Meter",
+    indent: false,
+  },
+  {
+    key: "bioremediation_weight",
+    label:
+      "Bio-remediation of Oil Contaminated Soil at designated Bio-remediation site (MT=Vol*Density) Note: For estimation",
+    unit: "Metric Ton",
+    indent: false,
+  },
+] as const;
+
 // The bio sample taken at mobilization, before the first application. It is
 // stored as the bio sample whose application month is this label.
 export const ZERO_DAY_SAMPLE = "Zero Day";
@@ -221,6 +285,7 @@ export default {
   processTypeOptions,
   unitOptions,
   TRANSPORT_SLABS,
+  JOB_ORDER_ACTIVITIES,
   ZERO_DAY_SAMPLE,
   OIL_ZAPPER,
   TPH_TARGET,
