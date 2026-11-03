@@ -221,6 +221,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
 
       <JobOrderDialog
         restorationId={restoration.id}
+        workOrder={workOrder}
         open={jobOrderDialogOpen}
         onClose={() => setJobOrderDialogOpen(false)}
         editing={editingJobOrder}
