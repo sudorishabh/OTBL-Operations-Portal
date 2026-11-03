@@ -27,9 +27,9 @@ export type TransportationSlabsRow = Record<
   number
 >;
 
-// One row of a job order form's activity table: the quantity as written on the
-// form (a measurement, yes, no or "To be assessed later"), and the date its
-// work is due, as yyyy-MM-dd.
+// One row of a job order form's or completion certificate's activity table:
+// the quantity as written on it (a measurement, yes, no or "To be assessed
+// later"), and the date its work is due or was done, as yyyy-MM-dd.
 export type JobOrderActivityRow = {
   key: (typeof constants.JOB_ORDER_ACTIVITIES)[number]["key"];
   quantity: string;
@@ -653,6 +653,12 @@ export const jobOrderTable = mysqlTable(
     // Only for ex-situ bioremediation jobs.
     mobilization_date: timestamp("mobilization_date"),
     activities: json("activities").$type<JobOrderActivityRow[]>(),
+    // The work as done, for the client's work completion certificate: the
+    // actual quantities and dates, and the date the job was finished.
+    completed_on: timestamp("completed_on"),
+    completion_activities: json("completion_activities").$type<
+      JobOrderActivityRow[]
+    >(),
     // The job order's completion certificates.
     documents: json("documents").$type<StoredDocumentRow[]>(),
     created_by: int("created_by").references(() => userTable.id, {
