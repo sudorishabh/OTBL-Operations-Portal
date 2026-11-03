@@ -10,7 +10,15 @@ import EditSiteDatesDialog from "./edit-site-dates-dialog";
 import SiteEstimate from "./site-estimate";
 import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 import SiteMeasurementSheets from "./site-measurement-sheets";
-import SiteCompletionCertificate from "./site-completion-certificate";
+import SiteCompletionCertificate, {
+  PendingCompletionCertificate,
+} from "./site-completion-certificate";
+import InfoSection from "./info-section";
+
+const { TPH_TARGET, WO_PROCESS } = constants;
+
+// The documents of one card row, two to a row once there is room.
+const DOCUMENTS_GRID = "grid grid-cols-1 gap-x-6 gap-y-5 @2xl:grid-cols-2";
 
 interface WorkOrderSiteDetails {
   id: number;
@@ -91,10 +99,8 @@ const SiteDetailsCard = ({
     : (siteDetails?.status ?? "pending");
   const note = scheduleNote(status, siteDetails?.date, siteDetails?.end_date);
   const isBioremediation =
-    siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
+    siteDetails?.process_type === WO_PROCESS.BIOREMEDIATION;
   const isCompleted = !!siteDetails?.is_completed;
-  // Mobilization and the 0-day sample, the sheets, then the certificate.
-  const documentCount = (isBioremediation ? 2 : 0) + 1 + (isCompleted ? 1 : 0);
 
   return (
     <section className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
@@ -164,36 +170,50 @@ const SiteDetailsCard = ({
         />
       )}
 
-      {/* The site's documents. For bioremediation, how it was set up: the
-          team moving on, and the baseline sample taken before treatment
-          starts. Then the measurements behind its quantities, and the
-          certificate, only taken once the site is complete. Two to a row, so
-          each has room for its description and its upload. */}
-      {siteDetails?.id && (
-        <div
-          className={cn(
-            "grid grid-cols-1 gap-x-6 gap-y-5 border-t border-gray-100 px-5 py-4",
-            documentCount >= 2 && "md:grid-cols-2",
-          )}>
-          {isBioremediation && (
-            <>
-              <div className='min-w-0'>
-                <MobilizationCertificate woSiteId={siteDetails.id} />
-              </div>
-              <div className='min-w-0'>
-                <ZeroDaySample woSiteId={siteDetails.id} />
-              </div>
-            </>
-          )}
-          <div className='min-w-0'>
-            <SiteMeasurementSheets woSiteId={siteDetails.id} />
-          </div>
-          {isCompleted && (
+      {/* How bioremediation was set up: the team moving on, and the
+          baseline sample taken before treatment starts. */}
+      {siteDetails?.id && isBioremediation && (
+        <InfoSection
+          title='Mobilization'
+          description='Before treatment starts: the team moving onto the site, and the baseline sample.'
+          className='border-t border-gray-100'>
+          <div className={DOCUMENTS_GRID}>
             <div className='min-w-0'>
-              <SiteCompletionCertificate woSiteId={siteDetails.id} />
+              <MobilizationCertificate woSiteId={siteDetails.id} />
             </div>
-          )}
-        </div>
+            <div className='min-w-0'>
+              <ZeroDaySample woSiteId={siteDetails.id} />
+            </div>
+          </div>
+        </InfoSection>
+      )}
+
+      {/* The measurements behind the site's quantities, and the certificate,
+          only taken once the site is complete. */}
+      {siteDetails?.id && (
+        <InfoSection
+          title='Completion'
+          description='The measurements behind the quantities, then the signed certificate once the site is complete.'
+          className='border-t border-gray-100'>
+          <div className={DOCUMENTS_GRID}>
+            <div className='min-w-0'>
+              <SiteMeasurementSheets woSiteId={siteDetails.id} />
+            </div>
+            <div className='min-w-0'>
+              {isCompleted ? (
+                <SiteCompletionCertificate woSiteId={siteDetails.id} />
+              ) : (
+                <PendingCompletionCertificate
+                  note={
+                    isBioremediation
+                      ? `Upload it once the site is complete, when its latest TPH is below ${TPH_TARGET}.`
+                      : "Upload it once the site is complete."
+                  }
+                />
+              )}
+            </div>
+          </div>
+        </InfoSection>
       )}
     </section>
   );

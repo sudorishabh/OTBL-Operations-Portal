@@ -14,6 +14,25 @@ interface Props {
   woSiteId: number;
 }
 
+const CertificateHeader = () => (
+  <UploadSectionHeader
+    Icon={FileCheck}
+    title='Completion Certificate'
+    description='The signed certificate for the finished site.'
+  />
+);
+
+// The certificate's place until the site is complete, saying when it can be
+// uploaded.
+export const PendingCompletionCertificate = ({ note }: { note: string }) => (
+  <div className='space-y-2'>
+    <CertificateHeader />
+    <p className='flex min-h-9 items-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-2.5 py-2 text-[11px] text-gray-500'>
+      {note}
+    </p>
+  </div>
+);
+
 // The site's signed completion certificate.
 const SiteCompletionCertificate = ({ woSiteId }: Props) => {
   const utils = trpc.useUtils();
@@ -82,11 +101,7 @@ const SiteCompletionCertificate = ({ woSiteId }: Props) => {
 
   return (
     <div className='space-y-2'>
-      <UploadSectionHeader
-        Icon={FileCheck}
-        title='Completion Certificate'
-        description='The signed certificate for the finished site.'
-      />
+      <CertificateHeader />
 
       <DocumentsField
         label='Upload completion certificate'
