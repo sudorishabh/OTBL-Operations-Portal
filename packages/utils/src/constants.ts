@@ -104,11 +104,13 @@ export const TRANSPORT_SLABS = [
 ] as const;
 
 // The rows of the client's job order form and its work completion
-// certificate, worded as on each. A row with no unit is answered yes or no,
-// and transportation is given per distance in the rows under it.
+// certificate, worded as on each, with the schedule of rates activity each is
+// billed under. A row with no unit is answered yes or no, and transportation
+// is given per distance in the rows under it.
 export const JOB_ORDER_ACTIVITIES = [
   {
     key: "spill_cleaning",
+    sorActivity: WO_ACTIVITIES.clean_soil_area,
     label:
       "Cleaning up of Spill Area upto 5 cm depth: Collection of floating free oil/slush from spill area (land/water body)",
     unit: "Sq. Meter",
@@ -119,6 +121,7 @@ export const JOB_ORDER_ACTIVITIES = [
   },
   {
     key: "oily_slush_lifting",
+    sorActivity: WO_ACTIVITIES.LIFTING_OILY_SLUSH_OR_RECOVERY_OF_OIL,
     label: "Lifting of Oily Slush or Recovery of Oil or Slush",
     unit: "Cub. Meter",
     completionLabel: "Lifting of Oily Slush or Recovery of Oil",
@@ -127,6 +130,7 @@ export const JOB_ORDER_ACTIVITIES = [
   },
   {
     key: "excavation",
+    sorActivity: WO_ACTIVITIES.EXCAVATION_OIL_CONTAMINATED_SOIL,
     label: "Excavation of Oil Contaminated Soil",
     unit: "Cub. Meter",
     completionLabel: "Excavation of Oil Contaminated Soil",
@@ -135,6 +139,7 @@ export const JOB_ORDER_ACTIVITIES = [
   },
   {
     key: "transportation",
+    sorActivity: WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
     label: "Transportation of Oil Contaminated Soil/Floating Oil/Oily Sludge",
     unit: "",
     completionLabel: "Transportation of Oil Contaminated Soil",
@@ -143,6 +148,7 @@ export const JOB_ORDER_ACTIVITIES = [
   },
   {
     key: "transportation_up_to_5_km",
+    sorActivity: WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
     label: "Up to 5 km",
     unit: "Cub. Meter",
     completionLabel: "Up to 5 km",
@@ -151,6 +157,7 @@ export const JOB_ORDER_ACTIVITIES = [
   },
   {
     key: "transportation_6_to_20_km",
+    sorActivity: WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
     label: "6-20 km",
     unit: "Cub. Meter",
     completionLabel: "6-20 km",
@@ -159,6 +166,7 @@ export const JOB_ORDER_ACTIVITIES = [
   },
   {
     key: "refilling",
+    sorActivity: WO_ACTIVITIES.REFILLING_EXCAVATED_OIL_CONTAMINATED_SOIL_LAND,
     label:
       "Re-filling of Excavation/Land/Dressing of Cleaning Surface by good soil",
     unit: "",
@@ -169,6 +177,7 @@ export const JOB_ORDER_ACTIVITIES = [
   },
   {
     key: "bioremediation_volume",
+    sorActivity: WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL,
     label:
       "Bio-remediation of Oil Contaminated Soil at designated Bio-remediation site (Vol=L*B*H)",
     unit: "Cub. Meter",
@@ -179,6 +188,7 @@ export const JOB_ORDER_ACTIVITIES = [
   },
   {
     key: "bioremediation_weight",
+    sorActivity: WO_ACTIVITIES.BIOREMEDIATION_OIL_CONTAMINATED_SOIL,
     label:
       "Bio-remediation of Oil Contaminated Soil at designated Bio-remediation site (MT=Vol*Density) Note: For estimation",
     unit: "Metric Ton",
