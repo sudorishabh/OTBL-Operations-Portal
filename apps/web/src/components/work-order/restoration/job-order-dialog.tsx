@@ -22,8 +22,15 @@ import useJobOrderFormDownload from "./use-job-order-form-download";
 
 const { JOB_ORDER_ACTIVITIES } = constants;
 
+// What is written against one activity row of the client's forms.
+interface JobOrderActivityRow {
+  key: JobOrderActivityKey;
+  quantity: string;
+  completion_date: string | null;
+}
+
 // A restoration job order as getJobOrders returns it. Job orders saved before
-// the client's form was added have none of its fields.
+// the client's forms were added have none of their fields.
 export interface JobOrder {
   id: number;
   jo_number: string;
@@ -39,13 +46,10 @@ export interface JobOrder {
   installation_name?: string | null;
   location?: string | null;
   mobilization_date?: string | Date | null;
-  activities?:
-    | {
-        key: JobOrderActivityKey;
-        quantity: string;
-        completion_date: string | null;
-      }[]
-    | null;
+  activities?: JobOrderActivityRow[] | null;
+  // The work as done, for the work completion certificate.
+  completed_on?: string | Date | null;
+  completion_activities?: JobOrderActivityRow[] | null;
   documents: unknown;
   vendors: { id: number; name: string }[];
 }
