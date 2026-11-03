@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import CustomButton from "@/components/shared/btn";
-import { Users, Settings2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
 import { useIsManager } from "@/contexts/AuthContext";
-import UploadSectionHeader from "@/components/shared/upload-section-header";
+import InfoSection from "./info-section";
 import WoSiteOperatorsDialog from "./wo-site-operators-dialog";
 
 type Props = {
@@ -40,16 +40,12 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
 
   const operators: AssignedOperator[] = data ?? [];
 
-  // Unboxed, as it sits inside the site's or restoration's information panel.
+  // A row of the site's or restoration's information card.
   return (
-    <div className={className}>
-      <div className='mb-2 flex items-center justify-between gap-2'>
-        <UploadSectionHeader
-          Icon={Users}
-          title='Site operators'
-          description={`Only they can upload documents to this ${subject}.`}
-          className='flex-1'
-        />
+    <InfoSection
+      title='Site operators'
+      description={`Only they can upload documents to this ${subject}.`}
+      actions={
         <CustomButton
           type='button'
           variant='outline'
@@ -59,8 +55,8 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
           className='h-7 px-2.5 text-xs'
           disableForViewer
         />
-      </div>
-
+      }
+      className={className}>
       {isLoading ? (
         <div className='flex flex-wrap gap-2'>
           {Array.from({ length: 3 }).map((_, i) => (
@@ -92,7 +88,7 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
         setOpen={setDialogOpen}
         woSiteId={woSiteId}
       />
-    </div>
+    </InfoSection>
   );
 };
 

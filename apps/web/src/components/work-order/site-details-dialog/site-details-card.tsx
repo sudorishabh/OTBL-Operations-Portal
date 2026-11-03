@@ -97,7 +97,7 @@ const SiteDetailsCard = ({
   const documentCount = (isBioremediation ? 2 : 0) + 1 + (isCompleted ? 1 : 0);
 
   return (
-    <section className='rounded-lg border border-gray-200 bg-white'>
+    <section className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
       <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-4'>
         <div className='min-w-0 flex-1'>
           <div className='flex flex-wrap items-center gap-2'>
@@ -150,7 +150,7 @@ const SiteDetailsCard = ({
       {siteDetails?.id && (
         <WoSiteOperatorsSection
           woSiteId={siteDetails.id}
-          className='border-t border-gray-100 px-5 py-4'
+          className='border-t border-gray-100'
         />
       )}
 
