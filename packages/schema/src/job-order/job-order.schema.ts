@@ -94,6 +94,13 @@ export const jobOrderIdSchema = z.object({
   id: positiveIntValidator,
 });
 
+// The work as done, for the client's work completion certificate.
+export const setJobOrderCompletionSchema = z.object({
+  id: positiveIntValidator,
+  completed_on: dateValidator.nullable().optional(),
+  activities: z.array(jobOrderActivitySchema).max(JOB_ORDER_ACTIVITIES.length),
+});
+
 // The job order's completion certificates, replacing those saved before.
 export const setJobOrderCertificatesSchema = z.object({
   id: positiveIntValidator,
