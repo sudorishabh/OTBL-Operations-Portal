@@ -1,16 +1,11 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { CalendarCheck, CalendarDays, Plus } from "lucide-react";
-import {
-  capitalFirstLetter,
-  computeSorFullyConsumed,
-  constants,
-} from "@pkg/utils";
+import { capitalFirstLetter, constants } from "@pkg/utils";
 import { type workOrderTypes } from "@pkg/schema";
 import { Pill, STATUS_STYLES } from "@/components/shared/detail-card-parts";
 import useHandleParams from "@/hooks/useHandleParams";
-import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import { toDocuments } from "@/lib/documents";
@@ -66,40 +61,14 @@ const NoWorkOrder = ({ proposalId }: { proposalId: number }) => {
 };
 
 // The work order made from a proposal: status, how close its end date is,
-// its process, dates and documents.
+// its process, dates and documents. The status arrives already resolved
+// against the schedule of rates.
 const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
   const router = useRouter();
 
-  const { data: woDetails } = trpc.workOrderQuery.getWorkOrderDetails.useQuery(
-    { id: Number(workOrder?.id) },
-    { enabled: !!workOrder?.id },
-  );
-
-  // A work order completes once its schedule of rates is used up.
-  const resolvedStatus = useMemo(() => {
-    if (!workOrder) return undefined;
-
-    if (woDetails?.workOrder) {
-      if (woDetails.workOrder.status === "cancelled") return "cancelled";
-
-      const scheduleOfRates = woDetails.scheduleOfRates || [];
-      const sites = woDetails.sites || [];
-
-      if (scheduleOfRates.length === 0) {
-        return woDetails.workOrder.status || workOrder.status;
-      }
-
-      return computeSorFullyConsumed(scheduleOfRates, sites)
-        ? "completed"
-        : "pending";
-    }
-
-    return workOrder.status;
-  }, [workOrder, woDetails]);
-
   if (!workOrder) return <NoWorkOrder proposalId={proposalId} />;
 
-  const status = statusOf(resolvedStatus);
+  const status = statusOf(workOrder.status);
   const title = capitalFirstLetter(workOrder.title || "Untitled work order");
   const documents = toDocuments(workOrder.documents);
   const note = scheduleNote(status, workOrder.start_date, workOrder.end_date);
