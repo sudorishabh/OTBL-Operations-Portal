@@ -126,8 +126,6 @@ const orderItemTitle = (item: SiteOrderItem) =>
 // Tighter than the table defaults, so a record takes one compact row.
 const headClass =
   "h-8 px-3 sm:h-8 sm:px-3 text-[11px] font-medium text-gray-400 whitespace-nowrap";
-// Lines a vendor's rows up under its name.
-const indentClass = "pl-9 sm:pl-9";
 const cellClass = "px-3 py-2.5 sm:px-3 sm:py-2.5";
 
 const formatFullDates = (start: string | Date, end: string | Date) => {
@@ -166,7 +164,9 @@ interface Props {
   showEstimateTable?: boolean;
   // Extra buttons beside Add Expense.
   headerActions?: React.ReactNode;
-  // Shown on each restoration job order, such as edit and delete buttons.
+  // Each restoration job order's status, such as its certificates, and its
+  // menu, such as edit and delete.
+  jobOrderStatus?: (jobOrder: JobOrder) => React.ReactNode;
   jobOrderActions?: (jobOrder: JobOrder) => React.ReactNode;
 }
 
@@ -175,6 +175,7 @@ const SiteExpensesSection = ({
   processType,
   showEstimateTable = true,
   headerActions,
+  jobOrderStatus,
   jobOrderActions,
 }: Props) => {
   const utils = trpc.useUtils();
@@ -394,11 +395,7 @@ const SiteExpensesSection = ({
     return all.filter((r) => r.activityKey === filterKey);
   }, [expenses, activityOptions, activityFilter]);
 
-  const renderRecordRow = (
-    record: ExpenseRecord,
-    showVendor = true,
-    indented = false,
-  ) => {
+  const renderRecordRow = (record: ExpenseRecord, showVendor = true) => {
     const { isExceeded } = record;
     const expense = expenses.find((e) => e.id === record.id);
     const documentCount = record.documents.length;
@@ -420,7 +417,6 @@ const SiteExpensesSection = ({
             className={cn(
               cellClass,
               "whitespace-nowrap text-xs tabular-nums text-gray-600",
-              indented && indentClass,
             )}>
             <button
               type='button'
@@ -534,10 +530,7 @@ const SiteExpensesSection = ({
             )}>
             <TableCell
               colSpan={columnCount}
-              className={cn(
-                "px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1",
-                indented && indentClass,
-              )}>
+              className='px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1'>
               <dl className='grid grid-cols-2 gap-x-6 gap-y-3 pl-5 sm:grid-cols-4'>
                 <Detail label='Title' className='col-span-2 sm:col-span-4'>
                   <span className='whitespace-pre-wrap break-words'>{record.title}</span>
@@ -599,15 +592,11 @@ const SiteExpensesSection = ({
     );
   };
 
-  const renderRecordsTable = (
-    rows: ExpenseRecord[],
-    showVendor = true,
-    indented = false,
-  ) => (
+  const renderRecordsTable = (rows: ExpenseRecord[], showVendor = true) => (
     <Table>
       <TableHeader>
         <TableRow className='border-gray-100 hover:bg-transparent'>
-          <TableHead className={cn(headClass, "w-[160px]", indented && indentClass)}>
+          <TableHead className={cn(headClass, "w-[160px]")}>
             {/* In line with the dates, past each row's arrow. */}
             <span className='pl-5'>Dates</span>
           </TableHead>
@@ -623,7 +612,7 @@ const SiteExpensesSection = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((r) => renderRecordRow(r, showVendor, indented))}
+        {rows.map((r) => renderRecordRow(r, showVendor))}
       </TableBody>
     </Table>
   );
@@ -700,7 +689,7 @@ const SiteExpensesSection = ({
   );
 
   // Expenses spent on something with its own vendors, such as a job order or
-  // a contract order requirement: a card for each, with a band per vendor.
+  // a contract order requirement: a card for each, listing its expenses.
   type ExpenseGroup = {
     key: string;
     // Its number, such as the job order's.
@@ -711,8 +700,11 @@ const SiteExpensesSection = ({
     vendors: { id: number; name: string }[];
     records: ExpenseRecord[];
     vendorTotal: (vendorId: number) => number;
-    onAdd: (vendorId: number) => void;
-    actions?: React.ReactNode;
+    // Adds an expense on it, under the vendor chosen in the dialog.
+    onAdd: () => void;
+    // Where it stands, such as a job order's certificates.
+    status?: React.ReactNode;
+    menu?: React.ReactNode;
   };
 
   // In the colour of the process, as on the work order page.
@@ -720,59 +712,41 @@ const SiteExpensesSection = ({
     ? "bg-blue-50 text-blue-700 ring-blue-200"
     : "bg-purple-50 text-purple-700 ring-purple-200";
 
-  // One vendor on a group: a grey band with its total, then its expenses.
-  const renderVendorBand = (
-    group: ExpenseGroup,
-    vendor: { id: number; name: string },
-  ) => {
-    const key = `${group.key}-vendor-${vendor.id}`;
-    const name = capitalFirstLetter(vendor.name);
-    const vendorRecords = group.records.filter(
-      (r) => r.contractorId === vendor.id,
-    );
-    const count = vendorRecords.length;
-    const isOpen = count > 0 && !collapsedGroups.has(key);
-
-    return (
-      <div
-        key={key}
-        className='border-t border-gray-100 first:border-t-0'>
-        <div className='flex items-center gap-3 bg-gray-50/70 py-2 pl-3 pr-3'>
-          <button
-            type='button'
-            onClick={() => toggleGroup(key)}
-            aria-expanded={isOpen}
-            disabled={count === 0}
-            className='flex min-w-0 flex-1 items-center gap-2 pl-6 text-left disabled:cursor-default'>
-            {/* Kept in place when hidden, so the names line up. */}
-            <ChevronRight
-              className={cn(
-                "size-3.5 shrink-0 text-gray-400 transition-transform",
-                isOpen && "rotate-90",
-                count === 0 && "invisible",
-              )}
-            />
-            <HardHat className='size-3.5 shrink-0 text-gray-400' />
-            <span className='truncate text-[13px] font-medium text-gray-800'>
-              {name}
+  // Who a group's work is given to, each with what they have cost on it.
+  const renderVendorStrip = (group: ExpenseGroup) => (
+    <div className='flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-gray-100 bg-gray-50/70 px-3 py-2'>
+      <span className='inline-flex items-center gap-1.5 pl-6 pr-1 text-[11px] font-medium text-gray-500'>
+        <HardHat className='size-3.5 text-gray-400' />
+        Vendors
+      </span>
+      {group.vendors.length === 0 ? (
+        <span className='text-xs text-gray-400'>None on this yet</span>
+      ) : (
+        group.vendors.map((vendor) => {
+          const total = group.vendorTotal(vendor.id);
+          return (
+            <span
+              key={vendor.id}
+              className='inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-xs ring-1 ring-inset ring-gray-200'>
+              <span className='font-medium text-gray-700'>
+                {capitalFirstLetter(vendor.name)}
+              </span>
+              <span
+                className={cn(
+                  "tabular-nums",
+                  total > 0 ? "text-gray-900" : "text-gray-400",
+                )}>
+                {total > 0 ? formatCurrency(total) : "No expenses"}
+              </span>
             </span>
-            <span className='shrink-0 text-[11px] text-gray-400'>
-              {count === 0
-                ? "No expenses yet"
-                : `${count} expense${count !== 1 ? "s" : ""}`}
-            </span>
-          </button>
-          {renderAddExpenseButton(`Add expense under ${name}`, () =>
-            group.onAdd(vendor.id),
-          )}
-          {renderTotal(group.vendorTotal(vendor.id), "min-w-24 text-[13px]")}
-        </div>
-        {isOpen && renderRecordsTable(vendorRecords, false, true)}
-      </div>
-    );
-  };
+          );
+        })
+      )}
+    </div>
+  );
 
-  // A job order or order requirement, as a card with a band for each vendor.
+  // A job order or order requirement, as a card: its vendors, then its
+  // expenses.
   const renderGroupCard = (group: ExpenseGroup) => {
     const isOpen = !collapsedGroups.has(group.key);
 
@@ -808,19 +782,24 @@ const SiteExpensesSection = ({
               </span>
             )}
           </button>
-          {group.actions}
+          {group.status}
+          {renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)}
           {renderTotal(group.total, "min-w-24 text-sm")}
+          {group.menu}
         </div>
         {isOpen && (
-          <div className='border-t border-gray-100'>
-            {group.vendors.length === 0 ? (
-              <p className='py-2.5 pl-9 pr-3 text-xs text-gray-400'>
-                No vendors on this yet.
-              </p>
+          <>
+            {renderVendorStrip(group)}
+            {group.records.length > 0 ? (
+              <div className='border-t border-gray-100'>
+                {renderRecordsTable(group.records)}
+              </div>
             ) : (
-              group.vendors.map((vendor) => renderVendorBand(group, vendor))
+              <p className='border-t border-gray-100 py-2.5 pl-9 pr-3 text-xs text-gray-400'>
+                No expenses on this yet.
+              </p>
             )}
-          </div>
+          </>
         )}
       </div>
     );
@@ -1122,7 +1101,7 @@ const SiteExpensesSection = ({
                 records: records.filter((r) => r.contractOrderItemId === item.id),
                 vendorTotal: (vendorId: number) =>
                   orderItemVendorTotal(item.id, vendorId),
-                onAdd: (vendorId: number) => openAddExpense(vendorId, item.id),
+                onAdd: () => openAddExpense(null, item.id),
               })),
             };
           }),
@@ -1147,9 +1126,9 @@ const SiteExpensesSection = ({
                 records: records.filter((r) => r.jobOrderId === jobOrder.id),
                 vendorTotal: (vendorId: number) =>
                   summary?.byJobOrderVendor?.[`${jobOrder.id}:${vendorId}`] ?? 0,
-                onAdd: (vendorId: number) =>
-                  openAddExpense(vendorId, null, jobOrder.id),
-                actions: jobOrderActions?.(jobOrder),
+                onAdd: () => openAddExpense(null, null, jobOrder.id),
+                status: jobOrderStatus?.(jobOrder),
+                menu: jobOrderActions?.(jobOrder),
               })),
             },
           ],

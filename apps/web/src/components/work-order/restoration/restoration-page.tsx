@@ -198,20 +198,20 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
                 disableForViewer
               />
             }
+            jobOrderStatus={(jobOrder) => (
+              <JobOrderCertificates
+                restorationId={restoration.id}
+                jobOrder={jobOrder}
+              />
+            )}
             jobOrderActions={(jobOrder) => (
-              <>
-                <JobOrderCertificates
-                  restorationId={restoration.id}
-                  jobOrder={jobOrder}
-                />
-                <JobOrderActions
-                  restorationId={restoration.id}
-                  jobOrder={jobOrder}
-                  workOrder={workOrder}
-                  rates={rates}
-                  onEdit={() => openJobOrderDialog(jobOrder)}
-                />
-              </>
+              <JobOrderActions
+                restorationId={restoration.id}
+                jobOrder={jobOrder}
+                workOrder={workOrder}
+                rates={rates}
+                onEdit={() => openJobOrderDialog(jobOrder)}
+              />
             )}
           />
         </section>
