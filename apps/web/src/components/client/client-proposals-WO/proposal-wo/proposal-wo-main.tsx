@@ -12,8 +12,6 @@ import CreateWODialog from "../create-wo/create-wo-dialog";
 import ClientProposalSkeleton from "@/components/skeleton/client/client-proposal-skeleton";
 import ProposalWODetailsDialog from "./proposal-wo-details-dialog";
 import ProposalDetailDialog from "./proposal-detail-dialog";
-import ClientWOStatsDialog from "./client-wo-stats-dialog";
-import RightSidePanel from "./right-side-panel";
 import { useIsAdmin } from "@/contexts/AuthContext";
 
 interface Props {
@@ -43,8 +41,8 @@ const ProposalWOMain = ({ clientId }: Props) => {
   const proposalTitle = selectedProposal?.proposal.title || "";
 
   return (
-    <div className='flex flex-col lg:flex-row gap-5'>
-      <div className='w-full lg:w-8/12 bg-white shadow-sm py- px-0.5 rounded-xl border'>
+    <>
+      <div className='w-full bg-white shadow-sm px-0.5 rounded-xl border'>
         <div className='flex flex-wrap items-center justify-between gap-y-2 py-2 px-4'>
           <h3 className='text-sm ml-2 font-semibold text-gray-900 flex items-center gap-2'>
             Proposal - Work Orders
@@ -137,22 +135,11 @@ const ProposalWOMain = ({ clientId }: Props) => {
         </div>
       </div>
 
-      <RightSidePanel proposals={proposals} />
       <CreateProposalDialog clientId={Number(clientId)} />
       <CreateWODialog proposalTitle={proposalTitle} />
       <ProposalWODetailsDialog clientId={Number(clientId)} />
       <ProposalDetailDialog />
-      <ClientWOStatsDialog
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ongoingWOs={proposals
-          .filter((p: any) => p.workOrder?.status === "pending")
-          .map((p: any) => p.workOrder)}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        completedWOs={proposals
-          .filter((p: any) => p.workOrder?.status === "completed")
-          .map((p: any) => p.workOrder)}
-      />
-    </div>
+    </>
   );
 };
 
