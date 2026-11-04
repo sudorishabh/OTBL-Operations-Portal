@@ -1,5 +1,5 @@
 import CustomButton from "@/components/shared/btn";
-import { Check, FileStack, Link2Off, Plus } from "lucide-react";
+import { ArrowRight, FileStack, Plus } from "lucide-react";
 import React from "react";
 import CreateProposalDialog from "./create-proposal-dialog";
 import { trpc } from "@/lib/trpc";
@@ -21,26 +21,8 @@ interface Props {
   clientId: string;
 }
 
-// The dashed link between a proposal and the work order made from it.
-const ProposalLink = ({ linked }: { linked: boolean }) => (
-  <div className='relative flex items-center justify-center'>
-    <div className='w-full border-t border-dashed border-gray-300' />
-    <div
-      className={cn(
-        "absolute top-1/2 -translate-y-1/2 rounded-full bg-white p-1 ring-1",
-        linked
-          ? "text-emerald-600 ring-emerald-200"
-          : "text-gray-400 ring-gray-200",
-      )}
-      title={linked ? "Linked with a work order" : "No work order yet"}>
-      {linked ? (
-        <Check className='size-3.5' />
-      ) : (
-        <Link2Off className='size-3.5' />
-      )}
-    </div>
-  </div>
-);
+// Proposal on the left, an arrow, then the work order made from it.
+const ROW_GRID = "md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)]";
 
 const ProposalWOMain = ({ clientId }: Props) => {
   const { setParam, getParam } = useHandleParams();
@@ -65,6 +47,7 @@ const ProposalWOMain = ({ clientId }: Props) => {
   );
   const proposalTitle = selectedProposal?.proposal.title || "";
   const openAll = () => setParam("dialog", "proposal-wo");
+  const awaiting = proposals.filter((p: any) => !p.workOrder).length;
 
   return (
     <>
@@ -74,11 +57,7 @@ const ProposalWOMain = ({ clientId }: Props) => {
           title='Proposals and work orders'
           description={
             total > 0
-              ? `Each proposal beside its work order · ${
-                  hasMore
-                    ? `latest ${proposals.length} of ${total}`
-                    : `${total} total`
-                }`
+              ? `${total} ${total === 1 ? "proposal" : "proposals"}, each beside the work order made from it`
               : "Each proposal beside the work order made from it"
           }>
           {isAdmin && (
@@ -99,38 +78,75 @@ const ProposalWOMain = ({ clientId }: Props) => {
         </ProcessSectionHeader>
 
         {proposals.length > 0 ? (
-          <div className='space-y-3'>
-            {proposals.map(({ workOrder, proposal }: any, index: number) => (
-              <div
-                key={proposal?.id || index}
-                className='grid grid-cols-1 items-stretch gap-y-3 md:grid-cols-[1fr_56px_1fr] md:gap-y-0'>
-                <ProposalCell proposal={proposal} />
-                <ProposalLink linked={!!workOrder} />
-                <WorkOrderCell
-                  workOrder={
-                    workOrder as proposalTypes.getProposalsByClientReturnType["workOrder"]
-                  }
-                  proposalId={proposal.id}
-                />
+          <div className='overflow-hidden rounded-lg border border-gray-200'>
+            <div
+              className={cn(
+                "hidden gap-2 border-b border-gray-200 bg-gray-50/60 px-2 py-2 text-xs font-medium text-gray-500 md:grid",
+                ROW_GRID,
+              )}>
+              <span className='px-3'>Proposal</span>
+              <span />
+              <span className='flex items-center justify-between gap-2 px-3'>
+                Work order
+                {awaiting > 0 && (
+                  <span
+                    className='font-normal text-amber-600'
+                    title='Proposals listed here with no work order yet'>
+                    {awaiting} awaiting
+                  </span>
+                )}
+              </span>
+            </div>
+
+            <ul className='divide-y divide-gray-100'>
+              {proposals.map(({ workOrder, proposal }: any, index: number) => (
+                <li
+                  key={proposal?.id || index}
+                  className={cn(
+                    "grid grid-cols-1 items-center gap-1 p-2 md:gap-2",
+                    ROW_GRID,
+                  )}>
+                  <ProposalCell proposal={proposal} />
+                  <ArrowRight
+                    aria-hidden='true'
+                    className={cn(
+                      "hidden size-4 justify-self-center md:block",
+                      workOrder ? "text-emerald-500" : "text-gray-300",
+                    )}
+                  />
+                  {/* Stacked on small screens, indented under its proposal. */}
+                  <div className='ml-3 border-l-2 border-gray-100 pl-1 md:ml-0 md:border-0 md:pl-0'>
+                    <WorkOrderCell
+                      workOrder={
+                        workOrder as proposalTypes.getProposalsByClientReturnType["workOrder"]
+                      }
+                      proposalId={proposal.id}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {hasMore && (
+              <div className='flex items-center justify-between gap-3 border-t border-gray-200 bg-gray-50/60 px-5 py-2 text-xs text-gray-500'>
+                <span>
+                  Showing the latest {proposals.length} of {total}
+                </span>
+                <button
+                  type='button'
+                  onClick={openAll}
+                  className='inline-flex cursor-pointer items-center gap-1 font-medium text-emerald-700 transition-colors hover:text-emerald-800'>
+                  View all
+                  <ArrowRight className='size-3.5' />
+                </button>
               </div>
-            ))}
+            )}
           </div>
         ) : (
           <p className='rounded-lg border border-dashed py-8 text-center text-xs text-gray-500'>
             No proposals yet.
             {isAdmin && " Create one to start a work order from it."}
           </p>
-        )}
-
-        {hasMore && (
-          <div className='mt-4 flex justify-center'>
-            <button
-              type='button'
-              onClick={openAll}
-              className='text-xs font-medium text-emerald-600 transition-colors hover:text-emerald-700'>
-              View all {total} proposals →
-            </button>
-          </div>
         )}
       </section>
 
