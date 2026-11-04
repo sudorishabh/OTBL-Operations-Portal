@@ -377,7 +377,7 @@ const EstimateForm = ({
 
       <div className='grid grid-cols-1 gap-3 lg:grid-cols-3'>
         <DocumentsField
-          label='Upload estimate document'
+          label='Doc upload'
           files={pendingDocs}
           onFilesChange={setPendingDocs}
           existing={savedDocs.map((doc, index) => ({

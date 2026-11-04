@@ -105,7 +105,7 @@ const SiteCompletionCertificate = ({ woSiteId }: Props) => {
       <CertificateHeader />
 
       <DocumentsField
-        label='Upload completion certificate'
+        label='Doc upload'
         files={files}
         onFilesChange={setFiles}
         existing={certificates.map((doc, index) => ({

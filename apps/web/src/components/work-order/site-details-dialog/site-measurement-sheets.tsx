@@ -94,7 +94,7 @@ const SiteMeasurementSheets = ({ woSiteId }: Props) => {
       />
 
       <DocumentsField
-        label='Upload measurement sheets'
+        label='Doc upload'
         files={files}
         onFilesChange={setFiles}
         existing={sheets.map((sheet, index) => ({

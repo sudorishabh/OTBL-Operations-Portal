@@ -103,7 +103,7 @@ export const MobilizationCertificate = ({ woSiteId }: Props) => {
       />
 
       <DocumentsField
-        label='Upload mobilization certificate'
+        label='Doc upload'
         files={files}
         onFilesChange={setFiles}
         existing={documents.map((doc, index) => ({
@@ -266,7 +266,7 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
       ) : (
         <>
           <DocumentsField
-            label='Upload 0-day bio sample report'
+            label='Doc upload'
             files={files}
             onFilesChange={setFiles}
             isUploading={isUploading}
