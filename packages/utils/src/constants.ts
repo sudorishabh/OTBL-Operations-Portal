@@ -238,14 +238,40 @@ export const contractOrderTypeOptions = [
   { value: CONTRACT_ORDER_TYPE.SUB_CONTRACT, label: "Sub-contract" },
 ] as const;
 
-// What a contract order can require at a site. Oil zapper bought through a
-// purchase order is the site's procured oil zapper.
+// What a contract order can require at a site. A purchase order only buys oil
+// zapper, which becomes the site's procured oil zapper; everything else is
+// given out through a sub-contract.
 export const CONTRACT_ORDER_ITEMS = [
-  { key: OIL_ZAPPER.KEY, label: OIL_ZAPPER.LABEL, unit: OIL_ZAPPER.UNIT },
-  { key: "jcb", label: "JCB", unit: "hours" },
-  { key: "labour", label: "Labour", unit: "man-days" },
-  { key: "transport", label: "Transport", unit: "trips" },
-  { key: "other", label: "Other", unit: "Nos" },
+  {
+    key: OIL_ZAPPER.KEY,
+    label: OIL_ZAPPER.LABEL,
+    unit: OIL_ZAPPER.UNIT,
+    orderType: CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
+  },
+  {
+    key: "jcb",
+    label: "JCB",
+    unit: "hours",
+    orderType: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
+  },
+  {
+    key: "labour",
+    label: "Labour",
+    unit: "man-days",
+    orderType: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
+  },
+  {
+    key: "transport",
+    label: "Transport",
+    unit: "trips",
+    orderType: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
+  },
+  {
+    key: "other",
+    label: "Other",
+    unit: "Nos",
+    orderType: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
+  },
 ] as const;
 
 // A bioremediation site's treatment is achieved once a bio sample's TPH drops
