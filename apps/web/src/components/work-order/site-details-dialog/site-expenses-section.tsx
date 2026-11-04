@@ -53,6 +53,7 @@ import AddExpenseDialog, {
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { itemLabel } from "../contract-orders/contract-orders-section";
 import type { JobOrder } from "../restoration/job-order-dialog";
+import JobOrderChip from "../restoration/job-order-chip";
 import { jobOrderSorActivities } from "../restoration/restoration-display";
 import {
   documentName,
@@ -712,6 +713,9 @@ const SiteExpensesSection = ({
     key: string;
     // Its number, such as the job order's.
     badge: string;
+    // Shown in place of the number, such as a job order's chip with its
+    // details on hover.
+    badgeNode?: React.ReactNode;
     title: string;
     meta?: string;
     total: number;
@@ -773,33 +777,43 @@ const SiteExpensesSection = ({
         key={group.key}
         className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
         <div className='flex items-center gap-3 px-3 py-2.5'>
-          <button
-            type='button'
-            onClick={() => toggleGroup(group.key)}
-            aria-expanded={isOpen}
-            className='flex min-w-0 flex-1 items-center gap-2 text-left'>
-            <ChevronRight
-              className={cn(
-                "size-4 shrink-0 text-gray-400 transition-transform",
-                isOpen && "rotate-90",
+          <div className='flex min-w-0 flex-1 items-center gap-2'>
+            <button
+              type='button'
+              onClick={() => toggleGroup(group.key)}
+              aria-expanded={isOpen}
+              aria-label={`${isOpen ? "Hide" : "Show"} ${group.badge}'s expenses`}
+              className='-m-0.5 shrink-0 rounded p-0.5 text-gray-400 transition-colors hover:text-gray-600'>
+              <ChevronRight
+                className={cn("size-4 transition-transform", isOpen && "rotate-90")}
+              />
+            </button>
+            {/* Its own control, so it isn't inside the toggle. */}
+            {group.badgeNode}
+            {/* The rest opens and closes it too, for the mouse; the arrow is
+                the keyboard's way. */}
+            <div
+              onClick={() => toggleGroup(group.key)}
+              className='flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2'>
+              {!group.badgeNode && (
+                <span
+                  className={cn(
+                    "shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+                    badgeTone,
+                  )}>
+                  {group.badge}
+                </span>
               )}
-            />
-            <span
-              className={cn(
-                "shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
-                badgeTone,
-              )}>
-              {group.badge}
-            </span>
-            <span className='truncate text-sm font-medium text-gray-900'>
-              {group.title}
-            </span>
-            {group.meta && (
-              <span className='hidden shrink-0 text-xs text-gray-400 md:inline'>
-                {group.meta}
+              <span className='truncate text-sm font-medium text-gray-900'>
+                {group.title}
               </span>
-            )}
-          </button>
+              {group.meta && (
+                <span className='hidden shrink-0 text-xs text-gray-400 md:inline'>
+                  {group.meta}
+                </span>
+              )}
+            </div>
+          </div>
           {group.status}
           {renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)}
           {renderTotal(group.total, "min-w-24 text-sm")}
@@ -1139,6 +1153,7 @@ const SiteExpensesSection = ({
               groups: jobOrders.map((jobOrder) => ({
                 key: `job-order-${jobOrder.id}`,
                 badge: jobOrder.jo_number,
+                badgeNode: <JobOrderChip jobOrder={jobOrder} />,
                 title: jobOrder.title,
                 meta: formatDateRange(jobOrder.start_date, jobOrder.end_date),
                 total: summary?.byJobOrder?.[String(jobOrder.id)] ?? 0,
