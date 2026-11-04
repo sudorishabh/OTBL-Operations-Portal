@@ -85,7 +85,7 @@ export const contractOrderQueryRouter = router({
       }),
     ),
 
-  // A work order's purchase and subcontract orders, newest first, with the
+  // A work order's purchase orders and sub-contracts, newest first, with the
   // requirement at each site and the vendors given the order.
   getContractOrders: protectedProcedure
     .input(contractOrderSchemas.getContractOrdersSchema)

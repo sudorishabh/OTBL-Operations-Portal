@@ -141,11 +141,11 @@ const ContractorDetail = ({ contractorId, type }: Props) => {
       <section className='space-y-2'>
         <h3 className='flex items-center gap-2 text-sm font-semibold text-gray-800'>
           <ShoppingCart className='size-4 text-gray-400' />
-          Purchase &amp; Work Orders
+          Purchase Orders &amp; Sub-contracts
         </h3>
         {contractOrders.length === 0 ? (
           <p className='rounded-lg border border-dashed py-6 text-center text-xs text-gray-400'>
-            Not on any purchase or work order yet.
+            Not on any purchase order or sub-contract yet.
           </p>
         ) : (
           <div className='overflow-x-auto rounded-lg border border-gray-200 bg-white'>
@@ -174,7 +174,7 @@ const ContractorDetail = ({ contractorId, type }: Props) => {
                         )}
                         {order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER
                           ? "Purchase order"
-                          : "Work order"}
+                          : "Sub-contract"}
                       </span>
                     </TableCell>
                     <TableCell className={cn(cellClass, "text-xs")}>

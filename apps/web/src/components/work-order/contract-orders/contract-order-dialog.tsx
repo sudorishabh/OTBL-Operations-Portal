@@ -64,8 +64,8 @@ const fieldLabel = "mb-1 block text-xs font-medium text-gray-700";
 const itemUnit = (item: string) =>
   CONTRACT_ORDER_ITEMS.find((option) => option.key === item)?.unit ?? "";
 
-// Creates or edits a purchase order or subcontract work order: who it is
-// given to and what it requires at each of the work order's sites.
+// Creates or edits a purchase order or sub-contract: who it is given to and
+// what it requires at each of the work order's sites.
 const ContractOrderDialog = ({
   workOrderId,
   open,
@@ -207,7 +207,7 @@ const ContractOrderDialog = ({
   return (
     <DialogWindow
       title={editing ? "Edit Order" : "New Order"}
-      description='A purchase order buys material; a work order subcontracts a service'
+      description='A purchase order buys material; a sub-contract gives out a service'
       size='xl'
       heightMode='full'
       open={open}

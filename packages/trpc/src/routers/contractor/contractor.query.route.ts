@@ -145,7 +145,7 @@ export const contractorQueryRouter = router({
         }
       }),
     ),
-  // The purchase and work orders and the job orders a vendor or
+  // The purchase orders, sub-contracts and job orders a vendor or
   // sub-contractor is on, in work orders the user can see, each with what has
   // been spent under them.
   getContractorWork: protectedProcedure
