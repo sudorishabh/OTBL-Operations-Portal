@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { type proposalTypes } from "@pkg/schema";
 import { statusOf } from "@/lib/wo-site-display";
+import { type ProposalStatus } from "./proposal-wo-display";
 
 type Row = proposalTypes.getProposalsByClientReturnType;
 
@@ -18,11 +19,16 @@ export type WorkOrderFilter = (typeof WORK_ORDER_FILTERS)[number]["value"];
 export interface ProposalFilters {
   search: string;
   workOrder: WorkOrderFilter;
+  proposalStatus: ProposalStatus | "all";
+  // A work order process, or "all".
+  process: string;
 }
 
 const DEFAULT_FILTERS: ProposalFilters = {
   search: "",
   workOrder: "all",
+  proposalStatus: "all",
+  process: "all",
 };
 
 const workOrderGroup = (row: Row): Exclude<WorkOrderFilter, "all"> =>
@@ -43,9 +49,19 @@ export const useProposalFilters = (rows: Row[]) => {
   const query = filters.search.trim().toLowerCase();
 
   // Every filter but the work order one, so each tab counts what it'd list.
+  const { proposalStatus, process: processType } = filters;
   const narrowed = useMemo(
-    () => rows.filter((row) => matchesSearch(row, query)),
-    [rows, query],
+    () =>
+      rows.filter(
+        (row) =>
+          matchesSearch(row, query) &&
+          (proposalStatus === "all" ||
+            row.proposal.status === proposalStatus) &&
+          // Only a work order has a process.
+          (processType === "all" ||
+            row.workOrder?.process_type === processType),
+      ),
+    [rows, query, proposalStatus, processType],
   );
 
   const counts = useMemo(() => {
@@ -76,7 +92,11 @@ export const useProposalFilters = (rows: Row[]) => {
 
   const reset = useCallback(() => setFilters(DEFAULT_FILTERS), []);
 
-  const isFiltered = query !== "" || filters.workOrder !== "all";
+  const isFiltered =
+    query !== "" ||
+    filters.workOrder !== "all" ||
+    proposalStatus !== "all" ||
+    processType !== "all";
 
   return { filters, setFilter, reset, isFiltered, visible, counts };
 };

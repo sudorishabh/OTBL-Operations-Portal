@@ -73,6 +73,8 @@ const ProposalWOMain = ({ clientId }: Props) => {
             filters={filters}
             counts={counts}
             setFilter={setFilter}
+            isFiltered={isFiltered}
+            reset={reset}
           />
         )}
 
