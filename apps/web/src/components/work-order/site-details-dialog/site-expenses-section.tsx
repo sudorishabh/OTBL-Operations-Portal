@@ -77,6 +77,8 @@ type ExpenseRecord = {
   contractorId: number | null;
   contractorName: string | null;
   contractOrderItemId: number | null;
+  // Recorded by its purchase order, so changed only there.
+  fromOrder: boolean;
   jobOrderId: number | null;
   invoiceNumber: string | null;
   documents: StoredDocument[];
@@ -386,6 +388,7 @@ const SiteExpensesSection = ({
         contractorId: exp.contractor_id ?? null,
         contractorName: exp.contractor_name ?? null,
         contractOrderItemId: exp.contract_order_item_id ?? null,
+        fromOrder: !!exp.from_order,
         jobOrderId: exp.job_order_id ?? null,
         invoiceNumber: exp.invoice_number ?? null,
         documents: toDocuments(exp.documents),
@@ -506,28 +509,34 @@ const SiteExpensesSection = ({
             </span>
           </TableCell>
           <TableCell className={cn(cellClass, actionsColumnClass, "whitespace-nowrap")}>
-            <div className='flex items-center justify-end gap-0.5'>
+            <div
+              className='flex items-center justify-end gap-0.5'
+              title={
+                record.fromOrder
+                  ? "Recorded by its purchase order. Edit the order to change it."
+                  : undefined
+              }>
               <button
                 type='button'
                 aria-label='Edit expense'
-                title='Edit'
+                title={record.fromOrder ? undefined : "Edit"}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (expense) handleEdit(expense);
                 }}
-                disabled={isViewer || !expense}
+                disabled={isViewer || !expense || record.fromOrder}
                 className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30'>
                 <Pencil className='size-3.5' />
               </button>
               <button
                 type='button'
                 aria-label='Delete expense'
-                title='Delete'
+                title={record.fromOrder ? undefined : "Delete"}
                 onClick={(e) => {
                   e.stopPropagation();
                   setDeletingId(record.id);
                 }}
-                disabled={isViewer}
+                disabled={isViewer || record.fromOrder}
                 className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30'>
                 <Trash2 className='size-3.5' />
               </button>
@@ -722,8 +731,9 @@ const SiteExpensesSection = ({
     vendors: { id: number; name: string }[];
     records: ExpenseRecord[];
     vendorTotal: (vendorId: number) => number;
-    // Adds an expense on it, under the vendor chosen in the dialog.
-    onAdd: () => void;
+    // Adds an expense on it, under the vendor chosen in the dialog. Left out
+    // where expenses aren't added at the site, as on a purchase order.
+    onAdd?: () => void;
     // Where it stands, such as a job order's certificates.
     status?: React.ReactNode;
     menu?: React.ReactNode;
@@ -815,7 +825,8 @@ const SiteExpensesSection = ({
             </div>
           </div>
           {group.status}
-          {renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)}
+          {group.onAdd &&
+            renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)}
           {renderTotal(group.total, "min-w-24 text-sm")}
           <div className={menuSlotClass}>{group.menu}</div>
         </div>
@@ -1135,7 +1146,16 @@ const SiteExpensesSection = ({
                 records: records.filter((r) => r.contractOrderItemId === item.id),
                 vendorTotal: (vendorId: number) =>
                   orderItemVendorTotal(item.id, vendorId),
-                onAdd: () => openAddExpense(null, item.id),
+                // A purchase order records its own cost, from its rate.
+                ...(type === constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER
+                  ? {
+                      status: (
+                        <span className='shrink-0 whitespace-nowrap rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-200'>
+                          Costed by the order
+                        </span>
+                      ),
+                    }
+                  : { onAdd: () => openAddExpense(null, item.id) }),
               })),
             };
           }),

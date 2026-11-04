@@ -52,6 +52,8 @@ export interface Expense {
   contractor_id: number | null;
   contractor_name: string | null;
   contract_order_item_id?: number | null;
+  // Recorded by its purchase order rather than at the site.
+  from_order?: number | boolean;
   job_order_id?: number | null;
   activity_key: string | null;
   quantity: string | null;
