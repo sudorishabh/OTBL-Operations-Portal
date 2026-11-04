@@ -1,12 +1,12 @@
-import { and, eq, sum } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
-import { constants } from "@pkg/utils";
+import { certifiedQuantityByActivity, constants } from "@pkg/utils";
 
 const {
   workOrderSiteTable,
   siteActivityTable,
   scheduleOfRatesTable,
-  workOrderSiteExpenseTable,
+  jobOrderTable,
 } = schema;
 const { WO_PROCESS, WORK_ORDER_STATUS, allActivityOptions } = constants;
 
@@ -82,9 +82,10 @@ export async function createRestorationRow(
 // Allowance for decimal rounding when comparing quantities.
 const QTY_EPSILON = 0.001;
 
-// A restoration is complete once its expenses have used up the quantity of
-// every activity in its schedule of rates, and reopens if they no longer do.
-// Activities without a quantity don't count; a cancelled one is left alone.
+// A restoration is complete once its job orders' completion certificates
+// have used up the quantity of every activity in its schedule of rates, and
+// reopens if they no longer do. Activities without a quantity don't count; a
+// cancelled one is left alone.
 export async function syncRestorationCompletion(
   db: DbOrTx,
   workOrderSiteId: number,
@@ -113,17 +114,11 @@ export async function syncRestorationCompletion(
     )
     .where(eq(siteActivityTable.work_order_site_id, workOrderSiteId));
 
-  const used = await db
-    .select({
-      activity: workOrderSiteExpenseTable.activity_key,
-      quantity: sum(workOrderSiteExpenseTable.quantity),
-    })
-    .from(workOrderSiteExpenseTable)
-    .where(eq(workOrderSiteExpenseTable.work_order_site_id, workOrderSiteId))
-    .groupBy(workOrderSiteExpenseTable.activity_key);
-  const usedByActivity = new Map(
-    used.map((u) => [u.activity, Number(u.quantity ?? 0)]),
-  );
+  const jobOrders = await db
+    .select({ completion_activities: jobOrderTable.completion_activities })
+    .from(jobOrderTable)
+    .where(eq(jobOrderTable.work_order_site_id, workOrderSiteId));
+  const certified = certifiedQuantityByActivity(jobOrders);
 
   const measured = targets
     .map((t) => ({ activity: t.activity, quantity: Number(t.quantity ?? 0) }))
@@ -131,7 +126,7 @@ export async function syncRestorationCompletion(
   const isComplete =
     measured.length > 0 &&
     measured.every(
-      (t) => (usedByActivity.get(t.activity) ?? 0) + QTY_EPSILON >= t.quantity,
+      (t) => (certified[t.activity] ?? 0) + QTY_EPSILON >= t.quantity,
     );
 
   if (isComplete !== row.is_completed) {
