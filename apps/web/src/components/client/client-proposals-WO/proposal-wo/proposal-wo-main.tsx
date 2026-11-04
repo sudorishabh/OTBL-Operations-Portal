@@ -8,12 +8,18 @@ import CreateWODialog from "../create-wo/create-wo-dialog";
 import ClientProposalSkeleton from "@/components/skeleton/client/client-proposal-skeleton";
 import ProposalDetailDialog from "./proposal-detail-dialog";
 import ProposalWOList from "./proposal-wo-list";
+import ProposalWOFilters from "./proposal-wo-filters";
+import { useProposalFilters } from "./use-proposal-filters";
+import { type proposalTypes } from "@pkg/schema";
 import ProcessSectionHeader from "@/components/work-order/process-section-header";
 import { useIsAdmin } from "@/contexts/AuthContext";
 
 interface Props {
   clientId: string;
 }
+
+// A stable empty list, so the filters don't recompute while loading.
+const NO_ROWS: proposalTypes.getProposalsByClientReturnType[] = [];
 
 const ProposalWOMain = ({ clientId }: Props) => {
   const { setParam, getParam } = useHandleParams();
@@ -23,12 +29,14 @@ const ProposalWOMain = ({ clientId }: Props) => {
     { client_id: Number(clientId) },
     { enabled: !!clientId },
   );
+  const proposals = data?.proposals ?? NO_ROWS;
+  const { filters, setFilter, reset, isFiltered, visible, counts } =
+    useProposalFilters(proposals);
 
   if (isLoading) {
     return <ClientProposalSkeleton />;
   }
 
-  const proposals = data?.proposals || [];
   const total = proposals.length;
 
   const proposalId = getParam("proposal-id");
@@ -44,9 +52,11 @@ const ProposalWOMain = ({ clientId }: Props) => {
           Icon={FileStack}
           title='Proposals and work orders'
           description={
-            total > 0
-              ? `${total} ${total === 1 ? "proposal" : "proposals"}, each beside the work order made from it`
-              : "Each proposal beside the work order made from it"
+            isFiltered
+              ? `Showing ${visible.length} of ${total} proposals`
+              : total > 0
+                ? `${total} ${total === 1 ? "proposal" : "proposals"}, each beside the work order made from it`
+                : "Each proposal beside the work order made from it"
           }>
           {isAdmin && (
             <CustomButton
@@ -58,8 +68,26 @@ const ProposalWOMain = ({ clientId }: Props) => {
           )}
         </ProcessSectionHeader>
 
-        {proposals.length > 0 ? (
-          <ProposalWOList rows={proposals} />
+        {total > 0 && (
+          <ProposalWOFilters
+            filters={filters}
+            counts={counts}
+            setFilter={setFilter}
+          />
+        )}
+
+        {visible.length > 0 ? (
+          <ProposalWOList rows={visible} />
+        ) : total > 0 ? (
+          <div className='rounded-lg border border-dashed py-8 text-center text-xs text-gray-500'>
+            No proposals match these filters.{" "}
+            <button
+              type='button'
+              onClick={reset}
+              className='cursor-pointer font-medium text-emerald-700 hover:text-emerald-800'>
+              Clear filters
+            </button>
+          </div>
         ) : (
           <p className='rounded-lg border border-dashed py-8 text-center text-xs text-gray-500'>
             No proposals yet.
