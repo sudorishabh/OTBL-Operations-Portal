@@ -17,12 +17,16 @@ import JobOrderActivitiesTable, {
 } from "./job-order-activities-table";
 import type { JobOrder, JobOrderWorkOrder } from "./job-order-dialog";
 import type { JobOrderFormContent } from "./job-order-form-pdf";
+import { sorLeftByRow } from "./restoration-display";
+import type { RestorationRate } from "./restoration-rates-table";
 import useJobOrderFormDownload from "./use-job-order-form-download";
 
 interface Props {
   restorationId: number;
   jobOrder: JobOrder;
   workOrder: JobOrderWorkOrder;
+  // The work order's restoration schedule of rates.
+  rates: RestorationRate[];
   open: boolean;
   onClose: () => void;
 }
@@ -52,6 +56,7 @@ const JobOrderCompletionDialog = ({
   restorationId,
   jobOrder,
   workOrder,
+  rates,
   open,
   onClose,
 }: Props) => {
@@ -76,6 +81,17 @@ const JobOrderCompletionDialog = ({
     setEntries(startingEntries(jobOrder));
     setSaved(null);
   }, [open]);
+
+  // The certificate uses up the schedule of rates as it reads now.
+  const jobOrdersQuery = trpc.jobOrderQuery.getJobOrders.useQuery(
+    { work_order_site_id: restorationId },
+    { enabled: open },
+  );
+  const sorLeft = sorLeftByRow(
+    rates,
+    (jobOrdersQuery.data ?? []) as JobOrder[],
+    { jobOrderId: jobOrder.id, rows: toActivityRows(entries) },
+  );
 
   const setCompletion = trpc.jobOrderMutation.setJobOrderCompletion.useMutation(
     {
@@ -105,9 +121,14 @@ const JobOrderCompletionDialog = ({
     setCompletion.mutate(parsed.data, {
       onSuccess: async () => {
         setSaved(content);
-        await utils.jobOrderQuery.getJobOrders.invalidate({
-          work_order_site_id: restorationId,
-        });
+        // The certificate may have completed the restoration, or reopened it.
+        await Promise.all([
+          utils.jobOrderQuery.getJobOrders.invalidate({
+            work_order_site_id: restorationId,
+          }),
+          utils.restorationQuery.getRestoration.invalidate(),
+          utils.workOrderQuery.getWorkOrderDetails.invalidate(),
+        ]);
       },
     });
   };
@@ -210,12 +231,14 @@ const JobOrderCompletionDialog = ({
               <p className='mt-0.5 text-xs text-gray-500'>
                 Actual quantities and the dates the work was done, as they go on
                 the certificate. Until saved, the quantities are the job
-                order's.
+                order's. They use up the schedule of rates; SOR left counts them
+                as written here.
               </p>
             </div>
             <JobOrderActivitiesTable
               form='completion'
               entries={entries}
+              sorLeft={sorLeft}
               disabled={isViewer}
               onChange={(key, entry) =>
                 setEntries((prev) => ({ ...prev, [key]: entry }))

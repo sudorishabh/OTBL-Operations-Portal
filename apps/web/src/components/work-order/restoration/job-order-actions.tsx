@@ -14,12 +14,15 @@ import { useIsViewer } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import JobOrderCompletionDialog from "./job-order-completion-dialog";
 import type { JobOrder, JobOrderWorkOrder } from "./job-order-dialog";
+import type { RestorationRate } from "./restoration-rates-table";
 import useJobOrderFormDownload from "./use-job-order-form-download";
 
 interface Props {
   restorationId: number;
   jobOrder: JobOrder;
   workOrder: JobOrderWorkOrder;
+  // The work order's restoration schedule of rates.
+  rates: RestorationRate[];
   onEdit: () => void;
   // Extra buttons before edit and delete.
   children?: React.ReactNode;
@@ -35,6 +38,7 @@ const JobOrderActions = ({
   restorationId,
   jobOrder,
   workOrder,
+  rates,
   onEdit,
   children,
 }: Props) => {
@@ -48,9 +52,14 @@ const JobOrderActions = ({
   const deleteJobOrder = trpc.jobOrderMutation.deleteJobOrder.useMutation({
     onSuccess: async () => {
       toast.success("Job order deleted");
-      await utils.jobOrderQuery.getJobOrders.invalidate({
-        work_order_site_id: restorationId,
-      });
+      // Its certificate no longer uses up the schedule of rates.
+      await Promise.all([
+        utils.jobOrderQuery.getJobOrders.invalidate({
+          work_order_site_id: restorationId,
+        }),
+        utils.restorationQuery.getRestoration.invalidate(),
+        utils.workOrderQuery.getWorkOrderDetails.invalidate(),
+      ]);
     },
     onError: (error: unknown) => handleError(error, { showToast: true }),
   });
@@ -109,6 +118,7 @@ const JobOrderActions = ({
         restorationId={restorationId}
         jobOrder={jobOrder}
         workOrder={workOrder}
+        rates={rates}
         open={completionOpen}
         onClose={() => setCompletionOpen(false)}
       />
