@@ -39,9 +39,9 @@ interface Props {
   reset: () => void;
 }
 
-// Work order tabs with how many rows each holds; then search, the
-// proposal's approval status and submission dates, and the work order's
-// process.
+// One line: work order tabs with how many rows each holds on the left;
+// search, the proposal's approval status and submission dates, and the
+// work order's process on the right. Wraps on narrow screens.
 const ProposalWOFilters = ({
   filters,
   counts,
@@ -49,35 +49,28 @@ const ProposalWOFilters = ({
   isFiltered,
   reset,
 }: Props) => (
-  <div className='mb-3 flex flex-col gap-2'>
+  <div className='mb-3 flex flex-wrap items-center gap-2'>
     <Tabs
       value={filters.workOrder}
       onValueChange={(value) =>
         setFilter("workOrder", value as WorkOrderFilter)
       }
-      className='min-w-0'>
-      <div className='flex min-w-0 items-center gap-2'>
-        <span className='shrink-0 text-xs text-gray-500'>Work order</span>
-        <div className='min-w-0 overflow-x-auto'>
-          <TabsList className='h-8'>
-            {WORK_ORDER_FILTERS.map(({ value, label }) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className='gap-1.5 px-3 text-xs text-gray-800'>
-                {label}
-                <span className='tabular-nums text-gray-400'>
-                  {counts[value]}
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-      </div>
+      className='min-w-0 max-w-full'>
+      <TabsList className='h-8 max-w-full overflow-x-auto'>
+        {WORK_ORDER_FILTERS.map(({ value, label }) => (
+          <TabsTrigger
+            key={value}
+            value={value}
+            className='gap-1.5 px-3 text-xs text-gray-800'>
+            {label}
+            <span className='tabular-nums text-gray-400'>{counts[value]}</span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
     </Tabs>
 
-    <div className='flex flex-wrap items-center gap-2'>
-      <div className='w-full sm:w-56'>
+    <div className='ml-auto flex flex-wrap items-center gap-2'>
+      <div className='w-full sm:w-52'>
         <Input
           mode='standalone'
           type='text'
