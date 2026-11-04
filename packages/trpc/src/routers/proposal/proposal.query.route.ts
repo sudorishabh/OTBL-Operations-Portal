@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, like, lt, or } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -19,6 +19,13 @@ import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-w
 const { proposalTable, workOrderTable } = schema;
 
 type WorkOrderGroup = "none" | "pending" | "completed" | "cancelled";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Submission dates are saved from a YYYY-MM-DD as that day's UTC midnight,
+// so a day's range is read the same way.
+const startOfDay = (day: string) => new Date(day);
+const startOfNextDay = (day: string) => new Date(Date.parse(day) + DAY_MS);
 
 async function applyProposalScopeForClient(
   scope: AccessScope,
@@ -98,6 +105,18 @@ export const proposalQueryRouter = router({
               : undefined,
             input.process !== "all"
               ? eq(workOrderTable.process_type, input.process)
+              : undefined,
+            input.submittedFrom
+              ? gte(
+                  proposalTable.proposal_submission_date,
+                  startOfDay(input.submittedFrom),
+                )
+              : undefined,
+            input.submittedTo
+              ? lt(
+                  proposalTable.proposal_submission_date,
+                  startOfNextDay(input.submittedTo),
+                )
               : undefined,
           );
           const newestFirst = [

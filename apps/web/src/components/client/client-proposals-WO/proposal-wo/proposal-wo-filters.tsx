@@ -13,6 +13,7 @@ import {
   type ProposalFilters,
   type WorkOrderFilter,
 } from "./use-proposal-filters";
+import SubmittedDateFilter from "./submitted-date-filter";
 
 const PROPOSAL_STATUS_OPTIONS = [
   { label: "All proposals", value: "all" },
@@ -39,7 +40,8 @@ interface Props {
 }
 
 // Work order tabs with how many rows each holds; then search, the
-// proposal's approval status and the work order's process.
+// proposal's approval status and submission dates, and the work order's
+// process.
 const ProposalWOFilters = ({
   filters,
   counts,
@@ -47,7 +49,7 @@ const ProposalWOFilters = ({
   isFiltered,
   reset,
 }: Props) => (
-  <div className='mb-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between'>
+  <div className='mb-3 flex flex-col gap-2'>
     <Tabs
       value={filters.workOrder}
       onValueChange={(value) =>
@@ -97,6 +99,14 @@ const ProposalWOFilters = ({
           setFilter("proposalStatus", value as ProposalStatus | "all")
         }
         className='h-8! w-36 text-xs'
+      />
+      <SubmittedDateFilter
+        from={filters.submittedFrom}
+        to={filters.submittedTo}
+        onChange={(from, to) => {
+          setFilter("submittedFrom", from);
+          setFilter("submittedTo", to);
+        }}
       />
       <Input
         mode='standalone'

@@ -19,6 +19,9 @@ export interface ProposalFilters {
   workOrder: WorkOrderFilter;
   proposalStatus: ProposalStatus | "all";
   process: workOrderTypes.workOrderType["process_type"] | "all";
+  // Submission date range as YYYY-MM-DD, both ends included.
+  submittedFrom?: string;
+  submittedTo?: string;
 }
 
 const DEFAULT_FILTERS: ProposalFilters = {
@@ -33,7 +36,13 @@ const DEFAULT_FILTERS: ProposalFilters = {
 export const useProposalFilters = () => {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const search = useDebounce(filters.search.trim(), 300);
-  const { workOrder, proposalStatus, process: processType } = filters;
+  const {
+    workOrder,
+    proposalStatus,
+    process: processType,
+    submittedFrom,
+    submittedTo,
+  } = filters;
 
   const query = useMemo(
     () => ({
@@ -41,8 +50,17 @@ export const useProposalFilters = () => {
       workOrder,
       proposalStatus,
       process: processType,
+      submittedFrom,
+      submittedTo,
     }),
-    [search, workOrder, proposalStatus, processType],
+    [
+      search,
+      workOrder,
+      proposalStatus,
+      processType,
+      submittedFrom,
+      submittedTo,
+    ],
   );
 
   const setFilter = useCallback(
@@ -57,7 +75,9 @@ export const useProposalFilters = () => {
     filters.search.trim() !== "" ||
     workOrder !== "all" ||
     proposalStatus !== "all" ||
-    processType !== "all";
+    processType !== "all" ||
+    !!submittedFrom ||
+    !!submittedTo;
 
   return { filters, query, setFilter, reset, isFiltered };
 };

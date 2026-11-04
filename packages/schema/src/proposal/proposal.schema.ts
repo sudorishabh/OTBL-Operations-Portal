@@ -61,6 +61,9 @@ export const getProposalsByClientSchema = z.object({
     .enum(["all", "pending", "approved", "rejected"])
     .default("all"),
   process: z.union([z.literal("all"), processTypeEnum]).default("all"),
+  // Submission dates, both ends included, as YYYY-MM-DD.
+  submittedFrom: z.iso.date().optional(),
+  submittedTo: z.iso.date().optional(),
 });
 
 export const getProposalByIdSchema = z.object({
