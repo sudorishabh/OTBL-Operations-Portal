@@ -6,6 +6,7 @@ import CustomButton from "@/components/shared/btn";
 import { Users, Settings2 } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
 import { useIsManager } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 import WoSiteOperatorsDialog from "./wo-site-operators-dialog";
 
 type Props = {
@@ -39,64 +40,54 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
 
   const operators: AssignedOperator[] = data ?? [];
 
-  // Unboxed, as it sits inside the site's or restoration's information panel.
+  // One line, unboxed, inside the site's or restoration's information
+  // panel: who's assigned beside the title, the action on the right.
   return (
-    <div className={className}>
-      <div className='mb-2 flex items-center justify-between gap-2'>
-        <div className='flex items-center gap-2'>
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-x-4 gap-y-2",
+        className,
+      )}>
+      <div className='flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5'>
+        <span
+          className='inline-flex shrink-0 items-center gap-2'
+          title={`Only the operators assigned here can upload documents to this ${subject}.`}>
           <Users className='size-3.5 text-gray-400' />
           <span className='text-xs font-medium text-gray-700'>
             Site operators
           </span>
-          <span className='text-[11px] tabular-nums text-gray-400'>
-            {operators.length} assigned
+        </span>
+
+        {isLoading ? (
+          <span className='h-5 w-40 animate-pulse rounded-full bg-muted/60' />
+        ) : operators.length === 0 ? (
+          <span className='text-xs text-gray-400'>
+            None assigned yet. Only assigned operators can upload documents to
+            this {subject}.
           </span>
-        </div>
-        <CustomButton
-          type='button'
-          variant='outline'
-          Icon={Settings2}
-          text='Manage operators'
-          onClick={() => setDialogOpen(true)}
-          className='h-7 px-2.5 text-xs'
-          disableForViewer
-        />
-      </div>
-
-      <p className='mb-2.5 text-[11px] text-gray-400'>
-        Only the operators assigned here can upload documents to this{" "}
-        {subject}.
-      </p>
-
-      {isLoading ? (
-        <div className='flex flex-wrap gap-2'>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className='h-6 w-28 animate-pulse rounded-full bg-muted/60'
-            />
-          ))}
-        </div>
-      ) : operators.length === 0 ? (
-        <p className='text-xs text-muted-foreground'>
-          No operators assigned yet. Use{" "}
-          <span className='font-medium'>Manage operators</span> to assign Site
-          Operators to this {subject}.
-        </p>
-      ) : (
-        <div className='flex flex-wrap gap-2'>
-          {operators.map((o) => (
-            <span
-              key={o.user_id}
-              className='inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-2 py-0.5 text-xs text-gray-700 ring-1 ring-inset ring-gray-200'
-              title={o.email ?? undefined}>
-              <span className='font-medium'>
+        ) : (
+          <div className='flex min-w-0 flex-wrap gap-1.5'>
+            {operators.map((o) => (
+              <span
+                key={o.user_id}
+                className='inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-200'
+                title={o.email ?? undefined}>
                 {o.name ? capitalizeEachWord(o.name) : `User ${o.user_id}`}
               </span>
-            </span>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
+
+      <CustomButton
+        type='button'
+        variant='outline'
+        Icon={Settings2}
+        text={operators.length === 0 ? "Assign operators" : "Manage"}
+        onClick={() => setDialogOpen(true)}
+        className='h-7 px-2.5 text-xs'
+        disableForViewer
+      />
 
       <WoSiteOperatorsDialog
         open={dialogOpen}
