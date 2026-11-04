@@ -36,7 +36,6 @@ const NO_COUNTS: Record<WorkOrderFilter, number> = {
   none: 0,
   pending: 0,
   completed: 0,
-  cancelled: 0,
 };
 
 const plural = (count: number) => (count === 1 ? "proposal" : "proposals");

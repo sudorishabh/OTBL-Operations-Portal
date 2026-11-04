@@ -3,13 +3,12 @@ import { type workOrderTypes } from "@pkg/schema";
 import { useDebounce } from "@/hooks/useDebounce";
 import { type ProposalStatus } from "./proposal-wo-display";
 
-// Rows are grouped by their work order: none yet, or its status.
+// Rows are grouped by their work order: none yet, pending or completed.
 export const WORK_ORDER_FILTERS = [
   { value: "all", label: "All" },
   { value: "none", label: "No work order" },
   { value: "pending", label: "Pending" },
   { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
 ] as const;
 
 export type WorkOrderFilter = (typeof WORK_ORDER_FILTERS)[number]["value"];

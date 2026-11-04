@@ -161,15 +161,18 @@ export const proposalQueryRouter = router({
                 row.workOrderStatus ??
                 "pending");
 
-          // How many rows each work order tab would list.
+          // How many rows each work order tab would list. Cancelled work
+          // orders have no tab, so they count towards "all" only.
           const counts = {
             all: candidates.length,
             none: 0,
             pending: 0,
             completed: 0,
-            cancelled: 0,
           };
-          for (const row of candidates) counts[groupOf(row)] += 1;
+          for (const row of candidates) {
+            const group = groupOf(row);
+            if (group !== "cancelled") counts[group] += 1;
+          }
 
           const matching =
             workOrderFilter === "all"
