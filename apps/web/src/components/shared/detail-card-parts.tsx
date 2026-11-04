@@ -1,7 +1,27 @@
 import React from "react";
+import { constants } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 
 // Building blocks shared by the work order and client details cards.
+
+// Pill colours for a work order's status and process.
+export const STATUS_STYLES: Record<
+  "pending" | "completed" | "cancelled",
+  string
+> = {
+  completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
+  pending: "bg-amber-50 text-amber-700 ring-amber-200",
+};
+
+export const PROCESS_STYLES: Record<string, string> = {
+  [constants.WO_PROCESS.BIOREMEDIATION]:
+    "bg-blue-50 text-blue-700 ring-blue-200",
+  [constants.WO_PROCESS.RESTORATION]:
+    "bg-purple-50 text-purple-700 ring-purple-200",
+  [constants.WO_PROCESS.BIOREMEDIATION_RESTORATION]:
+    "bg-orange-50 text-orange-700 ring-orange-200",
+};
 
 // A small outlined pill for statuses and types.
 export const Pill = ({

@@ -15,6 +15,8 @@ import {
   Field,
   Metric,
   Pill,
+  PROCESS_STYLES,
+  STATUS_STYLES,
 } from "@/components/shared/detail-card-parts";
 import { toDocuments } from "@/lib/documents";
 import { useIsAdmin } from "@/contexts/AuthContext";
@@ -66,19 +68,6 @@ interface Props {
     net_surplus: number;
   } | null;
 }
-
-const STATUS_STYLES: Record<Props["workOrder"]["status"], string> = {
-  completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
-  pending: "bg-amber-50 text-amber-700 ring-amber-200",
-};
-
-const PROCESS_STYLES: Record<string, string> = {
-  [constants.WO_PROCESS.BIOREMEDIATION]: "bg-blue-50 text-blue-700 ring-blue-200",
-  [constants.WO_PROCESS.RESTORATION]: "bg-purple-50 text-purple-700 ring-purple-200",
-  [constants.WO_PROCESS.BIOREMEDIATION_RESTORATION]:
-    "bg-orange-50 text-orange-700 ring-orange-200",
-};
 
 const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
