@@ -104,7 +104,9 @@ const ProposalWOFilters = ({
         isWhiteBg
         selectOptions={PROCESS_OPTIONS}
         value={filters.process}
-        onChange={(value: string) => setFilter("process", value)}
+        onChange={(value: string) =>
+          setFilter("process", value as ProposalFilters["process"])
+        }
         className='h-8! w-40 text-xs'
       />
       {isFiltered && (

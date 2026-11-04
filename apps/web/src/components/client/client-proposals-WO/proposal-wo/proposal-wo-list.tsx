@@ -10,10 +10,12 @@ const ROW_GRID = "md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)]";
 
 interface Props {
   rows: proposalTypes.getProposalsByClientReturnType[];
+  // Below the rows, inside the list's border.
+  footer?: React.ReactNode;
 }
 
 // Each proposal beside the work order made from it, one row apiece.
-const ProposalWOList = ({ rows }: Props) => (
+const ProposalWOList = ({ rows, footer }: Props) => (
   <div className='overflow-hidden rounded-lg border border-gray-200'>
     <div
       className={cn(
@@ -51,6 +53,8 @@ const ProposalWOList = ({ rows }: Props) => (
         </li>
       ))}
     </ul>
+
+    {footer}
   </div>
 );
 
