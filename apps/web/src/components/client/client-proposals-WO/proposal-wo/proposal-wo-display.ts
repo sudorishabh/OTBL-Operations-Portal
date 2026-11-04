@@ -1,4 +1,18 @@
+import { constants } from "@pkg/utils";
+
 // Labels and colours shared by the proposal rows and their filters.
+
+const { WO_PROCESS } = constants;
+
+// A dot rather than a pill, so the process never reads as a second status.
+export const PROCESSES: Record<string, { label: string; dot: string }> = {
+  [WO_PROCESS.BIOREMEDIATION]: { label: "Bioremediation", dot: "bg-blue-500" },
+  [WO_PROCESS.RESTORATION]: { label: "Restoration", dot: "bg-purple-500" },
+  [WO_PROCESS.BIOREMEDIATION_RESTORATION]: {
+    label: "Bio + Restoration",
+    dot: "bg-orange-500",
+  },
+};
 
 export type ProposalStatus = "pending" | "approved" | "rejected";
 

@@ -2,7 +2,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { CalendarCheck, CalendarDays, Plus } from "lucide-react";
-import { capitalFirstLetter, constants } from "@pkg/utils";
+import { capitalFirstLetter } from "@pkg/utils";
 import { type workOrderTypes } from "@pkg/schema";
 import { Pill, STATUS_STYLES } from "@/components/shared/detail-card-parts";
 import useHandleParams from "@/hooks/useHandleParams";
@@ -15,24 +15,13 @@ import {
   statusOf,
   toDate,
 } from "@/lib/wo-site-display";
+import { PROCESSES } from "./proposal-wo-display";
 import { DocumentsCount, MetaItem, RowCell } from "./row-cell";
-
-const { WO_PROCESS } = constants;
 
 interface Props {
   workOrder: workOrderTypes.workOrderType | null;
   proposalId: number;
 }
-
-// A dot rather than a pill, so the process never reads as a second status.
-const PROCESSES: Record<string, { label: string; dot: string }> = {
-  [WO_PROCESS.BIOREMEDIATION]: { label: "Bioremediation", dot: "bg-blue-500" },
-  [WO_PROCESS.RESTORATION]: { label: "Restoration", dot: "bg-purple-500" },
-  [WO_PROCESS.BIOREMEDIATION_RESTORATION]: {
-    label: "Bio + Restoration",
-    dot: "bg-orange-500",
-  },
-};
 
 // Shown in the work order's place until one is made from the proposal.
 const NoWorkOrder = ({ proposalId }: { proposalId: number }) => {
