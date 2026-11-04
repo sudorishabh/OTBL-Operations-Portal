@@ -166,12 +166,18 @@ async function getOrder(ctx: TrpcContext, id: number) {
   return order;
 }
 
-async function getOrderItemIds(ctx: TrpcContext, orderId: number) {
-  const items = await ctx.db
-    .select({ id: contractOrderItemTable.id })
+async function getOrderItems(ctx: TrpcContext, orderId: number) {
+  return ctx.db
+    .select({
+      id: contractOrderItemTable.id,
+      work_order_site_id: contractOrderItemTable.work_order_site_id,
+    })
     .from(contractOrderItemTable)
     .where(eq(contractOrderItemTable.contract_order_id, orderId));
-  return items.map((item) => item.id);
+}
+
+async function getOrderItemIds(ctx: TrpcContext, orderId: number) {
+  return (await getOrderItems(ctx, orderId)).map((item) => item.id);
 }
 
 // Expenses recorded at the sites against an order's items, optionally only
@@ -269,7 +275,8 @@ export const contractOrderMutationRouter = router({
         await assertManagesWorkOrder(ctx, order.work_order_id);
         await assertOrderParts(ctx, order.work_order_id, input);
 
-        const existingItemIds = await getOrderItemIds(ctx, input.id);
+        const existingItems = await getOrderItems(ctx, input.id);
+        const existingItemIds = existingItems.map((item) => item.id);
         const keptItemIds = input.items
           .map((item) => item.id)
           .filter((id): id is number => id !== undefined);
@@ -288,6 +295,28 @@ export const contractOrderMutationRouter = router({
         ) {
           throw businessRule(
             "A requirement with expenses recorded against it can't be removed.",
+          );
+        }
+
+        // Its expenses stay at the site they were recorded at.
+        const siteByItem = new Map(
+          existingItems.map((item) => [item.id, item.work_order_site_id]),
+        );
+        const movedItemIds = input.items
+          .filter(
+            (item) =>
+              item.id !== undefined &&
+              siteByItem.get(item.id) !== item.work_order_site_id,
+          )
+          .map((item) => item.id!);
+        if (
+          movedItemIds.length > 0 &&
+          (await countOrderExpenses(ctx, input.id, {
+            itemIds: movedItemIds,
+          })) > 0
+        ) {
+          throw businessRule(
+            "A requirement with expenses recorded at its site can't move to another site.",
           );
         }
 
