@@ -400,13 +400,17 @@ const SiteExpensesSection = ({
     return all.filter((r) => r.activityKey === filterKey);
   }, [expenses, activityOptions, activityFilter]);
 
-  const renderRecordRow = (record: ExpenseRecord, showVendor = true) => {
+  const renderRecordRow = (
+    record: ExpenseRecord,
+    showVendor: boolean,
+    showQty: boolean,
+  ) => {
     const { isExceeded } = record;
     const expense = expenses.find((e) => e.id === record.id);
     const documentCount = record.documents.length;
     const isOpen = expandedId === record.id;
     const toggle = () => setExpandedId(isOpen ? null : record.id);
-    const columnCount = showVendor ? 8 : 7;
+    const columnCount = 6 + (showVendor ? 1 : 0) + (showQty ? 1 : 0);
 
     return (
       <React.Fragment key={record.id}>
@@ -454,18 +458,20 @@ const SiteExpensesSection = ({
               )}
             </p>
           </TableCell>
-          <TableCell className={cn(cellClass, "whitespace-nowrap text-right text-xs tabular-nums")}>
-            {record.quantity ? (
-              <>
-                <span className='font-medium text-gray-800'>
-                  {formatQty(Number(record.quantity))}
-                </span>
-                {record.unit && <span className='ml-1 text-gray-400'>{record.unit}</span>}
-              </>
-            ) : (
-              <span className='text-gray-300'>—</span>
-            )}
-          </TableCell>
+          {showQty && (
+            <TableCell className={cn(cellClass, "whitespace-nowrap text-right text-xs tabular-nums")}>
+              {record.quantity ? (
+                <>
+                  <span className='font-medium text-gray-800'>
+                    {formatQty(Number(record.quantity))}
+                  </span>
+                  {record.unit && <span className='ml-1 text-gray-400'>{record.unit}</span>}
+                </>
+              ) : (
+                <span className='text-gray-300'>—</span>
+              )}
+            </TableCell>
+          )}
           {showVendor && (
             <TableCell className={cn(cellClass, "text-xs text-gray-600")}>
               {record.contractorName ?? <span className='text-gray-300'>—</span>}
@@ -597,30 +603,36 @@ const SiteExpensesSection = ({
     );
   };
 
-  const renderRecordsTable = (rows: ExpenseRecord[], showVendor = true) => (
-    <Table>
-      <TableHeader>
-        <TableRow className='border-gray-100 hover:bg-transparent'>
-          <TableHead className={cn(headClass, "w-[160px]")}>
-            {/* In line with the dates, past each row's arrow. */}
-            <span className='pl-5'>Dates</span>
-          </TableHead>
-          <TableHead className={headClass}>Expense</TableHead>
-          <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
-          {showVendor && <TableHead className={headClass}>Vendor</TableHead>}
-          <TableHead className={cn(headClass, "w-[130px]")}>Invoice</TableHead>
-          <TableHead className={cn(headClass, "w-[100px]")}>Documents</TableHead>
-          <TableHead className={cn(headClass, "w-[120px] text-right")}>Amount</TableHead>
-          <TableHead className={cn(headClass, actionsColumnClass)}>
-            <span className='sr-only'>Actions</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((r) => renderRecordRow(r, showVendor))}
-      </TableBody>
-    </Table>
-  );
+  // Quantity only shows once one of the rows records one.
+  const renderRecordsTable = (rows: ExpenseRecord[], showVendor = true) => {
+    const showQty = rows.some((r) => r.quantity);
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow className='border-gray-100 hover:bg-transparent'>
+            <TableHead className={cn(headClass, "w-[160px]")}>
+              {/* In line with the dates, past each row's arrow. */}
+              <span className='pl-5'>Dates</span>
+            </TableHead>
+            <TableHead className={headClass}>Expense</TableHead>
+            {showQty && (
+              <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
+            )}
+            {showVendor && <TableHead className={headClass}>Vendor</TableHead>}
+            <TableHead className={cn(headClass, "w-[130px]")}>Invoice</TableHead>
+            <TableHead className={cn(headClass, "w-[100px]")}>Documents</TableHead>
+            <TableHead className={cn(headClass, "w-[120px] text-right")}>Amount</TableHead>
+            <TableHead className={cn(headClass, actionsColumnClass)}>
+              <span className='sr-only'>Actions</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => renderRecordRow(r, showVendor, showQty))}
+        </TableBody>
+      </Table>
+    );
+  };
 
   // A records table on its own, such as the miscellaneous expenses.
   const renderRecordsBox = (rows: ExpenseRecord[], showVendor = true) => (
@@ -881,15 +893,17 @@ const SiteExpensesSection = ({
           {renderSectionHeader({
             Icon: ReceiptIndianRupee,
             title: "Miscellaneous",
-            meta: `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
+            meta:
+              miscellaneousRecords.length === 0
+                ? "None yet"
+                : `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
             total: miscellaneousTotal,
             action: renderAddExpenseButton("Add a miscellaneous expense", () =>
               openAddExpense("miscellaneous"),
             ),
           })}
-          {miscellaneousRecords.length > 0
-            ? renderRecordsBox(miscellaneousRecords)
-            : emptyGroupText("No miscellaneous expenses yet.")}
+          {miscellaneousRecords.length > 0 &&
+            renderRecordsBox(miscellaneousRecords)}
         </section>
 
         {expensesPagination && expensesPagination.total > expenses.length && (
