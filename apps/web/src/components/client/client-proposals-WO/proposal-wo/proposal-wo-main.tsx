@@ -5,7 +5,7 @@ import CreateProposalDialog from "./create-proposal-dialog";
 import { trpc } from "@/lib/trpc";
 import ProposalCell from "./proposal-cell";
 import { useHandleParams } from "@/hooks/useHandleParams";
-import WordOrderCard from "./work-order-card";
+import WorkOrderCell from "./work-order-cell";
 import { type proposalTypes } from "@pkg/schema";
 import CreateWODialog from "../create-wo/create-wo-dialog";
 import ClientProposalSkeleton from "@/components/skeleton/client/client-proposal-skeleton";
@@ -106,7 +106,7 @@ const ProposalWOMain = ({ clientId }: Props) => {
                 className='grid grid-cols-1 items-stretch gap-y-3 md:grid-cols-[1fr_56px_1fr] md:gap-y-0'>
                 <ProposalCell proposal={proposal} />
                 <ProposalLink linked={!!workOrder} />
-                <WordOrderCard
+                <WorkOrderCell
                   workOrder={
                     workOrder as proposalTypes.getProposalsByClientReturnType["workOrder"]
                   }
