@@ -10,7 +10,11 @@ import EditSiteDatesDialog from "./edit-site-dates-dialog";
 import SiteEstimate from "./site-estimate";
 import { MobilizationCertificate, ZeroDaySample } from "./site-mobilization";
 import SiteMeasurementSheets from "./site-measurement-sheets";
-import SiteCompletionCertificate from "./site-completion-certificate";
+import SiteCompletionCertificate, {
+  PendingCompletionCertificate,
+} from "./site-completion-certificate";
+
+const { TPH_TARGET, WO_PROCESS } = constants;
 
 interface WorkOrderSiteDetails {
   id: number;
@@ -55,6 +59,37 @@ interface Props {
   onOpenOperatorUploads?: () => void;
 }
 
+// One stage of the site's paperwork: a numbered heading, then its
+// documents side by side.
+const DocumentStage = ({
+  step,
+  title,
+  description,
+  children,
+}: {
+  step: number;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) => (
+  <div className='min-w-0 px-5 py-4'>
+    <div className='mb-3 flex min-w-0 items-center gap-2'>
+      <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[11px] font-semibold tabular-nums text-gray-600'>
+        {step}
+      </span>
+      <h4 className='shrink-0 text-xs font-semibold text-gray-800'>{title}</h4>
+      <p
+        className='min-w-0 truncate text-[11px] text-gray-400'
+        title={description}>
+        {description}
+      </p>
+    </div>
+    <div className='grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 [&>*]:min-w-0'>
+      {children}
+    </div>
+  </div>
+);
+
 // Matches the site cards on the work order page.
 const STATUS_STYLES: Record<
   WorkOrderSiteDetails["status"],
@@ -94,10 +129,8 @@ const SiteDetailsCard = ({
     : (siteDetails?.status ?? "pending");
   const note = scheduleNote(status, siteDetails?.date, siteDetails?.end_date);
   const isBioremediation =
-    siteDetails?.process_type === constants.WO_PROCESS.BIOREMEDIATION;
+    siteDetails?.process_type === WO_PROCESS.BIOREMEDIATION;
   const isCompleted = !!siteDetails?.is_completed;
-  // Mobilization and the 0-day sample, the sheets, then the certificate.
-  const documentCount = (isBioremediation ? 2 : 0) + 1 + (isCompleted ? 1 : 0);
 
   return (
     <section className='rounded-lg border border-gray-200 bg-white'>
@@ -167,36 +200,42 @@ const SiteDetailsCard = ({
         />
       )}
 
-      {/* The site's documents. For bioremediation, how it was set up: the
-          team moving on, and the baseline sample taken before treatment
-          starts. Then the measurements behind its quantities, and the
-          certificate, only taken once the site is complete. */}
+      {/* The site's documents, stage by stage. For bioremediation, how it
+          was set up first: the team moving on, and the baseline sample taken
+          before treatment. Then the measurements behind its quantities, and
+          the certificate, taken once the site is complete. */}
       {siteDetails?.id && (
         <div
           className={cn(
-            "grid grid-cols-1 gap-x-6 gap-y-5 border-t border-gray-100 px-5 py-4",
-            documentCount >= 2 && "md:grid-cols-2",
-            documentCount === 3 && "xl:grid-cols-3",
-            documentCount >= 4 && "xl:grid-cols-4",
+            "grid grid-cols-1 divide-y divide-gray-100 border-t border-gray-100",
+            isBioremediation && "xl:grid-cols-2 xl:divide-x xl:divide-y-0",
           )}>
           {isBioremediation && (
-            <>
-              <div className='min-w-0'>
-                <MobilizationCertificate woSiteId={siteDetails.id} />
-              </div>
-              <div className='min-w-0'>
-                <ZeroDaySample woSiteId={siteDetails.id} />
-              </div>
-            </>
+            <DocumentStage
+              step={1}
+              title='Before treatment'
+              description='The team moving on, and the baseline sample'>
+              <MobilizationCertificate woSiteId={siteDetails.id} />
+              <ZeroDaySample woSiteId={siteDetails.id} />
+            </DocumentStage>
           )}
-          <div className='min-w-0'>
+          <DocumentStage
+            step={isBioremediation ? 2 : 1}
+            title='Completion'
+            description='The measurements, then the signed certificate'>
             <SiteMeasurementSheets woSiteId={siteDetails.id} />
-          </div>
-          {isCompleted && (
-            <div className='min-w-0'>
+            {isCompleted ? (
               <SiteCompletionCertificate woSiteId={siteDetails.id} />
-            </div>
-          )}
+            ) : (
+              <PendingCompletionCertificate
+                note={
+                  isBioremediation
+                    ? `Upload it once the site is complete, when its latest TPH is below ${TPH_TARGET}.`
+                    : "Upload it once the site is complete."
+                }
+              />
+            )}
+          </DocumentStage>
         </div>
       )}
     </section>
