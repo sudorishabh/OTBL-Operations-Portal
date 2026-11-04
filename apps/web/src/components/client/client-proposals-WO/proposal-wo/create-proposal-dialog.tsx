@@ -108,7 +108,6 @@ const CreateProposalDialog = ({ clientId }: Props) => {
         proposal_id: proposalId,
       });
       utils.proposalQuery.getProposalsByClient.invalidate();
-      utils.proposalQuery.getProposalsByClientPaginated.invalidate();
       toast.success("Proposal updated");
       handleCloseDialog();
     },

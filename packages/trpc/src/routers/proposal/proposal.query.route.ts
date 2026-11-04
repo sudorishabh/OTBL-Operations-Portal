@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, like, lt, or } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -12,10 +12,20 @@ import {
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { proposalSchemas } from "@pkg/schema";
-import { escapeLike } from "../../helper/escape-like";
 import { USER_ROLES } from "../../authorization";
+import { escapeLike } from "../../helper/escape-like";
+import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
 
 const { proposalTable, workOrderTable } = schema;
+
+type WorkOrderGroup = "none" | "pending" | "completed" | "cancelled";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Submission dates are saved from a YYYY-MM-DD as that day's UTC midnight,
+// so a day's range is read the same way.
+const startOfDay = (day: string) => new Date(day);
+const startOfNextDay = (day: string) => new Date(Date.parse(day) + DAY_MS);
 
 async function applyProposalScopeForClient(
   scope: AccessScope,
@@ -59,7 +69,8 @@ export const proposalQueryRouter = router({
     .input(proposalSchemas.getProposalsByClientSchema)
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { client_id, limit } = input;
+        const { client_id, limit, workOrder: workOrderFilter } = input;
+        const page = input.cursor ?? 1;
 
         try {
           const scope = await getAccessScope(
@@ -76,109 +87,137 @@ export const proposalQueryRouter = router({
               eq(proposalTable.client_id, client_id),
             );
 
-          const [totalResult] = await ctx.db
-            .select({ count: count() })
-            .from(proposalTable)
-            .where(clientCond);
-          const total = totalResult?.count ?? 0;
+          const search = input.search
+            ? `%${escapeLike(input.search)}%`
+            : undefined;
+          const conditions = and(
+            clientCond,
+            search
+              ? or(
+                  like(proposalTable.code, search),
+                  like(proposalTable.title, search),
+                  like(workOrderTable.code, search),
+                  like(workOrderTable.title, search),
+                )
+              : undefined,
+            input.proposalStatus !== "all"
+              ? eq(proposalTable.status, input.proposalStatus)
+              : undefined,
+            input.process !== "all"
+              ? eq(workOrderTable.process_type, input.process)
+              : undefined,
+            input.submittedFrom
+              ? gte(
+                  proposalTable.proposal_submission_date,
+                  startOfDay(input.submittedFrom),
+                )
+              : undefined,
+            input.submittedTo
+              ? lt(
+                  proposalTable.proposal_submission_date,
+                  startOfNextDay(input.submittedTo),
+                )
+              : undefined,
+          );
+          const newestFirst = [
+            desc(proposalTable.created_at),
+            desc(proposalTable.id),
+          ];
 
-          const baseQuery = ctx.db
-            .select({ proposal: proposalTable, workOrder: workOrderTable })
+          // Every match, light: a work order's status is worked out from
+          // its schedule of rates, not stored, so it's grouped here.
+          const candidates = await ctx.db
+            .select({
+              id: proposalTable.id,
+              workOrderId: workOrderTable.id,
+              workOrderOfficeId: workOrderTable.office_id,
+              workOrderStatus: workOrderTable.status,
+            })
             .from(proposalTable)
-            .where(clientCond)
             .leftJoin(workOrderTable, workOrderJoinOn)
-            .orderBy(desc(proposalTable.created_at))
-            .$dynamic();
+            .where(conditions)
+            .orderBy(...newestFirst);
 
-          const proposals = limit
-            ? await baseQuery.limit(limit)
-            : await baseQuery;
-
-          return { proposals, total };
-        } catch (error) {
-          throw fromDatabaseError(error, "Fetching proposals");
-        }
-      }),
-    ),
-
-  getProposalsByClientPaginated: protectedProcedure
-    .input(proposalSchemas.getProposalsByClientPaginatedSchema)
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        const { client_id, page, limit, searchQuery } = input;
-
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessClient(ctx.db, scope, client_id);
-
-        const scoped = await applyProposalScopeForClient(
-          scope,
-          ctx.db,
-          eq(proposalTable.client_id, client_id),
-        );
-        let conditions: any = scoped.clientCond;
-        const { workOrderJoinOn: workOrderJoinOnPaginated } = scoped;
-
-        if (searchQuery && searchQuery.trim() !== "") {
-          conditions = and(
-            conditions,
-            or(
-              like(proposalTable.code, `%${escapeLike(searchQuery)}%`),
-              like(proposalTable.title, `%${escapeLike(searchQuery)}%`),
+          const effectiveStatuses = await batchEffectiveWorkOrderStatuses(
+            ctx.db,
+            scope,
+            candidates.flatMap((row) =>
+              row.workOrderId == null
+                ? []
+                : [
+                    {
+                      id: row.workOrderId,
+                      office_id: row.workOrderOfficeId,
+                      status: String(row.workOrderStatus),
+                    },
+                  ],
             ),
           );
-        }
 
-        try {
-          const [totalResult] = await ctx.db
-            .select({ count: count() })
-            .from(proposalTable)
-            .where(conditions);
+          const groupOf = (row: (typeof candidates)[number]): WorkOrderGroup =>
+            row.workOrderId == null
+              ? "none"
+              : (effectiveStatuses.get(row.workOrderId) ??
+                row.workOrderStatus ??
+                "pending");
 
-          const total = totalResult?.count ?? 0;
-
-          if (total === 0) {
-            return {
-              proposals: [],
-              pagination: {
-                page,
-                limit,
-                total,
-                hasMore: false,
-                totalPages: 0,
-              },
-            };
+          // How many rows each work order tab would list. Cancelled work
+          // orders have no tab, so they count towards "all" only.
+          const counts = {
+            all: candidates.length,
+            none: 0,
+            pending: 0,
+            completed: 0,
+          };
+          for (const row of candidates) {
+            const group = groupOf(row);
+            if (group !== "cancelled") counts[group] += 1;
           }
 
+          const matching =
+            workOrderFilter === "all"
+              ? candidates
+              : candidates.filter((row) => groupOf(row) === workOrderFilter);
+          const total = matching.length;
           const offset = (page - 1) * limit;
+          const pageIds = matching
+            .slice(offset, offset + limit)
+            .map((row) => row.id);
 
-          const proposals = await ctx.db
-            .select({ proposal: proposalTable, workOrder: workOrderTable })
-            .from(proposalTable)
-            .leftJoin(workOrderTable, workOrderJoinOnPaginated)
-            .where(conditions)
-            .limit(limit)
-            .offset(offset)
-            .orderBy(desc(proposalTable.created_at));
+          // Full rows for this page only.
+          const rows =
+            pageIds.length === 0
+              ? []
+              : await ctx.db
+                  .select({ proposal: proposalTable, workOrder: workOrderTable })
+                  .from(proposalTable)
+                  .leftJoin(workOrderTable, workOrderJoinOn)
+                  .where(and(conditions, inArray(proposalTable.id, pageIds)))
+                  .orderBy(...newestFirst);
 
-          const totalPages = Math.ceil(total / limit);
-          const hasMore = offset + proposals.length < total;
+          // Send the status the work order pages show, not the stored one.
+          const proposals = rows.map((row) => ({
+            ...row,
+            workOrder: row.workOrder && {
+              ...row.workOrder,
+              status:
+                effectiveStatuses.get(row.workOrder.id) ?? row.workOrder.status,
+            },
+          }));
 
           return {
             proposals,
+            counts,
             pagination: {
               page,
               limit,
               total,
-              hasMore,
-              totalPages,
+              totalPages: Math.ceil(total / limit),
+              hasMore: offset + pageIds.length < total,
             },
           };
         } catch (error) {
-          throw fromDatabaseError(error, "Fetching paginated proposals");
+          throw fromDatabaseError(error, "Fetching proposals");
         }
       }),
     ),

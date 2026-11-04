@@ -6,10 +6,11 @@ import {
   positiveIntValidator,
   documentsValidator,
   dateValidator,
-  pageValidator,
   limitValidator,
+  pageValidator,
   searchQueryValidator,
 } from "../validators";
+import { processTypeEnum } from "../work-order/work-order.schema";
 
 export const baseProposalSchema = z.object({
   code: codeValidator,
@@ -37,16 +38,32 @@ export const rejectProposalSchema = z.object({
   proposal_id: positiveIntValidator,
 });
 
+// A proposal's row is grouped by its work order: none yet, pending or
+// completed. Cancelled work orders show under "all" only.
+export const proposalWorkOrderFilterEnum = z.enum([
+  "all",
+  "none",
+  "pending",
+  "completed",
+]);
+
+export const PROPOSALS_PAGE_SIZE = 50;
+
 export const getProposalsByClientSchema = z.object({
   client_id: positiveIntValidator,
-  limit: limitValidator.optional(),
-});
-
-export const getProposalsByClientPaginatedSchema = z.object({
-  client_id: positiveIntValidator,
-  page: pageValidator,
-  limit: limitValidator,
-  searchQuery: searchQueryValidator,
+  // The page to load; named for tRPC's infinite queries.
+  cursor: pageValidator.optional(),
+  limit: limitValidator.unwrap().default(PROPOSALS_PAGE_SIZE),
+  // Matches the code or title of the proposal or its work order.
+  search: searchQueryValidator,
+  workOrder: proposalWorkOrderFilterEnum.default("all"),
+  proposalStatus: z
+    .enum(["all", "pending", "approved", "rejected"])
+    .default("all"),
+  process: z.union([z.literal("all"), processTypeEnum]).default("all"),
+  // Submission dates, both ends included, as YYYY-MM-DD.
+  submittedFrom: z.iso.date().optional(),
+  submittedTo: z.iso.date().optional(),
 });
 
 export const getProposalByIdSchema = z.object({

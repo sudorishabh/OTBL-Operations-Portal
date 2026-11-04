@@ -1,75 +1,43 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
-  MapPin,
-  Phone,
-  Users,
+  Building2,
+  CalendarDays,
   Eye,
   EyeOff,
-  LucideIcon,
+  MapPin,
   Network,
+  Users,
 } from "lucide-react";
-import CustomButton from "@/components/shared/btn";
-import ContactDialog from "./contact-dialog";
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, formatCurrency } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import Error from "@/components/shared/error";
-import ClientInfoSkeleton from "../skeleton/client/client-info-skeleton";
-import ClientStats from "./client-stats/client-stats";
+import { Field, Metric, Pill } from "@/components/shared/detail-card-parts";
 import useHandleParams from "@/hooks/useHandleParams";
+import ClientInfoSkeleton from "../skeleton/client/client-info-skeleton";
+import ContactDialog from "./contact-dialog";
 
 interface Props {
   clientId: string;
 }
 
-type DialogType = "contacts";
+const STATUS_STYLES: Record<string, string> = {
+  active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  inactive: "bg-amber-50 text-amber-700 ring-amber-200",
+};
 
-interface DialogState {
-  contacts: boolean;
-}
+const formatDate = (value?: string | Date | null) => {
+  const date = value ? new Date(value) : null;
+  return date && !isNaN(date.getTime()) ? format(date, "dd MMM yyyy") : null;
+};
 
-const IconContainer = ({
-  Icon,
-  className = "",
-}: {
-  Icon: LucideIcon;
-  className?: string;
-}) => (
-  <div
-    className={`size-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center ${className}`}>
-    <Icon className='size-3.5 text-cyan-800' />
-  </div>
-);
-
-const InfoSection = ({
-  Icon,
-  label,
-  children,
-}: {
-  Icon: LucideIcon;
-  label: string;
-  children: React.ReactNode;
-}) => (
-  <div className='flex items-start gap-3'>
-    <IconContainer Icon={Icon} />
-    <div className='min-w-0 flex-1'>
-      <div className='text-[11px] uppercase tracking-wide text-gray-500'>
-        {label}
-      </div>
-      {children}
-    </div>
-  </div>
-);
+// Shows the first and last three characters until revealed.
+const maskGst = (gst: string) =>
+  gst.length <= 6 ? gst : `${gst.slice(0, 3)}...${gst.slice(-3)}`;
 
 const ClientDetailsCard = ({ clientId }: Props) => {
-  const [dialogState, setDialogState] = useState<DialogState>({
-    contacts: false,
-  });
-
+  const [isContactsOpen, setIsContactsOpen] = useState(false);
   const [showFullGst, setShowFullGst] = useState(false);
-
   const { setParam } = useHandleParams();
 
   const {
@@ -81,70 +49,14 @@ const ClientDetailsCard = ({ clientId }: Props) => {
     { enabled: !!clientId },
   );
 
+  // The page title reads the client's name from the URL.
   useEffect(() => {
     if (clientData?.client) {
       setParam("name", clientData.client.name);
     }
   }, [clientData?.client, setParam]);
 
-  const formatDate = useCallback((d?: string): string => {
-    try {
-      return d ? format(new Date(d), "dd MMM yyyy") : "-";
-    } catch {
-      return d ?? "-";
-    }
-  }, []);
-
-  const getStatusColor = useCallback((status: string): string => {
-    const s = (status || "").toLowerCase();
-    if (s === "active" || s === "enabled")
-      return "bg-emerald-100 text-emerald-800";
-    if (s === "inactive" || s === "disabled")
-      return "bg-amber-100 text-amber-800";
-    return "bg-slate-100 text-slate-800";
-  }, []);
-
-  const maskGst = useCallback((gst?: string): string => {
-    if (!gst) return "-";
-    if (gst.length <= 6) return gst;
-    return `${gst.slice(0, 3)}...${gst.slice(-3)}`;
-  }, []);
-
-  const toggleDialog = useCallback((dialogType: DialogType) => {
-    setDialogState((prev) => ({
-      ...prev,
-      [dialogType]: !prev[dialogType],
-    }));
-  }, []);
-
-  const closeDialog = useCallback((dialogType: DialogType) => {
-    setDialogState((prev) => ({
-      ...prev,
-      [dialogType]: false,
-    }));
-  }, []);
-
-  const stats = useMemo(
-    () => ({
-      siteCount: clientData?.siteCount ?? 0,
-      completedWorkOrders: clientData?.completedWorkOrders ?? 0,
-      totalBudgetAmount: clientData?.totalBudgetAmount ?? 0,
-      totalExpenseAmount: clientData?.totalExpenseAmount ?? 0,
-    }),
-    [clientData],
-  );
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  if (isLoading) {
-    return <ClientInfoSkeleton />;
-  }
+  if (isLoading) return <ClientInfoSkeleton />;
 
   if (isError) {
     return (
@@ -165,140 +77,181 @@ const ClientDetailsCard = ({ clientId }: Props) => {
   }
 
   const { client, clientUsers } = clientData;
+  const status = (client.status || "").toLowerCase();
+  const location = [client.city, client.state]
+    .filter(Boolean)
+    .map((part) => capitalFirstLetter(part))
+    .join(", ");
+  const address = [
+    client.address,
+    [location, client.pincode].filter(Boolean).join(" - "),
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const addedOn = formatDate(client.created_at);
+
+  const budget = Number(clientData.totalBudgetAmount) || 0;
+  // Bioremediation completion amounts, as the work order page counts them.
+  const activitySpend = Number(clientData.totalExpenseAmount) || 0;
+  const spendPct = budget > 0 ? (activitySpend / budget) * 100 : 0;
 
   return (
     <>
-      <Card className='relative shadow border bg-linear-to-br border-emerald-400 from-white to-gray-50 py-5'>
-        <CardHeader className='pb-0'>
-          <div className='flex items-start justify-between gap-4'>
+      <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
+        {/* Identity */}
+        <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-6 py-5'>
+          <div className='flex min-w-0 items-center gap-3'>
+            <div className='shrink-0 rounded-lg bg-emerald-50 p-2 text-emerald-700 ring-1 ring-emerald-100'>
+              <Building2 className='size-4' />
+            </div>
             <div className='min-w-0'>
-              <div className='flex flex-wrap items-center gap-3 mt-2 text-xs'>
-                <Badge
-                  className={`${getStatusColor(client.status)} rounded-md`}>
-                  {capitalFirstLetter(client.status)}
-                </Badge>
-
+              <h2
+                className='truncate text-base font-semibold text-gray-900'
+                title={client.name}>
+                {client.name.toUpperCase()}
+              </h2>
+              <div className='mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500'>
                 {client.parent_client_name && (
-                  <span className='inline-flex items-center gap-1.5 text-slate-500'>
-                    <Network
-                      className='size-3.5 text-emerald-600'
-                      aria-hidden='true'
-                    />
-                    Branch of
-                    <span className='font-medium text-slate-700'>
-                      {client.parent_client_name.toUpperCase()}
+                  <span className='inline-flex min-w-0 items-center gap-1.5'>
+                    <Network className='size-3.5 shrink-0 text-gray-400' />
+                    <span className='truncate'>
+                      Branch of{" "}
+                      <span className='font-medium text-gray-700'>
+                        {client.parent_client_name.toUpperCase()}
+                      </span>
                     </span>
                   </span>
                 )}
-
-                {client.gst_number && (
-                  <div className='text-slate-500'>
-                    GST:
-                    <button
-                      type='button'
-                      onClick={() => setShowFullGst((s) => !s)}
-                      aria-expanded={showFullGst}
-                      aria-label={
-                        showFullGst ? "Hide GST number" : "Show GST number"
-                      }
-                      className='text-slate-700 font-medium ml-1 inline-flex items-center gap-2 hover:underline cursor-pointer'>
-                      <span className='truncate'>
-                        {showFullGst
-                          ? client.gst_number
-                          : maskGst(client.gst_number)}
-                      </span>
-                      {showFullGst ? (
-                        <EyeOff
-                          className='size-3 text-gray-500'
-                          aria-hidden='true'
-                        />
-                      ) : (
-                        <Eye
-                          className='size-3 text-gray-500'
-                          aria-hidden='true'
-                        />
-                      )}
-                    </button>
-                  </div>
+                {location && (
+                  <span className='inline-flex min-w-0 items-center gap-1.5'>
+                    <MapPin className='size-3.5 shrink-0 text-gray-400' />
+                    <span className='truncate'>{location}</span>
+                  </span>
                 )}
-
-                <div className='text-slate-400'>
-                  Created: {formatDate(client.created_at)}
-                </div>
-                <div className='text-slate-400'>
-                  Updated: {formatDate(client.updated_at)}
-                </div>
+                {addedOn && (
+                  <span className='inline-flex items-center gap-1.5'>
+                    <CalendarDays className='size-3.5 shrink-0 text-gray-400' />
+                    Added {addedOn}
+                  </span>
+                )}
               </div>
             </div>
           </div>
-        </CardHeader>
 
-        <CardContent>
-          <div className='gap-6 text-sm'>
-            <div className='flex flex-col sm:flex-row justify-between gap-4'>
-              <div className='flex items-start gap-4 flex-1'>
-                <InfoSection
-                  Icon={MapPin}
-                  label='Address'>
-                  <p className='text-gray-700 font-medium wrap-break-word text-xs'>
-                    {client.address}
-                  </p>
-                  <p className='text-gray-500 text-xs'>
-                    {client.city}, {client.state} - {client.pincode}
-                  </p>
-                </InfoSection>
-              </div>
-
-              <div className='flex-1 gap-4'>
-                <InfoSection
-                  Icon={Phone}
-                  label='Company Contacts'>
-                  <div className='flex text-xs items-center gap-2'>
-                    {client.contact_number ? (
-                      <a
-                        href={`tel:${client.contact_number}`}
-                        className='text-gray-700 font-medium hover:underline'
-                        aria-label={`Call ${client.contact_number}`}>
-                        {client.contact_number}
-                      </a>
-                    ) : (
-                      <span className='text-gray-700 font-medium'>-</span>
-                    )}
-                    <span aria-hidden='true'>|</span>
-                    {client.email ? (
-                      <a
-                        href={`mailto:${client.email}`}
-                        className='text-gray-700 font-medium hover:underline truncate block max-w-full'
-                        aria-label={`Email ${client.email}`}>
-                        {client.email}
-                      </a>
-                    ) : (
-                      <span className='text-gray-700 font-medium'>-</span>
-                    )}
-                  </div>
-
-                  <CustomButton
-                    variant='outline'
-                    Icon={Users}
-                    text='View Contacts'
-                    onClick={() => toggleDialog("contacts")}
-                    className='mt-2 sm:absolute sm:top-3 sm:right-4.5'
-                  />
-                </InfoSection>
-              </div>
-            </div>
+          <div className='flex flex-wrap items-center gap-1.5'>
+            <Pill
+              className={
+                STATUS_STYLES[status] ??
+                "bg-gray-50 text-gray-700 ring-gray-200"
+              }>
+              {capitalFirstLetter(client.status)}
+            </Pill>
+            <button
+              type='button'
+              onClick={() => setIsContactsOpen(true)}
+              title='View client contacts'
+              className='inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+              <Users className='size-3' />
+              {clientUsers.length === 1
+                ? "1 contact"
+                : `${clientUsers.length} contacts`}
+            </button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      <ClientStats
-        stats={stats}
-        clientId={clientId}
-      />
+        {/* Metrics, split by hairlines that hold in every column count. */}
+        <div className='grid grid-cols-2 gap-px border-y border-gray-200 bg-gray-200 lg:grid-cols-4 [&>*]:bg-gray-50'>
+          <Metric
+            label='Sites'
+            value={Number(clientData.siteCount ?? 0).toLocaleString("en-IN")}
+            hint='across work orders'
+          />
+          <Metric
+            label='Work orders'
+            value={Number(clientData.completedWorkOrders ?? 0).toLocaleString(
+              "en-IN",
+            )}
+            hint='completed'
+          />
+          <Metric
+            label='Budget'
+            value={formatCurrency(budget)}
+            hint='schedule of rates total'
+          />
+          <Metric
+            label='Activity spend'
+            value={formatCurrency(activitySpend)}
+            hint={`${spendPct.toFixed(1)}% of budget`}
+          />
+        </div>
+
+        {/* Details */}
+        <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-4 xl:grid-cols-6'>
+          <Field
+            label='GST number'
+            value={
+              client.gst_number && (
+                <button
+                  type='button'
+                  onClick={() => setShowFullGst((shown) => !shown)}
+                  aria-label={
+                    showFullGst ? "Hide GST number" : "Show GST number"
+                  }
+                  className='inline-flex max-w-full cursor-pointer items-center gap-1.5 font-mono hover:text-emerald-700'>
+                  <span className='truncate'>
+                    {showFullGst
+                      ? client.gst_number
+                      : maskGst(client.gst_number)}
+                  </span>
+                  {showFullGst ? (
+                    <EyeOff className='size-3 shrink-0 text-gray-400' />
+                  ) : (
+                    <Eye className='size-3 shrink-0 text-gray-400' />
+                  )}
+                </button>
+              )
+            }
+          />
+          <Field
+            label='Phone'
+            value={
+              client.contact_number && (
+                <a
+                  href={`tel:${client.contact_number}`}
+                  className='hover:text-emerald-700 hover:underline'>
+                  {client.contact_number}
+                </a>
+              )
+            }
+          />
+          <Field
+            label='Email'
+            value={
+              client.email && (
+                <a
+                  href={`mailto:${client.email}`}
+                  title={client.email}
+                  className='hover:text-emerald-700 hover:underline'>
+                  {client.email}
+                </a>
+              )
+            }
+          />
+          <Field
+            label='Last updated'
+            value={formatDate(client.updated_at)}
+          />
+          <Field
+            label='Address'
+            value={address}
+            className='col-span-2'
+          />
+        </div>
+      </div>
 
       <ContactDialog
-        open={dialogState.contacts}
-        onClose={() => closeDialog("contacts")}
+        open={isContactsOpen}
+        onClose={() => setIsContactsOpen(false)}
         users={clientUsers}
         clientId={clientId}
       />

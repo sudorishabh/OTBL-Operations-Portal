@@ -10,6 +10,14 @@ import {
 import { capitalFirstLetter, constants, formatCurrency } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import DocumentsMenu from "@/components/shared/documents-menu";
+import {
+  Empty,
+  Field,
+  Metric,
+  Pill,
+  PROCESS_STYLES,
+  STATUS_STYLES,
+} from "@/components/shared/detail-card-parts";
 import { toDocuments } from "@/lib/documents";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import EditWorkOrderDialog from "./edit-work-order-dialog";
@@ -60,83 +68,6 @@ interface Props {
     net_surplus: number;
   } | null;
 }
-
-const STATUS_STYLES: Record<Props["workOrder"]["status"], string> = {
-  completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
-  pending: "bg-amber-50 text-amber-700 ring-amber-200",
-};
-
-const PROCESS_STYLES: Record<string, string> = {
-  [constants.WO_PROCESS.BIOREMEDIATION]: "bg-blue-50 text-blue-700 ring-blue-200",
-  [constants.WO_PROCESS.RESTORATION]: "bg-purple-50 text-purple-700 ring-purple-200",
-  [constants.WO_PROCESS.BIOREMEDIATION_RESTORATION]:
-    "bg-orange-50 text-orange-700 ring-orange-200",
-};
-
-// A small outlined pill, as the process sections use for status.
-const Pill = ({
-  className,
-  title,
-  children,
-}: {
-  className: string;
-  title?: string;
-  children: React.ReactNode;
-}) => (
-  <span
-    title={title}
-    className={cn(
-      "rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
-      className,
-    )}>
-    {children}
-  </span>
-);
-
-const Empty = () => <span className='text-gray-300'>&mdash;</span>;
-
-// Dense label/value pair used across the detail grid.
-const Field = ({ label, value }: { label: string; value?: string | null }) => (
-  <div className='min-w-0'>
-    <div className='text-xs text-gray-500'>{label}</div>
-    <p
-      className='mt-0.5 truncate text-[13px] font-medium text-gray-800'
-      title={value || undefined}>
-      {value || <Empty />}
-    </p>
-  </div>
-);
-
-// Metric tile: headline figure with a qualifier underneath.
-const Metric = ({
-  label,
-  value,
-  hint,
-  valueClass = "text-gray-900",
-  hintClass = "text-gray-400",
-}: {
-  label: string;
-  value: React.ReactNode;
-  hint?: React.ReactNode;
-  valueClass?: string;
-  hintClass?: string;
-}) => (
-  <div className='min-w-0 px-6 py-3'>
-    <div className='text-xs text-gray-500'>{label}</div>
-    <div
-      className={cn(
-        "mt-0.5 truncate text-sm font-semibold tabular-nums leading-tight",
-        valueClass,
-      )}>
-      {value}
-    </div>
-    {/* Fixed height keeps tiles aligned when a metric has no qualifier. */}
-    <div className={cn("h-4 truncate text-[11px] leading-4", hintClass)}>
-      {hint}
-    </div>
-  </div>
-);
 
 const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
