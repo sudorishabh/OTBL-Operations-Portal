@@ -6,19 +6,25 @@ import { type proposalTypes } from "@pkg/schema";
 import useHandleParams from "@/hooks/useHandleParams";
 import { toDocuments } from "@/lib/documents";
 import { toDate } from "@/lib/wo-site-display";
+import { cn } from "@/lib/utils";
+import { Pill } from "@/components/shared/detail-card-parts";
+import { PROPOSAL_STATUSES } from "./proposal-wo-display";
 import { DocumentsCount, MetaItem, RowCell } from "./row-cell";
 
 interface Props {
   proposal: proposalTypes.proposalType;
 }
 
-// A proposal in its row: title, code, when it went in, and its documents.
+// A proposal in its row: title, approval status, code, when it went in, and
+// its documents.
 // The description shows when hovering the title.
 const ProposalCell = ({ proposal }: Props) => {
   const { setParams } = useHandleParams();
   const documents = toDocuments(proposal?.documents);
   const title = capitalFirstLetter(proposal?.title || "Untitled proposal");
   const submitted = toDate(proposal?.proposal_submission_date);
+  const status =
+    PROPOSAL_STATUSES[proposal?.status] ?? PROPOSAL_STATUSES.pending;
 
   return (
     <RowCell
@@ -28,6 +34,9 @@ const ProposalCell = ({ proposal }: Props) => {
         proposal?.description
           ? `${title}\n${capitalFirstLetter(proposal.description)}`
           : title
+      }
+      aside={
+        <Pill className={cn("shrink-0", status.pill)}>{status.label}</Pill>
       }
       onOpen={() =>
         setParams({
