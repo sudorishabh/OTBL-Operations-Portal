@@ -9,13 +9,12 @@ import {
   Network,
   Users,
 } from "lucide-react";
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, formatCurrency } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import Error from "@/components/shared/error";
-import { Field, Pill } from "@/components/shared/detail-card-parts";
+import { Field, Metric, Pill } from "@/components/shared/detail-card-parts";
 import useHandleParams from "@/hooks/useHandleParams";
 import ClientInfoSkeleton from "../skeleton/client/client-info-skeleton";
-import ClientStats from "./client-stats/client-stats";
 import ContactDialog from "./contact-dialog";
 
 interface Props {
@@ -91,6 +90,11 @@ const ClientDetailsCard = ({ clientId }: Props) => {
     .join(", ");
   const addedOn = formatDate(client.created_at);
 
+  const budget = Number(clientData.totalBudgetAmount) || 0;
+  // Bioremediation completion amounts, as the work order page counts them.
+  const activitySpend = Number(clientData.totalExpenseAmount) || 0;
+  const spendPct = budget > 0 ? (activitySpend / budget) * 100 : 0;
+
   return (
     <>
       <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
@@ -155,8 +159,34 @@ const ClientDetailsCard = ({ clientId }: Props) => {
           </div>
         </div>
 
+        {/* Metrics, split by hairlines that hold in every column count. */}
+        <div className='grid grid-cols-2 gap-px border-y border-gray-200 bg-gray-200 lg:grid-cols-4 [&>*]:bg-gray-50'>
+          <Metric
+            label='Sites'
+            value={Number(clientData.siteCount ?? 0).toLocaleString("en-IN")}
+            hint='across work orders'
+          />
+          <Metric
+            label='Work orders'
+            value={Number(clientData.completedWorkOrders ?? 0).toLocaleString(
+              "en-IN",
+            )}
+            hint='completed'
+          />
+          <Metric
+            label='Budget'
+            value={formatCurrency(budget)}
+            hint='schedule of rates total'
+          />
+          <Metric
+            label='Activity spend'
+            value={formatCurrency(activitySpend)}
+            hint={`${spendPct.toFixed(1)}% of budget`}
+          />
+        </div>
+
         {/* Details */}
-        <div className='grid grid-cols-2 gap-x-6 gap-y-3 border-t border-gray-200 px-6 py-4 sm:grid-cols-4 xl:grid-cols-6'>
+        <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-4 xl:grid-cols-6'>
           <Field
             label='GST number'
             value={
@@ -218,16 +248,6 @@ const ClientDetailsCard = ({ clientId }: Props) => {
           />
         </div>
       </div>
-
-      <ClientStats
-        stats={{
-          siteCount: clientData.siteCount ?? 0,
-          completedWorkOrders: clientData.completedWorkOrders ?? 0,
-          totalBudgetAmount: clientData.totalBudgetAmount ?? 0,
-          totalExpenseAmount: clientData.totalExpenseAmount ?? 0,
-        }}
-        clientId={clientId}
-      />
 
       <ContactDialog
         open={isContactsOpen}
