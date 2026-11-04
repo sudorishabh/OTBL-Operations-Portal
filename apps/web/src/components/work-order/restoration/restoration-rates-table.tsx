@@ -18,24 +18,26 @@ export interface RestorationRate {
   unit: string;
   estimated_quantity: string | number;
   rc_unit_rate: string | number;
+  unit_rate_inc_gst: string | number;
   total_cost: string | number;
-}
-
-// What the expenses have recorded against one activity.
-export interface ActivityUsage {
-  totalQuantity: number;
-  totalAmount: number;
+  // Transportation's quantity split into its distance slabs.
+  transportation_slabs?: Record<string, { quantity: number }> | null;
 }
 
 interface Props {
   rates: RestorationRate[];
   estimatedTotal: number;
-  usageByActivity: Record<string, ActivityUsage>;
+  // What the job orders' completion certificates have certified, per
+  // activity.
+  certifiedByActivity: Record<string, number>;
+  // What the vendors' expenses have cost, per activity.
+  spentByActivity: Record<string, number>;
   // Everything spent on the restoration, activity or not.
   totalSpent: number;
 }
 
-const headClass = "h-9 px-4 text-xs font-medium whitespace-nowrap text-gray-500";
+const headClass =
+  "h-9 px-4 text-xs font-medium whitespace-nowrap text-gray-500";
 const cellClass = "px-4 py-2.5 text-[13px] whitespace-nowrap";
 const numberClass = cn(cellClass, "text-right tabular-nums text-gray-700");
 
@@ -71,18 +73,21 @@ const LeftQuantity = ({
   }
   return (
     <>
-      {formatQuantity(left)} <span className='text-xs text-gray-400'>{unit}</span>
+      {formatQuantity(left)}{" "}
+      <span className='text-xs text-gray-400'>{unit}</span>
     </>
   );
 };
 
 // The restoration activities of the work order's schedule of rates, in the
-// order the work is done, with how much of each the expenses have used and
-// what they have cost.
+// order the work is done. Each shows how much of it the completion
+// certificates have used and what that is worth at the RC rate, beside what
+// its vendors have cost.
 const RestorationRatesTable = ({
   rates,
   estimatedTotal,
-  usageByActivity,
+  certifiedByActivity,
+  spentByActivity,
   totalSpent,
 }: Props) => {
   if (rates.length === 0) {
@@ -93,8 +98,15 @@ const RestorationRatesTable = ({
     );
   }
 
+  const certifiedValue = (rate: RestorationRate) =>
+    (certifiedByActivity[rate.activity] ?? 0) *
+    (Number(rate.unit_rate_inc_gst) || 0);
+  const certifiedTotal = rates.reduce(
+    (sum, rate) => sum + certifiedValue(rate),
+    0,
+  );
   const activitySpent = rates.reduce(
-    (sum, rate) => sum + (usageByActivity[rate.activity]?.totalAmount ?? 0),
+    (sum, rate) => sum + (spentByActivity[rate.activity] ?? 0),
     0,
   );
   // Miscellaneous expenses, recorded without an activity.
@@ -110,28 +122,36 @@ const RestorationRatesTable = ({
               <TableHead className={cn(headClass, "text-right")}>
                 RC rate
               </TableHead>
-              <TableHead className={headClass}>Quantity used</TableHead>
-              <TableHead className={cn(headClass, "text-right")}>Left</TableHead>
+              <TableHead className={headClass}>Certified</TableHead>
+              <TableHead className={cn(headClass, "text-right")}>
+                Left
+              </TableHead>
               <TableHead className={cn(headClass, "text-right")}>
                 Estimated cost
               </TableHead>
-              <TableHead className={cn(headClass, "text-right")}>Spent</TableHead>
+              <TableHead className={cn(headClass, "text-right")}>
+                Certified value
+              </TableHead>
+              <TableHead className={cn(headClass, "text-right")}>
+                Vendor spend
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rates.map((rate, index) => {
               const estimated = Number(rate.estimated_quantity) || 0;
               const estimatedCost = Number(rate.total_cost) || 0;
-              const usage = usageByActivity[rate.activity];
-              const used = usage?.totalQuantity ?? 0;
-              const spent = usage?.totalAmount ?? 0;
-              const tone = activityTone(used, estimated);
+              const certified = certifiedByActivity[rate.activity] ?? 0;
+              const value = certifiedValue(rate);
+              const spent = spentByActivity[rate.activity] ?? 0;
+              const tone = activityTone(certified, estimated);
 
               return (
                 <TableRow
                   key={rate.id}
                   className='border-gray-100 hover:bg-gray-50/60'>
-                  <TableCell className={cn(cellClass, "min-w-56 whitespace-normal")}>
+                  <TableCell
+                    className={cn(cellClass, "min-w-56 whitespace-normal")}>
                     <span className='flex gap-2'>
                       <span className='tabular-nums text-gray-400'>
                         {index + 1}
@@ -143,31 +163,40 @@ const RestorationRatesTable = ({
                   </TableCell>
                   <TableCell className={numberClass}>
                     {formatCurrency(rate.rc_unit_rate)}
-                    <span className='text-xs text-gray-400'> / {rate.unit}</span>
+                    <span className='text-xs text-gray-400'>
+                      {" "}
+                      / {rate.unit}
+                    </span>
                   </TableCell>
                   <TableCell className={cellClass}>
                     <div className='flex items-center gap-3'>
                       <div className='h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-gray-100'>
                         <div
                           className={cn("h-full rounded-full", tone.bar)}
-                          style={{ width: `${percentOf(used, estimated)}%` }}
+                          style={{
+                            width: `${percentOf(certified, estimated)}%`,
+                          }}
                         />
                       </div>
                       <span className={cn("text-xs tabular-nums", tone.text)}>
-                        {formatQuantity(used)} of {formatQuantity(estimated)}{" "}
-                        {rate.unit}
+                        {formatQuantity(certified)} of{" "}
+                        {formatQuantity(estimated)} {rate.unit}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className={numberClass}>
                     <LeftQuantity
                       estimated={estimated}
-                      used={used}
+                      used={certified}
                       unit={rate.unit}
                     />
                   </TableCell>
                   <TableCell className={numberClass}>
                     {formatCurrency(estimatedCost)}
+                  </TableCell>
+                  <TableCell
+                    className={cn(numberClass, value === 0 && "text-gray-300")}>
+                    {value ? formatCurrency(value) : "—"}
                   </TableCell>
                   <TableCell
                     className={cn(
@@ -194,6 +223,10 @@ const RestorationRatesTable = ({
               <TableCell
                 className={cn(numberClass, "font-semibold text-gray-900")}>
                 {formatCurrency(estimatedTotal)}
+              </TableCell>
+              <TableCell
+                className={cn(numberClass, "font-semibold text-gray-900")}>
+                {formatCurrency(certifiedTotal)}
               </TableCell>
               <TableCell
                 className={cn(
