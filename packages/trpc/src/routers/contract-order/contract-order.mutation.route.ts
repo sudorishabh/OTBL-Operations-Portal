@@ -8,6 +8,13 @@ import { assertOfficeManager } from "../../helper/office-permissions";
 import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import type { TrpcContext } from "../../context";
+import {
+  assertOilZapperCovered,
+  clearOrderExpenses,
+  countSiteRecordedExpenses,
+  orderRecordedOilZapper,
+  recordPurchaseOrderExpenses,
+} from "./purchase-order-expenses";
 
 const {
   workOrderTable,
@@ -18,9 +25,16 @@ const {
   contractOrderContractorTable,
   workOrderSiteExpenseTable,
 } = schema;
-const { WO_PROCESS, CONTRACT_ORDER_ITEMS } = constants;
+const {
+  WO_PROCESS,
+  CONTRACT_ORDER_ITEMS,
+  CONTRACT_ORDER_TYPE,
+  GST_PERCENTAGE,
+  OIL_ZAPPER,
+} = constants;
 
 type OrderInput = {
+  type: string;
   items: {
     id?: number;
     work_order_site_id: number;
@@ -29,7 +43,13 @@ type OrderInput = {
     quantity: number;
   }[];
   contractor_ids: number[];
+  unit_rate?: number | null;
+  gst_percentage?: number | null;
+  invoice_number?: string;
 };
+
+const isPurchaseOrder = (order: { type: string }) =>
+  order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER;
 
 const itemUnit = (item: string) =>
   CONTRACT_ORDER_ITEMS.find((option) => option.key === item)?.unit ?? "Nos";
@@ -42,6 +62,44 @@ const toItemValues = (orderId: number, item: OrderInput["items"][number]) => ({
   quantity: item.quantity.toFixed(2),
   unit: itemUnit(item.item),
 });
+
+// A purchase order's cost. A sub-contract has none, as its expenses are
+// recorded at its site.
+const costValues = (input: OrderInput) =>
+  isPurchaseOrder(input)
+    ? {
+        unit_rate: (input.unit_rate ?? 0).toFixed(2),
+        gst_percentage: (input.gst_percentage ?? GST_PERCENTAGE).toFixed(2),
+        invoice_number: input.invoice_number || null,
+      }
+    : { unit_rate: null, gst_percentage: null, invoice_number: null };
+
+// The oil zapper a purchase order buys, by site.
+const orderedOilZapper = (input: OrderInput) => {
+  const bySite = new Map<number, number>();
+  if (!isPurchaseOrder(input)) return bySite;
+  for (const item of input.items) {
+    if (item.item !== OIL_ZAPPER.KEY) continue;
+    bySite.set(
+      item.work_order_site_id,
+      (bySite.get(item.work_order_site_id) ?? 0) + item.quantity,
+    );
+  }
+  return bySite;
+};
+
+// How each site's procured oil zapper changes, from what the order recorded
+// before to what it buys now.
+const oilZapperChanges = (
+  before: Map<number, number>,
+  after: Map<number, number>,
+) => {
+  const changes = new Map<number, number>();
+  for (const siteId of new Set([...before.keys(), ...after.keys()])) {
+    changes.set(siteId, (after.get(siteId) ?? 0) - (before.get(siteId) ?? 0));
+  }
+  return changes;
+};
 
 // Only the office manager of the work order's office gives out its orders.
 async function assertManagesWorkOrder(ctx: TrpcContext, workOrderId: number) {
@@ -108,14 +166,26 @@ async function getOrder(ctx: TrpcContext, id: number) {
   return order;
 }
 
-// Expenses recorded against an order's items, optionally only those under
-// the given vendors or items.
+async function getOrderItemIds(ctx: TrpcContext, orderId: number) {
+  const items = await ctx.db
+    .select({ id: contractOrderItemTable.id })
+    .from(contractOrderItemTable)
+    .where(eq(contractOrderItemTable.contract_order_id, orderId));
+  return items.map((item) => item.id);
+}
+
+// Expenses recorded at the sites against an order's items, optionally only
+// those under the given vendors or items. Those a purchase order records
+// itself are kept in step with it, so they don't count.
 async function countOrderExpenses(
   ctx: TrpcContext,
   orderId: number,
   filter: { contractorIds?: number[]; itemIds?: number[] } = {},
 ) {
-  const conditions = [eq(contractOrderItemTable.contract_order_id, orderId)];
+  const conditions = [
+    eq(contractOrderItemTable.contract_order_id, orderId),
+    eq(workOrderSiteExpenseTable.from_order, 0),
+  ];
   if (filter.contractorIds) {
     conditions.push(
       inArray(workOrderSiteExpenseTable.contractor_id, filter.contractorIds),
@@ -140,6 +210,7 @@ async function countOrderExpenses(
 }
 
 export const contractOrderMutationRouter = router({
+  // A purchase order records its cost at each of its sites as it is added.
   createContractOrder: protectedProcedure
     .input(contractOrderSchemas.createContractOrderSchema)
     .mutation(
@@ -155,7 +226,9 @@ export const contractOrderMutationRouter = router({
               order_number: input.order_number,
               order_date: input.order_date,
               description: input.description || null,
+              ...costValues(input),
               documents: input.documents,
+              completion_documents: input.completion_documents ?? [],
               created_by: Number(ctx.user!.sub),
             });
             const orderId = Number(result.insertId);
@@ -169,6 +242,11 @@ export const contractOrderMutationRouter = router({
                 contractor_id: contractorId,
               })),
             );
+            await recordPurchaseOrderExpenses(
+              tx,
+              orderId,
+              Number(ctx.user!.sub),
+            );
 
             return orderId;
           });
@@ -181,7 +259,8 @@ export const contractOrderMutationRouter = router({
     ),
 
   // Keeps the items it is given by id, so expenses stay linked to them. An
-  // item or vendor with expenses can't be dropped.
+  // item or vendor with expenses recorded at its site can't be dropped. A
+  // purchase order records its cost again from the order as saved.
   updateContractOrder: protectedProcedure
     .input(contractOrderSchemas.updateContractOrderSchema)
     .mutation(
@@ -190,20 +269,15 @@ export const contractOrderMutationRouter = router({
         await assertManagesWorkOrder(ctx, order.work_order_id);
         await assertOrderParts(ctx, order.work_order_id, input);
 
-        const existingItems = await ctx.db
-          .select({ id: contractOrderItemTable.id })
-          .from(contractOrderItemTable)
-          .where(eq(contractOrderItemTable.contract_order_id, input.id));
-        const existingItemIds = new Set(existingItems.map((item) => item.id));
-
+        const existingItemIds = await getOrderItemIds(ctx, input.id);
         const keptItemIds = input.items
           .map((item) => item.id)
           .filter((id): id is number => id !== undefined);
-        if (keptItemIds.some((id) => !existingItemIds.has(id))) {
+        if (keptItemIds.some((id) => !existingItemIds.includes(id))) {
           throw businessRule("A requirement doesn't belong to this order.");
         }
 
-        const droppedItemIds = [...existingItemIds].filter(
+        const droppedItemIds = existingItemIds.filter(
           (id) => !keptItemIds.includes(id),
         );
         if (
@@ -214,6 +288,17 @@ export const contractOrderMutationRouter = router({
         ) {
           throw businessRule(
             "A requirement with expenses recorded against it can't be removed.",
+          );
+        }
+
+        // Expenses recorded at the sites before purchase orders kept their
+        // own cost would count the oil zapper twice.
+        if (
+          isPurchaseOrder(input) &&
+          (await countSiteRecordedExpenses(ctx.db, existingItemIds)) > 0
+        ) {
+          throw businessRule(
+            "This order has expenses recorded at its sites. A purchase order now records its own cost from its rate, so delete those expenses first.",
           );
         }
 
@@ -236,8 +321,18 @@ export const contractOrderMutationRouter = router({
           );
         }
 
+        await assertOilZapperCovered(
+          ctx.db,
+          oilZapperChanges(
+            await orderRecordedOilZapper(ctx.db, existingItemIds),
+            orderedOilZapper(input),
+          ),
+        );
+
         try {
           await ctx.db.transaction(async (tx) => {
+            await clearOrderExpenses(tx, existingItemIds);
+
             await tx
               .update(contractOrderTable)
               .set({
@@ -245,7 +340,11 @@ export const contractOrderMutationRouter = router({
                 order_number: input.order_number,
                 order_date: input.order_date,
                 description: input.description || null,
+                ...costValues(input),
                 documents: input.documents,
+                ...(input.completion_documents && {
+                  completion_documents: input.completion_documents,
+                }),
               })
               .where(eq(contractOrderTable.id, input.id));
 
@@ -289,6 +388,12 @@ export const contractOrderMutationRouter = router({
                 })),
               );
             }
+
+            await recordPurchaseOrderExpenses(
+              tx,
+              input.id,
+              Number(ctx.user!.sub),
+            );
           });
 
           return { success: true };
@@ -298,6 +403,29 @@ export const contractOrderMutationRouter = router({
       }),
     ),
 
+  // Completion documents come in once the order's work is done, after it is
+  // given out.
+  setCompletionDocuments: protectedProcedure
+    .input(contractOrderSchemas.setCompletionDocumentsSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const order = await getOrder(ctx, input.id);
+        await assertManagesWorkOrder(ctx, order.work_order_id);
+
+        try {
+          await ctx.db
+            .update(contractOrderTable)
+            .set({ completion_documents: input.completion_documents })
+            .where(eq(contractOrderTable.id, input.id));
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Saving completion documents");
+        }
+      }),
+    ),
+
+  // A purchase order's own expenses go with it; those recorded at the sites
+  // must be deleted first.
   deleteContractOrder: protectedProcedure
     .input(contractOrderSchemas.contractOrderIdSchema)
     .mutation(
@@ -311,10 +439,22 @@ export const contractOrderMutationRouter = router({
           );
         }
 
+        const itemIds = await getOrderItemIds(ctx, input.id);
+        await assertOilZapperCovered(
+          ctx.db,
+          oilZapperChanges(
+            await orderRecordedOilZapper(ctx.db, itemIds),
+            new Map(),
+          ),
+        );
+
         try {
-          await ctx.db
-            .delete(contractOrderTable)
-            .where(eq(contractOrderTable.id, input.id));
+          await ctx.db.transaction(async (tx) => {
+            await clearOrderExpenses(tx, itemIds);
+            await tx
+              .delete(contractOrderTable)
+              .where(eq(contractOrderTable.id, input.id));
+          });
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Deleting contract order");

@@ -18,13 +18,20 @@ const {
   bioremediationContSoilTable,
   siteActivityTable,
   scheduleOfRatesTable,
+  contractOrderTable,
   contractOrderItemTable,
   contractOrderContractorTable,
   jobOrderTable,
   jobOrderContractorTable,
 } = schema;
 
-const { WO_ACTIVITIES, WO_PROCESS, OIL_ZAPPER, allActivityOptions } = constants;
+const {
+  WO_ACTIVITIES,
+  WO_PROCESS,
+  OIL_ZAPPER,
+  CONTRACT_ORDER_TYPE,
+  allActivityOptions,
+} = constants;
 
 const RESTORATION_ACTIVITIES = new Set<string>(
   allActivityOptions
@@ -167,6 +174,15 @@ async function assertProcuredCoversUsed(
   }
 }
 
+// An expense its purchase order recorded changes only with the order.
+const assertNotFromOrder = (expense: { from_order: number }) => {
+  if (expense.from_order) {
+    throw businessRule(
+      "This expense is recorded by its purchase order. Edit the order to change it.",
+    );
+  }
+};
+
 // An expense spent on a contract order requirement must be for one at its
 // site, under one of that order's vendors. Oil zapper bought this way is
 // procured oil zapper; nothing else is. Returns the activity key to store.
@@ -184,12 +200,23 @@ async function resolveOrderItem(
       work_order_site_id: contractOrderItemTable.work_order_site_id,
       contract_order_id: contractOrderItemTable.contract_order_id,
       item: contractOrderItemTable.item,
+      order_type: contractOrderTable.type,
     })
     .from(contractOrderItemTable)
+    .innerJoin(
+      contractOrderTable,
+      eq(contractOrderItemTable.contract_order_id, contractOrderTable.id),
+    )
     .where(eq(contractOrderItemTable.id, itemId));
 
   if (!item || item.work_order_site_id !== siteId) {
     throw businessRule("That order requirement isn't for this site.");
+  }
+  // A purchase order records its own cost, from its rate.
+  if (item.order_type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER) {
+    throw businessRule(
+      "A purchase order's cost is recorded from its rate. Edit the order to change it.",
+    );
   }
   if (!contractorId) {
     throw businessRule("Choose which of the order's vendors this expense is under.");
@@ -399,6 +426,7 @@ export const expenseMutationRouter = router({
         }
 
         const prev = existing[0]!;
+        assertNotFromOrder(prev);
         const effectiveQuantity =
           updateData.quantity !== undefined ? updateData.quantity : prev.quantity;
         const effectiveItemId =
@@ -507,6 +535,7 @@ export const expenseMutationRouter = router({
         }
 
         const expense = existing[0]!;
+        assertNotFromOrder(expense);
         await assertProcuredCoversUsed(
           ctx,
           expense.work_order_site_id,

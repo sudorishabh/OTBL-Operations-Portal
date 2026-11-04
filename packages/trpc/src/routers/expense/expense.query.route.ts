@@ -63,6 +63,8 @@ export const expenseQueryRouter = router({
               contractor_name: contractorTable.name,
               contract_order_item_id:
                 workOrderSiteExpenseTable.contract_order_item_id,
+              // Recorded by its purchase order, so changed only there.
+              from_order: workOrderSiteExpenseTable.from_order,
               job_order_id: workOrderSiteExpenseTable.job_order_id,
               activity_key: workOrderSiteExpenseTable.activity_key,
               quantity: workOrderSiteExpenseTable.quantity,
