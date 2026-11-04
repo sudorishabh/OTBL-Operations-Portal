@@ -1,6 +1,7 @@
 import CustomButton from "@/components/shared/btn";
-import { ArrowRight, FileStack, Plus } from "lucide-react";
-import React from "react";
+import { ArrowRight, ChevronDown, FileStack, Plus } from "lucide-react";
+import React, { useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import CreateProposalDialog from "./create-proposal-dialog";
 import { trpc } from "@/lib/trpc";
 import ProposalCell from "./proposal-cell";
@@ -9,13 +10,14 @@ import WorkOrderCell from "./work-order-cell";
 import { type proposalTypes } from "@pkg/schema";
 import CreateWODialog from "../create-wo/create-wo-dialog";
 import ClientProposalSkeleton from "@/components/skeleton/client/client-proposal-skeleton";
-import ProposalWODetailsDialog from "./proposal-wo-details-dialog";
 import ProposalDetailDialog from "./proposal-detail-dialog";
 import ProcessSectionHeader from "@/components/work-order/process-section-header";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 6;
+// The largest limit the API takes; beyond it, ask for every proposal.
+const MAX_LIMIT = 100;
 
 interface Props {
   clientId: string;
@@ -27,10 +29,19 @@ const ROW_GRID = "md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)]";
 const ProposalWOMain = ({ clientId }: Props) => {
   const { setParam, getParam } = useHandleParams();
   const isAdmin = useIsAdmin();
+  const [shown, setShown] = useState(PAGE_SIZE);
 
-  const { data, isLoading } = trpc.proposalQuery.getProposalsByClient.useQuery(
-    { client_id: Number(clientId), limit: PAGE_SIZE },
-    { enabled: !!clientId },
+  // Keep the rows already listed while the next ones load.
+  const {
+    data,
+    isLoading,
+    isPlaceholderData: isLoadingMore,
+  } = trpc.proposalQuery.getProposalsByClient.useQuery(
+    {
+      client_id: Number(clientId),
+      limit: shown <= MAX_LIMIT ? shown : undefined,
+    },
+    { enabled: !!clientId, placeholderData: keepPreviousData },
   );
 
   if (isLoading) {
@@ -46,7 +57,6 @@ const ProposalWOMain = ({ clientId }: Props) => {
     (p: any) => p.proposal.id === (proposalId ? Number(proposalId) : null),
   );
   const proposalTitle = selectedProposal?.proposal.title || "";
-  const openAll = () => setParam("dialog", "proposal-wo");
   const awaiting = proposals.filter((p: any) => !p.workOrder).length;
 
   return (
@@ -68,13 +78,6 @@ const ProposalWOMain = ({ clientId }: Props) => {
               onClick={() => setParam("dialog", "create-proposal")}
             />
           )}
-          <CustomButton
-            text={total > 0 ? `View all ${total}` : "View all"}
-            title='View all proposals and work orders'
-            variant='arrow'
-            arrowType='upright'
-            onClick={openAll}
-          />
         </ProcessSectionHeader>
 
         {proposals.length > 0 ? (
@@ -134,10 +137,11 @@ const ProposalWOMain = ({ clientId }: Props) => {
                 </span>
                 <button
                   type='button'
-                  onClick={openAll}
-                  className='inline-flex cursor-pointer items-center gap-1 font-medium text-emerald-700 transition-colors hover:text-emerald-800'>
-                  View all
-                  <ArrowRight className='size-3.5' />
+                  onClick={() => setShown((count) => count + PAGE_SIZE)}
+                  disabled={isLoadingMore}
+                  className='inline-flex cursor-pointer items-center gap-1 font-medium text-emerald-700 transition-colors hover:text-emerald-800 disabled:cursor-wait disabled:opacity-60'>
+                  {isLoadingMore ? "Loading…" : "Show more"}
+                  <ChevronDown className='size-3.5' />
                 </button>
               </div>
             )}
@@ -152,7 +156,6 @@ const ProposalWOMain = ({ clientId }: Props) => {
 
       <CreateProposalDialog clientId={Number(clientId)} />
       <CreateWODialog proposalTitle={proposalTitle} />
-      <ProposalWODetailsDialog clientId={Number(clientId)} />
       <ProposalDetailDialog />
     </>
   );

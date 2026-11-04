@@ -52,7 +52,6 @@ const ProposalDetailDialog = () => {
       proposal_id: Number(proposalId),
     });
     await utils.proposalQuery.getProposalsByClient.invalidate();
-    await utils.proposalQuery.getProposalsByClientPaginated.invalidate();
   };
 
   const approve = trpc.proposalMutation.approveProposal.useMutation({
