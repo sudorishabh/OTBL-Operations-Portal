@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import Link from "next/link";
 import VendorDialog from "./vendor-dialog";
-import { CONTRACTOR_LABELS, type ContractorType } from "./contractor-labels";
+import { VENDOR_DESCRIPTION } from "./vendor-labels";
 
 type Vendor = {
   id: number;
@@ -78,15 +78,8 @@ const ALL = "all";
 const headClass = "h-10 px-4 sm:h-10 sm:px-4 text-xs font-medium text-gray-500";
 const cellClass = "px-4 py-3 sm:px-4 sm:py-3 text-sm text-gray-700";
 
-interface Props {
-  type: ContractorType;
-}
-
-// The vendors or sub-contractors page: one list, filtered to its type.
-const VendorPage = ({ type }: Props) => {
-  const labels = CONTRACTOR_LABELS[type];
-  const lowerOne = labels.one.toLowerCase();
-  const lowerMany = labels.many.toLowerCase();
+// The vendors page: everyone material and work are ordered from.
+const VendorPage = () => {
   const { setParams } = useHandleParams();
   const isManager = useIsManager();
   const utils = trpc.useUtils();
@@ -100,7 +93,6 @@ const VendorPage = ({ type }: Props) => {
     limit: PAGE_SIZE,
     search: debouncedSearch.trim() || undefined,
     status: status === ALL ? undefined : (status as "active" | "inactive"),
-    type,
   };
 
   // Loaded pages belong to one query input; changing it starts over at page 1.
@@ -127,7 +119,7 @@ const VendorPage = ({ type }: Props) => {
 
   const deleteVendor = trpc.contractorMutation.deleteContractor.useMutation({
     onSuccess: () => {
-      toast.success(`${labels.one} deleted`);
+      toast.success("Vendor deleted");
       utils.contractorQuery.invalidate();
     },
     onError: (error: { message: string }) => toast.error(error.message),
@@ -166,11 +158,11 @@ const VendorPage = ({ type }: Props) => {
       return (
         <NoFetchData
           Icon={HardHat}
-          title={isFiltered ? `No matching ${lowerMany}` : `No ${lowerMany} yet`}
+          title={isFiltered ? "No matching vendors" : "No vendors yet"}
           description={
             isFiltered
               ? "Try another search or clear the filters."
-              : labels.description
+              : VENDOR_DESCRIPTION
           }
         />
       );
@@ -181,7 +173,7 @@ const VendorPage = ({ type }: Props) => {
         <Table>
           <TableHeader>
             <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
-              <TableHead className={headClass}>{labels.one}</TableHead>
+              <TableHead className={headClass}>Vendor</TableHead>
               <TableHead className={headClass}>Contact</TableHead>
               <TableHead className={headClass}>GST / PAN</TableHead>
               <TableHead className={headClass}>Status</TableHead>
@@ -196,7 +188,7 @@ const VendorPage = ({ type }: Props) => {
                 <TableCell className={cellClass}>
                   <p className='font-medium text-gray-900'>
                     <Link
-                      href={`${labels.path}/${vendor.id}`}
+                      href={`/dashboard/vendor/${vendor.id}`}
                       className='hover:text-emerald-700 hover:underline'>
                       {capitalFirstLetter(vendor.name)}
                     </Link>
@@ -254,13 +246,13 @@ const VendorPage = ({ type }: Props) => {
                             })
                           }>
                           <Pencil className='mr-2 h-4 w-4' />
-                          Edit {lowerOne}
+                          Edit vendor
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className='text-red-600 focus:text-red-600'
                           onClick={() => setDeleting(vendor)}>
                           <Trash2 className='mr-2 h-4 w-4' />
-                          Delete {lowerOne}
+                          Delete vendor
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -281,7 +273,7 @@ const VendorPage = ({ type }: Props) => {
         )}
         <div className='border-t px-4 py-2 text-xs text-muted-foreground'>
           Showing {vendors.length} of {pagination?.total ?? vendors.length}{" "}
-          {lowerMany}
+          vendors
         </div>
       </div>
     );
@@ -296,7 +288,7 @@ const VendorPage = ({ type }: Props) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder='Search by name, contact, email or GST'
-            aria-label={`Search ${lowerMany}`}
+            aria-label='Search vendors'
             className='h-9 bg-white pl-9'
           />
         </div>
@@ -326,7 +318,7 @@ const VendorPage = ({ type }: Props) => {
 
       {renderList()}
 
-      <VendorDialog type={type} />
+      <VendorDialog />
 
       <AlertDialog
         open={!!deleting}
@@ -335,7 +327,7 @@ const VendorPage = ({ type }: Props) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleting?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Expenses and orders recorded with this {lowerOne} keep their
+              Expenses and orders recorded with this vendor keep their
               amounts but no longer name it. To keep its history, set it to
               inactive instead.
             </AlertDialogDescription>
@@ -347,7 +339,7 @@ const VendorPage = ({ type }: Props) => {
               onClick={() =>
                 deleting && deleteVendor.mutate({ id: deleting.id })
               }>
-              Delete {lowerOne}
+              Delete vendor
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -13,7 +13,7 @@ import CustomInput from "@/components/shared/input";
 import { Form } from "@/components/ui/form";
 import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
-import { CONTRACTOR_LABELS, type ContractorType } from "./contractor-labels";
+import { VENDOR_DESCRIPTION } from "./vendor-labels";
 
 const { STATUS } = constants;
 
@@ -41,8 +41,6 @@ const statusOptions = [
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // What a new one is added as; an edit keeps its own type.
-  type?: ContractorType;
   // Edits this vendor; without it the dialog adds one.
   vendorId?: number;
   onSaved?: (vendorId: number) => void;
@@ -54,9 +52,7 @@ const VendorFormDialog = ({
   onOpenChange,
   vendorId,
   onSaved,
-  type = constants.CONTRACTOR_TYPE.VENDOR,
 }: Props) => {
-  const labels = CONTRACTOR_LABELS[type];
   const isEdit = !!vendorId;
   const utils = trpc.useUtils();
   const { handleError } = useApiError();
@@ -101,12 +97,12 @@ const VendorFormDialog = ({
 
   const createVendor = trpc.contractorMutation.createContractor.useMutation({
     onSuccess: (data: { id: number }) =>
-      handleSaved(`${labels.one} added`, data.id),
+      handleSaved("Vendor added", data.id),
     onError: (error: any) => handleError(error, { showToast: true }),
   });
 
   const updateVendor = trpc.contractorMutation.updateContractor.useMutation({
-    onSuccess: () => handleSaved(`${labels.one} updated`, vendorId!),
+    onSuccess: () => handleSaved("Vendor updated", vendorId!),
     onError: (error: any) => handleError(error, { showToast: true }),
   });
 
@@ -114,7 +110,7 @@ const VendorFormDialog = ({
     if (isEdit) {
       updateVendor.mutate({ id: vendorId!, status, ...fields });
     } else {
-      createVendor.mutate({ ...fields, type });
+      createVendor.mutate(fields);
     }
   }
 
@@ -123,13 +119,13 @@ const VendorFormDialog = ({
       open={open}
       setOpen={handleClose}
       isLoading={isEdit && vendorQuery.isLoading}
-      title={isEdit ? `Edit ${labels.one}` : `Add ${labels.one}`}
-      description={labels.description}
+      title={isEdit ? "Edit Vendor" : "Add Vendor"}
+      description={VENDOR_DESCRIPTION}
       size='md'
       heightMode='auto'>
       {isEdit && !vendorQuery.isLoading && !vendor ? (
         <p className='py-10 text-center text-sm text-muted-foreground'>
-          This {labels.one.toLowerCase()} could not be found.
+          This vendor could not be found.
         </p>
       ) : (
         <Form {...form}>
@@ -137,7 +133,7 @@ const VendorFormDialog = ({
             <CustomInput
               control={form.control}
               fieldName='name'
-              Label={`${labels.one} Name`}
+              Label='Vendor Name'
               placeholder='e.g. Sharma Earthmovers'
             />
 
@@ -200,7 +196,7 @@ const VendorFormDialog = ({
               />
               <CustomButton
                 type='submit'
-                text={isEdit ? "Save Changes" : `Add ${labels.one}`}
+                text={isEdit ? "Save Changes" : "Add Vendor"}
                 variant='primary'
                 loading={createVendor.isPending || updateVendor.isPending}
                 disableForViewer
