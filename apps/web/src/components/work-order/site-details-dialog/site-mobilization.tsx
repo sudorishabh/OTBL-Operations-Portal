@@ -103,7 +103,7 @@ export const MobilizationCertificate = ({ woSiteId }: Props) => {
       />
 
       <DocumentsField
-        label='Upload mobilization certificate'
+        label='Doc upload'
         files={files}
         onFilesChange={setFiles}
         existing={documents.map((doc, index) => ({
@@ -266,41 +266,44 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
       ) : (
         <>
           <DocumentsField
-            label='Upload 0-day bio sample report'
+            label='Doc upload'
             files={files}
             onFilesChange={setFiles}
             isUploading={isUploading}
             progress={progress}
           />
-          <div className='flex flex-wrap items-end gap-2'>
-            <label className='block w-full sm:w-40'>
-              <span className='mb-1 block text-[11px] text-gray-500'>
-                TPH value
-              </span>
-              <Input
-                inputMode='decimal'
-                value={tphValue}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  if (next === "" || /^[0-9]*[.,]?[0-9]*$/.test(next)) {
-                    setTphValue(next);
-                  }
-                }}
-                placeholder='0.00'
-                className='h-8 bg-white text-[13px] tabular-nums'
+          {/* Once a report is picked: its TPH, then save both together. */}
+          {files.length > 0 && (
+            <div className='flex flex-wrap items-center gap-2'>
+              <label className='flex items-center gap-2'>
+                <span className='shrink-0 text-[11px] text-gray-500'>
+                  Baseline TPH
+                </span>
+                <Input
+                  inputMode='decimal'
+                  value={tphValue}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    if (next === "" || /^[0-9]*[.,]?[0-9]*$/.test(next)) {
+                      setTphValue(next);
+                    }
+                  }}
+                  placeholder='0.00'
+                  className='h-8 w-24 bg-white text-[13px] tabular-nums'
+                />
+              </label>
+              <CustomButton
+                variant='primary'
+                Icon={FlaskConical}
+                text='Save sample'
+                loading={isSaving}
+                disabled={isSaving}
+                onClick={save}
+                className='h-8 px-3 text-xs'
+                disableForViewer
               />
-            </label>
-            <CustomButton
-              variant='primary'
-              Icon={FlaskConical}
-              text='Save zero day sample'
-              loading={isSaving}
-              disabled={isSaving}
-              onClick={save}
-              className='h-8 px-3 text-xs'
-              disableForViewer
-            />
-          </div>
+            </div>
+          )}
         </>
       )}
     </div>

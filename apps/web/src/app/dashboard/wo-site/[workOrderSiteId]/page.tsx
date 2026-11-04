@@ -1,7 +1,9 @@
 "use client";
 
 import CustomButton from "@/components/shared/btn";
-import DeferredFilePicker from "@/components/shared/deferred-file-picker";
+import DeferredFilePicker, {
+  getFileTypeStyle,
+} from "@/components/shared/deferred-file-picker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +34,7 @@ import {
   Camera,
   ExternalLink,
   FileText,
+  Loader2,
   LogOut,
   MapPin,
   Trash2,
@@ -100,7 +103,8 @@ export default function WoSiteOperatorUploadPage() {
   const { logout } = useAuthContext();
 
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
-  const [isUploadingAll, setIsUploadingAll] = useState(false);
+  // The pending file being uploaded, while "Upload" works through them.
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [docToDelete, setDocToDelete] = useState<OperatorUploadRow | null>(
     null,
   );
@@ -166,9 +170,9 @@ export default function WoSiteOperatorUploadPage() {
       return;
     }
 
-    setIsUploadingAll(true);
     try {
-      for (const { file, description } of pendingItems) {
+      for (const [index, { file, description }] of pendingItems.entries()) {
+        setUploadingIndex(index);
         const result = await operatorUpload.uploadFile(file);
         if (result) {
           await createOperatorUploadMutation.mutateAsync({
@@ -186,7 +190,7 @@ export default function WoSiteOperatorUploadPage() {
     } catch (error) {
       console.error("Upload failed", error);
     } finally {
-      setIsUploadingAll(false);
+      setUploadingIndex(null);
     }
   };
 
@@ -282,7 +286,18 @@ export default function WoSiteOperatorUploadPage() {
       : null,
   ].filter(Boolean) as { label: string; value: string }[];
 
-  const isBusy = isUploadingAll || operatorUpload.isUploading;
+  const isBusy = uploadingIndex !== null || operatorUpload.isUploading;
+  const hasPending = pendingItems.length > 0;
+  // One bar across all the pending files, as each reports its own progress.
+  const overallProgress = hasPending
+    ? Math.min(
+        100,
+        Math.round(
+          ((uploadingIndex ?? 0) * 100 + (operatorUpload.progress ?? 0)) /
+            pendingItems.length,
+        ),
+      )
+    : 0;
 
   return shell(
     <>
@@ -367,144 +382,161 @@ export default function WoSiteOperatorUploadPage() {
 
       <Section
         title='Add documents'
-        description='PDF documents such as measurement sheets and bills, or site photos from the camera. Files are stored in SharePoint.'>
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-stretch'>
-          <div className='flex-1'>
-            <DeferredFilePicker
-              label='Select files'
-              selectedFile={null}
-              onFileSelect={handleFileSelect}
-              multiple={true}
-              fileCount={pendingItems.length}
-              isUploadBgWhite={true}
-            />
-          </div>
+        description='Measurement sheets, bills and other PDFs, or photos from the camera.'>
+        {/* The files waiting to upload, each with its description, then a row
+            to add more and the upload button, in one box. */}
+        <div
+          className={cn(
+            "divide-y divide-gray-100 overflow-hidden rounded-lg border",
+            hasPending ? "border-gray-200" : "border-dashed border-gray-300",
+          )}>
+          {hasPending && (
+            <ul className='divide-y divide-gray-100'>
+              {pendingItems.map((item, idx) => {
+                const { Icon, bg, text } = getFileTypeStyle(item.file.name);
 
-          <input
-            ref={cameraInputRef}
-            type='file'
-            accept={PHOTO_EXTENSIONS.join(",")}
-            capture='environment'
-            className='hidden'
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              const isPhoto =
-                !!file &&
-                PHOTO_EXTENSIONS.some((ext) =>
-                  file.name.toLowerCase().endsWith(ext),
-                );
-              if (file && !isPhoto) {
-                toast.error("Photos must be JPG or PNG");
-              } else if (file) {
-                handleFileSelect(file);
-              }
-              e.target.value = "";
-            }}
-          />
-
-          <button
-            type='button'
-            onClick={() => cameraInputRef.current?.click()}
-            disabled={pendingItems.length >= MAX_DOCUMENTS}
-            title={
-              pendingItems.length >= MAX_DOCUMENTS
-                ? `You can add up to ${MAX_DOCUMENTS} files at a time`
-                : "Use the camera on this device"
-            }
-            className='group flex h-9 w-full shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-700 transition-colors hover:border-emerald-400 hover:bg-gray-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto'>
-            <Camera className='size-3.5 text-gray-400 transition-colors group-hover:text-emerald-600' />
-            Take a photo
-          </button>
-        </div>
-
-        {isBusy && (
-          <div className='mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3'>
-            <div className='flex items-center justify-between gap-3'>
-              <p className='text-[12.5px] font-medium text-gray-700'>
-                Uploading to SharePoint…
-              </p>
-              <p className='text-[12.5px] font-semibold tabular-nums text-gray-700'>
-                {Math.round(operatorUpload.progress ?? 0)}%
-              </p>
-            </div>
-            <Progress
-              value={operatorUpload.progress}
-              className='mt-2 h-1.5'
-              indicatorClassName='bg-emerald-500'
-            />
-          </div>
-        )}
-
-        {pendingItems.length > 0 && (
-          <div className='mt-4 border-t border-gray-100 pt-4'>
-            <div className='flex items-center justify-between gap-3'>
-              <p className='text-[13px] font-semibold text-gray-900'>
-                Ready to upload
-                <span className='ml-1.5 font-medium tabular-nums text-gray-500'>
-                  {pendingItems.length}
-                </span>
-              </p>
-              <button
-                type='button'
-                onClick={() => setPendingItems([])}
-                className='cursor-pointer text-[12.5px] font-medium text-gray-500 underline-offset-2 transition-colors hover:text-rose-600 hover:underline'>
-                Clear all
-              </button>
-            </div>
-
-            <p className='mt-1 text-[12.5px] text-gray-500'>
-              Describe each file so the office knows what it is.
-            </p>
-
-            <div className='mt-3 space-y-2.5'>
-              {pendingItems.map((item, idx) => (
-                <div
-                  key={`${item.file.name}-${idx}`}
-                  className='rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3'>
-                  <div className='flex items-center justify-between gap-2'>
-                    <div className='flex min-w-0 items-center gap-1.5'>
-                      <FileText className='size-3.5 shrink-0 text-gray-400' />
+                return (
+                  <li
+                    key={`${item.file.name}-${idx}`}
+                    className='px-3 py-2'>
+                    <div className='flex items-center gap-2'>
                       <span
-                        className='truncate text-[13px] font-medium text-gray-800'
+                        className={cn(
+                          "flex size-6 shrink-0 items-center justify-center rounded",
+                          bg,
+                        )}>
+                        {uploadingIndex === idx ? (
+                          <Loader2 className='size-3.5 animate-spin text-emerald-600' />
+                        ) : (
+                          <Icon className={cn("size-3.5", text)} />
+                        )}
+                      </span>
+                      <span
+                        className='min-w-0 flex-1 truncate text-[13px] font-medium text-gray-800'
                         title={item.file.name}>
                         {item.file.name}
                       </span>
+                      {!isBusy && (
+                        <button
+                          type='button'
+                          onClick={() => handleRemovePending(idx)}
+                          aria-label={`Remove ${item.file.name}`}
+                          title={`Remove ${item.file.name}`}
+                          className='flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600'>
+                          <X className='size-3.5' />
+                        </button>
+                      )}
                     </div>
-                    <button
-                      type='button'
-                      onClick={() => handleRemovePending(idx)}
-                      aria-label={`Remove ${item.file.name}`}
-                      className='shrink-0 cursor-pointer rounded p-1 text-gray-400 transition-colors hover:bg-white hover:text-rose-600'>
-                      <X className='size-3.5' />
-                    </button>
-                  </div>
-                  <Textarea
-                    placeholder='What is this file? (required)'
-                    value={item.description}
-                    onChange={(e) =>
-                      handlePendingDescription(idx, e.target.value)
-                    }
-                    className='mt-2 min-h-16 bg-white text-[13px]'
-                  />
-                </div>
-              ))}
-            </div>
+                    {/* One line that grows with what is typed, under the
+                        name. */}
+                    <div className='mt-1.5 pl-8'>
+                      <Textarea
+                        rows={1}
+                        placeholder='What is this file? (required)'
+                        aria-label={`What ${item.file.name} is`}
+                        value={item.description}
+                        onChange={(e) =>
+                          handlePendingDescription(idx, e.target.value)
+                        }
+                        disabled={isBusy}
+                        className='min-h-8 resize-none bg-white px-2.5 py-1.5 leading-5 shadow-none sm:text-[13px]'
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
-            <CustomButton
-              onClick={() => void handleUploadAll()}
-              disabled={isBusy}
-              variant='primary'
-              Icon={Upload}
-              text={
-                isUploadingAll
-                  ? "Uploading…"
-                  : `Upload ${pendingItems.length} ${pendingItems.length === 1 ? "file" : "files"}`
-              }
-              loading={isUploadingAll}
-              className='mt-3 h-9 w-full text-[13px]'
-            />
-          </div>
-        )}
+          {/* Hidden while uploading, as the list clears when it is done. */}
+          {!isBusy && (
+            <div className='flex'>
+              <div className='min-w-0 flex-1'>
+                <DeferredFilePicker
+                  label={hasPending ? "Add files" : "Select files"}
+                  selectedFile={null}
+                  onFileSelect={handleFileSelect}
+                  multiple
+                  fileCount={pendingItems.length}
+                  variant='row'
+                />
+              </div>
+
+              <input
+                ref={cameraInputRef}
+                type='file'
+                accept={PHOTO_EXTENSIONS.join(",")}
+                capture='environment'
+                className='hidden'
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  const isPhoto =
+                    !!file &&
+                    PHOTO_EXTENSIONS.some((ext) =>
+                      file.name.toLowerCase().endsWith(ext),
+                    );
+                  if (file && !isPhoto) {
+                    toast.error("Photos must be JPG or PNG");
+                  } else if (file) {
+                    handleFileSelect(file);
+                  }
+                  e.target.value = "";
+                }}
+              />
+
+              <button
+                type='button'
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={pendingItems.length >= MAX_DOCUMENTS}
+                title={
+                  pendingItems.length >= MAX_DOCUMENTS
+                    ? `You can add up to ${MAX_DOCUMENTS} files at a time`
+                    : "Use the camera on this device"
+                }
+                className='group flex h-9 shrink-0 cursor-pointer items-center gap-1.5 border-l border-gray-200 bg-gray-50/60 px-3 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50'>
+                <Camera className='size-3.5 text-gray-400 transition-colors group-hover:text-emerald-600' />
+                Take a photo
+              </button>
+            </div>
+          )}
+
+          {hasPending && (
+            <div className='flex h-11 items-center gap-3 px-3'>
+              {isBusy ? (
+                <>
+                  <span className='shrink-0 text-xs font-medium text-gray-700'>
+                    Uploading {(uploadingIndex ?? 0) + 1} of{" "}
+                    {pendingItems.length}
+                  </span>
+                  <Progress
+                    value={overallProgress}
+                    className='h-1 flex-1'
+                    indicatorClassName='bg-emerald-500'
+                  />
+                  <span className='w-8 shrink-0 text-right text-xs tabular-nums text-gray-500'>
+                    {overallProgress}%
+                  </span>
+                </>
+              ) : (
+                <>
+                  <button
+                    type='button'
+                    onClick={() => setPendingItems([])}
+                    className='cursor-pointer text-xs font-medium text-gray-500 underline-offset-2 transition-colors hover:text-rose-600 hover:underline'>
+                    Clear all
+                  </button>
+                  <CustomButton
+                    onClick={() => void handleUploadAll()}
+                    variant='primary'
+                    Icon={Upload}
+                    text={`Upload ${pendingItems.length} ${pendingItems.length === 1 ? "file" : "files"}`}
+                    className='ml-auto'
+                  />
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </Section>
 
       <Section

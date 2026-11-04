@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { FileCheck, Upload } from "lucide-react";
+import { FileCheck, Lock, Upload } from "lucide-react";
 import toast from "react-hot-toast";
 import { trpc } from "@/lib/trpc";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
@@ -27,7 +27,8 @@ const CertificateHeader = () => (
 export const PendingCompletionCertificate = ({ note }: { note: string }) => (
   <div className='space-y-2'>
     <CertificateHeader />
-    <p className='flex min-h-9 items-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-2.5 py-2 text-[11px] text-gray-500'>
+    <p className='flex min-h-9 items-center gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-2.5 py-2 text-[11px] text-gray-500'>
+      <Lock className='size-3.5 shrink-0 text-gray-400' />
       {note}
     </p>
   </div>
@@ -104,7 +105,7 @@ const SiteCompletionCertificate = ({ woSiteId }: Props) => {
       <CertificateHeader />
 
       <DocumentsField
-        label='Upload completion certificate'
+        label='Doc upload'
         files={files}
         onFilesChange={setFiles}
         existing={certificates.map((doc, index) => ({

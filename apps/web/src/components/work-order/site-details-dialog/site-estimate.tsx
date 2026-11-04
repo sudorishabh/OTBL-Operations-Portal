@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { constants } from "@pkg/utils";
-import { Pencil } from "lucide-react";
+import { Calculator, Pencil } from "lucide-react";
 import DocumentsField from "@/components/shared/documents-field";
 import { useSharePointUpload } from "@/hooks/useSharePointUpload";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import CustomButton from "@/components/shared/btn";
-import InfoSection from "./info-section";
+import UploadSectionHeader from "@/components/shared/upload-section-header";
 
 // The contaminated soil record the estimate is saved as, and the site
 // document type of its estimate document.
@@ -372,11 +372,12 @@ const EstimateForm = ({
     );
 
   return (
-    <EstimateSection actions={actions}>
-      {/* Side by side once there is room for the table beside the files. */}
-      <div className='grid grid-cols-1 gap-3 @4xl:grid-cols-5'>
+    <div className='space-y-3'>
+      <EstimateHeader actions={actions} />
+
+      <div className='grid grid-cols-1 gap-3 lg:grid-cols-3'>
         <DocumentsField
-          label='Upload estimate document'
+          label='Doc upload'
           files={pendingDocs}
           onFilesChange={setPendingDocs}
           existing={savedDocs.map((doc, index) => ({
@@ -392,10 +393,10 @@ const EstimateForm = ({
           }}
           isUploading={isFileUploading}
           progress={progress}
-          className='self-start @4xl:col-span-2'
+          className='self-start'
         />
 
-        <div className='self-start overflow-hidden rounded-lg border border-gray-200 bg-white @4xl:col-span-3'>
+        <div className='self-start overflow-hidden rounded-lg border border-gray-200 bg-white lg:col-span-2'>
           <Table>
             <TableHeader>
               <TableRow className='border-gray-100 hover:bg-transparent'>
@@ -481,25 +482,21 @@ const EstimateForm = ({
           </Table>
         </div>
       </div>
-    </EstimateSection>
+    </div>
   );
 };
 
-// The estimate as a row of the site information card, its actions under its
-// name.
-const EstimateSection = ({
-  actions,
-  children,
-}: {
-  actions?: React.ReactNode;
-  children: React.ReactNode;
-}) => (
-  <InfoSection
-    title='Estimate'
-    description='The estimate document and the quantities it sets for this site.'
-    actions={actions}>
-    {children}
-  </InfoSection>
+// The estimate's title on one line, with its actions on the right.
+const EstimateHeader = ({ actions }: { actions?: React.ReactNode }) => (
+  <div className='flex flex-wrap items-center justify-between gap-2'>
+    <UploadSectionHeader
+      Icon={Calculator}
+      title='Estimate'
+      description='The estimate document and the quantities it sets for this site.'
+      className='flex-1'
+    />
+    {actions && <div className='flex items-center gap-2'>{actions}</div>}
+  </div>
 );
 
 // The site's estimate: its document, and the quantities it sets for each of
@@ -553,13 +550,14 @@ const SiteEstimate = ({
           siteDocuments={siteDocumentsQuery.data}
         />
       ) : (
-        <EstimateSection>
+        <div className='space-y-3'>
+          <EstimateHeader />
           <p className='rounded-lg border border-dashed border-gray-200 px-3 py-2.5 text-xs text-gray-400'>
             {siteActivitiesQuery.isLoading
               ? "Loading the site's activities…"
               : "This site has no activities to estimate."}
           </p>
-        </EstimateSection>
+        </div>
       )}
     </div>
   );
