@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -59,7 +59,7 @@ export const proposalQueryRouter = router({
     .input(proposalSchemas.getProposalsByClientSchema)
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { client_id, limit } = input;
+        const { client_id } = input;
 
         try {
           const scope = await getAccessScope(
@@ -76,21 +76,13 @@ export const proposalQueryRouter = router({
               eq(proposalTable.client_id, client_id),
             );
 
-          const [totalResult] = await ctx.db
-            .select({ count: count() })
-            .from(proposalTable)
-            .where(clientCond);
-          const total = totalResult?.count ?? 0;
-
-          const baseQuery = ctx.db
+          // Every proposal: the client page lists and filters them all.
+          const rows = await ctx.db
             .select({ proposal: proposalTable, workOrder: workOrderTable })
             .from(proposalTable)
             .where(clientCond)
             .leftJoin(workOrderTable, workOrderJoinOn)
-            .orderBy(desc(proposalTable.created_at))
-            .$dynamic();
-
-          const rows = limit ? await baseQuery.limit(limit) : await baseQuery;
+            .orderBy(desc(proposalTable.created_at));
 
           // A work order completes once its schedule of rates is used up, so
           // send the status the work order pages show, not the stored one.
@@ -119,7 +111,7 @@ export const proposalQueryRouter = router({
             },
           }));
 
-          return { proposals, total };
+          return { proposals };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching proposals");
         }

@@ -6,7 +6,6 @@ import {
   positiveIntValidator,
   documentsValidator,
   dateValidator,
-  limitValidator,
 } from "../validators";
 
 export const baseProposalSchema = z.object({
@@ -37,7 +36,6 @@ export const rejectProposalSchema = z.object({
 
 export const getProposalsByClientSchema = z.object({
   client_id: positiveIntValidator,
-  limit: limitValidator.optional(),
 });
 
 export const getProposalByIdSchema = z.object({

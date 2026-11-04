@@ -1,7 +1,6 @@
 import CustomButton from "@/components/shared/btn";
-import { ArrowRight, ChevronDown, FileStack, Plus } from "lucide-react";
-import React, { useState } from "react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { ArrowRight, FileStack, Plus } from "lucide-react";
+import React from "react";
 import CreateProposalDialog from "./create-proposal-dialog";
 import { trpc } from "@/lib/trpc";
 import ProposalCell from "./proposal-cell";
@@ -15,10 +14,6 @@ import ProcessSectionHeader from "@/components/work-order/process-section-header
 import { useIsAdmin } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZE = 6;
-// The largest limit the API takes; beyond it, ask for every proposal.
-const MAX_LIMIT = 100;
-
 interface Props {
   clientId: string;
 }
@@ -29,19 +24,10 @@ const ROW_GRID = "md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)]";
 const ProposalWOMain = ({ clientId }: Props) => {
   const { setParam, getParam } = useHandleParams();
   const isAdmin = useIsAdmin();
-  const [shown, setShown] = useState(PAGE_SIZE);
 
-  // Keep the rows already listed while the next ones load.
-  const {
-    data,
-    isLoading,
-    isPlaceholderData: isLoadingMore,
-  } = trpc.proposalQuery.getProposalsByClient.useQuery(
-    {
-      client_id: Number(clientId),
-      limit: shown <= MAX_LIMIT ? shown : undefined,
-    },
-    { enabled: !!clientId, placeholderData: keepPreviousData },
+  const { data, isLoading } = trpc.proposalQuery.getProposalsByClient.useQuery(
+    { client_id: Number(clientId) },
+    { enabled: !!clientId },
   );
 
   if (isLoading) {
@@ -49,8 +35,7 @@ const ProposalWOMain = ({ clientId }: Props) => {
   }
 
   const proposals = data?.proposals || [];
-  const total = data?.total ?? 0;
-  const hasMore = total > proposals.length;
+  const total = proposals.length;
 
   const proposalId = getParam("proposal-id");
   const selectedProposal = proposals.find(
@@ -129,22 +114,6 @@ const ProposalWOMain = ({ clientId }: Props) => {
                 </li>
               ))}
             </ul>
-
-            {hasMore && (
-              <div className='flex items-center justify-between gap-3 border-t border-gray-200 bg-gray-50/60 px-5 py-2 text-xs text-gray-500'>
-                <span>
-                  Showing the latest {proposals.length} of {total}
-                </span>
-                <button
-                  type='button'
-                  onClick={() => setShown((count) => count + PAGE_SIZE)}
-                  disabled={isLoadingMore}
-                  className='inline-flex cursor-pointer items-center gap-1 font-medium text-emerald-700 transition-colors hover:text-emerald-800 disabled:cursor-wait disabled:opacity-60'>
-                  {isLoadingMore ? "Loading…" : "Show more"}
-                  <ChevronDown className='size-3.5' />
-                </button>
-              </div>
-            )}
           </div>
         ) : (
           <p className='rounded-lg border border-dashed py-8 text-center text-xs text-gray-500'>
