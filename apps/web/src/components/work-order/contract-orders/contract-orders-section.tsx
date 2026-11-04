@@ -37,7 +37,12 @@ export interface ContractOrder {
   order_number: string;
   order_date: string | Date;
   description: string | null;
+  // A purchase order's cost; none on a sub-contract.
+  unit_rate: string | null;
+  gst_percentage: string | null;
+  invoice_number: string | null;
   documents: unknown;
+  completion_documents: unknown;
   items: {
     id: number;
     work_order_site_id: number;
