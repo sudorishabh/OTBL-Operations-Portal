@@ -238,15 +238,16 @@ export const contractorTypeOptions = [
 ] as const;
 
 // The two kinds of order bioremediation work is given out through: a purchase
-// order buys material, and a work order subcontracts a service.
+// order buys material, and a sub-contract gives out a service. Named apart
+// from the client's work order that the work belongs to.
 export const CONTRACT_ORDER_TYPE = {
   PURCHASE_ORDER: "purchase_order",
-  WORK_ORDER: "work_order",
+  SUB_CONTRACT: "sub_contract",
 } as const;
 
 export const contractOrderTypeOptions = [
   { value: CONTRACT_ORDER_TYPE.PURCHASE_ORDER, label: "Purchase Order" },
-  { value: CONTRACT_ORDER_TYPE.WORK_ORDER, label: "Work Order (Subcontract)" },
+  { value: CONTRACT_ORDER_TYPE.SUB_CONTRACT, label: "Sub-contract" },
 ] as const;
 
 // What a contract order can require at a site. Oil zapper bought through a

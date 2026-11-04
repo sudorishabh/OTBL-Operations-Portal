@@ -33,7 +33,7 @@ const { CONTRACT_ORDER_TYPE, CONTRACT_ORDER_ITEMS } = constants;
 
 export interface ContractOrder {
   id: number;
-  type: "purchase_order" | "work_order";
+  type: "purchase_order" | "sub_contract";
   order_number: string;
   order_date: string | Date;
   description: string | null;
@@ -76,7 +76,7 @@ const GROUPS = [
     tone: "bg-sky-50 text-sky-700 ring-sky-100",
   },
   {
-    type: CONTRACT_ORDER_TYPE.WORK_ORDER,
+    type: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
     label: "Work order (subcontract)",
     filterLabel: "Work orders",
     Icon: Wrench,
@@ -142,13 +142,13 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   const purchaseCount = orders.filter(
     (order) => order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
   ).length;
-  const workCount = orders.length - purchaseCount;
+  const subContractCount = orders.length - purchaseCount;
   const shownOrders =
     filter === "all" ? orders : orders.filter((order) => order.type === filter);
   const filterCounts: Record<OrderFilter, number> = {
     all: orders.length,
     [CONTRACT_ORDER_TYPE.PURCHASE_ORDER]: purchaseCount,
-    [CONTRACT_ORDER_TYPE.WORK_ORDER]: workCount,
+    [CONTRACT_ORDER_TYPE.SUB_CONTRACT]: subContractCount,
   };
 
   // What the section lets you do: filter by type and add an order.

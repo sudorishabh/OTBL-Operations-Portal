@@ -11,7 +11,7 @@ const { CONTRACT_ORDER_TYPE, CONTRACT_ORDER_ITEMS } = constants;
 
 export const contractOrderTypeEnum = z.enum([
   CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
-  CONTRACT_ORDER_TYPE.WORK_ORDER,
+  CONTRACT_ORDER_TYPE.SUB_CONTRACT,
 ]);
 
 const itemKeys = CONTRACT_ORDER_ITEMS.map((item) => item.key) as [

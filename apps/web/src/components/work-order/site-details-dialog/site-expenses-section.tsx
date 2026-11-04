@@ -115,7 +115,7 @@ const ORDER_GROUPS = [
     Icon: ShoppingCart,
   },
   {
-    type: constants.CONTRACT_ORDER_TYPE.WORK_ORDER,
+    type: constants.CONTRACT_ORDER_TYPE.SUB_CONTRACT,
     title: "Work orders (subcontract)",
     Icon: Wrench,
   },

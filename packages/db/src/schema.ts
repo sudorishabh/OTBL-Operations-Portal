@@ -697,8 +697,8 @@ export const jobOrderContractorTable = mysqlTable(
   ],
 );
 
-// A purchase order or subcontract work order that bioremediation work is
-// given out through. One order can cover several of the work order's sites.
+// A purchase order or sub-contract that bioremediation work is given out
+// through. One order can cover several of the work order's sites.
 export const contractOrderTable = mysqlTable(
   "contract_orders",
   {
@@ -708,7 +708,10 @@ export const contractOrderTable = mysqlTable(
       .references(() => workOrderTable.id, { onDelete: "cascade" }),
     type: varchar("type", {
       length: 50,
-      enum: [CONTRACT_ORDER_TYPE.PURCHASE_ORDER, CONTRACT_ORDER_TYPE.WORK_ORDER],
+      enum: [
+        CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
+        CONTRACT_ORDER_TYPE.SUB_CONTRACT,
+      ],
     }).notNull(),
     order_number: varchar("order_number", { length: 255 }).notNull(),
     order_date: timestamp("order_date").notNull(),
