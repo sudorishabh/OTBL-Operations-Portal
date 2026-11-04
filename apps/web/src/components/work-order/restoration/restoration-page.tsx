@@ -199,17 +199,19 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
               />
             }
             jobOrderActions={(jobOrder) => (
-              <JobOrderActions
-                restorationId={restoration.id}
-                jobOrder={jobOrder}
-                workOrder={workOrder}
-                rates={rates}
-                onEdit={() => openJobOrderDialog(jobOrder)}>
+              <>
                 <JobOrderCertificates
                   restorationId={restoration.id}
                   jobOrder={jobOrder}
                 />
-              </JobOrderActions>
+                <JobOrderActions
+                  restorationId={restoration.id}
+                  jobOrder={jobOrder}
+                  workOrder={workOrder}
+                  rates={rates}
+                  onEdit={() => openJobOrderDialog(jobOrder)}
+                />
+              </>
             )}
           />
         </section>
