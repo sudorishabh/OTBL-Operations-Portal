@@ -111,7 +111,6 @@ const ProposalWOMain = ({ clientId }: Props) => {
                     workOrder as proposalTypes.getProposalsByClientReturnType["workOrder"]
                   }
                   proposalId={proposal.id}
-                  proposalTitle={proposal.title}
                 />
               </div>
             ))}
