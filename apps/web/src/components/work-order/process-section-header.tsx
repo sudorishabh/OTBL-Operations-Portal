@@ -11,9 +11,12 @@ export const PROCESS_TONES = {
   },
 } as const;
 
+// Sections that aren't a process share the details card's icon colour.
+const DEFAULT_TONE = "bg-emerald-50 text-emerald-700 ring-emerald-100";
+
 interface Props {
   Icon: React.ElementType;
-  tone: keyof typeof PROCESS_TONES;
+  tone?: keyof typeof PROCESS_TONES;
   title: string;
   description: string;
   // Actions shown on the right.
@@ -29,7 +32,11 @@ const ProcessSectionHeader = ({
 }: Props) => (
   <div className='mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
     <div className='flex items-center gap-3'>
-      <div className={cn("rounded-lg p-2 ring-1", PROCESS_TONES[tone].icon)}>
+      <div
+        className={cn(
+          "rounded-lg p-2 ring-1",
+          tone ? PROCESS_TONES[tone].icon : DEFAULT_TONE,
+        )}>
         <Icon className='size-4' />
       </div>
       <div>

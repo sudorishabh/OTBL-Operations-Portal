@@ -1,7 +1,6 @@
 import CustomButton from "@/components/shared/btn";
-import { Check, Clock, FileText, Link2Off, Plus } from "lucide-react";
+import { Check, FileStack, Link2Off, Plus } from "lucide-react";
 import React from "react";
-import NoFetchData from "@/components/shared/no-fetch-data";
 import CreateProposalDialog from "./create-proposal-dialog";
 import { trpc } from "@/lib/trpc";
 import ProposalCard from "./proposal-card";
@@ -12,17 +11,43 @@ import CreateWODialog from "../create-wo/create-wo-dialog";
 import ClientProposalSkeleton from "@/components/skeleton/client/client-proposal-skeleton";
 import ProposalWODetailsDialog from "./proposal-wo-details-dialog";
 import ProposalDetailDialog from "./proposal-detail-dialog";
+import ProcessSectionHeader from "@/components/work-order/process-section-header";
 import { useIsAdmin } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 6;
 
 interface Props {
   clientId: string;
 }
+
+// The dashed link between a proposal and the work order made from it.
+const ProposalLink = ({ linked }: { linked: boolean }) => (
+  <div className='relative flex items-center justify-center'>
+    <div className='w-full border-t border-dashed border-gray-300' />
+    <div
+      className={cn(
+        "absolute top-1/2 -translate-y-1/2 rounded-full bg-white p-1 ring-1",
+        linked
+          ? "text-emerald-600 ring-emerald-200"
+          : "text-gray-400 ring-gray-200",
+      )}
+      title={linked ? "Linked with a work order" : "No work order yet"}>
+      {linked ? (
+        <Check className='size-3.5' />
+      ) : (
+        <Link2Off className='size-3.5' />
+      )}
+    </div>
+  </div>
+);
+
 const ProposalWOMain = ({ clientId }: Props) => {
   const { setParam, getParam } = useHandleParams();
   const isAdmin = useIsAdmin();
 
   const { data, isLoading } = trpc.proposalQuery.getProposalsByClient.useQuery(
-    { client_id: Number(clientId), limit: 6 },
+    { client_id: Number(clientId), limit: PAGE_SIZE },
     { enabled: !!clientId },
   );
 
@@ -39,101 +64,76 @@ const ProposalWOMain = ({ clientId }: Props) => {
     (p: any) => p.proposal.id === (proposalId ? Number(proposalId) : null),
   );
   const proposalTitle = selectedProposal?.proposal.title || "";
+  const openAll = () => setParam("dialog", "proposal-wo");
 
   return (
     <>
-      <div className='w-full bg-white shadow-sm px-0.5 rounded-xl border'>
-        <div className='flex flex-wrap items-center justify-between gap-y-2 py-2 px-4'>
-          <h3 className='text-sm ml-2 font-semibold text-gray-900 flex items-center gap-2'>
-            Proposal - Work Orders
-            {total > 0 && (
-              <span className='text-xs font-normal text-gray-400'>
-                {hasMore ? `Showing 6 of ${total}` : `${total} total`}
-              </span>
-            )}
-          </h3>
-          <div className='flex items-center gap-3'>
-            {isAdmin && (
-              <CustomButton
-                text='Create Proposal'
-                variant='outline'
-                Icon={Plus}
-                onClick={() => setParam("dialog", "create-proposal")}
-              />
-            )}
+      <section className='rounded-lg border bg-white p-6'>
+        <ProcessSectionHeader
+          Icon={FileStack}
+          title='Proposals and work orders'
+          description={
+            total > 0
+              ? `Each proposal beside its work order · ${
+                  hasMore
+                    ? `latest ${proposals.length} of ${total}`
+                    : `${total} total`
+                }`
+              : "Each proposal beside the work order made from it"
+          }>
+          {isAdmin && (
             <CustomButton
-              text={total > 0 ? `View all ${total}` : "View all"}
-              title='View all proposals and work orders'
-              variant='arrow'
-              arrowType='upright'
-              onClick={() => {
-                setParam("dialog", "proposal-wo");
-              }}
+              text='Create Proposal'
+              variant='outline'
+              Icon={Plus}
+              onClick={() => setParam("dialog", "create-proposal")}
             />
-          </div>
-        </div>
-        <div className='px-4 pb-4 grid grid-cols-1 gap-5'>
-          {isLoading ? (
-            <div className='py-8'>
-              <NoFetchData
-                Icon={FileText}
-                title='Loading proposals'
-                description='Please wait while proposals load.'
-              />
-            </div>
-          ) : proposals && proposals.length > 0 ? (
-            proposals.map(({ workOrder, proposal }: any, index: number) => (
+          )}
+          <CustomButton
+            text={total > 0 ? `View all ${total}` : "View all"}
+            title='View all proposals and work orders'
+            variant='arrow'
+            arrowType='upright'
+            onClick={openAll}
+          />
+        </ProcessSectionHeader>
+
+        {proposals.length > 0 ? (
+          <div className='space-y-3'>
+            {proposals.map(({ workOrder, proposal }: any, index: number) => (
               <div
                 key={proposal?.id || index}
-                className='w-full mt-1'>
-                <div className='grid grid-cols-1 md:grid-cols-[1fr_72px_1fr] items-stretch gap-y-6 md:gap-y-0 md:gap-x-2'>
-                  <ProposalCard proposal={proposal} />
-                  <div className='relative flex items-center justify-center'>
-                    <div className='w-full border-t border-dashed border-gray-400/80' />
-
-                    <div
-                      className={`absolute -translate-y-1/2 top-1/2 inline-flex items-center justify-center rounded-full border bg-white p-1.5 shadow-sm ${
-                        workOrder ? " text-emerald-600" : " text-gray-400"
-                      }`}
-                      aria-label={workOrder ? "Linked" : "Unlinked"}
-                      title={workOrder ? "Linked with Work Order" : "Unlinked"}>
-                      {workOrder ? (
-                        <Check className='w-4 h-4' />
-                      ) : (
-                        <Link2Off className='w-4 h-4' />
-                      )}
-                    </div>
-                  </div>
-                  <WordOrderCard
-                    workOrder={
-                      workOrder as proposalTypes.getProposalsByClientReturnType["workOrder"]
-                    }
-                    proposalId={proposal.id}
-                    proposalTitle={proposal.title}
-                  />
-                </div>
+                className='grid grid-cols-1 items-stretch gap-y-3 md:grid-cols-[1fr_56px_1fr] md:gap-y-0'>
+                <ProposalCard proposal={proposal} />
+                <ProposalLink linked={!!workOrder} />
+                <WordOrderCard
+                  workOrder={
+                    workOrder as proposalTypes.getProposalsByClientReturnType["workOrder"]
+                  }
+                  proposalId={proposal.id}
+                  proposalTitle={proposal.title}
+                />
               </div>
-            ))
-          ) : (
-            <div className='py-8'>
-              <NoFetchData
-                Icon={FileText}
-                title='No proposals'
-                description='Create a new proposal to get started.'
-              />
-            </div>
-          )}
-          {hasMore && (
-            <div className='pt-1 pb-2 flex justify-center'>
-              <button
-                onClick={() => setParam("dialog", "proposal-wo")}
-                className='text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors'>
-                View all {total} proposals →
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+            ))}
+          </div>
+        ) : (
+          <p className='rounded-lg border border-dashed py-8 text-center text-xs text-gray-500'>
+            No proposals yet.
+            {isAdmin && " Create one to start a work order from it."}
+          </p>
+        )}
+
+        {hasMore && (
+          <div className='mt-4 flex justify-center'>
+            <button
+              type='button'
+              onClick={openAll}
+              className='text-xs font-medium text-emerald-600 transition-colors hover:text-emerald-700'>
+              View all {total} proposals →
+            </button>
+          </div>
+        )}
+      </section>
 
       <CreateProposalDialog clientId={Number(clientId)} />
       <CreateWODialog proposalTitle={proposalTitle} />
