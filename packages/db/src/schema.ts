@@ -689,7 +689,9 @@ export const jobOrderContractorTable = mysqlTable(
 );
 
 // A purchase order or sub-contract that bioremediation work is given out
-// through. One order can cover several of the work order's sites.
+// through. A purchase order buys oil zapper from one vendor for one or more
+// sites, at its own rate; a sub-contract gives out work at one site, whose
+// expenses are recorded there.
 export const contractOrderTable = mysqlTable(
   "contract_orders",
   {
@@ -707,7 +709,17 @@ export const contractOrderTable = mysqlTable(
     order_number: varchar("order_number", { length: 255 }).notNull(),
     order_date: timestamp("order_date").notNull(),
     description: text("description"),
+    // A purchase order's cost: its rate per unit of oil zapper before GST,
+    // the GST on it, and the vendor's invoice.
+    unit_rate: decimal("unit_rate", { precision: 20, scale: 2 }),
+    gst_percentage: decimal("gst_percentage", { precision: 10, scale: 2 }),
+    invoice_number: varchar("invoice_number", { length: 100 }),
+    // The order's own paperwork, and the completion documents uploaded once
+    // its work is done.
     documents: json("documents").$type<StoredDocumentRow[]>(),
+    completion_documents: json("completion_documents").$type<
+      StoredDocumentRow[]
+    >(),
     created_by: int("created_by").references(() => userTable.id, {
       onDelete: "set null",
     }),
@@ -787,6 +799,9 @@ export const workOrderSiteExpenseTable = mysqlTable(
     }),
     // The contract order requirement the expense is spent on, if any.
     contract_order_item_id: int("contract_order_item_id"),
+    // Recorded by its purchase order, from the order's rate, rather than at
+    // the site. Kept in step with the order.
+    from_order: tinyint("from_order").notNull().default(0),
     // The restoration job order the expense is spent on, if any.
     job_order_id: int("job_order_id").references(() => jobOrderTable.id, {
       onDelete: "set null",
