@@ -162,6 +162,13 @@
       "when": 1793775840400,
       "tag": "0022_sub_contract_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1793776301741,
+      "tag": "0023_drop_contractor_type",
+      "breakpoints": true
     }
   ]
 }

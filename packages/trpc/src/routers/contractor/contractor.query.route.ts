@@ -1,6 +1,5 @@
 import { and, asc, count, desc, eq, like, or, sum } from "drizzle-orm";
 import { schema } from "@pkg/db";
-import { vendorSchemas } from "@pkg/schema";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import { fromDatabaseError, notFound } from "../../errors";
@@ -35,7 +34,7 @@ const searchWhere = (search: string | undefined) => {
 };
 
 export const contractorQueryRouter = router({
-  // Every vendor or sub-contractor, paginated, for their pages.
+  // Every vendor, paginated, for the vendors page.
   getVendors: protectedProcedure
     .input(
       z.object({
@@ -43,12 +42,11 @@ export const contractorQueryRouter = router({
         limit: z.number().min(1).max(100).default(20),
         search: z.string().optional(),
         status: z.enum(["active", "inactive"]).optional(),
-        type: vendorSchemas.contractorTypeEnum.optional(),
       }),
     )
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { page, limit, search, status, type } = input;
+        const { page, limit, search, status } = input;
 
         if (!(await canUseVendors(ctx))) {
           return {
@@ -65,7 +63,6 @@ export const contractorQueryRouter = router({
 
         const where = and(
           status ? eq(contractorTable.status, status) : undefined,
-          type ? eq(contractorTable.type, type) : undefined,
           searchWhere(search),
         );
 
@@ -145,9 +142,8 @@ export const contractorQueryRouter = router({
         }
       }),
     ),
-  // The purchase orders, sub-contracts and job orders a vendor or
-  // sub-contractor is on, in work orders the user can see, each with what has
-  // been spent under them.
+  // The purchase orders, sub-contracts and job orders a vendor is on, in
+  // work orders the user can see, each with what has been spent under them.
   getContractorWork: protectedProcedure
     .input(z.object({ id: z.number().positive() }))
     .query(

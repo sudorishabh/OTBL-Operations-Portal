@@ -7,10 +7,11 @@ import {
 } from "../validators";
 import { constants } from "@pkg/utils";
 
-const { STATUS, CONTRACTOR_TYPE } = constants;
+const { STATUS } = constants;
 
-// Vendors are stored in the contractors table: a vendor is the contractor a
-// work order's restoration is ordered to. They're shared by every office.
+// Vendors are stored in the contractors table: everyone material and work
+// are ordered from, through purchase orders, sub-contracts and job orders.
+// They're shared by every office.
 
 const optionalPanNumberValidator = z
   .string()
@@ -43,15 +44,7 @@ const vendorFields = {
 
 export const vendorStatusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
-export const contractorTypeEnum = z.enum([
-  CONTRACTOR_TYPE.VENDOR,
-  CONTRACTOR_TYPE.SUB_CONTRACTOR,
-]);
-
-export const createVendorSchema = z.object({
-  ...vendorFields,
-  type: contractorTypeEnum.default(CONTRACTOR_TYPE.VENDOR),
-});
+export const createVendorSchema = z.object(vendorFields);
 
 // Fields left out keep their value.
 export const updateVendorSchema = z
@@ -60,5 +53,4 @@ export const updateVendorSchema = z
   .extend({
     id: positiveIntValidator,
     status: vendorStatusEnum.optional(),
-    type: contractorTypeEnum.optional(),
   });
