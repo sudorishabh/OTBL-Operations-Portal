@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { format } from "date-fns";
-import { Info } from "lucide-react";
+import { CalendarDays, Info } from "lucide-react";
 import {
   capitalFirstLetter,
   constants,
@@ -62,21 +62,26 @@ const jobOrderStatus = (jobOrder: JobOrder) => {
   return { label: "Open", style: "bg-gray-50 text-gray-600 ring-gray-200" };
 };
 
+// A label and its value on one line, in a Details list.
 const Detail = ({
   label,
   value,
-  className,
 }: {
   label: string;
   value: React.ReactNode;
-  className?: string;
 }) => (
-  <div className={cn("min-w-0", className)}>
-    <dt className='text-[11px] text-gray-400'>{label}</dt>
-    <dd className='mt-0.5 break-words text-xs text-gray-800'>
+  <>
+    <dt className='text-gray-400'>{label}</dt>
+    <dd className='min-w-0 break-words text-gray-800'>
       {value || <span className='text-gray-300'>—</span>}
     </dd>
-  </div>
+  </>
+);
+
+const Details = ({ children }: { children: React.ReactNode }) => (
+  <dl className='grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1 text-xs'>
+    {children}
+  </dl>
 );
 
 const Section = ({
@@ -86,8 +91,8 @@ const Section = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <section className='border-t border-gray-100 px-4 py-3'>
-    <h4 className='mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400'>
+  <section className='border-t border-gray-100 px-4 py-2.5'>
+    <h4 className='mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400'>
       {title}
     </h4>
     {children}
@@ -133,6 +138,10 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
         <p className='mt-1 text-sm font-medium text-gray-900'>
           {jobOrder.title}
         </p>
+        <p className='mt-0.5 flex items-center gap-1.5 text-xs text-gray-500'>
+          <CalendarDays className='size-3.5 text-gray-400' />
+          {formatDate(jobOrder.start_date)} – {formatDate(jobOrder.end_date)}
+        </p>
         {jobOrder.description && (
           <p className='mt-1 whitespace-pre-wrap text-xs text-gray-500'>
             {jobOrder.description}
@@ -141,15 +150,7 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
       </div>
 
       <Section title='Job order'>
-        <dl className='grid grid-cols-2 gap-x-4 gap-y-2'>
-          <Detail
-            label='Job order date'
-            value={formatDate(jobOrder.start_date)}
-          />
-          <Detail
-            label='Scheduled completion'
-            value={formatDate(jobOrder.end_date)}
-          />
+        <Details>
           <Detail
             label='Installation'
             value={jobOrder.installation_name}
@@ -166,20 +167,18 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
             label='Work completed on'
             value={formatDate(jobOrder.completed_on)}
           />
-        </dl>
+        </Details>
       </Section>
 
       <Section title='Contract'>
-        <dl className='grid grid-cols-2 gap-x-4 gap-y-2'>
+        <Details>
           <Detail
             label='Issuing office'
             value={jobOrder.issued_by}
-            className='col-span-2'
           />
           <Detail
             label='RC NOA'
             value={rcNoa}
-            className='col-span-2'
           />
           <Detail
             label='OLA number'
@@ -189,7 +188,7 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
             label='PO number'
             value={jobOrder.po_number}
           />
-        </dl>
+        </Details>
       </Section>
 
       <Section title='Activities'>
@@ -209,15 +208,15 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
             <tbody className='divide-y divide-gray-100'>
               {activities.map((activity) => (
                 <tr key={activity.key}>
-                  <td className='py-1 text-gray-700'>
+                  <td className='py-0.5 text-gray-700'>
                     {SHORT_LABELS[activity.key]}
                   </td>
-                  <td className='py-1 pl-2 text-right tabular-nums text-gray-800'>
+                  <td className='py-0.5 pl-2 text-right tabular-nums text-gray-800'>
                     {withUnit(ordered.get(activity.key), activity.unit) ?? (
                       <span className='text-gray-300'>—</span>
                     )}
                   </td>
-                  <td className='py-1 pl-2 text-right tabular-nums text-gray-800'>
+                  <td className='py-0.5 pl-2 text-right tabular-nums text-gray-800'>
                     {withUnit(
                       done.get(activity.key),
                       activity.completionUnit,
@@ -231,13 +230,12 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
       </Section>
 
       <Section title='Vendors and certificates'>
-        <dl className='grid grid-cols-2 gap-x-4 gap-y-2'>
+        <Details>
           <Detail
             label='Vendors'
             value={jobOrder.vendors
               .map((vendor) => capitalFirstLetter(vendor.name))
               .join(", ")}
-            className='col-span-2'
           />
           <Detail
             label='Signed certificates'
@@ -246,9 +244,8 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
                 ? `${certificateCount} uploaded`
                 : "None uploaded"
             }
-            className='col-span-2'
           />
-        </dl>
+        </Details>
       </Section>
     </>
   );
@@ -272,7 +269,7 @@ const JobOrderChip = ({ jobOrder }: { jobOrder: JobOrder }) => (
       side='bottom'
       align='start'
       collisionPadding={16}
-      className='max-h-[70vh] w-[26rem] overflow-y-auto p-0'>
+      className='max-h-[min(32rem,var(--radix-hover-card-content-available-height))] w-[26rem] overflow-y-auto p-0'>
       <JobOrderDetails jobOrder={jobOrder} />
     </HoverCardContent>
   </HoverCard>
