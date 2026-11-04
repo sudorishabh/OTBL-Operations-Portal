@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -12,7 +12,6 @@ import {
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { proposalSchemas } from "@pkg/schema";
-import { escapeLike } from "../../helper/escape-like";
 import { USER_ROLES } from "../../authorization";
 
 const { proposalTable, workOrderTable } = schema;
@@ -97,88 +96,6 @@ export const proposalQueryRouter = router({
           return { proposals, total };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching proposals");
-        }
-      }),
-    ),
-
-  getProposalsByClientPaginated: protectedProcedure
-    .input(proposalSchemas.getProposalsByClientPaginatedSchema)
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        const { client_id, page, limit, searchQuery } = input;
-
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        await assertCanAccessClient(ctx.db, scope, client_id);
-
-        const scoped = await applyProposalScopeForClient(
-          scope,
-          ctx.db,
-          eq(proposalTable.client_id, client_id),
-        );
-        let conditions: any = scoped.clientCond;
-        const { workOrderJoinOn: workOrderJoinOnPaginated } = scoped;
-
-        if (searchQuery && searchQuery.trim() !== "") {
-          conditions = and(
-            conditions,
-            or(
-              like(proposalTable.code, `%${escapeLike(searchQuery)}%`),
-              like(proposalTable.title, `%${escapeLike(searchQuery)}%`),
-            ),
-          );
-        }
-
-        try {
-          const [totalResult] = await ctx.db
-            .select({ count: count() })
-            .from(proposalTable)
-            .where(conditions);
-
-          const total = totalResult?.count ?? 0;
-
-          if (total === 0) {
-            return {
-              proposals: [],
-              pagination: {
-                page,
-                limit,
-                total,
-                hasMore: false,
-                totalPages: 0,
-              },
-            };
-          }
-
-          const offset = (page - 1) * limit;
-
-          const proposals = await ctx.db
-            .select({ proposal: proposalTable, workOrder: workOrderTable })
-            .from(proposalTable)
-            .leftJoin(workOrderTable, workOrderJoinOnPaginated)
-            .where(conditions)
-            .limit(limit)
-            .offset(offset)
-            .orderBy(desc(proposalTable.created_at));
-
-          const totalPages = Math.ceil(total / limit);
-          const hasMore = offset + proposals.length < total;
-
-          return {
-            proposals,
-            pagination: {
-              page,
-              limit,
-              total,
-              hasMore,
-              totalPages,
-            },
-          };
-        } catch (error) {
-          throw fromDatabaseError(error, "Fetching paginated proposals");
         }
       }),
     ),
