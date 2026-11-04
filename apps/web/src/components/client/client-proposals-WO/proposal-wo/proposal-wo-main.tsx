@@ -3,7 +3,7 @@ import { Check, FileStack, Link2Off, Plus } from "lucide-react";
 import React from "react";
 import CreateProposalDialog from "./create-proposal-dialog";
 import { trpc } from "@/lib/trpc";
-import ProposalCard from "./proposal-card";
+import ProposalCell from "./proposal-cell";
 import { useHandleParams } from "@/hooks/useHandleParams";
 import WordOrderCard from "./work-order-card";
 import { type proposalTypes } from "@pkg/schema";
@@ -104,7 +104,7 @@ const ProposalWOMain = ({ clientId }: Props) => {
               <div
                 key={proposal?.id || index}
                 className='grid grid-cols-1 items-stretch gap-y-3 md:grid-cols-[1fr_56px_1fr] md:gap-y-0'>
-                <ProposalCard proposal={proposal} />
+                <ProposalCell proposal={proposal} />
                 <ProposalLink linked={!!workOrder} />
                 <WordOrderCard
                   workOrder={
