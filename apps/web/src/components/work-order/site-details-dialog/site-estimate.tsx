@@ -375,7 +375,7 @@ const EstimateForm = ({
     <div className='space-y-3'>
       <EstimateHeader actions={actions} />
 
-      <div className='grid grid-cols-1 gap-3 lg:grid-cols-5'>
+      <div className='grid grid-cols-1 gap-3 lg:grid-cols-3'>
         <DocumentsField
           label='Upload estimate document'
           files={pendingDocs}
@@ -393,10 +393,10 @@ const EstimateForm = ({
           }}
           isUploading={isFileUploading}
           progress={progress}
-          className='self-start lg:col-span-2'
+          className='self-start'
         />
 
-        <div className='self-start overflow-hidden rounded-lg border border-gray-200 bg-white lg:col-span-3'>
+        <div className='self-start overflow-hidden rounded-lg border border-gray-200 bg-white lg:col-span-2'>
           <Table>
             <TableHeader>
               <TableRow className='border-gray-100 hover:bg-transparent'>
