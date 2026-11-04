@@ -127,6 +127,11 @@ const orderItemTitle = (item: SiteOrderItem) =>
 const headClass =
   "h-8 px-3 sm:h-8 sm:px-3 text-[11px] font-medium text-gray-400 whitespace-nowrap";
 const cellClass = "px-3 py-2.5 sm:px-3 sm:py-2.5";
+// Every total lines up with the expenses' amounts: an expense's edit and
+// delete buttons take the last column, and a header keeps the same room after
+// its total, less its own padding, for its menu.
+const actionsColumnClass = "w-20";
+const menuSlotClass = "flex w-17 shrink-0 justify-end";
 
 const formatFullDates = (start: string | Date, end: string | Date) => {
   const from = new Date(start);
@@ -493,7 +498,7 @@ const SiteExpensesSection = ({
               {formatCurrency(record.amount)}
             </span>
           </TableCell>
-          <TableCell className={cn(cellClass, "w-px whitespace-nowrap")}>
+          <TableCell className={cn(cellClass, actionsColumnClass, "whitespace-nowrap")}>
             <div className='flex items-center justify-end gap-0.5'>
               <button
                 type='button'
@@ -606,7 +611,7 @@ const SiteExpensesSection = ({
           <TableHead className={cn(headClass, "w-[130px]")}>Invoice</TableHead>
           <TableHead className={cn(headClass, "w-[100px]")}>Documents</TableHead>
           <TableHead className={cn(headClass, "w-[120px] text-right")}>Amount</TableHead>
-          <TableHead className={cn(headClass, "w-px")}>
+          <TableHead className={cn(headClass, actionsColumnClass)}>
             <span className='sr-only'>Actions</span>
           </TableHead>
         </TableRow>
@@ -664,13 +669,14 @@ const SiteExpensesSection = ({
     total: number;
     action?: React.ReactNode;
   }) => (
-    <div className='flex min-h-7 items-center gap-2'>
+    <div className='flex min-h-7 items-center gap-2 pr-[13px]'>
       <Icon className='size-3.5 shrink-0 text-gray-400' />
       <h4 className='text-xs font-semibold text-gray-700'>{title}</h4>
       <span className='text-[11px] text-gray-400'>{meta}</span>
       <div className='ml-auto flex items-center gap-3'>
         {action}
         {renderTotal(total, "text-sm")}
+        <span className={menuSlotClass} />
       </div>
     </div>
   );
@@ -785,7 +791,7 @@ const SiteExpensesSection = ({
           {group.status}
           {renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)}
           {renderTotal(group.total, "min-w-24 text-sm")}
-          {group.menu}
+          <div className={menuSlotClass}>{group.menu}</div>
         </div>
         {isOpen && (
           <>
