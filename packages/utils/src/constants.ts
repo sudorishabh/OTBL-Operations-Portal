@@ -106,7 +106,8 @@ export const TRANSPORT_SLABS = [
 // The rows of the client's job order form and its work completion
 // certificate, worded as on each, with the schedule of rates activity each is
 // billed under. A row with no unit is answered yes or no, and transportation
-// is given per distance in the rows under it.
+// is given in the rows under it, one per distance slab of the schedule of
+// rates.
 export const JOB_ORDER_ACTIVITIES = [
   {
     key: "spill_cleaning",
@@ -149,19 +150,31 @@ export const JOB_ORDER_ACTIVITIES = [
   {
     key: "transportation_up_to_5_km",
     sorActivity: WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
-    label: "Up to 5 km",
+    sorSlab: TRANSPORT_SLABS[0].key,
+    label: TRANSPORT_SLABS[0].label,
     unit: "Cub. Meter",
-    completionLabel: "Up to 5 km",
+    completionLabel: TRANSPORT_SLABS[0].label,
     completionUnit: "Cub. Meter",
     indent: true,
   },
   {
-    key: "transportation_6_to_20_km",
+    key: "transportation_over_20_km",
     sorActivity: WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
-    label: "6-20 km",
+    sorSlab: TRANSPORT_SLABS[1].key,
+    label: TRANSPORT_SLABS[1].label,
     unit: "Cub. Meter",
-    completionLabel: "6-20 km",
+    completionLabel: TRANSPORT_SLABS[1].label,
     completionUnit: "Cub. Meter",
+    indent: true,
+  },
+  {
+    key: "transportation_over_40_km",
+    sorActivity: WO_ACTIVITIES.TRANSPORTATION_CONTAMINATED_SOIL,
+    sorSlab: TRANSPORT_SLABS[2].key,
+    label: TRANSPORT_SLABS[2].label,
+    unit: "Cub. Meter × km",
+    completionLabel: TRANSPORT_SLABS[2].label,
+    completionUnit: "Cub. Meter × km",
     indent: true,
   },
   {
