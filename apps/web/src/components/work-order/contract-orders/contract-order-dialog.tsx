@@ -245,17 +245,27 @@ const ContractOrderDialog = ({
     : "";
   const hasMixedSites = new Set(rows.map((row) => row.siteId)).size > 1;
 
-  // Switching type keeps the sites and vendors that still fit, and starts
-  // the rows over, as the two take different items.
+  // Switching type keeps the rows whose items the new type takes, with their
+  // ids so their expenses stay linked, such as an older purchase order's JCB
+  // becoming a sub-contract's. A sub-contract's rows share its site.
   const changeType = (next: OrderType) => {
     if (next === type) return;
-    setType(next);
-    setRows(
-      next === CONTRACT_ORDER_TYPE.PURCHASE_ORDER
-        ? [newRow(next, rows[0]?.siteId)]
-        : [newRow(next, subContractSiteId || rows[0]?.siteId)],
+    const isNextPurchase = next === CONTRACT_ORDER_TYPE.PURCHASE_ORDER;
+    const fitting = rows.filter(
+      (row) =>
+        CONTRACT_ORDER_ITEMS.find((option) => option.key === row.item)
+          ?.orderType === next,
     );
-    if (next === CONTRACT_ORDER_TYPE.PURCHASE_ORDER) {
+    const siteId = subContractSiteId || rows[0]?.siteId || "";
+    const kept = isNextPurchase
+      ? fitting
+      : fitting.map((row) => ({
+          ...row,
+          siteId: fitting[0]?.siteId ?? siteId,
+        }));
+    setType(next);
+    setRows(kept.length > 0 ? kept : [newRow(next, siteId)]);
+    if (isNextPurchase) {
       setVendorIds((prev) => prev.slice(0, 1));
     }
   };
