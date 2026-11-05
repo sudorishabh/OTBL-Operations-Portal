@@ -15,13 +15,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CONTRACTOR_LABELS, type ContractorType } from "./contractor-labels";
 
 const { CONTRACT_ORDER_TYPE } = constants;
 
 interface Props {
   contractorId: number;
-  type: ContractorType;
 }
 
 // Rows as getContractorWork returns them.
@@ -67,10 +65,9 @@ const Summary = ({ label, value }: { label: string; value: React.ReactNode }) =>
   </div>
 );
 
-// A vendor's or sub-contractor's own page: who they are, and every order and
-// job order they are on with what has been spent under each.
-const ContractorDetail = ({ contractorId, type }: Props) => {
-  const labels = CONTRACTOR_LABELS[type];
+// A vendor's own page: who they are, and every order and job order they are
+// on with what has been spent under each.
+const ContractorDetail = ({ contractorId }: Props) => {
   const contractorQuery = trpc.contractorQuery.getContractor.useQuery({
     id: contractorId,
   });
@@ -93,7 +90,7 @@ const ContractorDetail = ({ contractorId, type }: Props) => {
   if (!contractor) {
     return (
       <p className='py-10 text-center text-sm text-gray-400'>
-        This {labels.one.toLowerCase()} could not be found.
+        This vendor could not be found.
       </p>
     );
   }
@@ -118,7 +115,6 @@ const ContractorDetail = ({ contractorId, type }: Props) => {
             </div>
           </div>
           <div className='flex items-center gap-2'>
-            <Badge variant='outline'>{labels.one}</Badge>
             <Badge
               className={cn(
                 "border",
@@ -141,11 +137,11 @@ const ContractorDetail = ({ contractorId, type }: Props) => {
       <section className='space-y-2'>
         <h3 className='flex items-center gap-2 text-sm font-semibold text-gray-800'>
           <ShoppingCart className='size-4 text-gray-400' />
-          Purchase &amp; Work Orders
+          Purchase Orders &amp; Sub-contracts
         </h3>
         {contractOrders.length === 0 ? (
           <p className='rounded-lg border border-dashed py-6 text-center text-xs text-gray-400'>
-            Not on any purchase or work order yet.
+            Not on any purchase order or sub-contract yet.
           </p>
         ) : (
           <div className='overflow-x-auto rounded-lg border border-gray-200 bg-white'>
@@ -174,7 +170,7 @@ const ContractorDetail = ({ contractorId, type }: Props) => {
                         )}
                         {order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER
                           ? "Purchase order"
-                          : "Work order"}
+                          : "Sub-contract"}
                       </span>
                     </TableCell>
                     <TableCell className={cn(cellClass, "text-xs")}>

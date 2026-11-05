@@ -42,7 +42,6 @@ const {
   PROPOSAL_STATUS,
   WORK_ORDER_STATUS,
   CONTRACT_ORDER_TYPE,
-  CONTRACTOR_TYPE,
 } = constants;
 
 export const userTable = mysqlTable(
@@ -577,13 +576,6 @@ export const contractorTable = mysqlTable(
     address: varchar("address", { length: 500 }),
     gst_number: varchar("gst_number", { length: 15 }),
     pan_number: varchar("pan_number", { length: 10 }),
-    // A vendor supplies material; a sub-contractor carries out a service.
-    type: varchar("type", {
-      length: 50,
-      enum: [CONTRACTOR_TYPE.VENDOR, CONTRACTOR_TYPE.SUB_CONTRACTOR],
-    })
-      .notNull()
-      .default(CONTRACTOR_TYPE.VENDOR),
     status: varchar("status", {
       length: 50,
       enum: [STATUS.ACTIVE, STATUS.INACTIVE],
@@ -595,7 +587,6 @@ export const contractorTable = mysqlTable(
   },
   (table) => [
     index("contractor_name_idx").on(table.name),
-    index("contractor_type_idx").on(table.type),
   ],
 );
 
@@ -697,8 +688,8 @@ export const jobOrderContractorTable = mysqlTable(
   ],
 );
 
-// A purchase order or subcontract work order that bioremediation work is
-// given out through. One order can cover several of the work order's sites.
+// A purchase order or sub-contract that bioremediation work is given out
+// through. One order can cover several of the work order's sites.
 export const contractOrderTable = mysqlTable(
   "contract_orders",
   {
@@ -708,7 +699,10 @@ export const contractOrderTable = mysqlTable(
       .references(() => workOrderTable.id, { onDelete: "cascade" }),
     type: varchar("type", {
       length: 50,
-      enum: [CONTRACT_ORDER_TYPE.PURCHASE_ORDER, CONTRACT_ORDER_TYPE.WORK_ORDER],
+      enum: [
+        CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
+        CONTRACT_ORDER_TYPE.SUB_CONTRACT,
+      ],
     }).notNull(),
     order_number: varchar("order_number", { length: 255 }).notNull(),
     order_date: timestamp("order_date").notNull(),

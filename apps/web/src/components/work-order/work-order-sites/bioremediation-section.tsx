@@ -240,7 +240,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
         Icon={FlaskConical}
         tone='bioremediation'
         title='Bioremediation'
-        description='Done site by site, through purchase and work orders'
+        description='Done site by site, through purchase orders and sub-contracts'
       />
 
       {/* The sites, and the orders giving out their work, a tab each with
@@ -267,7 +267,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
                   disabled={sitesList.length === 0}
                   className='gap-2 px-3 text-xs text-gray-800'>
                   <ShoppingCart className='size-3.5 text-gray-500' />
-                  Purchase and work orders
+                  Purchase orders and sub-contracts
                   <span className='tabular-nums text-gray-400'>
                     {orderCount}
                   </span>

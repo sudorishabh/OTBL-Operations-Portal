@@ -33,7 +33,7 @@ const { CONTRACT_ORDER_TYPE, CONTRACT_ORDER_ITEMS } = constants;
 
 export interface ContractOrder {
   id: number;
-  type: "purchase_order" | "work_order";
+  type: "purchase_order" | "sub_contract";
   order_number: string;
   order_date: string | Date;
   description: string | null;
@@ -76,9 +76,9 @@ const GROUPS = [
     tone: "bg-sky-50 text-sky-700 ring-sky-100",
   },
   {
-    type: CONTRACT_ORDER_TYPE.WORK_ORDER,
-    label: "Work order (subcontract)",
-    filterLabel: "Work orders",
+    type: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
+    label: "Sub-contract",
+    filterLabel: "Sub-contracts",
     Icon: Wrench,
     tone: "bg-amber-50 text-amber-700 ring-amber-100",
   },
@@ -104,7 +104,7 @@ const FILTERS: {
 const headClass = "h-9 px-4 sm:h-9 sm:px-4 text-xs font-medium text-gray-500";
 const cellClass = "px-4 py-3 sm:px-4 sm:py-3";
 
-// The purchase and subcontract orders bioremediation work is given out
+// The purchase orders and sub-contracts bioremediation work is given out
 // through. One order can require things at several of the work order's sites.
 const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   const isViewer = useIsViewer();
@@ -142,13 +142,13 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   const purchaseCount = orders.filter(
     (order) => order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
   ).length;
-  const workCount = orders.length - purchaseCount;
+  const subContractCount = orders.length - purchaseCount;
   const shownOrders =
     filter === "all" ? orders : orders.filter((order) => order.type === filter);
   const filterCounts: Record<OrderFilter, number> = {
     all: orders.length,
     [CONTRACT_ORDER_TYPE.PURCHASE_ORDER]: purchaseCount,
-    [CONTRACT_ORDER_TYPE.WORK_ORDER]: workCount,
+    [CONTRACT_ORDER_TYPE.SUB_CONTRACT]: subContractCount,
   };
 
   // What the section lets you do: filter by type and add an order.
@@ -189,7 +189,7 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
       <p className='rounded-lg border border-dashed py-6 text-center text-xs text-gray-500'>
         {ordersQuery.isLoading
           ? "Loading orders..."
-          : "No orders yet. Add a purchase order to buy material, or a work order to subcontract work."}
+          : "No orders yet. Add a purchase order to buy material, or a sub-contract to give out work."}
       </p>
     ) : (
       // A row per order, spread across the width; scrolls sideways when

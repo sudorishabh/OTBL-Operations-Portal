@@ -15,7 +15,6 @@ import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import {
   HardHat,
-  Construction,
   LayoutDashboard,
   User,
   Settings,
@@ -77,12 +76,6 @@ const sidebarLinks: NavItem[] = [
     title: "Vendors",
     link: "/vendor",
     icon: HardHat,
-    hideForRoles: [ROLES.SITE_OPERATOR],
-  },
-  {
-    title: "Sub-contractors",
-    link: "/sub-contractor",
-    icon: Construction,
     hideForRoles: [ROLES.SITE_OPERATOR],
   },
 ];
