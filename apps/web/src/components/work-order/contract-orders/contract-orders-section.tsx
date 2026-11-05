@@ -28,8 +28,9 @@ import {
 } from "@/components/ui/table";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import ContractOrderDialog from "./contract-order-dialog";
+import OrderCompletionDocuments from "./order-completion-documents";
 
-const { CONTRACT_ORDER_TYPE, CONTRACT_ORDER_ITEMS } = constants;
+const { CONTRACT_ORDER_TYPE, CONTRACT_ORDER_ITEMS, OIL_ZAPPER } = constants;
 
 export interface ContractOrder {
   id: number;
@@ -37,7 +38,12 @@ export interface ContractOrder {
   order_number: string;
   order_date: string | Date;
   description: string | null;
+  // A purchase order's cost; none on a sub-contract.
+  unit_rate: string | null;
+  gst_percentage: string | null;
+  invoice_number: string | null;
   documents: unknown;
+  completion_documents: unknown;
   items: {
     id: number;
     work_order_site_id: number;
@@ -65,6 +71,28 @@ export const itemLabel = (item: string, description?: string | null) =>
     ? description
     : (CONTRACT_ORDER_ITEMS.find((option) => option.key === item)?.label ??
       item);
+
+const formatAmount = (amount: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(amount);
+
+// What a purchase order costs in all: its oil zapper at its rate, with GST.
+// Null for a sub-contract, costed at its site.
+const purchaseOrderCost = (order: ContractOrder) => {
+  if (order.type !== CONTRACT_ORDER_TYPE.PURCHASE_ORDER || !order.unit_rate) {
+    return null;
+  }
+  const quantity = order.items.reduce(
+    (sum, item) => sum + Number(item.quantity),
+    0,
+  );
+  const rate = Number(order.unit_rate);
+  const gst = Number(order.gst_percentage ?? 0);
+  return { total: quantity * rate * (1 + gst / 100), rate, gst };
+};
 
 // How each kind of order is marked in the list.
 const GROUPS = [
@@ -224,6 +252,7 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                 GROUPS.find((option) => option.type === order.type) ??
                 GROUPS[0];
               const documents = toDocuments(order.documents);
+              const cost = purchaseOrderCost(order);
               return (
                 <TableRow
                   key={order.id}
@@ -242,7 +271,23 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                         <p className='truncate text-sm font-semibold text-gray-900'>
                           {order.order_number}
                         </p>
-                        <p className='text-xs text-gray-500'>{group.label}</p>
+                        <p className='text-xs text-gray-500'>
+                          {group.label}
+                          {cost && (
+                            <>
+                              {" · "}
+                              <span className='font-medium tabular-nums text-gray-800'>
+                                {formatAmount(cost.total)}
+                              </span>
+                            </>
+                          )}
+                        </p>
+                        {cost && (
+                          <p className='text-[11px] tabular-nums text-gray-400'>
+                            {formatAmount(cost.rate)}/{OIL_ZAPPER.UNIT} +{" "}
+                            {cost.gst}% GST
+                          </p>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -275,6 +320,10 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                   </TableCell>
                   <TableCell className={cn(cellClass, "text-right")}>
                     <div className='flex items-center justify-end gap-0.5'>
+                      <OrderCompletionDocuments
+                        workOrderId={workOrderId}
+                        order={order}
+                      />
                       {documents.length > 0 && (
                         <DocumentsMenu documents={documents}>
                           <button

@@ -169,6 +169,13 @@
       "when": 1793776301741,
       "tag": "0023_drop_contractor_type",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1793790488302,
+      "tag": "0024_order_rules_and_po_cost",
+      "breakpoints": true
     }
   ]
 }
