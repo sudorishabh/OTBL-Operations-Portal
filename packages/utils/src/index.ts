@@ -15,6 +15,13 @@ export {
   type SiteWithCompletions,
 } from "./work-order-sor-status";
 export {
+  countsTowardSor,
+  jobOrderQuantity,
+  certifiedQuantityByRow,
+  certifiedQuantityByActivity,
+  type JobOrderActivityKey,
+} from "./job-order-sor";
+export {
   constants,
   dateTimeUtils,
   capitalFirstLetter,

@@ -1,5 +1,13 @@
-import { capitalFirstLetter, constants } from "@pkg/utils";
+import {
+  capitalFirstLetter,
+  certifiedQuantityByRow,
+  constants,
+  countsTowardSor,
+  type JobOrderActivityKey,
+} from "@pkg/utils";
 import type { JobOrder } from "./job-order-dialog";
+import type { JobOrderActivityRow } from "./job-order-activities-table";
+import type { RestorationRate } from "./restoration-rates-table";
 import type { Restoration } from "./restoration-section";
 
 const { JOB_ORDER_ACTIVITIES } = constants;
@@ -12,8 +20,10 @@ export const percentOf = (part: number, whole: number) =>
 
 // How far one activity's schedule of rates quantity has been used.
 export const activityTone = (used: number, estimated: number) => {
-  if (used > estimated + QTY_EPSILON) return { bar: "bg-rose-500", text: "text-rose-600" };
-  if (used + QTY_EPSILON >= estimated) return { bar: "bg-emerald-500", text: "text-emerald-700" };
+  if (used > estimated + QTY_EPSILON)
+    return { bar: "bg-rose-500", text: "text-rose-600" };
+  if (used + QTY_EPSILON >= estimated)
+    return { bar: "bg-emerald-500", text: "text-emerald-700" };
   if (used > 0) return { bar: "bg-purple-500", text: "text-gray-600" };
   return { bar: "bg-gray-200", text: "text-gray-400" };
 };
@@ -25,8 +35,9 @@ const STATUS_STYLES = {
   cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
 } as const;
 
-// Where the restoration stands. It completes on its own once expenses use up
-// the schedule of rates, and has started once anything is spent on it.
+// Where the restoration stands. It completes on its own once completion
+// certificates use up the schedule of rates, and has started once anything
+// is spent on it.
 export const restorationStatus = (
   restoration: Pick<Restoration, "status" | "is_completed">,
   spent: number,
@@ -35,7 +46,8 @@ export const restorationStatus = (
     return { label: "Cancelled", style: STATUS_STYLES.cancelled };
   if (restoration.is_completed)
     return { label: "Complete", style: STATUS_STYLES.complete };
-  if (spent > 0) return { label: "In progress", style: STATUS_STYLES.inProgress };
+  if (spent > 0)
+    return { label: "In progress", style: STATUS_STYLES.inProgress };
   return { label: "Not started", style: STATUS_STYLES.notStarted };
 };
 
@@ -65,4 +77,37 @@ export const jobOrderSorActivities = (
         return activity ? [activity.sorActivity] : [];
       }),
   );
+};
+
+// What the completion certificates have left of the schedule of rates against
+// each job order row that uses it up: its activity's quantity, or for
+// transportation, its distance slab's. A certificate being filled in counts as
+// it reads now, in place of the one saved.
+export const sorLeftByRow = (
+  rates: RestorationRate[],
+  jobOrders: JobOrder[],
+  draft?: { jobOrderId: number; rows: JobOrderActivityRow[] },
+) => {
+  const certificates = draft
+    ? [
+        ...jobOrders.filter((jobOrder) => jobOrder.id !== draft.jobOrderId),
+        { completion_activities: draft.rows },
+      ]
+    : jobOrders;
+  const certified = certifiedQuantityByRow(certificates);
+
+  const left: Partial<Record<JobOrderActivityKey, number>> = {};
+  for (const activity of JOB_ORDER_ACTIVITIES) {
+    if (!countsTowardSor(activity.key)) continue;
+    const rate = rates.find((r) => r.activity === activity.sorActivity);
+    if (!rate) continue;
+    // Older transportation rates have no slabs to measure a row against.
+    const quantity =
+      "sorSlab" in activity
+        ? rate.transportation_slabs?.[activity.sorSlab]?.quantity
+        : Number(rate.estimated_quantity) || 0;
+    if (quantity == null) continue;
+    left[activity.key] = quantity - (certified[activity.key] ?? 0);
+  }
+  return left;
 };

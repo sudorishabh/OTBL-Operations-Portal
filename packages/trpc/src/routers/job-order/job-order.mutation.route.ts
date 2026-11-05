@@ -8,6 +8,7 @@ import { assertOfficeManager } from "../../helper/office-permissions";
 import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import type { TrpcContext } from "../../context";
+import { syncRestorationCompletion } from "../restoration/restoration-row";
 
 const {
   workOrderTable,
@@ -218,14 +219,19 @@ export const jobOrderMutationRouter = router({
         const jobOrder = await getJobOrder(ctx, input.id);
         await assertManagesRestoration(ctx, jobOrder.work_order_site_id);
 
+        // The certified quantities use up the schedule of rates, so the
+        // restoration may now be complete, or no longer.
         try {
-          await ctx.db
-            .update(jobOrderTable)
-            .set({
-              completed_on: input.completed_on ?? null,
-              completion_activities: filledActivities(input.activities),
-            })
-            .where(eq(jobOrderTable.id, input.id));
+          await ctx.db.transaction(async (tx) => {
+            await tx
+              .update(jobOrderTable)
+              .set({
+                completed_on: input.completed_on ?? null,
+                completion_activities: filledActivities(input.activities),
+              })
+              .where(eq(jobOrderTable.id, input.id));
+            await syncRestorationCompletion(tx, jobOrder.work_order_site_id);
+          });
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Saving job order completion");
@@ -265,10 +271,14 @@ export const jobOrderMutationRouter = router({
           );
         }
 
+        // Its certified quantities go with it.
         try {
-          await ctx.db
-            .delete(jobOrderTable)
-            .where(eq(jobOrderTable.id, input.id));
+          await ctx.db.transaction(async (tx) => {
+            await tx
+              .delete(jobOrderTable)
+              .where(eq(jobOrderTable.id, input.id));
+            await syncRestorationCompletion(tx, jobOrder.work_order_site_id);
+          });
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Deleting job order");

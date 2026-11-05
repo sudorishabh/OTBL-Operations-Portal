@@ -16,7 +16,8 @@ interface Props {
 }
 
 // The restoration's completion certificate. The restoration completes on its
-// own once its expenses use up the schedule of rates, so this only uploads.
+// own once its completion certificates use up the schedule of rates, so this
+// only uploads.
 const RestorationCompletion = ({ restoration }: Props) => {
   const utils = trpc.useUtils();
   const [files, setFiles] = useState<File[]>([]);

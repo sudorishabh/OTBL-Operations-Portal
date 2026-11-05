@@ -7,7 +7,6 @@ import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
 import { validators } from "@pkg/schema";
 import { constants } from "@pkg/utils";
-import { syncRestorationCompletion } from "../restoration/restoration-row";
 import {
   getOilZapperStock,
   OIL_ZAPPER_EPSILON,
@@ -116,12 +115,6 @@ async function computeIsExceeded(
 
   const existingTotal = Number(rows[0]?.total ?? 0);
   return existingTotal + newQty > estimateQty + 0.001;
-}
-
-// Expenses complete a restoration by using up its schedule of rates. A
-// bioremediation site completes on its TPH instead, so they don't touch it.
-async function syncSiteCompletion(ctx: any, siteId: number) {
-  await syncRestorationCompletion(ctx.db, siteId);
 }
 
 // A miscellaneous expense, under none of a restoration's or bioremediation
@@ -382,8 +375,6 @@ export const expenseMutationRouter = router({
             });
           }
 
-          await syncSiteCompletion(ctx, input.work_order_site_id);
-
           return { success: true, id: created.id };
         } catch (error) {
           if (error && typeof error === "object" && "errorCode" in error) throw error;
@@ -495,8 +486,6 @@ export const expenseMutationRouter = router({
             .set(setData)
             .where(eq(workOrderSiteExpenseTable.id, id));
 
-          await syncSiteCompletion(ctx, prev.work_order_site_id);
-
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Updating expense");
@@ -528,8 +517,6 @@ export const expenseMutationRouter = router({
           await ctx.db
             .delete(workOrderSiteExpenseTable)
             .where(eq(workOrderSiteExpenseTable.id, input.id));
-
-          await syncSiteCompletion(ctx, expense.work_order_site_id);
 
           return { success: true };
         } catch (error) {

@@ -19,6 +19,8 @@ import JobOrderActivitiesTable, {
   type JobOrderActivityRow,
 } from "./job-order-activities-table";
 import type { JobOrderFormContent } from "./job-order-form-pdf";
+import { sorLeftByRow } from "./restoration-display";
+import type { RestorationRate } from "./restoration-rates-table";
 import useJobOrderFormDownload from "./use-job-order-form-download";
 
 // A restoration job order as getJobOrders returns it. Job orders saved before
@@ -61,6 +63,8 @@ interface Props {
   // The work order's restoration row.
   restorationId: number;
   workOrder: JobOrderWorkOrder;
+  // The work order's restoration schedule of rates.
+  rates: RestorationRate[];
   open: boolean;
   onClose: () => void;
   // The job order being edited; a new one when left out.
@@ -172,6 +176,7 @@ const FormSection = ({
 const JobOrderDialog = ({
   restorationId,
   workOrder,
+  rates,
   open,
   onClose,
   editing,
@@ -187,6 +192,15 @@ const JobOrderDialog = ({
   // The job order as saved, ready to download as the client's form.
   const [saved, setSaved] = useState<JobOrderFormContent | null>(null);
   const { download, isDownloading } = useJobOrderFormDownload(workOrder);
+
+  const jobOrdersQuery = trpc.jobOrderQuery.getJobOrders.useQuery(
+    { work_order_site_id: restorationId },
+    { enabled: open },
+  );
+  const sorLeft = sorLeftByRow(
+    rates,
+    (jobOrdersQuery.data ?? []) as JobOrder[],
+  );
 
   const vendorsQuery = trpc.contractorQuery.getContractors.useQuery(
     {},
@@ -438,9 +452,10 @@ const JobOrderDialog = ({
 
           <FormSection
             title='Activities'
-            description='Write each quantity as it should read on the form, such as 25 × 20 = 500, No, or To be assessed later. Rows left blank print empty.'>
+            description='Write each quantity as it should read on the form, such as 25 × 20 = 500, No, or To be assessed later. Rows left blank print empty. SOR left is what the completion certificates have left of the schedule of rates.'>
             <JobOrderActivitiesTable
               entries={activities}
+              sorLeft={sorLeft}
               onChange={(key, entry) =>
                 setActivities((prev) => ({ ...prev, [key]: entry }))
               }

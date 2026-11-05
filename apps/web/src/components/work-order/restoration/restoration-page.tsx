@@ -135,7 +135,8 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
       description={description}
       backClick={goBack}>
       <div className='mt-4 space-y-4'>
-        {/* Set on its own once expenses use up the schedule of rates. */}
+        {/* Set on its own once completion certificates use up the schedule of
+            rates. */}
         {restoration.is_completed && (
           <div
             role='status'
@@ -143,7 +144,8 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
             <CheckCircle2 className='size-4 shrink-0 text-emerald-600' />
             <p>
               <span className='font-semibold'>Restoration complete.</span>{" "}
-              Recorded expenses have used up every schedule of rates quantity.
+              The job orders&apos; completion certificates have used up every
+              schedule of rates quantity.
             </p>
           </div>
         )}
@@ -201,6 +203,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
                 restorationId={restoration.id}
                 jobOrder={jobOrder}
                 workOrder={workOrder}
+                rates={rates}
                 onEdit={() => openJobOrderDialog(jobOrder)}>
                 <JobOrderCertificates
                   restorationId={restoration.id}
@@ -223,6 +226,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
       <JobOrderDialog
         restorationId={restoration.id}
         workOrder={workOrder}
+        rates={rates}
         open={jobOrderDialogOpen}
         onClose={() => setJobOrderDialogOpen(false)}
         editing={editingJobOrder}

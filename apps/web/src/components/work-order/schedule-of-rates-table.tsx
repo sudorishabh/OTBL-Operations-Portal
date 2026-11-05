@@ -486,7 +486,7 @@ const ScheduleOfRatesTable = ({
                           {isRestorationActivity(item.activity) ? (
                             <span
                               className='text-gray-300'
-                              title='Tracked in the restoration expenses'>
+                              title="Tracked by the restoration's completion certificates">
                               —
                             </span>
                           ) : usedQty > 0 ? (

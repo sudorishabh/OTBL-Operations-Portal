@@ -9,6 +9,7 @@ import {
   HardHat,
   RotateCcw,
 } from "lucide-react";
+import { certifiedQuantityByActivity } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatDateRange, scheduleNote } from "@/lib/wo-site-display";
@@ -57,15 +58,12 @@ const RestorationCard = ({
     work_order_site_id: restoration.id,
   });
   const spent = summaryQuery.data?.grandTotal ?? 0;
-  const usedByActivity = (summaryQuery.data?.byActivity ?? {}) as Record<
-    string,
-    { totalQuantity: number }
-  >;
 
   const jobOrdersQuery = trpc.jobOrderQuery.getJobOrders.useQuery({
     work_order_site_id: restoration.id,
   });
   const jobOrders = (jobOrdersQuery.data ?? []) as JobOrder[];
+  const certifiedByActivity = certifiedQuantityByActivity(jobOrders);
   const vendorNames = jobOrderVendorNames(jobOrders);
   const certifiedCount = jobOrders.filter(
     (jobOrder) => toDocuments(jobOrder.documents).length > 0,
@@ -146,13 +144,13 @@ const RestorationCard = ({
       </div>
 
       {/* The activities in the order the work is done, each with how much of
-          its schedule of rates quantity expenses have used. */}
+          its schedule of rates quantity completion certificates have used. */}
       {rates.length > 0 ? (
         // A row per activity on smaller screens, a column each on wide ones.
         <ol className='divide-y divide-gray-100 border-t border-gray-100 lg:grid lg:auto-cols-fr lg:grid-flow-col lg:divide-x lg:divide-y-0'>
           {rates.map((rate, index) => {
             const estimated = Number(rate.estimated_quantity) || 0;
-            const used = usedByActivity[rate.activity]?.totalQuantity ?? 0;
+            const used = certifiedByActivity[rate.activity] ?? 0;
             const tone = activityTone(used, estimated);
             return (
               <li
