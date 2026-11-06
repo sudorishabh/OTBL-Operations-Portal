@@ -13,6 +13,7 @@ import ClientProposalSkeleton from "@/components/skeleton/client/client-proposal
 import ScrollToTop from "@/components/scroll-to-top";
 const ClientDetailsCard = dynamic(
   () => import("@/components/client/client-details-card"),
+  { loading: () => <ClientInfoSkeleton /> },
 );
 
 const ProposalWOMain = dynamic(
@@ -20,6 +21,7 @@ const ProposalWOMain = dynamic(
     import(
       "@/components/client/client-proposals-WO/proposal-wo/proposal-wo-main"
     ),
+  { loading: () => <ClientProposalSkeleton /> },
 );
 
 const UpdateClientDialog = dynamic(
