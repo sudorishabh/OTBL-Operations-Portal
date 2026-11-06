@@ -14,14 +14,22 @@
  * Usage, from the repo root:
  *   node packages/db/scripts/seed-demo-data.mjs --dry-run   build and check the data, write nothing
  *   node packages/db/scripts/seed-demo-data.mjs --reset     empty the app's tables, then load
+ *   node packages/db/scripts/seed-demo-data.mjs --append --password <pw>
+ *                                                           add to the data already there
+ *   node packages/db/scripts/seed-demo-data.mjs --undo <manifest.json>
+ *                                                           remove what an --append run added
  *
  * Options:
  *   --reset              Empty every app table first. Needed when the database already holds data.
+ *   --append             Keep the data already there and add the demo data alongside it. Saves the
+ *                        ids it adds to a manifest file, for --undo.
+ *   --undo <file>        Delete exactly the rows an --append run added, as listed in its manifest.
  *   --count <n>          Base size: offices, work orders, vendors and so on (default 500).
  *   --seed <n>           Random seed, so a run can be repeated exactly (default 2026).
- *   --password <pw>      Password for every demo user (default Demo@1234).
- *   --dry-run            Build and check the data and print the counts, without connecting.
- *   --yes                Skip the 5 second pause before a reset.
+ *   --password <pw>      Password for every demo user (default Demo@1234; required with --append).
+ *   --dry-run            Build and check the data and print the counts, without writing. With
+ *                        --append it reads the database, to show what it would add.
+ *   --yes                Skip the 5 second pause before writing to a database in use.
  *   --allow-production   Run even when NODE_ENV is production.
  *
  * The database comes from DATABASE_URL, else from apps/server/.env. Apply the
@@ -29,6 +37,7 @@
  * DEMO_DOCUMENT_URL, a sample PDF by default; none are uploaded to SharePoint.
  */
 
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,9 +53,7 @@ const option = (name, fallback) => {
 };
 
 if (flag("help") || flag("h")) {
-  const source = await import("node:fs").then((fs) =>
-    fs.readFileSync(fileURLToPath(import.meta.url), "utf8"),
-  );
+  const source = fs.readFileSync(fileURLToPath(import.meta.url), "utf8").replace(/\r/g, "");
   console.log(source.split("*/")[0].replace(/^#!.*\n\/\*\*\n/, "").replace(/^ \* ?/gm, ""));
   process.exit(0);
 }
@@ -55,7 +62,27 @@ const COUNT = Number(option("count", 500));
 const SEED = Number(option("seed", 2026));
 const PASSWORD = String(option("password", "Demo@1234"));
 const RESET = flag("reset");
+const APPEND = flag("append");
+const UNDO = option("undo", null);
 const DRY_RUN = flag("dry-run");
+
+if (APPEND && RESET) {
+  console.error("Choose --append or --reset, not both.");
+  process.exit(1);
+}
+// The default password is written in this file, so it mustn't guard an admin
+// on a database that's in use.
+if (APPEND && !args.includes("--password")) {
+  console.error(
+    "--append adds demo users, an admin among them, to a database that's in use. " +
+      "Give them a password of your own with --password <pw>.",
+  );
+  process.exit(1);
+}
+if (args.includes("--undo") && !UNDO) {
+  console.error("--undo needs the manifest file an --append run saved.");
+  process.exit(1);
+}
 const DOC_URL =
   process.env.DEMO_DOCUMENT_URL ||
   "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
@@ -403,9 +430,12 @@ const LEGACY_TABLES = [
 ];
 
 const data = Object.fromEntries(Object.keys(COLUMNS).map((t) => [t, []]));
+// The highest id already in each table. New rows follow on from it, so an
+// --append run's rows don't clash with those already there.
+const ID_BASE = Object.fromEntries(Object.keys(COLUMNS).map((t) => [t, 0]));
 // Ids are given here, so they line up with the references between rows.
 const add = (table, row) => {
-  const record = { id: data[table].length + 1, ...row };
+  const record = { id: ID_BASE[table] + data[table].length + 1, ...row };
   data[table].push(record);
   return record;
 };
@@ -418,11 +448,167 @@ const doc = (name) => ({
   name: name.replace(/[\\/:*?"<>|]+/g, "-"),
 });
 
+// Values of unique columns already in use, kept in lower case, as MySQL
+// compares them without regard to case.
+const usedEmails = new Set();
+const takenParentNames = new Set();
+const takenProposalCodes = new Set();
+const takenWorkOrderCodes = new Set();
+
+// ---------------------------------------------------------------------------
+// The database. It is read before anything is built: to check its schema, and
+// for --append, to learn the ids and names already used.
+// ---------------------------------------------------------------------------
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+
+async function openDatabase() {
+  if (process.env.NODE_ENV === "production" && !flag("allow-production")) {
+    console.error("NODE_ENV is production. Pass --allow-production if you really mean to run this here.");
+    process.exit(1);
+  }
+  if (!process.env.DATABASE_URL) {
+    const { default: dotenv } = await import("dotenv");
+    dotenv.config({ path: path.resolve(scriptDir, "../../../apps/server/.env"), quiet: true });
+  }
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    console.error("DATABASE_URL isn't set, and apps/server/.env doesn't give one.");
+    process.exit(1);
+  }
+  let target = "the database";
+  try {
+    const parsed = new URL(url);
+    target = `${parsed.pathname.replace(/^\//, "")} on ${parsed.hostname}${parsed.port ? `:${parsed.port}` : ""}`;
+  } catch {
+    // Not a URL mysql2 would reject either; it reports the problem on connecting.
+  }
+  const { default: mysql } = await import("mysql2/promise");
+  return { conn: await mysql.createConnection({ uri: url }), target };
+}
+
+// The tables and columns must be those of the current schema. Returns the
+// database's tables.
+async function checkSchema(conn, target) {
+  const [columnRows] = await conn.query(
+    `SELECT TABLE_NAME AS t, COLUMN_NAME AS c, IS_NULLABLE AS nullable, COLUMN_DEFAULT AS dflt, EXTRA AS extra
+       FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`,
+  );
+  const dbColumns = new Map();
+  for (const r of columnRows) {
+    if (!dbColumns.has(r.t)) dbColumns.set(r.t, []);
+    dbColumns.get(r.t).push(r);
+  }
+  const drift = [];
+  for (const [table, columns] of Object.entries(COLUMNS)) {
+    const existing = dbColumns.get(table);
+    if (!existing) {
+      drift.push(`table ${table} is missing`);
+      continue;
+    }
+    const names = new Set(existing.map((r) => r.c));
+    for (const c of columns) if (!names.has(c)) drift.push(`${table}.${c} is missing`);
+    for (const r of existing) {
+      const required = r.nullable === "NO" && r.dflt === null && !/auto_increment/i.test(r.extra);
+      if (required && !columns.includes(r.c)) drift.push(`${table}.${r.c} is required but unknown to this script`);
+    }
+  }
+  if (drift.length) {
+    console.error(`${target} doesn't match the app's schema:`);
+    for (const d of drift) console.error(`  - ${d}`);
+    console.error("Apply the migrations first: pnpm --filter @pkg/db db:migrate");
+    process.exit(1);
+  }
+  return dbColumns;
+}
+
+const pause = async (message) => {
+  console.log(message);
+  if (!flag("yes")) {
+    console.log("Press Ctrl+C within 5 seconds to stop.");
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
+};
+
+// Deletes exactly the rows an --append run added, children first.
+async function undoAppend(file) {
+  const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+  const { conn, target } = await openDatabase();
+  try {
+    if (manifest.database !== target) {
+      console.error(`${file} lists rows added to ${manifest.database}, but this is ${target}. Nothing was deleted.`);
+      process.exitCode = 1;
+      return;
+    }
+    const tables = Object.keys(COLUMNS).filter((t) => manifest.tables?.[t]).reverse();
+    const total = tables.reduce((sum, t) => sum + manifest.tables[t][1] - manifest.tables[t][0] + 1, 0);
+    await pause(
+      `About to delete the ${total} demo rows added to ${target} on ${manifest.loadedAt}. ` +
+        "Rows that point at them, such as expenses added to a demo site, go with them.",
+    );
+    await conn.beginTransaction();
+    try {
+      for (const table of tables) {
+        const [from, to] = manifest.tables[table];
+        const [result] = await conn.query(`DELETE FROM \`${table}\` WHERE id BETWEEN ? AND ?`, [from, to]);
+        console.log(`  ${table.padEnd(28)} ${String(result.affectedRows).padStart(7)} deleted`);
+      }
+      await conn.commit();
+    } catch (error) {
+      await conn.rollback();
+      throw error;
+    }
+    console.log(`\nRemoved the demo data from ${target}.`);
+  } catch (error) {
+    console.error(`\nUndo failed, so nothing was deleted: ${error.message}`);
+    process.exitCode = 1;
+  } finally {
+    await conn.end();
+  }
+}
+
+if (UNDO) {
+  await undoAppend(path.resolve(UNDO));
+  process.exit();
+}
+
+let db = null;
+if (!DRY_RUN || APPEND) {
+  db = await openDatabase();
+  db.tables = await checkSchema(db.conn, db.target);
+
+  if (APPEND) {
+    for (const table of Object.keys(COLUMNS)) {
+      const [[{ maxId }]] = await db.conn.query(`SELECT COALESCE(MAX(id), 0) AS maxId FROM \`${table}\``);
+      ID_BASE[table] = Number(maxId);
+    }
+    const lowerSet = async (sql, set) => {
+      const [rows] = await db.conn.query(sql);
+      for (const r of rows) set.add(String(r.v).toLowerCase());
+    };
+    await lowerSet("SELECT email AS v FROM users", usedEmails);
+    await lowerSet("SELECT name AS v FROM parent_clients", takenParentNames);
+    await lowerSet("SELECT code AS v FROM proposals", takenProposalCodes);
+    await lowerSet("SELECT code AS v FROM work_orders", takenWorkOrderCodes);
+  } else {
+    const filled = [];
+    for (const table of Object.keys(COLUMNS)) {
+      const [[{ n }]] = await db.conn.query(`SELECT COUNT(*) AS n FROM \`${table}\``);
+      if (n > 0) filled.push(`${table} (${n})`);
+    }
+    if (filled.length && !RESET) {
+      console.error(`${db.target} already holds data: ${filled.join(", ")}.`);
+      console.error("Run again with --append to add the demo data alongside it, or with --reset to empty");
+      console.error("those tables first, deleting every row in them.");
+      process.exit(1);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // People, places and companies
 // ---------------------------------------------------------------------------
 
-const usedEmails = new Set();
 const personName = () => `${pick(FIRST)} ${pick(LAST)}`;
 const uniqueEmail = (local, domain) => {
   const base = slug(local).replace(/-/g, ".") || "user";
@@ -549,6 +735,15 @@ for (let i = 0; i < viewerCount; i++) {
     ...(i === 0 && { name: "Demo Viewer", email: "viewer@otbl.test", status: "active" }),
   });
 }
+// One login per role, with the email it got: on an --append run, a number is
+// added to one already taken.
+const DEMO_LOGINS = [
+  ["Admin", "Demo Admin"],
+  ["Office manager", "Demo Manager"],
+  ["Office operator", "Demo Office Operator"],
+  ["Site operator", "Demo Site Operator"],
+  ["Viewer", "Demo Viewer"],
+].map(([role, name]) => [role, data.users.find((u) => u.name === name).email]);
 
 // Main clients and their branches.
 const parentNames = [
@@ -560,9 +755,18 @@ const parentNames = [
   ),
 ];
 const parents = [];
+let nameCursor = 0;
 for (let i = 0; i < COUNT; i++) {
-  const base = parentNames[i % parentNames.length];
-  const name = i < parentNames.length ? base.name : `${base.name} ${Math.floor(i / parentNames.length) + 1}`;
+  // Main client names are unique, so skip any already taken.
+  let base;
+  let name;
+  do {
+    base = parentNames[nameCursor % parentNames.length];
+    const round = Math.floor(nameCursor / parentNames.length);
+    name = round === 0 ? base.name : `${base.name} ${round + 1}`;
+    nameCursor++;
+  } while (takenParentNames.has(name.toLowerCase()));
+  takenParentNames.add(name.toLowerCase());
   const parent = add("parent_clients", { name, ...stamp(atWorkHour(addDays(BASE, int(0, 60)))) });
   parent._short = base.short;
   parents.push(parent);
@@ -684,7 +888,9 @@ const PROCESS_TITLES = {
 };
 let proposalSeq = 0;
 function addProposal({ client, office, processType, date, status }) {
-  const code = `OTBL/PR/${yy(date)}/${String(++proposalSeq).padStart(4, "0")}`;
+  let code;
+  do code = `OTBL/PR/${yy(date)}/${String(++proposalSeq).padStart(4, "0")}`;
+  while (takenProposalCodes.has(code.toLowerCase()));
   const documents = [doc(`Technical Proposal ${code}.pdf`)];
   if (chance(0.6)) documents.push(doc(`Commercial Offer ${code}.pdf`));
   return add("proposals", {
@@ -707,6 +913,12 @@ function addProposal({ client, office, processType, date, status }) {
 // Every expense's planned quantity, by site and activity, for its is_exceeded flag.
 const estimates = new Map();
 let woSeq = 0;
+const workOrderCode = (start) => {
+  let code;
+  do code = `OTBL/WO/${yy(start)}/${String(++woSeq).padStart(4, "0")}`;
+  while (takenWorkOrderCodes.has(code.toLowerCase()));
+  return code;
+};
 let joSeq = 0;
 let poSeq = 0;
 let scSeq = 0;
@@ -1444,7 +1656,7 @@ function buildWorkOrder(index) {
   if (chance(0.4)) documents.push(doc(`Rate Contract ${index + 1}.pdf`));
 
   const wo = add("work_orders", {
-    code: `OTBL/WO/${yy(start)}/${String(++woSeq).padStart(4, "0")}`,
+    code: workOrderCode(start),
     agreement_number: `AGR/${client._short.replace(/\s+/g, "")}/${yy(start)}/${int(100, 999)}`,
     rate_contract_number: `RC-${int(8_000_000_000, 8_099_999_999)}`,
     title: PROCESS_TITLES[processType](client).slice(0, 255),
@@ -1649,7 +1861,12 @@ console.log(`Built the demo data (count ${COUNT}, seed ${SEED}); it follows the 
 printCounts();
 
 if (DRY_RUN) {
-  console.log("\nDry run: nothing was written.");
+  console.log(
+    APPEND
+      ? `\nDry run: nothing was written. --append would add these rows to ${db.target}, after the ids already there.`
+      : "\nDry run: nothing was written.",
+  );
+  await db?.conn.end();
   process.exit(0);
 }
 
@@ -1657,89 +1874,20 @@ if (DRY_RUN) {
 // Writing it
 // ---------------------------------------------------------------------------
 
-if (process.env.NODE_ENV === "production" && !flag("allow-production")) {
-  console.error("NODE_ENV is production. Pass --allow-production if you really mean to load demo data here.");
-  process.exit(1);
-}
-
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-if (!process.env.DATABASE_URL) {
-  const { default: dotenv } = await import("dotenv");
-  dotenv.config({ path: path.resolve(scriptDir, "../../../apps/server/.env"), quiet: true });
-}
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  console.error("DATABASE_URL isn't set, and apps/server/.env doesn't give one.");
-  process.exit(1);
-}
-
-let target = "the database";
-try {
-  const url = new URL(DATABASE_URL);
-  target = `${url.pathname.replace(/^\//, "")} on ${url.hostname}${url.port ? `:${url.port}` : ""}`;
-} catch {
-  // Not a URL mysql2 would reject either; it reports the problem on connecting.
-}
-
-const { default: mysql } = await import("mysql2/promise");
-const conn = await mysql.createConnection({ uri: DATABASE_URL });
+const { conn, target } = db;
 let emptied = false;
 
 try {
-  // The tables and columns must be those of the current schema.
-  const [columnRows] = await conn.query(
-    `SELECT TABLE_NAME AS t, COLUMN_NAME AS c, IS_NULLABLE AS nullable, COLUMN_DEFAULT AS dflt, EXTRA AS extra
-       FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`,
-  );
-  const dbColumns = new Map();
-  for (const r of columnRows) {
-    if (!dbColumns.has(r.t)) dbColumns.set(r.t, []);
-    dbColumns.get(r.t).push(r);
-  }
-  const drift = [];
-  for (const [table, columns] of Object.entries(COLUMNS)) {
-    const existing = dbColumns.get(table);
-    if (!existing) {
-      drift.push(`table ${table} is missing`);
-      continue;
-    }
-    const names = new Set(existing.map((r) => r.c));
-    for (const c of columns) if (!names.has(c)) drift.push(`${table}.${c} is missing`);
-    for (const r of existing) {
-      const required = r.nullable === "NO" && r.dflt === null && !/auto_increment/i.test(r.extra);
-      if (required && !columns.includes(r.c)) drift.push(`${table}.${r.c} is required but unknown to this script`);
-    }
-  }
-  if (drift.length) {
-    console.error(`${target} doesn't match the app's schema:`);
-    for (const d of drift) console.error(`  - ${d}`);
-    console.error("Apply the migrations first: pnpm --filter @pkg/db db:migrate");
-    process.exit(1);
-  }
-
-  const filled = [];
-  for (const table of Object.keys(COLUMNS)) {
-    const [[{ n }]] = await conn.query(`SELECT COUNT(*) AS n FROM \`${table}\``);
-    if (n > 0) filled.push(`${table} (${n})`);
-  }
-  if (filled.length && !RESET) {
-    console.error(`${target} already holds data: ${filled.join(", ")}.`);
-    console.error("Run again with --reset to empty those tables first. Every row in them is deleted.");
-    process.exit(1);
-  }
-
   if (RESET) {
-    console.log(`\nAbout to empty every app table in ${target} and load the demo data.`);
-    if (!flag("yes")) {
-      console.log("Press Ctrl+C within 5 seconds to stop.");
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-    }
-    const legacy = LEGACY_TABLES.filter((t) => dbColumns.has(t));
+    await pause(`\nAbout to empty every app table in ${target} and load the demo data.`);
+    const legacy = LEGACY_TABLES.filter((t) => db.tables.has(t));
     await conn.query("SET FOREIGN_KEY_CHECKS = 0");
     for (const table of [...Object.keys(COLUMNS), ...legacy]) await conn.query(`TRUNCATE TABLE \`${table}\``);
     await conn.query("SET FOREIGN_KEY_CHECKS = 1");
     emptied = true;
     console.log(`Emptied ${Object.keys(COLUMNS).length + legacy.length} tables.`);
+  } else if (APPEND) {
+    await pause(`\nAbout to add the demo data to ${target}, keeping the data already there.`);
   }
 
   // One transaction, with foreign keys checked, so a failure writes nothing.
@@ -1765,16 +1913,36 @@ try {
   }
 
   console.log(`\nLoaded the demo data into ${target}.`);
-  console.log(`\nDemo logins, all with the password ${PASSWORD}:`);
-  for (const [role, email] of [
-    ["Admin", "admin@otbl.test"],
-    ["Office manager", "manager@otbl.test"],
-    ["Office operator", "office.operator@otbl.test"],
-    ["Site operator", "site.operator@otbl.test"],
-    ["Viewer", "viewer@otbl.test"],
-  ]) {
-    console.log(`  ${role.padEnd(16)} ${email}`);
+
+  // The ids an --append run added, so --undo can remove exactly those rows.
+  // Each table's run of ids is unbroken, and rows added later come after it.
+  if (APPEND) {
+    const manifest = {
+      database: target,
+      loadedAt: new Date().toISOString(),
+      count: COUNT,
+      seed: SEED,
+      tables: Object.fromEntries(
+        Object.keys(COLUMNS)
+          .filter((t) => data[t].length)
+          .map((t) => [t, [data[t][0].id, data[t][data[t].length - 1].id]]),
+      ),
+    };
+    const file = path.resolve(
+      `demo-data-${target.split(" ")[0]}-${manifest.loadedAt.slice(0, 19).replace(/[:T]/g, "-")}.json`,
+    );
+    const json = JSON.stringify(manifest, null, 2);
+    try {
+      fs.writeFileSync(file, json);
+      console.log(`\nSaved the ids it added to ${file}.`);
+      console.log(`Keep that file: --undo ${path.basename(file)} removes exactly those rows.`);
+    } catch (error) {
+      console.log(`\nCouldn't save the manifest (${error.message}). Keep a copy of it to undo this run:\n${json}`);
+    }
   }
+
+  console.log(`\nDemo logins, all with the password ${PASSWORD}:`);
+  for (const [role, email] of DEMO_LOGINS) console.log(`  ${role.padEnd(16)} ${email}`);
   console.log("Every other demo user has the same password, with the email shown on the Users page.");
 } catch (error) {
   console.error(

@@ -39,3 +39,6 @@ yarn-error.log*
 *.pem
 # Added by code-review-graph
 .code-review-graph/
+
+# Manifests of demo data appended with packages/db/scripts/seed-demo-data.mjs --append
+demo-data-*.json
