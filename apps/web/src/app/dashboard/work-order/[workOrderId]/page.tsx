@@ -1,6 +1,7 @@
 "use client";
 import WorkOrder from "@/components/work-order/work-order";
 import useHandleParams from "@/hooks/useHandleParams";
+import WorkOrderDetailsSkeleton from "@/components/skeleton/work-order/work-order-details-skeleton";
 import React, { useEffect } from "react";
 
 type PageProps = {
@@ -25,7 +26,7 @@ const WorkOrderPageContent = ({ params }: PageProps) => {
 
 const WorkOrderPage = ({ params }: PageProps) => {
   return (
-    <React.Suspense fallback={<div>Loading work order...</div>}>
+    <React.Suspense fallback={<WorkOrderDetailsSkeleton />}>
       <WorkOrderPageContent params={params} />
     </React.Suspense>
   );

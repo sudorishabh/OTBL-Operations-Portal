@@ -29,6 +29,7 @@ import {
 import DocumentsMenu from "@/components/shared/documents-menu";
 import ContractOrderDialog from "./contract-order-dialog";
 import OrderCompletionDocuments from "./order-completion-documents";
+import ContractOrdersSkeleton from "@/components/skeleton/work-order/contract-orders-skeleton";
 
 const { CONTRACT_ORDER_TYPE, CONTRACT_ORDER_ITEMS, OIL_ZAPPER } = constants;
 
@@ -213,11 +214,12 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   );
 
   const table =
-    orders.length === 0 ? (
+    ordersQuery.isLoading ? (
+      <ContractOrdersSkeleton />
+    ) : orders.length === 0 ? (
       <p className='rounded-lg border border-dashed py-6 text-center text-xs text-gray-500'>
-        {ordersQuery.isLoading
-          ? "Loading orders..."
-          : "No orders yet. Add a purchase order to buy material, or a sub-contract to give out work."}
+        No orders yet. Add a purchase order to buy material, or a sub-contract
+        to give out work.
       </p>
     ) : (
       // A row per order, spread across the width; scrolls sideways when

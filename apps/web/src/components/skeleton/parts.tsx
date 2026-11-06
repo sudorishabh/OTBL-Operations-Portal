@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 // the component it stands in for, so nothing moves when the data arrives.
 
 // Bars on the grey page background need a darker grey than bars on a card.
-export const ON_PAGE = "bg-gray-300/60";
+export const ON_PAGE = "bg-gray-300/70";
 
 // Tells screen readers the region is loading and hides the shapes from them.
 export const SkeletonRegion = ({
@@ -93,7 +93,9 @@ export const PageHeaderSkeleton = ({
 }) => (
   <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
     <div className='flex min-w-0 flex-1 items-center gap-3 sm:gap-4'>
-      {back && <Skeleton className='size-8 shrink-0 rounded-full bg-white/80' />}
+      {back && (
+        <Skeleton className='size-8 shrink-0 rounded-full bg-white/80' />
+      )}
       <div className='min-w-0 flex-1'>
         {title ? (
           <p className='truncate text-lg font-bold text-cyan-800 sm:text-xl'>
@@ -151,10 +153,12 @@ export const FilterBarSkeleton = ({
 // Mirrors ProcessSectionHeader: icon tile, title and description, actions.
 export const SectionHeaderSkeleton = ({
   title,
+  description,
   actions = 0,
   className,
 }: {
   title?: string;
+  description?: string;
   actions?: number;
   className?: string;
 }) => (
@@ -174,10 +178,14 @@ export const SectionHeaderSkeleton = ({
             className='h-4 w-44'
           />
         )}
-        <TextLine
-          line='h-4'
-          className='w-64 max-w-full'
-        />
+        {description ? (
+          <p className='text-xs text-gray-500'>{description}</p>
+        ) : (
+          <TextLine
+            line='h-4'
+            className='w-64 max-w-full'
+          />
+        )}
       </div>
     </div>
     {actions > 0 && (
@@ -320,7 +328,7 @@ export type SkeletonColumn = {
   bar?: string | string[];
   // Width of a smaller second line under the bar.
   sub?: string | string[];
-  align?: "right";
+  align?: "right" | "center";
 };
 
 const pick = (value: string | string[] | undefined, row: number) =>
@@ -334,6 +342,8 @@ const CellSkeleton = ({
   row: number;
 }) => {
   const right = column.align === "right";
+  const center = column.align === "center";
+  const place = right ? "ml-auto" : center ? "mx-auto" : undefined;
   switch (column.shape) {
     case "pill":
       return (
@@ -341,14 +351,12 @@ const CellSkeleton = ({
           className={cn(
             "h-5 rounded-full",
             pick(column.bar, row) ?? "w-16",
-            right && "ml-auto",
+            place,
           )}
         />
       );
     case "dot":
-      return (
-        <Skeleton className={cn("size-3 rounded-full", right && "ml-auto")} />
-      );
+      return <Skeleton className={cn("size-3 rounded-full", place)} />;
     case "menu":
       // Where the ghost "..." button sits.
       return (
@@ -358,14 +366,17 @@ const CellSkeleton = ({
       );
     default:
       return (
-        <div className={cn("flex flex-col gap-1.5", right && "items-end")}>
+        <div
+          className={cn(
+            "flex flex-col gap-1.5",
+            right && "items-end",
+            center && "items-center",
+          )}>
           <Skeleton
             className={cn("h-3.5 max-w-full", pick(column.bar, row) ?? "w-24")}
           />
           {column.sub && (
-            <Skeleton
-              className={cn("h-3 max-w-full", pick(column.sub, row))}
-            />
+            <Skeleton className={cn("h-3 max-w-full", pick(column.sub, row))} />
           )}
         </div>
       );

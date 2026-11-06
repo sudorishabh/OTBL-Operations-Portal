@@ -3,7 +3,11 @@ import { SkeletonRegion, TableSkeleton, type SkeletonColumn } from "../parts";
 
 // Same columns as the contacts tab's table.
 const COLUMNS: SkeletonColumn[] = [
-  { label: "Contact Person", headClassName: "pl-8", bar: ["w-28", "w-24", "w-32"] },
+  {
+    label: "Contact Person",
+    headClassName: "pl-8",
+    bar: ["w-28", "w-24", "w-32"],
+  },
   { label: "Email", bar: ["w-40", "w-36", "w-44"] },
   { label: "Phone", bar: "w-20" },
   { label: "Designation", bar: ["w-24", "w-20", "w-28"] },

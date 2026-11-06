@@ -16,7 +16,9 @@ import CustomButton from "@/components/shared/btn";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import Error from "@/components/shared/error";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import WorkOrderSitesSkeleton from "@/components/skeleton/work-order/work-order-sites-skeleton";
+import BioremediationSectionSkeleton, {
+  SiteCardsSkeleton,
+} from "@/components/skeleton/work-order/work-order-sites-skeleton";
 import ProcessSectionHeader from "../process-section-header";
 import CreateWorkOrderSiteDialog from "../create-wo-site/create-wo-site-dialog";
 import SitesTable from "./wo-sites-table";
@@ -148,7 +150,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
   };
 
   if (isSitesQueryLoading && currentPage === 1) {
-    return <WorkOrderSitesSkeleton />;
+    return <BioremediationSectionSkeleton />;
   }
 
   if (isSitesQueryError) {
@@ -214,7 +216,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
             />
           </TabsContent>
         </Tabs>
-        {isFetchingMore && <WorkOrderSitesSkeleton />}
+        {isFetchingMore && <SiteCardsSkeleton />}
         {/* Only while more sites are left to load. */}
         {!isFetchingMore && pagination?.hasMore && (
           <div className='mt-4 flex flex-col items-center gap-2'>

@@ -1,11 +1,6 @@
 import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkeletonRegion, TableSkeleton, type SkeletonColumn } from "../parts";
 
 const CATEGORIES = [
@@ -28,7 +23,12 @@ const COLUMNS: SkeletonColumn[] = [
     cellClassName: "py-2",
     bar: ["w-36", "w-32", "w-40"],
   },
-  { label: "Contact", headClassName: "h-8", cellClassName: "py-2", bar: "w-20" },
+  {
+    label: "Contact",
+    headClassName: "h-8",
+    cellClassName: "py-2",
+    bar: "w-20",
+  },
 ];
 
 // The categorised view: a card of eight users for each role.
