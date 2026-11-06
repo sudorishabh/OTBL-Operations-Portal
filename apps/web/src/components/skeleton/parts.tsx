@@ -38,6 +38,17 @@ export const SkeletonRegion = ({
   </div>
 );
 
+// A bar for inside a line of text or a badge, where a div isn't allowed.
+export const InlineSkeleton = ({ className }: { className?: string }) => (
+  <span
+    aria-hidden='true'
+    className={cn(
+      "inline-block h-3 w-6 animate-pulse rounded bg-gray-200 align-middle motion-reduce:animate-none",
+      className,
+    )}
+  />
+);
+
 // A bar centred in a box as tall as the line of text it replaces.
 export const TextLine = ({
   line = "h-5",

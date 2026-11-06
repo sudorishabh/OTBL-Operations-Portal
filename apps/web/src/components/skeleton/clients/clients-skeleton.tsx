@@ -1,59 +1,105 @@
+"use client";
 import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useIsAdmin } from "@/contexts/AuthContext";
+import { SkeletonRegion, TextLine } from "../parts";
 
-const FieldSkeleton = ({
-  className,
-  lines = 1,
-}: {
-  className?: string;
-  lines?: 1 | 2;
-}) => (
-  <div className={className}>
-    <Skeleton className='h-2.5 w-16 bg-gray-200/70' />
-    <Skeleton className='mt-2 h-3.5 w-4/5 bg-gray-200/70' />
-    {lines === 2 && <Skeleton className='mt-1.5 h-3 w-3/5 bg-gray-200/70' />}
-  </div>
-);
-
-export const CardSkeleton = () => (
-  <div className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
-    <div className='flex items-start gap-3'>
-      <Skeleton className='h-10 w-10 shrink-0 rounded-lg bg-gray-200/70' />
-
-      <div className='min-w-0 flex-1'>
-        <div className='flex items-center gap-2.5'>
-          <Skeleton className='h-4 w-48 bg-gray-200/70' />
-          <Skeleton className='h-4 w-16 rounded-full bg-gray-200/70' />
+// Mirrors BranchRow: tree elbow, name and address, contact lines, counts.
+const BranchRowSkeleton = ({ isLast }: { isLast: boolean }) => (
+  <li className='relative pl-10'>
+    <span className='absolute left-[18px] top-0 h-1/2 w-[22px] rounded-bl-md border-b border-l border-gray-300' />
+    {!isLast && (
+      <span className='absolute bottom-0 left-[18px] top-1/2 border-l border-gray-300' />
+    )}
+    <div className='grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-3 py-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto_auto]'>
+      <div className='min-w-0'>
+        <div className='flex h-5 items-center gap-2'>
+          <Skeleton className='h-3.5 w-44' />
+          <Skeleton className='h-3 w-12 rounded-full' />
         </div>
-        <Skeleton className='mt-2 h-3 w-44 bg-gray-200/70' />
+        <TextLine
+          line='mt-0.5 h-4'
+          className='w-72 max-w-full'
+        />
       </div>
-
-      <Skeleton className='h-8 w-8 shrink-0 rounded-full bg-gray-200/70' />
+      <div className='col-start-1 row-start-2 min-w-0 lg:col-start-2 lg:row-start-1'>
+        <TextLine
+          line='h-4'
+          className='w-20'
+        />
+        <TextLine
+          line='h-4'
+          className='w-44 max-w-full'
+        />
+      </div>
+      <div className='col-start-1 row-start-3 flex items-center gap-3 lg:col-start-3 lg:row-start-1'>
+        <Skeleton className='h-3 w-20' />
+        <Skeleton className='h-3 w-16' />
+        <Skeleton className='h-3 w-12' />
+      </div>
+      <Skeleton className='col-start-2 row-span-3 row-start-1 size-4 lg:col-start-4 lg:row-span-1' />
     </div>
+  </li>
+);
 
-    <div className='mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-gray-100 pt-4 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.6fr)]'>
-      <FieldSkeleton
-        lines={2}
-        className='col-span-2 sm:col-span-1'
-      />
-      <FieldSkeleton
-        lines={2}
-        className='col-span-2 sm:col-span-1'
-      />
-      <FieldSkeleton />
-      <FieldSkeleton />
-      <FieldSkeleton />
+// Mirrors ParentClientGroup: the main client's header over its branches.
+export const ClientGroupSkeleton = ({
+  branches = 1,
+  isAdmin,
+}: {
+  branches?: number;
+  isAdmin: boolean;
+}) => (
+  <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
+    <div className='flex flex-wrap items-center justify-between gap-3 px-4 pb-1 pt-3'>
+      <div className='flex min-w-0 items-center gap-3'>
+        <Skeleton className='size-9 shrink-0 rounded-lg' />
+        <div className='min-w-0'>
+          <TextLine
+            line='h-[22.5px]'
+            className='h-4 w-56'
+          />
+          <TextLine
+            line='h-4'
+            className='w-32'
+          />
+        </div>
+        <Skeleton className='size-4 shrink-0' />
+      </div>
+      {isAdmin && (
+        <div className='flex items-center gap-2'>
+          <Skeleton className='h-8 w-28' />
+          <Skeleton className='size-8' />
+          <Skeleton className='size-8' />
+        </div>
+      )}
     </div>
+    <ul className='px-4 pb-3'>
+      {Array.from({ length: branches }, (_, index) => (
+        <BranchRowSkeleton
+          key={index}
+          isLast={index === branches - 1}
+        />
+      ))}
+    </ul>
   </div>
 );
 
+// The client list: main clients, each with its branches.
 const ClientsSkeleton = () => {
+  const isAdmin = useIsAdmin();
   return (
-    <div className='flex flex-col gap-4'>
-      <CardSkeleton />
-      <CardSkeleton />
-      <CardSkeleton />
-    </div>
+    <SkeletonRegion
+      label='Loading clients'
+      className='space-y-4'>
+      {[1, 2, 1, 1].map((branches, index) => (
+        <ClientGroupSkeleton
+          key={index}
+          branches={branches}
+          isAdmin={isAdmin}
+        />
+      ))}
+    </SkeletonRegion>
   );
 };
 

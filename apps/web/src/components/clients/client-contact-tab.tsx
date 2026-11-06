@@ -22,7 +22,7 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import toast from "react-hot-toast";
-import ClientsSkeleton from "../skeleton/clients/clients-skeleton";
+import ClientContactsSkeleton from "../skeleton/clients/client-contacts-skeleton";
 import Error from "@/components/shared/error";
 import { useApiError } from "@/hooks/useApiError";
 
@@ -96,7 +96,7 @@ const ClientContactTab = ({ tab }: Props) => {
   };
 
   if (isAllContactQueryLoading) {
-    return <ClientsSkeleton />;
+    return <ClientContactsSkeleton />;
   }
 
   if (isAllContactQueryError && !isAllContactQueryLoading) {
