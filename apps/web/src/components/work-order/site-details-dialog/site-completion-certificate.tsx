@@ -105,6 +105,7 @@ const SiteCompletionCertificate = ({ woSiteId }: Props) => {
       <CertificateHeader />
 
       <DocumentsField
+        isLoading={documentsQuery.isLoading}
         label='Doc upload'
         files={files}
         onFilesChange={setFiles}

@@ -3,6 +3,7 @@ import React, { useRef } from "react";
 import { X } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   documentName,
@@ -28,6 +29,8 @@ interface Props {
   maxFiles?: number;
   isUploading?: boolean;
   progress?: number;
+  // The saved documents are still loading, so don't offer an empty picker.
+  isLoading?: boolean;
   // Shown at the end of the add row, such as the button that uploads the
   // picked files.
   action?: React.ReactNode;
@@ -110,6 +113,7 @@ const DocumentsField = ({
   maxFiles = MAX_DOCUMENTS,
   isUploading = false,
   progress = 0,
+  isLoading = false,
   action,
   className,
 }: Props) => {
@@ -152,6 +156,31 @@ const DocumentsField = ({
       variant={hasFiles ? "row" : "zone"}
     />
   );
+
+  // A saved file over the add row, the box most records end up with.
+  if (isLoading && files.length === 0) {
+    return (
+      <div
+        role='status'
+        aria-busy='true'
+        className={cn(
+          "divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white",
+          className,
+        )}>
+        <span className='sr-only'>Loading documents</span>
+        {["w-36", "w-48"].map((width) => (
+          <div
+            key={width}
+            aria-hidden='true'
+            className='flex h-9 items-center gap-2 px-2.5'>
+            <Skeleton className='size-5 shrink-0' />
+            <Skeleton className={cn("h-3", width)} />
+            <Skeleton className='ml-auto h-2.5 w-10' />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   // Nothing picked or saved yet: just the one-line drop zone.
   if (!hasFiles) {

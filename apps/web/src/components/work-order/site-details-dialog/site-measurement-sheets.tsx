@@ -94,6 +94,7 @@ const SiteMeasurementSheets = ({ woSiteId }: Props) => {
       />
 
       <DocumentsField
+        isLoading={sheetsQuery.isLoading}
         label='Doc upload'
         files={files}
         onFilesChange={setFiles}

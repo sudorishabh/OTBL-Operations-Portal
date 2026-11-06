@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import {
   FileText,
   FlaskConical,
-  Loader2,
   Trash2,
   Truck,
   Upload,
@@ -20,6 +19,7 @@ import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
 import UploadSectionHeader from "@/components/shared/upload-section-header";
 import DocumentsMenu from "@/components/shared/documents-menu";
+import { SampleRowSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 
 const MOBILIZATION = "mobilization";
 
@@ -103,6 +103,7 @@ export const MobilizationCertificate = ({ woSiteId }: Props) => {
       />
 
       <DocumentsField
+        isLoading={documentsQuery.isLoading}
         label='Doc upload'
         files={files}
         onFilesChange={setFiles}
@@ -224,9 +225,7 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
       />
 
       {bioremediationDataQuery.isLoading ? (
-        <div className='flex justify-center py-4 text-gray-400'>
-          <Loader2 className='size-5 animate-spin' />
-        </div>
+        <SampleRowSkeleton />
       ) : sample ? (
         <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 text-xs'>
           <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5'>

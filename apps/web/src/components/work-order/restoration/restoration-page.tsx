@@ -15,7 +15,7 @@ import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
-import WorkOrderDetailsSkeleton from "@/components/skeleton/work-order/work-order-details-skeleton";
+import { RestorationPageSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import { workOrderPath, type WorkOrderFrom } from "../work-order-path";
@@ -80,7 +80,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
   const goBack = () => router.push(workOrderPath(workOrderId, from));
 
   if (workOrderQuery.isLoading || restorationQuery.isLoading) {
-    return <WorkOrderDetailsSkeleton />;
+    return <RestorationPageSkeleton />;
   }
 
   const error = workOrderQuery.error ?? restorationQuery.error;

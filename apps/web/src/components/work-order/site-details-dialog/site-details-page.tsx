@@ -8,7 +8,7 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
-import WorkOrderDetailsSkeleton from "@/components/skeleton/work-order/work-order-details-skeleton";
+import { SiteDetailsSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 import { workOrderPath, type WorkOrderFrom } from "../work-order-path";
 import SiteDetailsCard from "./site-details-card";
 import SiteExecution from "./site-execution";
@@ -44,7 +44,7 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
 
   const goBack = () => router.push(workOrderPath(workOrderId, from));
 
-  if (siteDetailsQuery.isLoading) return <WorkOrderDetailsSkeleton />;
+  if (siteDetailsQuery.isLoading) return <SiteDetailsSkeleton />;
 
   if (siteDetailsQuery.isError) {
     return (

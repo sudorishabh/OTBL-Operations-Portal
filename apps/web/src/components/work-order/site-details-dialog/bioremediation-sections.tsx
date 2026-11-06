@@ -43,6 +43,7 @@ import {
 } from "@/lib/documents";
 import { format } from "date-fns";
 import { constants } from "@pkg/utils";
+import { ActivitiesSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 
 // Today, as a date input value.
 const todayInput = () => format(new Date(), "yyyy-MM-dd");
@@ -615,11 +616,7 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
   };
 
   if (bioremediationDataQuery.isLoading) {
-    return (
-      <div className='p-10 flex justify-center text-slate-400'>
-        <Loader2 className='animate-spin w-6 h-6' />
-      </div>
-    );
+    return <ActivitiesSkeleton />;
   }
 
   // The zero day sample lives in the site information card.

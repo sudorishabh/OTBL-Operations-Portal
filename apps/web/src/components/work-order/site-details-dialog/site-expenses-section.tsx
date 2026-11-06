@@ -63,6 +63,7 @@ import {
 } from "@/lib/documents";
 import { differenceInCalendarDays, format, isSameDay } from "date-fns";
 import { formatDateRange } from "@/lib/wo-site-display";
+import { ExpenseGroupsSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 
 type ExpenseRecord = {
   id: number;
@@ -1125,7 +1126,7 @@ const SiteExpensesSection = ({
       </div>
 
       {expensesQuery.isLoading && expensePage === 1 ? (
-        <div className='text-center py-8 text-gray-400 text-sm'>Loading expenses...</div>
+        <ExpenseGroupsSkeleton />
       ) : isBioremediation ? (
         renderGroupedExpenses({
           sections: ORDER_GROUPS.map(({ type, title, Icon }) => {

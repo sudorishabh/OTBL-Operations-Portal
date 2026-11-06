@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import PageLoading from "@/components/loading/PageLoading";
+import { SiteDetailsSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 import SiteDetailsPage from "@/components/work-order/site-details-dialog/site-details-page";
 
 type PageProps = {
@@ -11,7 +11,7 @@ const ClientWorkOrderSitePage = ({ params }: PageProps) => {
   const { workOrderId, woSiteId } = React.use(params);
 
   return (
-    <React.Suspense fallback={<PageLoading />}>
+    <React.Suspense fallback={<SiteDetailsSkeleton />}>
       <SiteDetailsPage
         workOrderId={workOrderId}
         woSiteId={woSiteId}
