@@ -7,6 +7,7 @@ import { capitalFirstLetter, constants, formatCurrency } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { VendorDetailSkeleton } from "@/components/skeleton/vendor/vendor-skeletons";
 import {
   Table,
   TableBody,
@@ -84,8 +85,9 @@ const ContractorDetail = ({ contractorId }: Props) => {
     0,
   );
 
-  if (contractorQuery.isLoading) {
-    return <p className='py-10 text-center text-sm text-gray-400'>Loading...</p>;
+  // Wait for the orders too, or their counts and tables would read as empty.
+  if (contractorQuery.isLoading || workQuery.isLoading) {
+    return <VendorDetailSkeleton />;
   }
   if (!contractor) {
     return (
