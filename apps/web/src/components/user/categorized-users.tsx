@@ -24,7 +24,7 @@ import UserTable from "./user-table";
 import CustomButton from "@/components/shared/btn";
 import UserSearchNFilter from "./User-search-filter";
 import StatusIndicator from "../shared/status-indicator";
-import UserPageSkeleton from "../skeleton/user/user-tab-skeleton";
+import UserCategoriesSkeleton from "../skeleton/user/user-categories-skeleton";
 
 const { ROLES } = constants;
 
@@ -46,7 +46,7 @@ const CategorizedUsers = () => {
   } = categorizedUsers?.data ?? {};
 
   if (categorizedUsers.isLoading) {
-    return <UserPageSkeleton />;
+    return <UserCategoriesSkeleton />;
   }
 
   const handleOpenCategoryDialog = (

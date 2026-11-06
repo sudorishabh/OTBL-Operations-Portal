@@ -112,9 +112,11 @@ export const PageHeaderSkeleton = ({
 
 // White boxes where the search field and filter selects sit.
 export const FilterBarSkeleton = ({
+  search = "sm:max-w-md sm:flex-1",
   selects = ["w-[140px]"],
   className,
 }: {
+  search?: string;
   selects?: string[];
   className?: string;
 }) => (
@@ -123,7 +125,7 @@ export const FilterBarSkeleton = ({
       "flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4",
       className,
     )}>
-    <Skeleton className='h-8 w-full bg-white/80 sm:max-w-md sm:flex-1' />
+    <Skeleton className={cn("h-8 w-full bg-white/80", search)} />
     <div className='flex flex-wrap items-center gap-2 sm:gap-3'>
       {selects.map((width, index) => (
         <Skeleton

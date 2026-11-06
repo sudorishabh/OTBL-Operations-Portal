@@ -7,9 +7,14 @@ import ScrollToTop from "@/components/scroll-to-top";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import UserTabSkeleton from "../skeleton/user/user-tab-skeleton";
+import UserCategoriesSkeleton from "../skeleton/user/user-categories-skeleton";
 
-const UserTable = dynamic(() => import("./user-table"));
-const CategorizedUsers = dynamic(() => import("./categorized-users"));
+const UserTable = dynamic(() => import("./user-table"), {
+  loading: () => <UserTabSkeleton />,
+});
+const CategorizedUsers = dynamic(() => import("./categorized-users"), {
+  loading: () => <UserCategoriesSkeleton />,
+});
 const CreateUpdateUserDialog = dynamic(
   () => import("./create-update-user-dialog"),
 );
@@ -40,7 +45,14 @@ const UserPage = () => {
           </TabsList>
         </div>
 
-        <Suspense fallback={<UserTabSkeleton />}>
+        <Suspense
+          fallback={
+            currentTab === "categorized" ? (
+              <UserCategoriesSkeleton />
+            ) : (
+              <UserTabSkeleton />
+            )
+          }>
           <TabsContent value='all'>
             <UserTable />
           </TabsContent>
