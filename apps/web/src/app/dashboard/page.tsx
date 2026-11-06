@@ -1,10 +1,12 @@
 "use client";
 import { useAuthContext, useIsAdmin } from "@/contexts/AuthContext";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
-import DashboardPageSkeleton from "@/components/skeleton/dashboard/dashboard-page-skeleton";
+import DashboardPageSkeleton, {
+  RecentWorkOrdersSkeleton,
+  StatValueSkeleton,
+} from "@/components/skeleton/dashboard/dashboard-page-skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -321,14 +323,7 @@ export default function DashboardPage() {
           </div>
 
           {woRecentQuery.isLoading ? (
-            <div className='space-y-1.5 p-3'>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton
-                  key={i}
-                  className='h-7 w-full'
-                />
-              ))}
-            </div>
+            <RecentWorkOrdersSkeleton />
           ) : woRecentQuery.isError ? (
             <p className='px-4 py-6 text-center text-[13px] text-rose-600'>
               Could not load work orders. Refresh and try again.
@@ -432,7 +427,7 @@ function Stat({
         </span>
       </div>
       {loading ? (
-        <Skeleton className='mt-1 h-5 w-10' />
+        <StatValueSkeleton />
       ) : (
         <p
           className={cn(
