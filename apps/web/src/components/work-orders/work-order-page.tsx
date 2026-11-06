@@ -5,7 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { useWorkOrderManagementContext } from "@/contexts/WorkOrderManagementContext";
 import WorkOrderSearchNFilter from "./work-order-search-filter";
 import { IWorkOrder } from "@/types/work-order.types";
-import WorkOrdersSkeleton from "../skeleton/work-orders/work-orders-skeleton";
+import { WorkOrdersTableSkeleton } from "../skeleton/work-orders/work-orders-skeleton";
 import ScrollToTop from "@/components/scroll-to-top";
 
 const WorkOrderPage = () => {
@@ -63,22 +63,22 @@ const WorkOrderPage = () => {
 
   return (
     <div>
-      {isInitialLoading ? (
-        <WorkOrdersSkeleton />
-      ) : (
-        <div className='w-full mt-8'>
-          <div className='mb-4'>
-            <WorkOrderSearchNFilter />
-          </div>
+      <div className='w-full mt-8'>
+        <div className='mb-4'>
+          <WorkOrderSearchNFilter />
+        </div>
 
+        {isInitialLoading ? (
+          <WorkOrdersTableSkeleton />
+        ) : (
           <WorkOrderTable
             workOrders={allWorkOrdersList}
             pagination={pagination}
             handleLoadMore={handleLoadMore}
             isLoadingData={isFetchingMore}
           />
-        </div>
-      )}
+        )}
+      </div>
       <ScrollToTop />
     </div>
   );
