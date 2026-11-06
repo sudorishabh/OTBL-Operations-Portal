@@ -25,6 +25,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -130,15 +131,16 @@ const SidebarMenuList = ({ item, isActive }: SidebarMenuListProps) => {
 function AppSidebar() {
   let pathname = usePathname();
   const { state } = useSidebar();
-  const { user, logout } = useAuthContext();
+  const { user, logout, isUserLoading } = useAuthContext();
 
   const visibleNavLinks = useMemo(() => {
+    if (isUserLoading) return [];
     return sidebarLinks.filter((item) => {
       if (!item.hideForRoles?.length) return true;
       if (!user?.role) return false;
       return !item.hideForRoles.includes(user.role);
     });
-  }, [user?.role]);
+  }, [isUserLoading, user?.role]);
 
   if (!pathname.startsWith("/dashboard")) {
     return null;
@@ -173,6 +175,18 @@ function AppSidebar() {
             Navigation
           </SidebarGroupLabel>
           <SidebarMenu className='mt-2'>
+            {/* Which links show depends on the role, so hold every link's
+                place until the user is known rather than adding some later. */}
+            {isUserLoading &&
+              sidebarLinks.map((item) => (
+                <SidebarMenuItem
+                  key={item.title}
+                  aria-hidden='true'
+                  className='flex h-7 items-center gap-3 pl-3'>
+                  <Skeleton className='size-4 shrink-0 bg-white/15' />
+                  <Skeleton className='h-3 w-24 bg-white/15' />
+                </SidebarMenuItem>
+              ))}
             {visibleNavLinks.map((item) => {
               const isActive =
                 item.link === "/"
