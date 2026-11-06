@@ -1,6 +1,8 @@
+"use client";
 import React from "react";
 import { ClipboardList, ShoppingCart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useIsManager } from "@/contexts/AuthContext";
 import {
   SkeletonCard,
   SkeletonRegion,
@@ -161,3 +163,18 @@ export const VendorDetailSkeleton = () => (
     </section>
   </SkeletonRegion>
 );
+
+// The whole vendor list, search and status filter included, for before the
+// page itself has mounted.
+export const VendorListSkeleton = () => {
+  const isManager = useIsManager();
+  return (
+    <div className='mt-4 space-y-4'>
+      <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+        <Skeleton className='h-9 flex-1 bg-white/80' />
+        <Skeleton className='h-9 w-full bg-white/80 sm:w-36' />
+      </div>
+      <VendorsTableSkeleton withActions={isManager} />
+    </div>
+  );
+};

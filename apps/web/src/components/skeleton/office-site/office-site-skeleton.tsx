@@ -1,6 +1,11 @@
 import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SkeletonRegion, TableSkeleton, type SkeletonColumn } from "../parts";
+import {
+  FilterBarSkeleton,
+  SkeletonRegion,
+  TableSkeleton,
+  type SkeletonColumn,
+} from "../parts";
 
 // Same columns as OfficeSiteTable; its rows carry a trailing empty cell.
 const SITE_COLUMNS: SkeletonColumn[] = [
@@ -79,3 +84,15 @@ const OfficeSiteSkeleton = () => (
 );
 
 export default OfficeSiteSkeleton;
+
+// The offices page before it mounts: the filters over the office cards.
+export const OfficeSitePageSkeleton = () => (
+  <div className='mt-8'>
+    <FilterBarSkeleton
+      search='sm:w-80'
+      selects={["w-[140px]"]}
+      className='mb-6'
+    />
+    <OfficeSiteSkeleton />
+  </div>
+);
