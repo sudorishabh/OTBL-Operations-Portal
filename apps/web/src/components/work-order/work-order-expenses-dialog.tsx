@@ -137,7 +137,8 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
       size='2xl'
       isFullScreen={isFullScreen}
       onToggleFullScreen={() => setIsFullScreen((v) => !v)}
-      isLoading={query.isLoading}>
+      isLoading={query.isLoading}
+      loadingSkeleton='list'>
       <div className='space-y-4 py-3'>
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
           <div className='rounded-xl border bg-white px-4 py-3'>

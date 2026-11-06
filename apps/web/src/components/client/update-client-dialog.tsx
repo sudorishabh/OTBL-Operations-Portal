@@ -27,6 +27,7 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { useApiError } from "@/hooks/useApiError";
 import toast from "react-hot-toast";
 import ParentClientField from "@/components/clients/parent-client-field";
+import { FormSkeleton } from "@/components/skeleton/dialog-skeletons";
 
 const updateClientFormSchema = clientSchemas.createClientSchema.extend({
   status: z.enum(["active", "inactive"]).optional(),
@@ -189,9 +190,7 @@ const UpdateClientDialog = ({ clientId }: Props) => {
       size='lg'
       setOpen={handleCloseDialog}>
       {isLoading ? (
-        <div className='flex items-center justify-center py-16'>
-          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600' />
-        </div>
+        <FormSkeleton fields={8} />
       ) : (
         <Form {...form}>
           <CustomForm onSubmit={form.handleSubmit(onSubmit)}>

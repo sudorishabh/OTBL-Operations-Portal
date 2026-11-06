@@ -77,7 +77,8 @@ const RestorationMonthlyExpensesDialog = ({ restorationId }: Props) => {
       title='Monthly Expenses'
       description='Restoration expenses by the month each one starts, split by job order.'
       size='lg'
-      isLoading={monthsQuery.isLoading}>
+      isLoading={monthsQuery.isLoading}
+      loadingSkeleton='list'>
       <div className='py-3'>
         {months.length === 0 ? (
           <p className='py-10 text-center text-sm text-gray-500'>

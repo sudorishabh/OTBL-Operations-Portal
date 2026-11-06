@@ -74,7 +74,8 @@ export function SiteOperatorUploadsDialog({
       description='Uploads from field operators (stored in SharePoint).'
       size='lg'
       heightMode='fixed'
-      isLoading={isLoading}>
+      isLoading={isLoading}
+      loadingSkeleton='list'>
       {rows.length === 0 && !isLoading ? (
         <p className='text-sm text-muted-foreground py-6 text-center'>
           No operator documents uploaded yet.
