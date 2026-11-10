@@ -12,6 +12,7 @@ import { officeSchemas } from "@pkg/schema";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { buildPagination, pageOffset } from "../../helper/pagination";
 
 const {
   officeTable,
@@ -88,9 +89,8 @@ export const officeQueryRouter = router({
           // The id breaks ties so offices never repeat or go missing across pages.
           .orderBy(officeOrder, asc(officeTable.id));
 
-        const offset = page ? (page - 1) * limit : 0;
         const offices = page
-          ? await officeList.limit(limit).offset(offset)
+          ? await officeList.limit(limit).offset(pageOffset(page, limit))
           : await officeList;
 
         let total = offices.length;
@@ -135,18 +135,14 @@ export const officeQueryRouter = router({
           }),
         );
 
-        // An unpaged list is a single page holding every office.
-        const pageSize = page ? limit : Math.max(total, 1);
-
         return {
           offices: officesWithUsersAndSitesCount,
-          pagination: {
-            page: page ?? 1,
-            limit: pageSize,
+          pagination: buildPagination({
+            page,
+            limit,
             total,
-            hasMore: offset + offices.length < total,
-            totalPages: Math.ceil(total / pageSize),
-          },
+            shown: offices.length,
+          }),
         };
       } catch (error) {
         throw fromDatabaseError(error, "Fetching offices");
