@@ -19,13 +19,7 @@ const CLIENTS_PAGE_SIZE = 10;
 
 type ClientGroupsPage = RouterOutputs["clientQuery"]["getClientGroups"];
 
-interface Props {
-  tab: string;
-}
-
-const ClientsTab = ({ tab }: Props) => {
-  const isClientTab = tab === "clients";
-
+const ClientsTab = () => {
   const { clientSearchQuery, clientFilters } = useClientManagementContext();
 
   const debouncedSearch = useDebounce(clientSearchQuery.trim(), 300);
@@ -55,10 +49,7 @@ const ClientsTab = ({ tab }: Props) => {
   const pageQueries: UseQueryResult<ClientGroupsPage>[] = trpc.useQueries(
     (t: any) =>
       pages.map((page) =>
-        t.clientQuery.getClientGroups(
-          { ...queryInput, page },
-          { enabled: isClientTab },
-        ),
+        t.clientQuery.getClientGroups({ ...queryInput, page }),
       ),
   );
 
