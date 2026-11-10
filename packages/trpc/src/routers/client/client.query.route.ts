@@ -219,6 +219,39 @@ export const clientQueryRouter = router({
     }),
   ),
 
+  // Every client the user can see, with only what list filters show and
+  // search by; also gives the states clients are in.
+  getClientOptions: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const scope = await getAccessScope(
+        ctx.db,
+        Number(ctx.user!.sub),
+        ctx.user!.role,
+      );
+      const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
+
+      try {
+        return await ctx.db
+          .select({
+            id: clientTable.id,
+            name: clientTable.name,
+            city: clientTable.city,
+            state: clientTable.state,
+            parent_client_name: parentClientTable.name,
+          })
+          .from(clientTable)
+          .leftJoin(
+            parentClientTable,
+            eq(parentClientTable.id, clientTable.parent_client_id),
+          )
+          .where(clientListWhere({}, scope, clientIds))
+          .orderBy(asc(clientTable.name), asc(clientTable.id));
+      } catch (error) {
+        throw fromDatabaseError(error, "Fetching client options");
+      }
+    }),
+  ),
+
   totalClientAndContact: protectedProcedure.query(
     handleQuery(async ({ ctx }) => {
       try {
