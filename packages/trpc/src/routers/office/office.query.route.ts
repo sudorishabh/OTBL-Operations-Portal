@@ -26,7 +26,7 @@ const { ROLES } = constants;
 export const officeQueryRouter = router({
   getOffices: protectedProcedure.input(officeSchemas.getOfficesSchema).query(
     handleQuery(async ({ input, ctx }) => {
-      const { searchQuery, status, officeNamesOrder } = input;
+      const { searchQuery, status, officeNamesOrder, page, limit } = input;
 
       let officeQuery = undefined;
 
@@ -81,11 +81,25 @@ export const officeQueryRouter = router({
           }
         }
 
-        const offices = await ctx.db
+        const officeList = ctx.db
           .select()
           .from(officeTable)
           .where(officeWhere)
           .orderBy(officeOrder);
+
+        const offset = page ? (page - 1) * limit : 0;
+        const offices = page
+          ? await officeList.limit(limit).offset(offset)
+          : await officeList;
+
+        let total = offices.length;
+        if (page) {
+          const [totalResult] = await ctx.db
+            .select({ count: count() })
+            .from(officeTable)
+            .where(officeWhere);
+          total = totalResult?.count ?? 0;
+        }
 
         const officesWithUsersAndSitesCount = await Promise.all(
           offices.map(async (office: any) => {
@@ -120,7 +134,19 @@ export const officeQueryRouter = router({
           }),
         );
 
-        return { offices: officesWithUsersAndSitesCount };
+        // An unpaged list is a single page holding every office.
+        const pageSize = page ? limit : Math.max(total, 1);
+
+        return {
+          offices: officesWithUsersAndSitesCount,
+          pagination: {
+            page: page ?? 1,
+            limit: pageSize,
+            total,
+            hasMore: offset + offices.length < total,
+            totalPages: Math.ceil(total / pageSize),
+          },
+        };
       } catch (error) {
         throw fromDatabaseError(error, "Fetching offices");
       }
