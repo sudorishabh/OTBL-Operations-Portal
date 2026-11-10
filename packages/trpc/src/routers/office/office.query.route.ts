@@ -1,19 +1,26 @@
 import { and, asc, count, desc, eq, inArray, like, or } from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
-import { constants } from "@pkg/utils";
+import {
+  constants,
+  effectiveWorkOrderStatusFromDbOnly,
+  type EffectiveWorkOrderStatus,
+} from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure, publicProcedure } from "../../core";
 import {
   type AccessScope,
+  andScope,
   assertCanAccessOffice,
   getAccessScope,
   resolveVisibleOfficeIds,
+  workOrderScopeWhere,
 } from "../../access-scope";
 import { officeSchemas } from "@pkg/schema";
-import { fromDatabaseError } from "../../errors";
+import { fromDatabaseError, isAppError, notFound } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { buildPagination, pageOffset } from "../../helper/pagination";
+import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
 
 const {
   officeTable,
@@ -22,8 +29,10 @@ const {
   workOrderTable,
   workOrderSiteTable,
   siteTable,
+  scheduleOfRatesTable,
+  bioremediationContSoilTable,
 } = schema;
-const { ROLES } = constants;
+const { ROLES, STATUS } = constants;
 
 // The offices a user may see: all of them, those they belong to, or none for
 // users who only work on sites.
@@ -185,98 +194,154 @@ export const officeQueryRouter = router({
     }),
   ),
 
-  getOfficeWorkOrders: protectedProcedure
-    .input(officeSchemas.getOfficeWorkOrderSchema)
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        try {
-          const scope = await getAccessScope(
-            ctx.db,
-            Number(ctx.user!.sub),
-            ctx.user!.role,
-          );
-          await assertCanAccessOffice(ctx.db, scope, input.officeId);
+  // One office for its own page: its details, manager and office operators,
+  // and totals across its sites and work orders.
+  getOffice: protectedProcedure.input(officeSchemas.getOfficeSchema).query(
+    handleQuery(async ({ input, ctx }) => {
+      const { officeId } = input;
 
-          const all = await ctx.db
-            .select()
-            .from(workOrderTable)
-            .where(eq(workOrderTable.office_id, input.officeId));
+      try {
+        const currentUserId = Number(ctx.user!.sub);
+        const scope = await getAccessScope(
+          ctx.db,
+          currentUserId,
+          ctx.user!.role,
+        );
 
-          const active = all.filter((wo: any) => wo.status === "pending");
-          const completed = all.filter((wo: any) => wo.status === "completed");
+        const [office] = await ctx.db
+          .select()
+          .from(officeTable)
+          .where(eq(officeTable.id, officeId));
+        if (!office) throw notFound("Office", officeId);
 
-          return { active, completed };
-        } catch (error) {
-          throw fromDatabaseError(error, "Fetching office work orders");
+        await assertCanAccessOffice(ctx.db, scope, officeId);
+
+        const members = await ctx.db
+          .select({
+            id: userTable.id,
+            name: userTable.name,
+            email: userTable.email,
+            contact_number: userTable.contact_number,
+            status: userTable.status,
+            role: officeUserTable.role,
+          })
+          .from(officeUserTable)
+          .innerJoin(userTable, eq(officeUserTable.user_id, userTable.id))
+          .where(eq(officeUserTable.office_id, officeId))
+          .orderBy(asc(userTable.name), asc(userTable.id));
+
+        const manager =
+          members.find((member) => member.role === ROLES.MANAGER) ?? null;
+        const operators = members.filter(
+          (member) => member.role === "operator",
+        );
+
+        const siteCounts = await ctx.db
+          .select({ status: siteTable.status, count: count() })
+          .from(siteTable)
+          .where(eq(siteTable.office_id, officeId))
+          .groupBy(siteTable.status);
+
+        const sites = { total: 0, active: 0 };
+        for (const row of siteCounts) {
+          sites.total += row.count;
+          if (row.status === STATUS.ACTIVE) sites.active += row.count;
         }
-      }),
-    ),
 
-  getOfficeStats: protectedProcedure
-    .input(officeSchemas.getOfficeStatsSchema)
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        try {
-          const scope = await getAccessScope(
-            ctx.db,
-            Number(ctx.user!.sub),
-            ctx.user!.role,
+        // The same work orders the work order list shows for this office.
+        const officeWorkOrders = await ctx.db
+          .select({
+            id: workOrderTable.id,
+            office_id: workOrderTable.office_id,
+            status: workOrderTable.status,
+          })
+          .from(workOrderTable)
+          .where(
+            andScope(
+              eq(workOrderTable.office_id, officeId),
+              workOrderScopeWhere(scope),
+            ),
           );
-          await assertCanAccessOffice(ctx.db, scope, input.officeId);
 
-          const workOrders = await ctx.db
-            .select({ id: workOrderTable.id })
-            .from(workOrderTable)
-            .where(eq(workOrderTable.office_id, input.officeId));
+        const effectiveById = await batchEffectiveWorkOrderStatuses(
+          ctx.db,
+          scope,
+          officeWorkOrders.map((workOrder) => ({
+            id: Number(workOrder.id),
+            office_id: workOrder.office_id ?? null,
+            status: String(workOrder.status ?? ""),
+          })),
+        );
 
-          const workOrderIds = workOrders.map((w: any) => w.id);
-
-          let siteCount = 0;
-          let totalBudgetAmount = 0;
-          let totalExpenseAmount = 0;
-          let completedWorkOrders = 0;
-
-          if (workOrderIds.length > 0) {
-            const woSites = await ctx.db
-              .select({ id: workOrderSiteTable.id })
-              .from(workOrderSiteTable)
-              .where(eq(workOrderSiteTable.work_order_id, workOrderIds[0]));
-
-            if (workOrderIds.length > 1) {
-              for (let i = 1; i < workOrderIds.length; i++) {
-                const more = await ctx.db
-                  .select({ id: workOrderSiteTable.id })
-                  .from(workOrderSiteTable)
-                  .where(eq(workOrderSiteTable.work_order_id, workOrderIds[i]));
-                woSites.push(...more);
-              }
-            }
-
-            siteCount = woSites.length;
-
-            const woRows = await ctx.db
-              .select({
-                status: workOrderTable.status,
-              })
-              .from(workOrderTable)
-              .where(eq(workOrderTable.office_id, input.officeId));
-
-            for (const row of woRows) {
-              if (row.status === "completed") completedWorkOrders += 1;
-            }
-          }
-
-          return {
-            siteCount,
-            completedWorkOrders,
-            totalBudgetAmount,
-            totalExpenseAmount,
-          };
-        } catch (error) {
-          throw fromDatabaseError(error, "Fetching office statistics");
+        const workOrders: Record<EffectiveWorkOrderStatus | "total", number> = {
+          total: officeWorkOrders.length,
+          pending: 0,
+          completed: 0,
+          cancelled: 0,
+        };
+        for (const workOrder of officeWorkOrders) {
+          const status =
+            effectiveById.get(Number(workOrder.id)) ??
+            effectiveWorkOrderStatusFromDbOnly(String(workOrder.status));
+          workOrders[status] += 1;
         }
-      }),
-    ),
+
+        // Budget and activity spend, counted as the client page counts them.
+        let totalBudgetAmount = 0;
+        let totalExpenseAmount = 0;
+        const workOrderIds = officeWorkOrders.map((workOrder) => workOrder.id);
+
+        if (workOrderIds.length > 0) {
+          const rates = await ctx.db
+            .select({ total_cost: scheduleOfRatesTable.total_cost })
+            .from(scheduleOfRatesTable)
+            .where(inArray(scheduleOfRatesTable.work_order_id, workOrderIds));
+          totalBudgetAmount = rates.reduce(
+            (sum, rate) => sum + Number(rate.total_cost || 0),
+            0,
+          );
+
+          // Only bioremediation completion earns income; restoration tracks
+          // its expenses alone.
+          const completions = await ctx.db
+            .select({ amount: bioremediationContSoilTable.amount })
+            .from(bioremediationContSoilTable)
+            .innerJoin(
+              workOrderSiteTable,
+              eq(
+                bioremediationContSoilTable.work_order_site_id,
+                workOrderSiteTable.id,
+              ),
+            )
+            .where(
+              and(
+                inArray(workOrderSiteTable.work_order_id, workOrderIds),
+                eq(bioremediationContSoilTable.type, "completion"),
+              ),
+            );
+          totalExpenseAmount = completions.reduce(
+            (sum, completion) => sum + Number(completion.amount || 0),
+            0,
+          );
+        }
+
+        return {
+          office,
+          manager,
+          operators,
+          canManage:
+            ctx.user!.role === ROLES.ADMIN || manager?.id === currentUserId,
+          sites,
+          workOrders,
+          totalBudgetAmount,
+          totalExpenseAmount,
+        };
+      } catch (error) {
+        if (isAppError(error)) throw error;
+        throw fromDatabaseError(error, "Fetching office details");
+      }
+    }),
+  ),
 
   getOfficeUsers: protectedProcedure
     .input(officeSchemas.getOfficeUsersSchema)
