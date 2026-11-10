@@ -4,14 +4,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import { SkeletonRegion, TextLine } from "../parts";
 
-// Mirrors BranchRow: tree elbow, name and address, contact lines, counts.
+// Mirrors BranchRow: tree elbow, name and address, contact lines, then
+// counts, contacts and the chevron.
 const BranchRowSkeleton = ({ isLast }: { isLast: boolean }) => (
   <li className='relative pl-10'>
     <span className='absolute left-[18px] top-0 h-1/2 w-[22px] rounded-bl-md border-b border-l border-gray-300' />
     {!isLast && (
       <span className='absolute bottom-0 left-[18px] top-1/2 border-l border-gray-300' />
     )}
-    <div className='grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-3 py-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto_auto]'>
+    <div className='grid grid-cols-1 items-center gap-x-4 gap-y-2 px-3 py-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto]'>
       <div className='min-w-0'>
         <div className='flex h-5 items-center gap-2'>
           <Skeleton className='h-3.5 w-44' />
@@ -22,7 +23,7 @@ const BranchRowSkeleton = ({ isLast }: { isLast: boolean }) => (
           className='w-72 max-w-full'
         />
       </div>
-      <div className='col-start-1 row-start-2 min-w-0 lg:col-start-2 lg:row-start-1'>
+      <div className='min-w-0'>
         <TextLine
           line='h-4'
           className='w-20'
@@ -32,12 +33,13 @@ const BranchRowSkeleton = ({ isLast }: { isLast: boolean }) => (
           className='w-44 max-w-full'
         />
       </div>
-      <div className='col-start-1 row-start-3 flex items-center gap-3 lg:col-start-3 lg:row-start-1'>
+      <div className='flex items-center gap-3 lg:justify-end'>
         <Skeleton className='h-3 w-20' />
         <Skeleton className='h-3 w-16' />
         <Skeleton className='h-3 w-12' />
+        <Skeleton className='ml-auto h-7 w-24 lg:ml-1' />
+        <Skeleton className='size-4' />
       </div>
-      <Skeleton className='col-start-2 row-span-3 row-start-1 size-4 lg:col-start-4 lg:row-span-1' />
     </div>
   </li>
 );

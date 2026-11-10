@@ -1,13 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import {
-  ChevronDown,
-  Network,
-  Pencil,
-  Plus,
-  Trash2,
-  Users,
-} from "lucide-react";
+import { ChevronDown, Network, Pencil, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
 import {
@@ -26,11 +19,12 @@ import { useApiError } from "@/hooks/useApiError";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import BranchRow from "./branch-row";
-import ClientContactsDialog from "./client-contacts-dialog";
 import {
   ClientContactLines,
   ClientStatus,
+  ContactsButton,
   formatClientLocation,
+  LIST_SUBGRID,
   type ClientListItem,
 } from "./client-list-parts";
 
@@ -71,7 +65,6 @@ const IconAction = ({
 const ParentClientGroup = ({ parentClient, branches }: Props) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-  const [isContactsOpen, setIsContactsOpen] = useState(false);
   const isAdmin = useIsAdmin();
   const { setParams } = useHandleParams();
   const { handleError } = useApiError();
@@ -84,6 +77,7 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
         utils.clientQuery.getParentClients.invalidate();
         utils.clientQuery.getClients.invalidate();
         utils.clientQuery.getClientGroups.invalidate();
+        utils.clientQuery.totalClientAndContact.invalidate();
       },
       onError: (error: any) => handleError(error, { showToast: true }),
     },
@@ -98,9 +92,17 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
   const location = formatClientLocation(parentClient);
 
   return (
-    <section className='rounded-xl border border-gray-200 bg-white shadow-sm'>
-      {/* Stacked on phones; name, contact lines and actions in a row on large screens. */}
-      <div className='grid grid-cols-1 items-center gap-x-4 gap-y-2 px-4 pb-1 pt-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto]'>
+    <section
+      className={cn(
+        "rounded-xl border border-gray-200 bg-white shadow-sm",
+        LIST_SUBGRID,
+      )}>
+      {/* Stacked on phones; in the list's columns on large screens. */}
+      <div
+        className={cn(
+          "grid grid-cols-1 items-center gap-y-2 px-4 pb-1 pt-3",
+          LIST_SUBGRID,
+        )}>
         <button
           type='button'
           onClick={() => setIsExpanded((value) => !value)}
@@ -139,15 +141,13 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
           className='pl-12 lg:pl-0'
         />
 
-        <div className='flex flex-wrap items-center gap-2 sm:pl-12 lg:pl-0'>
-          <button
-            type='button'
-            onClick={() => setIsContactsOpen(true)}
-            title={`Contacts of ${displayName}`}
-            className='inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 outline-none transition-colors hover:bg-emerald-100 focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
-            <Users className='size-3.5' />
-            {contactCount === 1 ? "1 contact" : `${contactCount} contacts`}
-          </button>
+        <div className='flex flex-wrap items-center gap-2 sm:pl-12 lg:justify-end lg:pl-0'>
+          <ContactsButton
+            owner={{ parentClientId: parentClient.id }}
+            ownerName={parentClient.name}
+            count={contactCount}
+            className='h-8 px-2.5'
+          />
           {isAdmin && (
             <>
               <CustomButton
@@ -175,7 +175,7 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
 
       {isExpanded &&
         (branchCount > 0 ? (
-          <ul className='px-4 pb-3'>
+          <ul className={cn("px-4 pb-3", LIST_SUBGRID)}>
             {branches.map((branch, index) => (
               <BranchRow
                 key={branch.id}
@@ -186,7 +186,7 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
             ))}
           </ul>
         ) : (
-          <p className='pb-4 pl-16 pr-4 pt-2 text-sm text-gray-500'>
+          <p className='pb-4 pl-16 pr-4 pt-2 text-sm text-gray-500 lg:col-span-full'>
             No branches yet.
             {isAdmin && " Add the first one with Add Branch."}
           </p>
@@ -220,13 +220,6 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ClientContactsDialog
-        open={isContactsOpen}
-        onClose={() => setIsContactsOpen(false)}
-        owner={{ parentClientId: parentClient.id }}
-        ownerName={parentClient.name}
-      />
     </section>
   );
 };
