@@ -34,6 +34,7 @@ import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import NoFetchData from "@/components/shared/no-fetch-data";
+import PaginationSummary from "@/components/shared/pagination-summary";
 import StatusIndicator from "../shared/status-indicator";
 import { userTypes } from "@pkg/schema";
 import UserTabSkeleton from "../skeleton/user/user-tab-skeleton";
@@ -272,17 +273,14 @@ const UserTable = () => {
         </TableBody>
       </Table>
 
-      <div className='flex justify-between items-center px-4 py-2 text-xs text-muted-foreground border-t'>
-        <span>
-          Showing {allUsersList.length} of{" "}
-          {pagination?.total || allUsersList.length} users
-        </span>
-        {pagination && pagination.totalPages > 1 && (
-          <span>
-            Page {pagination.page} of {pagination.totalPages}
-          </span>
-        )}
-      </div>
+      <PaginationSummary
+        shown={allUsersList.length}
+        total={pagination?.total}
+        page={pagination?.page}
+        totalPages={pagination?.totalPages}
+        noun='users'
+        className='border-t'
+      />
     </div>
   );
 };
