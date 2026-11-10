@@ -85,7 +85,8 @@ export const officeQueryRouter = router({
           .select()
           .from(officeTable)
           .where(officeWhere)
-          .orderBy(officeOrder);
+          // The id breaks ties so offices never repeat or go missing across pages.
+          .orderBy(officeOrder, asc(officeTable.id));
 
         const offset = page ? (page - 1) * limit : 0;
         const offices = page

@@ -82,7 +82,8 @@ export const siteQueryRouter = router({
             .select()
             .from(siteTable)
             .where(whereClause)
-            .orderBy(desc(siteTable.created_at))
+            // The id breaks ties so sites never repeat or go missing across pages.
+            .orderBy(desc(siteTable.created_at), desc(siteTable.id))
             .limit(limit)
             .offset(offset);
 
