@@ -53,7 +53,7 @@ const CreateProposalDialog = ({ clientId }: Props) => {
   const [files, setFiles] = useState<File[]>([]);
   const [savedDocuments, setSavedDocuments] = useState<StoredDocument[]>([]);
   const [filesError, setFilesError] = useState("");
-  const { deleteParams, getParam, setParam } = useHandleParams();
+  const { deleteParams, getParam } = useHandleParams();
   const { handleError } = useApiError();
   const mode = getParam("dialog");
   const isAddMode = mode === "create-proposal";
@@ -121,12 +121,7 @@ const CreateProposalDialog = ({ clientId }: Props) => {
       toast.error("Please wait for the document to finish uploading.");
       return;
     }
-    // Editing was opened from the proposal's details, so return there.
-    if (isEditMode) {
-      setParam("dialog", "proposal-detail");
-    } else {
-      deleteParams(["dialog"]);
-    }
+    deleteParams(isEditMode ? ["dialog", "proposal-id"] : ["dialog"]);
 
     setTimeout(() => {
       form.reset(EMPTY_FORM);
@@ -135,7 +130,7 @@ const CreateProposalDialog = ({ clientId }: Props) => {
       setFilesError("");
       resetUpload();
     }, 500);
-  }, [deleteParams, form, isEditMode, isUploading, resetUpload, setParam]);
+  }, [deleteParams, form, isEditMode, isUploading, resetUpload]);
 
   useEffect(() => {
     if (isAddMode) {

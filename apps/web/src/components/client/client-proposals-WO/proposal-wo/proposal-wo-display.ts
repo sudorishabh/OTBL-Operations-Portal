@@ -16,7 +16,7 @@ export const PROCESSES: Record<string, { label: string; dot: string }> = {
 
 export type ProposalStatus = "pending" | "approved" | "rejected";
 
-// The colours the proposal detail dialog uses for the same statuses.
+// How each approval status shows on a proposal.
 export const PROPOSAL_STATUSES: Record<
   ProposalStatus,
   { label: string; pill: string }

@@ -9,13 +9,19 @@ import { SectionHeaderSkeleton, SkeletonRegion, TextLine } from "../parts";
 // Same grid as ProposalWOList: proposal, arrow, work order.
 const ROW_GRID = "md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)]";
 
-// Mirrors RowCell: a title line with its pill, then a line of details.
+// Mirrors RowCell: a title line with its pill, a meta line, then more
+// lines of details, and a chevron or a menu on the right.
 const CellSkeleton = ({
   title,
-  details,
+  meta,
+  lines,
+  end,
 }: {
   title: string;
-  details: string[];
+  meta: string[];
+  // Widths of the lines under the meta line, e.g. a description.
+  lines: string[];
+  end: "chevron" | "menu" | null;
 }) => (
   <div className='flex min-w-0 items-center gap-3 px-3 py-2.5'>
     <div className='min-w-0 flex-1'>
@@ -24,15 +30,25 @@ const CellSkeleton = ({
         <Skeleton className='h-4 w-16 shrink-0 rounded-full' />
       </div>
       <div className='mt-1 flex h-4 items-center gap-3'>
-        {details.map((width, index) => (
+        {meta.map((width, index) => (
           <Skeleton
             key={index}
             className={cn("h-3", width)}
           />
         ))}
       </div>
+      {lines.map((width, index) => (
+        <div
+          key={index}
+          className={cn("flex h-5 items-center", index === 0 && "mt-1")}>
+          <Skeleton className={cn("h-3 max-w-full", width)} />
+        </div>
+      ))}
     </div>
-    <Skeleton className='size-4 shrink-0' />
+    {end === "chevron" && <Skeleton className='size-4 shrink-0' />}
+    {end === "menu" && (
+      <Skeleton className='-mr-1 -mt-1 size-7 shrink-0 self-start rounded-md' />
+    )}
   </div>
 );
 
@@ -85,12 +101,16 @@ const ClientProposalSkeleton = () => {
                 )}>
                 <CellSkeleton
                   title={row.proposal}
-                  details={["w-28", "w-28", "w-8"]}
+                  meta={["w-28", "w-28", "w-8"]}
+                  lines={["w-full", "w-48"]}
+                  end={isAdmin ? "menu" : null}
                 />
                 <ArrowRight className='hidden size-4 justify-self-center text-gray-200 md:block' />
                 <CellSkeleton
                   title={row.workOrder}
-                  details={["w-28", "w-24", "w-36"]}
+                  meta={["w-28", "w-24", "w-36", "w-8"]}
+                  lines={["w-80"]}
+                  end='chevron'
                 />
               </li>
             ))}
