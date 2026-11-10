@@ -41,7 +41,8 @@ const visibleOfficesWhere = async (db: Database, scope: AccessScope) => {
 export const officeQueryRouter = router({
   getOffices: protectedProcedure.input(officeSchemas.getOfficesSchema).query(
     handleQuery(async ({ input, ctx }) => {
-      const { searchQuery, status, officeNamesOrder, page, limit } = input;
+      const { searchQuery, status, state, officeNamesOrder, page, limit } =
+        input;
 
       let officeQuery = undefined;
 
@@ -49,13 +50,20 @@ export const officeQueryRouter = router({
         officeQuery = and(officeQuery, eq(officeTable.status, status));
       }
 
+      if (state) {
+        officeQuery = and(officeQuery, eq(officeTable.state, state));
+      }
+
       if (searchQuery && searchQuery.trim() !== "") {
+        const term = `%${escapeLike(searchQuery)}%`;
         officeQuery = and(
           officeQuery,
           or(
-            like(officeTable.name, `%${escapeLike(searchQuery)}%`),
-            like(officeTable.address, `%${escapeLike(searchQuery)}%`),
-            like(officeTable.email, `%${escapeLike(searchQuery)}%`),
+            like(officeTable.name, term),
+            like(officeTable.address, term),
+            like(officeTable.city, term),
+            like(officeTable.state, term),
+            like(officeTable.email, term),
           ),
         );
       }

@@ -57,6 +57,7 @@ export const expelUserFromOfficeSchema = z.object({
 export const getOfficesSchema = z.object({
   searchQuery: searchQueryValidator,
   status: z.enum([...statusEnum.options, "all"]).optional(),
+  state: z.string().trim().max(255).optional(),
   officeNamesOrder: officeNamesOrderEnum.optional(),
   page: pageValidator.optional(),
   limit: limitValidator,
