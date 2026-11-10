@@ -18,7 +18,7 @@ export type UserFilters = {
   assignment: "all" | "assigned" | "unassigned";
 };
 
-export const defaultUserFilters: UserFilters = {
+const defaultUserFilters: UserFilters = {
   role: "all",
   status: "all",
   officeId: "all",

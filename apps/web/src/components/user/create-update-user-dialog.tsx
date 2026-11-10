@@ -78,7 +78,6 @@ const CreateUpdateUserDialog = () => {
 
   const invalidateUserQueries = () => {
     trpcUtils.userQuery.getAllUser.invalidate();
-    trpcUtils.userQuery.getCategories8User.invalidate();
     trpcUtils.userQuery.getUserById.invalidate();
   };
 

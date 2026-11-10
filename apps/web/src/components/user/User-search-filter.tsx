@@ -2,7 +2,6 @@
 import React from "react";
 import { ArrowUpDown, Landmark, UserCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import useHandleParams from "@/hooks/useHandleParams";
 import {
   ALL,
   ClearFiltersButton,
@@ -12,7 +11,6 @@ import {
   SelectFilter,
 } from "@/components/filters/list-filters";
 import {
-  defaultUserFilters,
   useUserManagementContext,
   type UserFilters,
   type UserSort,
@@ -48,26 +46,19 @@ const SORT_OPTIONS = [
   { label: "Name Z–A", value: "desc" },
 ];
 
-// The users list's search, filters and order. In a role's dialog on the
-// categorized tab, the role is fixed.
+// The users list's search, filters and order.
 const UserSearchFilter = () => {
   const {
     searchQuery,
     setSearchQuery,
     filters,
     setFilters,
+    resetFilters,
     userNamesOrder,
     setUserNamesOrder,
   } = useUserManagementContext();
-  const { getParam } = useHandleParams();
 
-  const isAllUsers = !getParam("tab") || getParam("tab") === "all";
-  const isCategoryDialog = getParam("dialog") === "categorized";
-  const isShown = isAllUsers || isCategoryDialog;
-
-  const officesQuery = trpc.officeQuery.getOfficeOptions.useQuery(undefined, {
-    enabled: isShown,
-  });
+  const officesQuery = trpc.officeQuery.getOfficeOptions.useQuery();
   const officeOptions = ((officesQuery.data ?? []) as OfficeOption[]).map(
     (office) => ({
       value: String(office.id),
@@ -76,26 +67,15 @@ const UserSearchFilter = () => {
     }),
   );
 
-  if (!isShown) return null;
-
   const setFilter = (next: Partial<UserFilters>) =>
     setFilters({ ...filters, ...next });
 
   const hasActiveFilters =
     searchQuery !== "" ||
-    (!isCategoryDialog && filters.role !== ALL) ||
+    filters.role !== ALL ||
     filters.status !== ALL ||
     filters.officeId !== ALL ||
     filters.assignment !== ALL;
-
-  // A role's dialog keeps its role when cleared.
-  const clearFilters = () => {
-    setSearchQuery("");
-    setFilters({
-      ...defaultUserFilters,
-      role: isCategoryDialog ? filters.role : ALL,
-    });
-  };
 
   return (
     <FilterBar>
@@ -105,14 +85,12 @@ const UserSearchFilter = () => {
         value={searchQuery}
         onChange={setSearchQuery}
       />
-      {!isCategoryDialog && (
-        <SelectFilter
-          label='Role'
-          value={filters.role}
-          onChange={(role) => setFilter({ role: role as UserFilters["role"] })}
-          options={ROLE_OPTIONS}
-        />
-      )}
+      <SelectFilter
+        label='Role'
+        value={filters.role}
+        onChange={(role) => setFilter({ role: role as UserFilters["role"] })}
+        options={ROLE_OPTIONS}
+      />
       <SelectFilter
         label='Status'
         value={filters.status}
@@ -148,7 +126,7 @@ const UserSearchFilter = () => {
         options={SORT_OPTIONS}
         defaultValue={null}
       />
-      {hasActiveFilters && <ClearFiltersButton onClick={clearFilters} />}
+      {hasActiveFilters && <ClearFiltersButton onClick={resetFilters} />}
     </FilterBar>
   );
 };

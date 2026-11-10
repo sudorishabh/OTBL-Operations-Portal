@@ -1,67 +1,30 @@
 "use client";
 import React from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserSearchNFilter from "./User-search-filter";
-import { useHandleParams } from "@/hooks/useHandleParams";
 import ScrollToTop from "@/components/scroll-to-top";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import UserTabSkeleton from "../skeleton/user/user-tab-skeleton";
-import UserCategoriesSkeleton from "../skeleton/user/user-categories-skeleton";
 
 const UserTable = dynamic(() => import("./user-table"), {
   loading: () => <UserTabSkeleton />,
-});
-const CategorizedUsers = dynamic(() => import("./categorized-users"), {
-  loading: () => <UserCategoriesSkeleton />,
 });
 const CreateUpdateUserDialog = dynamic(
   () => import("./create-update-user-dialog"),
 );
 
 const UserPage = () => {
-  const { getParam, setParam } = useHandleParams();
-  const currentTab = getParam("tab") || "all";
-
   return (
     <>
-      <Tabs
-        value={currentTab}
-        onValueChange={(value) => setParam("tab", value)}
-        className='w-full mt-8'>
-        <div className='mb-4 space-y-3'>
-          <TabsList className='bg-gray-300/60 h-8!'>
-            <TabsTrigger
-              value='all'
-              className='text-xs cursor-pointer'>
-              Show All
-            </TabsTrigger>
-            <TabsTrigger
-              value='categorized'
-              className='text-xs cursor-pointer'>
-              Categorized
-            </TabsTrigger>
-          </TabsList>
+      <div className='w-full mt-8'>
+        <div className='mb-4'>
           <UserSearchNFilter />
         </div>
 
-        <Suspense
-          fallback={
-            currentTab === "categorized" ? (
-              <UserCategoriesSkeleton />
-            ) : (
-              <UserTabSkeleton />
-            )
-          }>
-          <TabsContent value='all'>
-            <UserTable />
-          </TabsContent>
-
-          <TabsContent value='categorized'>
-            <CategorizedUsers />
-          </TabsContent>
+        <Suspense fallback={<UserTabSkeleton />}>
+          <UserTable />
         </Suspense>
-      </Tabs>
+      </div>
       <CreateUpdateUserDialog />
       <ScrollToTop />
     </>
