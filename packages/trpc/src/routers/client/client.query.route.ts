@@ -21,6 +21,7 @@ import { clientSchemas } from "@pkg/schema";
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { buildPagination, pageOffset } from "../../helper/pagination";
 import { hasPhysicalSite } from "../../helper/restoration";
 import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
@@ -373,7 +374,7 @@ export const clientQueryRouter = router({
     .input(clientSchemas.getAllClientContactsSchema)
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { searchQuery, clientId } = input;
+        const { searchQuery, clientId, page, limit } = input;
 
         const scope = await getAccessScope(
           ctx.db,
@@ -386,7 +387,10 @@ export const clientQueryRouter = router({
           scope.kind === "restricted" &&
           (!clientIds || clientIds.length === 0)
         ) {
-          return [];
+          return {
+            contacts: [],
+            pagination: buildPagination({ page, limit, total: 0, shown: 0 }),
+          };
         }
 
         let contactQuery = undefined;
@@ -415,11 +419,34 @@ export const clientQueryRouter = router({
         }
 
         try {
-          return await ctx.db
+          const contactList = ctx.db
             .select()
             .from(clientContactTable)
             .where(contactQuery)
             .orderBy(desc(clientContactTable.id));
+
+          const contacts = page
+            ? await contactList.limit(limit).offset(pageOffset(page, limit))
+            : await contactList;
+
+          let total = contacts.length;
+          if (page) {
+            const [totalResult] = await ctx.db
+              .select({ count: count() })
+              .from(clientContactTable)
+              .where(contactQuery);
+            total = totalResult?.count ?? 0;
+          }
+
+          return {
+            contacts,
+            pagination: buildPagination({
+              page,
+              limit,
+              total,
+              shown: contacts.length,
+            }),
+          };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching client contacts");
         }

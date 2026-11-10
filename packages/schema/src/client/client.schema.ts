@@ -12,6 +12,8 @@ import {
   optionalContactNumberValidator,
   positiveIntValidator,
   searchQueryValidator,
+  pageValidator,
+  limitValidator,
 } from "../validators";
 import { constants } from "@pkg/utils";
 
@@ -94,9 +96,12 @@ export const getAllClientsSchema = z.object({
   status: z.enum(["all", "active", "inactive"]).optional(),
 });
 
+// Without a page every matching contact comes back, for pickers.
 export const getAllClientContactsSchema = z.object({
   searchQuery: searchQueryValidator.optional(),
   clientId: z.string().optional(),
+  page: pageValidator.optional(),
+  limit: limitValidator,
 });
 
 export const getClientSchema = z.object({ clientId: positiveIntValidator });

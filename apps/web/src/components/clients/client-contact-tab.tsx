@@ -108,7 +108,8 @@ const ClientContactTab = ({ tab }: Props) => {
     );
   }
 
-  const hasContacts = contactsQueryData && contactsQueryData?.length > 0;
+  const contacts: ClientContact[] = contactsQueryData?.contacts ?? [];
+  const hasContacts = contacts.length > 0;
 
   if (!hasContacts) {
     return (
@@ -135,7 +136,7 @@ const ClientContactTab = ({ tab }: Props) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {contactsQueryData?.map((contact: ClientContact) => (
+          {contacts.map((contact) => (
             <TableRow key={contact.id}>
               <TableCell className='text-xs font-medium'>
                 {contact.name}
