@@ -6,6 +6,7 @@ import PageSkeleton from "./page-skeleton";
 import ClientsPageSkeleton from "./clients/clients-page-skeleton";
 import ClientPageSkeleton from "./client/client-page-skeleton";
 import { OfficeSitePageSkeleton } from "./office-site/office-site-skeleton";
+import OfficePageSkeleton from "./office-site/office-page-skeleton";
 import UserPageSkeleton from "./user/user-page-skeleton";
 import {
   VendorDetailSkeleton,
@@ -29,6 +30,9 @@ const RouteSkeleton = () => {
     return <WorkOrderDetailsSkeleton />;
   }
   if (/^\/dashboard\/client\/[^/]+$/.test(path)) return <ClientPageSkeleton />;
+  if (/^\/dashboard\/office-site\/[^/]+$/.test(path)) {
+    return <OfficePageSkeleton />;
+  }
 
   switch (path) {
     case "/dashboard/work-order":
