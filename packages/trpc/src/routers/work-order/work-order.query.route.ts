@@ -46,8 +46,16 @@ const {
 export const workOrderQueryRouter = router({
   getAll: protectedProcedure.input(getAllWorkOrdersPaginatedSchema).query(
     handleQuery(async ({ input, ctx }) => {
-      const { page, limit, searchQuery, status, office_id, workOrderOrder } =
-        input;
+      const {
+        page,
+        limit,
+        searchQuery,
+        status,
+        office_id,
+        client_id,
+        process_type,
+        workOrderOrder,
+      } = input;
 
       const scope = await getAccessScope(
         ctx.db,
@@ -80,6 +88,17 @@ export const workOrderQueryRouter = router({
         conditions = and(conditions, eq(workOrderTable.office_id, office_id));
       }
 
+      if (client_id) {
+        conditions = and(conditions, eq(workOrderTable.client_id, client_id));
+      }
+
+      if (process_type) {
+        conditions = and(
+          conditions,
+          eq(workOrderTable.process_type, process_type),
+        );
+      }
+
       if (searchQuery && searchQuery.trim() !== "") {
         conditions = and(
           conditions,
@@ -98,14 +117,22 @@ export const workOrderQueryRouter = router({
 
       conditions = andScope(conditions, scopeWhere);
 
-      const orderBy =
+      // The id breaks ties so work orders never repeat or go missing across
+      // pages.
+      const orderBy = [
         workOrderOrder === "asc"
           ? asc(workOrderTable.title)
           : workOrderOrder === "desc"
             ? desc(workOrderTable.title)
             : workOrderOrder === "latest"
               ? desc(workOrderTable.created_at)
-              : asc(workOrderTable.created_at);
+              : workOrderOrder === "ending_soonest"
+                ? asc(workOrderTable.end_date)
+                : asc(workOrderTable.created_at),
+        workOrderOrder === "latest"
+          ? desc(workOrderTable.id)
+          : asc(workOrderTable.id),
+      ];
 
       try {
         if (useEffectiveStatusFilter) {
@@ -130,7 +157,7 @@ export const workOrderQueryRouter = router({
             .leftJoin(clientTable, eq(workOrderTable.client_id, clientTable.id))
             .leftJoin(officeTable, eq(workOrderTable.office_id, officeTable.id))
             .where(conditions)
-            .orderBy(orderBy);
+            .orderBy(...orderBy);
 
           const effectiveMap = await batchEffectiveWorkOrderStatuses(
             ctx.db,
@@ -221,7 +248,7 @@ export const workOrderQueryRouter = router({
           .where(conditions)
           .limit(limit)
           .offset(offset)
-          .orderBy(orderBy);
+          .orderBy(...orderBy);
 
         const totalPages = Math.ceil(total / limit);
         const hasMore = offset + workOrders.length < total;
