@@ -150,6 +150,33 @@ export const officeQueryRouter = router({
     }),
   ),
 
+  // Every office the user can see, with only what list filters show and
+  // search by; also gives the states offices are in.
+  getOfficeOptions: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const scope = await getAccessScope(
+        ctx.db,
+        Number(ctx.user!.sub),
+        ctx.user!.role,
+      );
+
+      try {
+        return await ctx.db
+          .select({
+            id: officeTable.id,
+            name: officeTable.name,
+            city: officeTable.city,
+            state: officeTable.state,
+          })
+          .from(officeTable)
+          .where(await visibleOfficesWhere(ctx.db, scope))
+          .orderBy(asc(officeTable.name), asc(officeTable.id));
+      } catch (error) {
+        throw fromDatabaseError(error, "Fetching office options");
+      }
+    }),
+  ),
+
   getOfficeWorkOrders: protectedProcedure
     .input(officeSchemas.getOfficeWorkOrderSchema)
     .query(
