@@ -79,7 +79,11 @@ const InfoRow: React.FC<{
   </div>
 );
 
-const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
+const OfficeCard: React.FC<{
+  office: Office;
+  /** Which of the office's sites to list. */
+  siteStatus?: "active" | "inactive" | "all";
+}> = ({ office, siteStatus = "all" }) => {
   const { setParams } = useHandleParams();
   const isActive = office.status?.toLowerCase() === "active";
 
@@ -314,7 +318,12 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
           )}
         </div>
       </div>
-      <OfficeSiteTable officeId={office.id} />
+      <OfficeSiteTable
+        officeId={office.id}
+        officeName={office.name}
+        status={siteStatus}
+        canManage={!!office.canManage}
+      />
     </div>
   );
 };
