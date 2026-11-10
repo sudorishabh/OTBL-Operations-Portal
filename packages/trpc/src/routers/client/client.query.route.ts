@@ -40,16 +40,20 @@ const {
   bioremediationContSoilTable
 } = schema;
 
+type ClientSort = "name_asc" | "name_desc" | "newest" | "oldest";
+
 type ClientListFilters = {
   searchQuery?: string;
   status?: "all" | "active" | "inactive";
+  parentClientId?: number | "none";
+  state?: string;
 };
 
-// The clients a list shows: its search and status, within what the user may
+// The clients a list shows: its search and filters, within what the user may
 // see. The search also matches the main client's name, so queries using this
 // must join parentClientTable.
 const clientListWhere = (
-  { searchQuery, status }: ClientListFilters,
+  { searchQuery, status, parentClientId, state }: ClientListFilters,
   scope: AccessScope,
   clientIds: number[] | null,
 ) => {
@@ -57,6 +61,12 @@ const clientListWhere = (
 
   return and(
     status && status !== "all" ? eq(clientTable.status, status) : undefined,
+    parentClientId === "none"
+      ? isNull(clientTable.parent_client_id)
+      : parentClientId
+        ? eq(clientTable.parent_client_id, parentClientId)
+        : undefined,
+    state ? eq(clientTable.state, state) : undefined,
     term
       ? or(
           like(clientTable.name, term),
@@ -73,6 +83,35 @@ const clientListWhere = (
         : eq(clientTable.id, -1)
       : undefined,
   );
+};
+
+// Main clients by name or by when they were added; ids break ties so pages
+// never repeat or skip one.
+const parentClientOrder = (sort: ClientSort | undefined) => {
+  switch (sort) {
+    case "name_desc":
+      return [desc(parentClientTable.name), desc(parentClientTable.id)];
+    case "newest":
+      return [desc(parentClientTable.created_at), desc(parentClientTable.id)];
+    case "oldest":
+      return [asc(parentClientTable.created_at), asc(parentClientTable.id)];
+    default:
+      return [asc(parentClientTable.name), asc(parentClientTable.id)];
+  }
+};
+
+// Branches and clients without a main client; newest first unless sorted.
+const clientOrder = (sort: ClientSort | undefined) => {
+  switch (sort) {
+    case "name_asc":
+      return [asc(clientTable.name), asc(clientTable.id)];
+    case "name_desc":
+      return [desc(clientTable.name), desc(clientTable.id)];
+    case "oldest":
+      return [asc(clientTable.created_at), asc(clientTable.id)];
+    default:
+      return [desc(clientTable.created_at), desc(clientTable.id)];
+  }
 };
 
 type WithClientCounts<T> = T & {
@@ -265,8 +304,13 @@ export const clientQueryRouter = router({
     .input(clientSchemas.getClientGroupsSchema)
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { page, limit, searchQuery, status } = input;
-        const isFiltered = !!searchQuery || (!!status && status !== "all");
+        const { page, limit, searchQuery, status, parentClientId, state, sort } =
+          input;
+        const isFiltered =
+          !!searchQuery ||
+          (!!status && status !== "all") ||
+          !!parentClientId ||
+          !!state;
 
         const scope = await getAccessScope(
           ctx.db,
@@ -308,33 +352,27 @@ export const clientQueryRouter = router({
         try {
           // Main clients are few, so all of them are read and sliced here.
           // Unfiltered, a full-access user also sees ones without branches.
+          // created_at is selected as DISTINCT can only order by its columns.
+          const parentColumns = {
+            id: parentClientTable.id,
+            name: parentClientTable.name,
+            created_at: parentClientTable.created_at,
+          };
           const parentClients =
             scope.kind === "full" && !isFiltered
               ? await ctx.db
-                  .select({
-                    id: parentClientTable.id,
-                    name: parentClientTable.name,
-                  })
+                  .select(parentColumns)
                   .from(parentClientTable)
-                  .orderBy(
-                    asc(parentClientTable.name),
-                    asc(parentClientTable.id),
-                  )
+                  .orderBy(...parentClientOrder(sort))
               : await ctx.db
-                  .selectDistinct({
-                    id: parentClientTable.id,
-                    name: parentClientTable.name,
-                  })
+                  .selectDistinct(parentColumns)
                   .from(parentClientTable)
                   .innerJoin(
                     clientTable,
                     eq(clientTable.parent_client_id, parentClientTable.id),
                   )
                   .where(clientWhere)
-                  .orderBy(
-                    asc(parentClientTable.name),
-                    asc(parentClientTable.id),
-                  );
+                  .orderBy(...parentClientOrder(sort));
 
           const offset = pageOffset(page, limit);
           const pageParents = parentClients.slice(offset, offset + limit);
@@ -352,13 +390,13 @@ export const clientQueryRouter = router({
                       pageParents.map((parent) => parent.id),
                     ),
                   ),
-                ).orderBy(desc(clientTable.created_at), desc(clientTable.id));
+                ).orderBy(...clientOrder(sort));
 
           const standaloneRows =
             standaloneLimit === 0
               ? []
               : await listClients(standaloneWhere)
-                  .orderBy(desc(clientTable.created_at), desc(clientTable.id))
+                  .orderBy(...clientOrder(sort))
                   .limit(standaloneLimit)
                   .offset(standaloneOffset);
 
@@ -369,10 +407,10 @@ export const clientQueryRouter = router({
           ]);
 
           return {
-            groups: pageParents.map((parentClient) => ({
-              parentClient,
+            groups: pageParents.map(({ id, name }) => ({
+              parentClient: { id, name },
               branches: clients.filter(
-                (client) => client.parent_client_id === parentClient.id,
+                (client) => client.parent_client_id === id,
               ),
             })),
             standalone: clients.filter(
