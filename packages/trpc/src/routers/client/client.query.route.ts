@@ -6,8 +6,10 @@ import {
   eq,
   getTableColumns,
   inArray,
+  isNull,
   like,
   or,
+  type SQL,
 } from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
 import { router } from "../../trpc";
@@ -256,6 +258,140 @@ export const clientQueryRouter = router({
       }
     }),
   ),
+
+  // The clients page, paged so a main client always arrives with all of its
+  // branches: main clients by name first, then clients without one.
+  getClientGroups: protectedProcedure
+    .input(clientSchemas.getClientGroupsSchema)
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const { page, limit, searchQuery, status } = input;
+        const isFiltered = !!searchQuery || (!!status && status !== "all");
+
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
+        const clientWhere = clientListWhere(input, scope, clientIds);
+        const standaloneWhere = and(
+          clientWhere,
+          isNull(clientTable.parent_client_id),
+        );
+
+        const listClients = (where: SQL | undefined) =>
+          ctx.db
+            .select({
+              ...getTableColumns(clientTable),
+              parent_client_name: parentClientTable.name,
+            })
+            .from(clientTable)
+            .leftJoin(
+              parentClientTable,
+              eq(parentClientTable.id, clientTable.parent_client_id),
+            )
+            .where(where);
+
+        const countClients = async (where: SQL | undefined) => {
+          const [row] = await ctx.db
+            .select({ count: count() })
+            .from(clientTable)
+            .leftJoin(
+              parentClientTable,
+              eq(parentClientTable.id, clientTable.parent_client_id),
+            )
+            .where(where);
+          return row?.count ?? 0;
+        };
+
+        try {
+          // Main clients are few, so all of them are read and sliced here.
+          // Unfiltered, a full-access user also sees ones without branches.
+          const parentClients =
+            scope.kind === "full" && !isFiltered
+              ? await ctx.db
+                  .select({
+                    id: parentClientTable.id,
+                    name: parentClientTable.name,
+                  })
+                  .from(parentClientTable)
+                  .orderBy(
+                    asc(parentClientTable.name),
+                    asc(parentClientTable.id),
+                  )
+              : await ctx.db
+                  .selectDistinct({
+                    id: parentClientTable.id,
+                    name: parentClientTable.name,
+                  })
+                  .from(parentClientTable)
+                  .innerJoin(
+                    clientTable,
+                    eq(clientTable.parent_client_id, parentClientTable.id),
+                  )
+                  .where(clientWhere)
+                  .orderBy(
+                    asc(parentClientTable.name),
+                    asc(parentClientTable.id),
+                  );
+
+          const offset = pageOffset(page, limit);
+          const pageParents = parentClients.slice(offset, offset + limit);
+          const standaloneLimit = limit - pageParents.length;
+          const standaloneOffset = Math.max(0, offset - parentClients.length);
+
+          const branchRows =
+            pageParents.length === 0
+              ? []
+              : await listClients(
+                  and(
+                    clientWhere,
+                    inArray(
+                      clientTable.parent_client_id,
+                      pageParents.map((parent) => parent.id),
+                    ),
+                  ),
+                ).orderBy(desc(clientTable.created_at), desc(clientTable.id));
+
+          const standaloneRows =
+            standaloneLimit === 0
+              ? []
+              : await listClients(standaloneWhere)
+                  .orderBy(desc(clientTable.created_at), desc(clientTable.id))
+                  .limit(standaloneLimit)
+                  .offset(standaloneOffset);
+
+          const [standaloneTotal, totalClients, clients] = await Promise.all([
+            countClients(standaloneWhere),
+            countClients(clientWhere),
+            withClientCounts(ctx.db, [...branchRows, ...standaloneRows]),
+          ]);
+
+          return {
+            groups: pageParents.map((parentClient) => ({
+              parentClient,
+              branches: clients.filter(
+                (client) => client.parent_client_id === parentClient.id,
+              ),
+            })),
+            standalone: clients.filter(
+              (client) => client.parent_client_id === null,
+            ),
+            // Every client matching the filters, branches included.
+            totalClients,
+            pagination: buildPagination({
+              page,
+              limit,
+              total: parentClients.length + standaloneTotal,
+              shown: pageParents.length + standaloneRows.length,
+            }),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching client groups");
+        }
+      }),
+    ),
 
   getClient: protectedProcedure.input(clientSchemas.getClientSchema).query(
     handleQuery(async ({ input, ctx }) => {

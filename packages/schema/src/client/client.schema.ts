@@ -96,6 +96,12 @@ export const getAllClientsSchema = z.object({
   status: z.enum(["all", "active", "inactive"]).optional(),
 });
 
+// A page counts main clients (with all their branches) and clients without one.
+export const getClientGroupsSchema = getAllClientsSchema.extend({
+  page: pageValidator,
+  limit: limitValidator,
+});
+
 // Without a page every matching contact comes back, for pickers.
 export const getAllClientContactsSchema = z.object({
   searchQuery: searchQueryValidator.optional(),
