@@ -80,10 +80,25 @@ export const userTable = mysqlTable(
   ],
 );
 
-// A main client (e.g. ONGC) only groups its branches; branches are clients.
+// A main client (e.g. ONGC) groups its branches, which are clients, and has
+// the same details as one. Main clients added before they had details have
+// none, so those columns are nullable here.
 export const parentClientTable = mysqlTable("parent_clients", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
+  address: varchar("address", { length: 255 }),
+  state: varchar("state", { length: 255 }),
+  city: varchar("city", { length: 255 }),
+  pincode: varchar("pincode", { length: 10 }),
+  gst_number: varchar("gst_number", { length: 15 }),
+  contact_number: varchar("contact_number", { length: 15 }),
+  email: varchar("email", { length: 320 }),
+  status: varchar("status", {
+    length: 50,
+    enum: [STATUS.ACTIVE, STATUS.INACTIVE],
+  })
+    .notNull()
+    .default(STATUS.ACTIVE),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
@@ -317,11 +332,17 @@ export const scheduleOfRatesTable = mysqlTable("schedule_of_rates", {
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
+// A contact person of either a branch/client (client_id) or a main client
+// (parent_client_id); exactly one is set, which the API enforces.
 export const clientContactTable = mysqlTable("client_contacts", {
   id: int("id").autoincrement().primaryKey(),
-  client_id: int("client_id")
-    .notNull()
-    .references(() => clientTable.id, { onDelete: "cascade" }),
+  client_id: int("client_id").references(() => clientTable.id, {
+    onDelete: "cascade",
+  }),
+  parent_client_id: int("parent_client_id").references(
+    () => parentClientTable.id,
+    { onDelete: "cascade" },
+  ),
   name: varchar("name", { length: 255 }).notNull(),
   designation: varchar("designation", { length: 255 }),
   contact_number: varchar("contact_number", {
