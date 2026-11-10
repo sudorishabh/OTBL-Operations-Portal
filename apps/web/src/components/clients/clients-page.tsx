@@ -43,13 +43,8 @@ const ClientsPage = () => {
           value={clientsTab}
           onValueChange={handleTabChange}
           className='w-full'>
-          <div className='flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between'>
-            <ClientSearchFilter
-              isLoading={isClientsLoading}
-              type={clientsTab === "clients" ? "clients" : "contacts"}
-            />
-
-            <TabsList className='bg-gray-300/60 h-8! self-start sm:self-auto sm:mr-4'>
+          <div className='mb-4 space-y-3'>
+            <TabsList className='bg-gray-300/60 h-8!'>
               <TabsTrigger
                 value='clients'
                 className='text-xs cursor-pointer flex items-center gap-2'>
@@ -81,6 +76,10 @@ const ClientsPage = () => {
                 </Badge>
               </TabsTrigger>
             </TabsList>
+
+            <ClientSearchFilter
+              type={clientsTab === "clients" ? "clients" : "contacts"}
+            />
           </div>
           <Suspense
             fallback={

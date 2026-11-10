@@ -3,6 +3,7 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 import React from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import { useDebounce } from "@/hooks/useDebounce";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import PaginationSummary from "@/components/shared/pagination-summary";
 import ClientCard from "./client-card";
@@ -27,10 +28,26 @@ const ClientsTab = ({ tab }: Props) => {
 
   const { clientSearchQuery, clientFilters } = useClientManagementContext();
 
+  const debouncedSearch = useDebounce(clientSearchQuery.trim(), 300);
+  const { status, parentClientId, state, sort } = clientFilters;
+  const isFiltered =
+    !!debouncedSearch ||
+    status !== "all" ||
+    parentClientId !== "all" ||
+    state !== "all";
+
   const queryInput = {
     limit: CLIENTS_PAGE_SIZE,
-    searchQuery: clientSearchQuery || undefined,
-    status: clientFilters.status,
+    searchQuery: debouncedSearch || undefined,
+    status,
+    parentClientId:
+      parentClientId === "all"
+        ? undefined
+        : parentClientId === "none"
+          ? ("none" as const)
+          : Number(parentClientId),
+    state: state === "all" ? undefined : state,
+    sort,
   };
 
   const { pages, loadMore } = useLoadMorePages(queryInput);
@@ -69,8 +86,12 @@ const ClientsTab = ({ tab }: Props) => {
     return (
       <NoFetchData
         Icon={Webhook}
-        title='No Clients Found'
-        description='Add clients to manage them'
+        title={isFiltered ? "No matching clients" : "No Clients Found"}
+        description={
+          isFiltered
+            ? "Try another search or clear the filters."
+            : "Add clients to manage them"
+        }
       />
     );
   }
