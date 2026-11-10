@@ -1,89 +1,156 @@
-import CustomButton from "@/components/shared/btn";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useWorkOrderManagementContext } from "@/contexts/WorkOrderManagementContext";
-import { Search, X } from "lucide-react";
+"use client";
 import React from "react";
+import { ArrowUpDown, Building2, FlaskConical, Landmark } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import {
+  ALL,
+  ClearFiltersButton,
+  ComboboxFilter,
+  FilterBar,
+  SearchFilter,
+  SelectFilter,
+} from "@/components/filters/list-filters";
+import {
+  useWorkOrderManagementContext,
+  type WorkOrderFilters,
+  type WorkOrderProcess,
+  type WorkOrderSort,
+} from "@/contexts/WorkOrderManagementContext";
 
+type OfficeOption = { id: number; name: string; city: string; state: string };
+type ClientOption = {
+  id: number;
+  name: string;
+  city: string;
+  parent_client_name: string | null;
+};
+
+const STATUS_OPTIONS = [
+  { label: "All statuses", value: ALL },
+  { label: "Pending", value: "pending" },
+  { label: "Completed", value: "completed" },
+  { label: "Cancelled", value: "cancelled" },
+];
+
+const PROCESS_OPTIONS = [
+  { label: "All processes", value: ALL },
+  { label: "Bioremediation", value: "bioremediation" },
+  { label: "Restoration", value: "restoration" },
+  {
+    label: "Bioremediation + restoration",
+    value: "bioremediation_restoration",
+  },
+];
+
+const SORT_OPTIONS = [
+  { label: "Newest first", value: "latest" },
+  { label: "Oldest first", value: "oldest" },
+  { label: "Ending soonest", value: "ending_soonest" },
+  { label: "Title A–Z", value: "asc" },
+  { label: "Title Z–A", value: "desc" },
+];
+
+const idValue = (id: number | undefined) => (id ? String(id) : ALL);
+const idFilter = (value: string) => (value === ALL ? undefined : Number(value));
+
+// The work orders list's search, filters and order.
 const WorkOrderSearchNFilter = () => {
-  const { searchQuery, setSearchQuery, filters, setFilters, resetFilters } =
-    useWorkOrderManagementContext();
+  const {
+    searchQuery,
+    setSearchQuery,
+    filters,
+    setFilters,
+    resetFilters,
+    workOrderOrder,
+    setWorkOrderOrder,
+  } = useWorkOrderManagementContext();
 
-  const { data: officeData } = trpc.officeQuery.getOffices.useQuery({});
+  const officesQuery = trpc.officeQuery.getOfficeOptions.useQuery();
+  const clientsQuery = trpc.clientQuery.getClientOptions.useQuery();
+
+  const officeOptions = ((officesQuery.data ?? []) as OfficeOption[]).map(
+    (office) => ({
+      value: String(office.id),
+      label: office.name,
+      hint: [office.city, office.state].filter(Boolean).join(", "),
+    }),
+  );
+  const clientOptions = ((clientsQuery.data ?? []) as ClientOption[]).map(
+    (client) => ({
+      value: String(client.id),
+      label: client.name,
+      hint: [client.parent_client_name, client.city]
+        .filter(Boolean)
+        .join(" · "),
+    }),
+  );
+
+  const setFilter = (next: Partial<WorkOrderFilters>) =>
+    setFilters({ ...filters, ...next });
 
   const hasActiveFilters =
     searchQuery !== "" ||
-    filters.status !== "all" ||
-    filters.office_id !== undefined;
+    filters.status !== ALL ||
+    filters.office_id !== undefined ||
+    filters.client_id !== undefined ||
+    filters.process_type !== undefined;
 
   return (
-    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
-      <div className='relative w-full sm:w-80 sm:flex-1 sm:max-w-md'>
-        <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-        <Input
-          type='text'
-          placeholder='Search by code, title, agreement number, client, or office...'
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className='pl-10 h-8 bg-white'
-        />
-      </div>
-      <div className='flex flex-wrap items-center gap-2 sm:gap-3 text-xs'>
-        <Select
-          value={filters.status}
-          onValueChange={(value) => setFilters({ ...filters, status: value })}>
-          <SelectTrigger className='!h-8 w-[140px] bg-white text-xs cursor-pointer'>
-            <SelectValue placeholder='All Status' />
-          </SelectTrigger>
-          <SelectContent className='text-xs'>
-            <SelectItem value='all'>All Status</SelectItem>
-            <SelectItem value='pending'>Pending</SelectItem>
-            <SelectItem value='completed'>Completed</SelectItem>
-            <SelectItem value='cancelled'>Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={filters.office_id?.toString() || "all"}
-          onValueChange={(value) =>
-            setFilters({
-              ...filters,
-              office_id: value === "all" ? undefined : parseInt(value),
-            })
-          }>
-          <SelectTrigger className='!h-8 w-[180px] bg-white text-xs cursor-pointer'>
-            <SelectValue placeholder='All Offices' />
-          </SelectTrigger>
-          <SelectContent className='text-xs'>
-            <SelectItem value='all'>All Offices</SelectItem>
-            {officeData?.offices?.map((office: any) => (
-              <SelectItem
-                key={office.id}
-                value={office.id.toString()}>
-                {office.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {hasActiveFilters && (
-          <CustomButton
-            text='Reset'
-            onClick={resetFilters}
-            variant='outline'
-            Icon={X}
-            className='h-8 text-xs'
-          />
-        )}
-      </div>
-    </div>
+    <FilterBar>
+      <SearchFilter
+        label='Search work orders'
+        placeholder='Search by code, title, agreement, client...'
+        value={searchQuery}
+        onChange={setSearchQuery}
+      />
+      <SelectFilter
+        label='Status'
+        value={filters.status}
+        onChange={(status) => setFilter({ status })}
+        options={STATUS_OPTIONS}
+      />
+      <ComboboxFilter
+        label='Office'
+        allLabel='All offices'
+        Icon={Landmark}
+        value={idValue(filters.office_id)}
+        onChange={(value) => setFilter({ office_id: idFilter(value) })}
+        options={officeOptions}
+        isLoading={officesQuery.isLoading}
+        searchPlaceholder='Search offices, cities...'
+      />
+      <ComboboxFilter
+        label='Client'
+        allLabel='All clients'
+        Icon={Building2}
+        value={idValue(filters.client_id)}
+        onChange={(value) => setFilter({ client_id: idFilter(value) })}
+        options={clientOptions}
+        isLoading={clientsQuery.isLoading}
+        searchPlaceholder='Search clients, main clients, cities...'
+      />
+      <SelectFilter
+        label='Process'
+        Icon={FlaskConical}
+        value={filters.process_type ?? ALL}
+        onChange={(value) =>
+          setFilter({
+            process_type:
+              value === ALL ? undefined : (value as WorkOrderProcess),
+          })
+        }
+        options={PROCESS_OPTIONS}
+      />
+      <SelectFilter
+        label='Sort work orders'
+        Icon={ArrowUpDown}
+        value={workOrderOrder}
+        onChange={(value) => setWorkOrderOrder(value as WorkOrderSort)}
+        options={SORT_OPTIONS}
+        defaultValue={null}
+      />
+      {hasActiveFilters && <ClearFiltersButton onClick={resetFilters} />}
+    </FilterBar>
   );
 };
 

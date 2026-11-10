@@ -40,7 +40,8 @@ const WorkOrdersSkeleton = () => (
     label='Loading work orders'
     className='mt-8'>
     <FilterBarSkeleton
-      selects={["w-[140px]", "w-[180px]"]}
+      search='sm:w-72'
+      selects={["w-28", "w-28", "w-28", "w-32", "w-32"]}
       className='mb-4'
     />
     <TableSkeleton
