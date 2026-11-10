@@ -604,7 +604,7 @@ export const clientQueryRouter = router({
     .input(clientSchemas.getAllClientContactsSchema)
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { searchQuery, clientId, page, limit } = input;
+        const { searchQuery, clientId, sort, page, limit } = input;
 
         const scope = await getAccessScope(
           ctx.db,
@@ -630,11 +630,13 @@ export const clientQueryRouter = router({
         }
 
         if (searchQuery && searchQuery.trim() !== "") {
+          const term = `%${escapeLike(searchQuery)}%`;
           const searchCondition = or(
-            like(clientContactTable.name, `%${escapeLike(searchQuery)}%`),
-            like(clientContactTable.email, `%${escapeLike(searchQuery)}%`),
-            like(clientContactTable.contact_number, `%${escapeLike(searchQuery)}%`),
-            like(clientContactTable.designation, `%${escapeLike(searchQuery)}%`),
+            like(clientContactTable.name, term),
+            like(clientContactTable.email, term),
+            like(clientContactTable.contact_number, term),
+            like(clientContactTable.designation, term),
+            like(clientTable.name, term),
           );
           contactQuery = contactQuery
             ? and(contactQuery, searchCondition)
@@ -648,12 +650,26 @@ export const clientQueryRouter = router({
             : scopeFilter;
         }
 
+        const contactOrder =
+          sort === "oldest"
+            ? [asc(clientContactTable.id)]
+            : sort === "name_asc"
+              ? [asc(clientContactTable.name), asc(clientContactTable.id)]
+              : sort === "name_desc"
+                ? [desc(clientContactTable.name), desc(clientContactTable.id)]
+                : [desc(clientContactTable.id)];
+
         try {
+          // The client is joined for its name, which the search matches too.
           const contactList = ctx.db
-            .select()
+            .select({
+              ...getTableColumns(clientContactTable),
+              client_name: clientTable.name,
+            })
             .from(clientContactTable)
+            .leftJoin(clientTable, eq(clientTable.id, clientContactTable.client_id))
             .where(contactQuery)
-            .orderBy(desc(clientContactTable.id));
+            .orderBy(...contactOrder);
 
           const contacts = page
             ? await contactList.limit(limit).offset(pageOffset(page, limit))
@@ -664,6 +680,7 @@ export const clientQueryRouter = router({
             const [totalResult] = await ctx.db
               .select({ count: count() })
               .from(clientContactTable)
+              .leftJoin(clientTable, eq(clientTable.id, clientContactTable.client_id))
               .where(contactQuery);
             total = totalResult?.count ?? 0;
           }

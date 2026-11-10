@@ -113,6 +113,7 @@ export const getClientGroupsSchema = getAllClientsSchema.extend({
 export const getAllClientContactsSchema = z.object({
   searchQuery: searchQueryValidator.optional(),
   clientId: z.string().optional(),
+  sort: z.enum(["newest", "oldest", "name_asc", "name_desc"]).optional(),
   page: pageValidator.optional(),
   limit: limitValidator,
 });
