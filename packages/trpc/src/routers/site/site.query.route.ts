@@ -15,33 +15,6 @@ import { escapeLike } from "../../helper/escape-like";
 const { siteTable } = schema;
 
 export const siteQueryRouter = router({
-  get6SitesByOfficeId: protectedProcedure
-    .input(siteSchemas.get6SitesByOfficeIdSchema)
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        const { office_id } = input;
-
-        try {
-          const scope = await getAccessScope(
-            ctx.db,
-            Number(ctx.user!.sub),
-            ctx.user!.role,
-          );
-          await assertCanAccessOffice(ctx.db, scope, office_id);
-
-          const sites: Site[] = await ctx.db
-            .select()
-            .from(siteTable)
-            .where(eq(siteTable.office_id, office_id))
-            .orderBy(desc(siteTable.created_at));
-
-          return sites;
-        } catch (error) {
-          throw fromDatabaseError(error, "Fetching sites by office");
-        }
-      }),
-    ),
-
   getSitesByOfficeId: protectedProcedure
     .input(siteSchemas.getAllSitesByOfficeIdSchema)
     .query(
