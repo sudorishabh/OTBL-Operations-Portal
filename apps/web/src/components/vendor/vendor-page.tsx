@@ -1,6 +1,16 @@
 "use client";
 import React, { useState } from "react";
-import { HardHat, MoreHorizontal, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  ArrowUpDown,
+  CircleCheck,
+  CircleOff,
+  ExternalLink,
+  FileStack,
+  HardHat,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalFirstLetter } from "@pkg/utils";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -14,16 +24,15 @@ import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import PaginationSummary from "@/components/shared/pagination-summary";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { VendorsTableSkeleton } from "@/components/skeleton/vendor/vendor-skeletons";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  ALL,
+  ClearFiltersButton,
+  FilterBar,
+  SearchFilter,
+  SelectFilter,
+} from "@/components/filters/list-filters";
 import {
   Table,
   TableBody,
@@ -36,6 +45,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -75,7 +85,31 @@ type VendorsPage = {
 };
 
 const PAGE_SIZE = 20;
-const ALL = "all";
+
+const STATUS_OPTIONS = [
+  { label: "All statuses", value: ALL },
+  { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" },
+];
+
+// Which orders, in work orders the user can see, a vendor is on.
+const USAGE_OPTIONS = [
+  { label: "Any orders", value: ALL },
+  { label: "On purchase orders", value: "purchase_order" },
+  { label: "On sub-contracts", value: "sub_contract" },
+  { label: "On job orders", value: "job_order" },
+  { label: "Not on any order", value: "unused" },
+];
+
+const SORT_OPTIONS = [
+  { label: "Name A–Z", value: "name_asc" },
+  { label: "Name Z–A", value: "name_desc" },
+  { label: "Newest first", value: "newest" },
+  { label: "Oldest first", value: "oldest" },
+];
+
+type VendorUsage = "purchase_order" | "sub_contract" | "job_order" | "unused";
+type VendorSort = "name_asc" | "name_desc" | "newest" | "oldest";
 
 const headClass = "h-10 px-4 sm:h-10 sm:px-4 text-xs font-medium text-gray-500";
 const cellClass = "px-4 py-3 sm:px-4 sm:py-3 text-sm text-gray-700";
@@ -88,6 +122,8 @@ const VendorPage = () => {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(ALL);
+  const [usage, setUsage] = useState<string>(ALL);
+  const [sort, setSort] = useState<VendorSort>("name_asc");
   const debouncedSearch = useDebounce(search, 300);
   const [deleting, setDeleting] = useState<Vendor | null>(null);
 
@@ -95,6 +131,8 @@ const VendorPage = () => {
     limit: PAGE_SIZE,
     search: debouncedSearch.trim() || undefined,
     status: status === ALL ? undefined : (status as "active" | "inactive"),
+    usage: usage === ALL ? undefined : (usage as VendorUsage),
+    sort,
   };
 
   const { pages, loadMore } = useLoadMorePages(queryInput);
@@ -110,7 +148,7 @@ const VendorPage = () => {
   const failedQuery = pageQueries.find((query) => query.isError);
   const isInitialLoading = !!pageQueries[0]?.isLoading;
   const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
-  const isFiltered = !!queryInput.search || status !== ALL;
+  const isFiltered = !!queryInput.search || status !== ALL || usage !== ALL;
 
   const deleteVendor = trpc.contractorMutation.deleteContractor.useMutation({
     onSuccess: () => {
@@ -121,14 +159,28 @@ const VendorPage = () => {
     onSettled: () => setDeleting(null),
   });
 
+  const setVendorStatus = trpc.contractorMutation.updateContractor.useMutation({
+    onSuccess: (_data: unknown, variables: { status?: string }) => {
+      toast.success(
+        variables.status === "active"
+          ? "Vendor marked active"
+          : "Vendor marked inactive",
+      );
+      utils.contractorQuery.invalidate();
+    },
+    onError: (error: { message: string }) => toast.error(error.message),
+  });
+
+  // Clearing the filters keeps the chosen order.
   const resetFilters = () => {
     setSearch("");
     setStatus(ALL);
+    setUsage(ALL);
   };
 
   const renderList = () => {
     if (isInitialLoading) {
-      return <VendorsTableSkeleton withActions={isManager} />;
+      return <VendorsTableSkeleton withActions />;
     }
 
     if (failedQuery) {
@@ -163,7 +215,9 @@ const VendorPage = () => {
               <TableHead className={headClass}>Contact</TableHead>
               <TableHead className={headClass}>GST / PAN</TableHead>
               <TableHead className={headClass}>Status</TableHead>
-              {isManager && <TableHead className={cn(headClass, "w-12")} />}
+              <TableHead className={cn(headClass, "w-12")}>
+                <span className='sr-only'>Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -210,40 +264,69 @@ const VendorPage = () => {
                     {capitalFirstLetter(vendor.status)}
                   </span>
                 </TableCell>
-                {isManager && (
-                  <TableCell className={cn(cellClass, "text-right")}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant='ghost'
-                          className='h-8 w-8 p-0'>
-                          <span className='sr-only'>
-                            Actions for {vendor.name}
-                          </span>
-                          <MoreHorizontal className='h-4 w-4' />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align='end'>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            setParams({
-                              dialog: "edit-vendor",
-                              vendorId: String(vendor.id),
-                            })
-                          }>
-                          <Pencil className='mr-2 h-4 w-4' />
-                          Edit vendor
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className='text-red-600 focus:text-red-600'
-                          onClick={() => setDeleting(vendor)}>
-                          <Trash2 className='mr-2 h-4 w-4' />
-                          Delete vendor
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                )}
+                <TableCell className={cn(cellClass, "text-right")}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant='ghost'
+                        className='h-8 w-8 p-0'>
+                        <span className='sr-only'>
+                          Actions for {vendor.name}
+                        </span>
+                        <MoreHorizontal className='h-4 w-4' />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/vendor/${vendor.id}`}>
+                          <ExternalLink className='mr-2 h-4 w-4' />
+                          View orders and expenses
+                        </Link>
+                      </DropdownMenuItem>
+                      {isManager && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              setParams({
+                                dialog: "edit-vendor",
+                                vendorId: String(vendor.id),
+                              })
+                            }>
+                            <Pencil className='mr-2 h-4 w-4' />
+                            Edit vendor
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={setVendorStatus.isPending}
+                            onClick={() =>
+                              setVendorStatus.mutate({
+                                id: vendor.id,
+                                status:
+                                  vendor.status === "active"
+                                    ? "inactive"
+                                    : "active",
+                              })
+                            }>
+                            {vendor.status === "active" ? (
+                              <CircleOff className='mr-2 h-4 w-4' />
+                            ) : (
+                              <CircleCheck className='mr-2 h-4 w-4' />
+                            )}
+                            {vendor.status === "active"
+                              ? "Mark inactive"
+                              : "Mark active"}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className='text-red-600 focus:text-red-600'
+                            onClick={() => setDeleting(vendor)}>
+                            <Trash2 className='mr-2 h-4 w-4' />
+                            Delete vendor
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -271,40 +354,36 @@ const VendorPage = () => {
 
   return (
     <div className='mt-4 space-y-4'>
-      <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
-        <div className='relative flex-1'>
-          <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder='Search by name, contact, email or GST'
-            aria-label='Search vendors'
-            className='h-9 bg-white pl-9'
-          />
-        </div>
-        <Select
+      <FilterBar>
+        <SearchFilter
+          label='Search vendors'
+          placeholder='Search by name, contact, email or GST'
+          value={search}
+          onChange={setSearch}
+        />
+        <SelectFilter
+          label='Status'
           value={status}
-          onValueChange={setStatus}>
-          <SelectTrigger
-            aria-label='Filter by status'
-            className='h-9 bg-white sm:w-36'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All statuses</SelectItem>
-            <SelectItem value='active'>Active</SelectItem>
-            <SelectItem value='inactive'>Inactive</SelectItem>
-          </SelectContent>
-        </Select>
-        {isFiltered && (
-          <Button
-            variant='ghost'
-            className='h-9 text-xs'
-            onClick={resetFilters}>
-            Clear filters
-          </Button>
-        )}
-      </div>
+          onChange={setStatus}
+          options={STATUS_OPTIONS}
+        />
+        <SelectFilter
+          label='Orders'
+          Icon={FileStack}
+          value={usage}
+          onChange={setUsage}
+          options={USAGE_OPTIONS}
+        />
+        <SelectFilter
+          label='Sort vendors'
+          Icon={ArrowUpDown}
+          value={sort}
+          onChange={(value) => setSort(value as VendorSort)}
+          options={SORT_OPTIONS}
+          defaultValue={null}
+        />
+        {isFiltered && <ClearFiltersButton onClick={resetFilters} />}
+      </FilterBar>
 
       {renderList()}
 
@@ -317,9 +396,9 @@ const VendorPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleting?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Expenses and orders recorded with this vendor keep their
-              amounts but no longer name it. To keep its history, set it to
-              inactive instead.
+              Expenses and orders recorded with this vendor keep their amounts
+              but no longer name it. To keep its history, set it to inactive
+              instead.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
