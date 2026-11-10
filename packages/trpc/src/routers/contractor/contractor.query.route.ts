@@ -77,7 +77,8 @@ export const contractorQueryRouter = router({
             .select()
             .from(contractorTable)
             .where(where)
-            .orderBy(asc(contractorTable.name))
+            // The id breaks ties so vendors never repeat or go missing across pages.
+            .orderBy(asc(contractorTable.name), asc(contractorTable.id))
             .limit(limit)
             .offset((page - 1) * limit);
 
