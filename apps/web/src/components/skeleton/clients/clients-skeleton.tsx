@@ -61,6 +61,7 @@ export const ClientGroupSkeleton = ({
           <div className='flex h-[22.5px] items-center gap-2'>
             <Skeleton className='h-4 w-56 max-w-full' />
             <Skeleton className='h-3 w-12 rounded-full' />
+            <Skeleton className='h-5 w-12 shrink-0 rounded-full' />
           </div>
           <TextLine
             line='h-4'

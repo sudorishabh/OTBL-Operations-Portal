@@ -41,9 +41,12 @@ import {
   LIST_SUBGRID,
   type ClientListItem,
 } from "./client-list-parts";
+import MainClientInfoChip, {
+  type MainClientInfo,
+} from "./main-client-info-chip";
 
 interface Props {
-  parentClient: ClientListItem & { contacts_count: number };
+  parentClient: MainClientInfo;
   // A main client has no page of its own; only its branches open. Its
   // details show here, and its contacts in a dialog.
   branches: ClientListItem[];
@@ -90,38 +93,47 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
           "grid grid-cols-1 items-center gap-y-2 px-4 pb-1 pt-3",
           LIST_SUBGRID,
         )}>
-        <button
-          type='button'
-          onClick={() => setIsExpanded((value) => !value)}
-          aria-expanded={isExpanded}
-          className='flex min-w-0 cursor-pointer items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
-          <span className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100'>
+        {/* The name is the expand/collapse button, stretched over the whole
+            cell; the info chip sits above it so it stays its own control. */}
+        <div className='relative flex min-w-0 items-center gap-3'>
+          <span
+            aria-hidden='true'
+            className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100'>
             <Network className='size-4' />
           </span>
-          <span className='min-w-0'>
-            <span className='flex items-center gap-2'>
-              <span
-                className='truncate text-[15px] font-semibold tracking-tight text-gray-900'
-                title={displayName}>
+          <div className='min-w-0'>
+            <div className='flex items-center gap-2'>
+              <button
+                type='button'
+                onClick={() => setIsExpanded((value) => !value)}
+                aria-expanded={isExpanded}
+                title={displayName}
+                className='min-w-0 cursor-pointer truncate text-left text-[15px] font-semibold tracking-tight text-gray-900 outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-emerald-500/30'>
                 {displayName}
-              </span>
+              </button>
               <ClientStatus status={parentClient.status} />
-            </span>
-            <span
-              className='block truncate text-xs text-gray-500'
+              <MainClientInfoChip
+                parentClient={parentClient}
+                branchCount={branchCount}
+                className='relative z-10'
+              />
+            </div>
+            <p
+              className='truncate text-xs text-gray-500'
               title={location || undefined}>
               Main client with {branchCount}{" "}
               {branchCount === 1 ? "branch" : "branches"}
               {location && ` · ${location}`}
-            </span>
-          </span>
+            </p>
+          </div>
           <ChevronDown
+            aria-hidden='true'
             className={cn(
               "size-4 shrink-0 text-gray-400 transition-transform duration-200",
               !isExpanded && "-rotate-90",
             )}
           />
-        </button>
+        </div>
 
         <ClientContactLines
           client={parentClient}
