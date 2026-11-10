@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -8,13 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Edit,
-  ArrowUp,
-  ArrowDown,
-  ArrowDownWideNarrow,
-  ArrowUpNarrowWide,
-} from "lucide-react";
+import { Building2, Edit, ExternalLink } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
-import { useWorkOrderManagementContext } from "@/contexts/WorkOrderManagementContext";
+import PaginationSummary from "@/components/shared/pagination-summary";
 import { useIsViewer } from "@/contexts/AuthContext";
 import { IWorkOrder, IWorkOrderPagination } from "@/types/work-order.types";
 import { capitalFirstLetter } from "@pkg/utils";
@@ -44,7 +39,6 @@ const WorkOrderTable = ({
   isLoadingData,
   onEdit,
 }: Props) => {
-  const { workOrderOrder, setWorkOrderOrder } = useWorkOrderManagementContext();
   const isViewer = useIsViewer();
 
   const getStatusBadgeVariant = (status: string) => {
@@ -73,42 +67,6 @@ const WorkOrderTable = ({
     }
   };
 
-  const handleTitleSort = () => {
-    if (workOrderOrder === "latest") {
-      setWorkOrderOrder("oldest");
-    } else if (workOrderOrder === "oldest") {
-      setWorkOrderOrder("asc");
-    } else if (workOrderOrder === "asc") {
-      setWorkOrderOrder("desc");
-    } else {
-      setWorkOrderOrder("latest");
-    }
-  };
-
-  const getSortIcon = () => {
-    if (workOrderOrder === "asc") {
-      return <ArrowUp className='h-4 w-4' />;
-    } else if (workOrderOrder === "desc") {
-      return <ArrowDown className='h-4 w-4' />;
-    } else if (workOrderOrder === "latest") {
-      return <ArrowDownWideNarrow className='h-4 w-4' />;
-    } else {
-      return <ArrowUpNarrowWide className='h-4 w-4' />;
-    }
-  };
-
-  const getSortLabel = () => {
-    if (workOrderOrder === "asc") {
-      return "A-Z";
-    } else if (workOrderOrder === "desc") {
-      return "Z-A";
-    } else if (workOrderOrder === "latest") {
-      return "Latest";
-    } else {
-      return "Oldest";
-    }
-  };
-
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -129,17 +87,7 @@ const WorkOrderTable = ({
         <TableHeader>
           <TableRow>
             <TableHead className='pl-8 text-xs'>Code</TableHead>
-            <TableHead className='text-xs'>
-              <button
-                onClick={handleTitleSort}
-                className='flex items-center gap-2 hover:text-foreground transition-colors font-medium'>
-                Title
-                {getSortIcon()}
-                <span className='text-xs font-normal text-muted-foreground'>
-                  ({getSortLabel()})
-                </span>
-              </button>
-            </TableHead>
+            <TableHead className='text-xs'>Title</TableHead>
             <TableHead className='text-xs'>Client</TableHead>
             <TableHead className='text-xs'>Office</TableHead>
             <TableHead className='text-xs'>Start Date</TableHead>
@@ -166,10 +114,22 @@ const WorkOrderTable = ({
                     {workOrder.code}
                   </TableCell>
                   <TableCell className='text-xs font-medium'>
-                    {capitalFirstLetter(workOrder.title)}
+                    <Link
+                      href={`/dashboard/work-order/${workOrder.id}`}
+                      className='hover:text-emerald-700 hover:underline'>
+                      {capitalFirstLetter(workOrder.title)}
+                    </Link>
                   </TableCell>
                   <TableCell className='text-xs'>
-                    {capitalFirstLetter(workOrder.client_name || "-")}
+                    {workOrder.client_name ? (
+                      <Link
+                        href={`/dashboard/client/${workOrder.client_id}`}
+                        className='hover:text-emerald-700 hover:underline'>
+                        {capitalFirstLetter(workOrder.client_name)}
+                      </Link>
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
                   <TableCell className='text-xs'>
                     <Badge
@@ -202,11 +162,26 @@ const WorkOrderTable = ({
                         <Button
                           variant='ghost'
                           className='h-8 w-8 p-0'>
-                          <span className='sr-only'>Open menu</span>
+                          <span className='sr-only'>
+                            Actions for {workOrder.code}
+                          </span>
                           <MoreHorizontal className='h-4 w-4' />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align='end'>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/dashboard/work-order/${workOrder.id}`}>
+                            <ExternalLink className='mr-2 h-4 w-4' />
+                            Open work order
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/dashboard/client/${workOrder.client_id}`}>
+                            <Building2 className='mr-2 h-4 w-4' />
+                            Open client
+                          </Link>
+                        </DropdownMenuItem>
                         {onEdit && (
                           <DropdownMenuItem
                             disabled={isViewer}
@@ -237,6 +212,15 @@ const WorkOrderTable = ({
           )}
         </TableBody>
       </Table>
+
+      <PaginationSummary
+        shown={workOrders.length}
+        total={pagination?.total}
+        page={pagination?.page}
+        totalPages={pagination?.totalPages}
+        noun='work orders'
+        className='border-t'
+      />
     </div>
   );
 };
