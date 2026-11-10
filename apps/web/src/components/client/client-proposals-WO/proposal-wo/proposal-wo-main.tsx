@@ -11,7 +11,6 @@ import ClientProposalSkeleton from "@/components/skeleton/client/client-proposal
 import ProcessSectionHeader from "@/components/work-order/process-section-header";
 import CreateWODialog from "../create-wo/create-wo-dialog";
 import CreateProposalDialog from "./create-proposal-dialog";
-import ProposalDetailDialog from "./proposal-detail-dialog";
 import ProposalWOFilters from "./proposal-wo-filters";
 import ProposalWOList from "./proposal-wo-list";
 import {
@@ -166,7 +165,6 @@ const ProposalWOMain = ({ clientId }: Props) => {
 
       <CreateProposalDialog clientId={Number(clientId)} />
       <CreateWODialog proposalTitle={proposalTitle} />
-      <ProposalDetailDialog />
     </>
   );
 };

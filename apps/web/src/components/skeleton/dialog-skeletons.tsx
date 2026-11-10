@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonCard, SkeletonRegion, TextLine } from "./parts";
 
 // Bodies for dialogs whose content is still loading. Dialogs differ, so
-// these keep to the common shapes: a form, a list or a page of details.
+// these keep to the common shapes: a form or a list.
 
 // Labelled fields in two columns, as the edit forms lay them out.
 export const FormSkeleton = ({ fields = 6 }: { fields?: number }) => (
@@ -54,37 +54,5 @@ export const ListSkeleton = ({ rows = 6 }: { rows?: number }) => (
         ))}
       </div>
     </SkeletonCard>
-  </SkeletonRegion>
-);
-
-// A record's details: a heading over a grid of label and value pairs.
-export const DetailsSkeleton = () => (
-  <SkeletonRegion
-    label='Loading the details'
-    className='space-y-4 p-1'>
-    {[6, 4].map((fields, card) => (
-      <SkeletonCard
-        key={card}
-        className='rounded-xl p-6 shadow-sm'>
-        <TextLine
-          line='h-6'
-          className='h-4 w-56'
-        />
-        <div className='mt-5 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2'>
-          {Array.from({ length: fields }, (_, index) => (
-            <div key={index}>
-              <TextLine
-                line='h-4'
-                className='w-20'
-              />
-              <TextLine
-                line='mt-1 h-5'
-                className='h-3.5 w-40'
-              />
-            </div>
-          ))}
-        </div>
-      </SkeletonCard>
-    ))}
   </SkeletonRegion>
 );

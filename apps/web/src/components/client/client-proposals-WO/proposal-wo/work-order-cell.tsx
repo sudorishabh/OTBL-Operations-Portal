@@ -16,7 +16,7 @@ import {
   toDate,
 } from "@/lib/wo-site-display";
 import { PROCESSES } from "./proposal-wo-display";
-import { DocumentsCount, MetaItem, RowCell } from "./row-cell";
+import { DocumentsCount, LabeledItem, MetaItem, RowCell } from "./row-cell";
 
 interface Props {
   workOrder: workOrderTypes.workOrderType | null;
@@ -50,8 +50,8 @@ const NoWorkOrder = ({ proposalId }: { proposalId: number }) => {
 };
 
 // The work order made from a proposal: status, how close its end date is,
-// its process, dates and documents. The status arrives already resolved
-// against the schedule of rates.
+// its process, dates, documents, agreement and rate contract. The status
+// arrives already resolved against the schedule of rates.
 const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
   const router = useRouter();
 
@@ -63,6 +63,8 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
   const note = scheduleNote(status, workOrder.start_date, workOrder.end_date);
   const processType = PROCESSES[workOrder.process_type];
   const handover = toDate(workOrder.handing_over_date);
+  const agreement = workOrder.agreement_number?.toUpperCase();
+  const rateContract = workOrder.rate_contract_number?.toUpperCase();
 
   return (
     <RowCell
@@ -79,7 +81,26 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
           {capitalFirstLetter(status)}
         </Pill>
       }
-      trailing={note && <span className={note.tone}>{note.text}</span>}>
+      trailing={note && <span className={note.tone}>{note.text}</span>}
+      details={
+        (handover || agreement || rateContract) && (
+          <>
+            {agreement && (
+              <LabeledItem label='Agreement'>{agreement}</LabeledItem>
+            )}
+            {rateContract && (
+              <LabeledItem label='Rate contract'>{rateContract}</LabeledItem>
+            )}
+            {handover && (
+              <MetaItem
+                Icon={CalendarCheck}
+                title='Handover date'>
+                Handover {format(handover, "d MMM yy")}
+              </MetaItem>
+            )}
+          </>
+        )
+      }>
       <span
         className='min-w-0 truncate font-mono font-medium text-gray-700'
         title={workOrder.code}>
@@ -96,13 +117,6 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
       <MetaItem Icon={CalendarDays}>
         {formatDateRange(workOrder.start_date, workOrder.end_date)}
       </MetaItem>
-      {handover && (
-        <MetaItem
-          Icon={CalendarCheck}
-          title='Handover date'>
-          Handover {format(handover, "d MMM yy")}
-        </MetaItem>
-      )}
       <DocumentsCount documents={documents} />
     </RowCell>
   );
