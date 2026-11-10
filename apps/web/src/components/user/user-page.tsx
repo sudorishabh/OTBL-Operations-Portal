@@ -29,9 +29,8 @@ const UserPage = () => {
         value={currentTab}
         onValueChange={(value) => setParam("tab", value)}
         className='w-full mt-8'>
-        <div className='flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between'>
-          <UserSearchNFilter />
-          <TabsList className='bg-gray-300/60 h-8! self-start sm:self-auto'>
+        <div className='mb-4 space-y-3'>
+          <TabsList className='bg-gray-300/60 h-8!'>
             <TabsTrigger
               value='all'
               className='text-xs cursor-pointer'>
@@ -43,6 +42,7 @@ const UserPage = () => {
               Categorized
             </TabsTrigger>
           </TabsList>
+          <UserSearchNFilter />
         </div>
 
         <Suspense

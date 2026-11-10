@@ -3,7 +3,10 @@ import { trpc } from "@/lib/trpc";
 import { constants } from "@pkg/utils";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
-import { useUserManagementContext } from "@/contexts/UserManagementContext";
+import {
+  defaultUserFilters,
+  useUserManagementContext,
+} from "@/contexts/UserManagementContext";
 import {
   Card,
   CardContent,
@@ -57,7 +60,7 @@ const CategorizedUsers = () => {
       | "site_operator"
       | "viewer",
   ) => {
-    setFilters({ role, status: "all" });
+    setFilters({ ...defaultUserFilters, role });
     setParams({ dialog: "categorized", role });
   };
 
@@ -196,7 +199,7 @@ const CategorizedUsers = () => {
         }
         heightMode='full'
         size='full'>
-        <div className='max-w-150 mt-1 mb-5'>
+        <div className='mt-1 mb-5'>
           <UserSearchNFilter />
         </div>
         <UserTable />

@@ -8,17 +8,17 @@ import {
 } from "../parts";
 import { USER_COLUMNS } from "./user-tab-skeleton";
 
-// The user page before it mounts: filters, the view tabs and the table.
+// The user page before it mounts: the view tabs, filters and the table.
 const UserPageSkeleton = () => (
   <SkeletonRegion
     label='Loading users'
     className='mt-8'>
-    <div className='mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+    <div className='mb-4 space-y-3'>
+      <Skeleton className={`h-8 w-40 ${ON_PAGE}`} />
       <FilterBarSkeleton
-        search='sm:w-80'
-        selects={["w-[140px]", "w-[140px]"]}
+        search='sm:w-72'
+        selects={["w-28", "w-28", "w-28", "w-32", "w-28"]}
       />
-      <Skeleton className={`h-8 w-40 self-start sm:self-auto ${ON_PAGE}`} />
     </div>
     <TableSkeleton
       columns={USER_COLUMNS}

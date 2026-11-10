@@ -9,14 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Edit,
-  ArrowUp,
-  ArrowDown,
-  ArrowDownWideNarrow,
-  ArrowUpNarrowWide,
-  UserIcon,
-} from "lucide-react";
+import { Edit, UserIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +26,7 @@ import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import { useDebounce } from "@/hooks/useDebounce";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import PaginationSummary from "@/components/shared/pagination-summary";
 import StatusIndicator from "../shared/status-indicator";
@@ -47,14 +41,16 @@ const UserTable = () => {
   const { setParams } = useHandleParams();
   const isViewer = useIsViewer();
 
-  const { userNamesOrder, setUserNamesOrder, searchQuery, filters } =
-    useUserManagementContext();
+  const { userNamesOrder, searchQuery, filters } = useUserManagementContext();
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300);
 
   const queryInput = {
     limit: ALL_USERS_PAGE_SIZE,
-    searchQuery: searchQuery || undefined,
+    searchQuery: debouncedSearch || undefined,
     role: filters.role,
     status: filters.status,
+    officeId: filters.officeId === "all" ? undefined : Number(filters.officeId),
+    assignment: filters.assignment === "all" ? undefined : filters.assignment,
     userNamesOrder,
   };
 
@@ -71,12 +67,12 @@ const UserTable = () => {
     .at(-1);
   const failedQuery = pageQueries.find((query) => query.isError);
 
-  const isInitialLoading =
-    pageQueries[0]?.isLoading &&
-    searchQuery === "" &&
-    filters.role === "all" &&
-    filters.status === "all" &&
-    userNamesOrder === "latest";
+  const isFiltered =
+    !!debouncedSearch ||
+    filters.role !== "all" ||
+    filters.status !== "all" ||
+    filters.officeId !== "all" ||
+    filters.assignment !== "all";
 
   const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
 
@@ -93,43 +89,7 @@ const UserTable = () => {
     }
   };
 
-  const handleNameSort = () => {
-    if (userNamesOrder === "latest") {
-      setUserNamesOrder("oldest");
-    } else if (userNamesOrder === "oldest") {
-      setUserNamesOrder("asc");
-    } else if (userNamesOrder === "asc") {
-      setUserNamesOrder("desc");
-    } else {
-      setUserNamesOrder("latest");
-    }
-  };
-
-  const getSortIcon = () => {
-    if (userNamesOrder === "asc") {
-      return <ArrowUp className='h-4 w-4' />;
-    } else if (userNamesOrder === "desc") {
-      return <ArrowDown className='h-4 w-4' />;
-    } else if (userNamesOrder === "latest") {
-      return <ArrowDownWideNarrow className='h-4 w-4' />;
-    } else {
-      return <ArrowUpNarrowWide className='h-4 w-4' />;
-    }
-  };
-
-  const getSortLabel = () => {
-    if (userNamesOrder === "asc") {
-      return "A-Z";
-    } else if (userNamesOrder === "desc") {
-      return "Z-A";
-    } else if (userNamesOrder === "latest") {
-      return "Latest";
-    } else {
-      return "Oldest";
-    }
-  };
-
-  if (isInitialLoading) return <UserTabSkeleton />;
+  if (pageQueries[0]?.isLoading) return <UserTabSkeleton />;
 
   if (failedQuery?.error) {
     return (
@@ -146,8 +106,12 @@ const UserTable = () => {
     return (
       <NoFetchData
         Icon={UserIcon}
-        title='No Users Found'
-        description='Add users to manage them'
+        title={isFiltered ? "No matching users" : "No Users Found"}
+        description={
+          isFiltered
+            ? "Try another search or clear the filters."
+            : "Add users to manage them"
+        }
       />
     );
 
@@ -157,18 +121,7 @@ const UserTable = () => {
         <TableHeader>
           <TableRow>
             <TableHead className='text-xs'>Status</TableHead>
-            <TableHead className='text-xs'>
-              <button
-                onClick={handleNameSort}
-                aria-label={`Sort by name: ${getSortLabel()}`}
-                className='flex items-center gap-2 hover:text-foreground transition-colors font-medium'>
-                Name
-                {getSortIcon()}
-                <span className='text-xs font-normal text-muted-foreground'>
-                  ({getSortLabel()})
-                </span>
-              </button>
-            </TableHead>
+            <TableHead className='text-xs'>Name</TableHead>
             <TableHead className='text-xs'>Email</TableHead>
             <TableHead className='text-xs'>Contact</TableHead>
             <TableHead className='text-xs'>Role</TableHead>
@@ -236,7 +189,7 @@ const UserTable = () => {
                     <Button
                       variant='ghost'
                       className='h-8 w-8 p-0'>
-                      <span className='sr-only'>Open menu</span>
+                      <span className='sr-only'>Actions for {user.name}</span>
                       <MoreHorizontal className='h-4 w-4' />
                     </Button>
                   </DropdownMenuTrigger>
