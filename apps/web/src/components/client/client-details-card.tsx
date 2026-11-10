@@ -15,7 +15,7 @@ import Error from "@/components/shared/error";
 import { Field, Metric, Pill } from "@/components/shared/detail-card-parts";
 import useHandleParams from "@/hooks/useHandleParams";
 import ClientInfoSkeleton from "../skeleton/client/client-info-skeleton";
-import ContactDialog from "./contact-dialog";
+import ClientContactsDialog from "@/components/clients/client-contacts-dialog";
 
 interface Props {
   clientId: string;
@@ -249,11 +249,11 @@ const ClientDetailsCard = ({ clientId }: Props) => {
         </div>
       </div>
 
-      <ContactDialog
+      <ClientContactsDialog
         open={isContactsOpen}
         onClose={() => setIsContactsOpen(false)}
-        users={clientUsers}
-        clientId={clientId}
+        owner={{ clientId: client.id }}
+        ownerName={client.name}
       />
     </>
   );
