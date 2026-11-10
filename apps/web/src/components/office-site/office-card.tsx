@@ -1,4 +1,5 @@
 import {
+  ArrowUpRight,
   Building2,
   Calendar,
   Info,
@@ -11,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import React from "react";
+import Link from "next/link";
 import OfficeSiteTable from "./office-site-table";
 import { capitalizeEachWord, capitalFirstLetter } from "@pkg/utils";
 import CustomButton from "@/components/shared/btn";
@@ -86,18 +88,11 @@ const OfficeCard: React.FC<{
 }> = ({ office, siteStatus = "all" }) => {
   const { setParams } = useHandleParams();
   const isActive = office.status?.toLowerCase() === "active";
+  const officeHref = `/dashboard/office-site/${office.id}`;
 
   const handleAddSiteDialogOpen = () => {
     setParams({
       dialog: "create-site",
-      officeId: office.id.toString(),
-      officeName: office.name,
-    });
-  };
-
-  const handleOfficeDetailsDialogOpen = () => {
-    setParams({
-      dialog: "view-office",
       officeId: office.id.toString(),
       officeName: office.name,
     });
@@ -124,7 +119,11 @@ const OfficeCard: React.FC<{
         <div className='min-w-0'>
           <div className='flex flex-wrap items-center gap-2'>
             <h3 className='break-words font-semibold leading-tight text-gray-900'>
-              {office.name.toUpperCase()}
+              <Link
+                href={officeHref}
+                className='transition-colors hover:text-emerald-700 hover:underline'>
+                {office.name.toUpperCase()}
+              </Link>
             </h3>
             <span
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
@@ -286,11 +285,13 @@ const OfficeCard: React.FC<{
 
           <div className='mx-0.5 hidden h-6 w-px bg-gray-200 lg:block' />
 
-          <CustomButton
-            arrowType='upright'
-            variant='arrow'
-            onClick={handleOfficeDetailsDialogOpen}
-          />
+          <Link
+            href={officeHref}
+            title='Open office'
+            aria-label={`Open ${office.name}`}
+            className='group flex size-8 items-center justify-center rounded-full border border-gray-300 bg-white transition-all duration-200 hover:border-emerald-600 hover:bg-emerald-600 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+            <ArrowUpRight className='size-4 text-emerald-700 group-hover:text-white' />
+          </Link>
           {office.canManage && (
             <CustomButton
               text='Edit'
