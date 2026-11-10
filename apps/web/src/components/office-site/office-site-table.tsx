@@ -25,6 +25,7 @@ import PaginationSummary from "@/components/shared/pagination-summary";
 import { OfficeSitesTableSkeleton } from "../skeleton/office-site/office-site-skeleton";
 import Error from "@/components/shared/error";
 
+// An office card shows a few sites at a time.
 const SITES_PAGE_SIZE = 6;
 
 type SitesPage = RouterOutputs["siteQuery"]["getSitesByOfficeId"];
@@ -34,6 +35,9 @@ interface Props {
   officeName: string;
   /** Which of the office's sites to list. */
   status?: "active" | "inactive" | "all";
+  /** Only sites whose name, address or city match. */
+  searchQuery?: string;
+  pageSize?: number;
   /** The office's manager or an admin, who may edit its sites. */
   canManage?: boolean;
 }
@@ -42,6 +46,8 @@ const OfficeSiteTable: React.FC<Props> = ({
   officeId,
   officeName,
   status = "all",
+  searchQuery = "",
+  pageSize = SITES_PAGE_SIZE,
   canManage = false,
 }) => {
   const { setParams } = useHandleParams();
@@ -49,7 +55,8 @@ const OfficeSiteTable: React.FC<Props> = ({
   const queryInput = {
     office_id: officeId,
     status,
-    limit: SITES_PAGE_SIZE,
+    searchQuery: searchQuery || undefined,
+    limit: pageSize,
   };
 
   const { pages, loadMore } = useLoadMorePages(queryInput);
@@ -99,7 +106,11 @@ const OfficeSiteTable: React.FC<Props> = ({
               <TableCell
                 colSpan={6}
                 className='text-center py-8 text-muted-foreground'>
-                {status === "all" ? "No sites found" : `No ${status} sites`}
+                {searchQuery
+                  ? "No sites match your search"
+                  : status === "all"
+                    ? "No sites found"
+                    : `No ${status} sites`}
               </TableCell>
             </TableRow>
           ) : (
@@ -196,7 +207,7 @@ const OfficeSiteTable: React.FC<Props> = ({
           total={lastLoadedPage?.totalCount}
           page={loadedPages.length}
           totalPages={Math.ceil(
-            (lastLoadedPage?.totalCount ?? 0) / SITES_PAGE_SIZE,
+            (lastLoadedPage?.totalCount ?? 0) / pageSize,
           )}
           noun='sites'
           className='border-t'
