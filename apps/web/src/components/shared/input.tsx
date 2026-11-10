@@ -22,7 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import {
   Control,
   FieldPath,
@@ -181,7 +181,12 @@ const Input = <TFieldValues extends FieldValues = FieldValues>(
                 !value && "text-muted-foreground"
               } ${className || ""}`}>
               <CalendarIcon className='mr-2 h-4 w-4' />
-              {value ? value : "Pick a date"}
+              {/* Forms may load a saved date as a Date, not a string. */}
+              {value instanceof Date
+                ? isValid(value)
+                  ? format(value, "yyyy-MM-dd")
+                  : "Pick a date"
+                : value || "Pick a date"}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
