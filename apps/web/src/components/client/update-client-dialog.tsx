@@ -75,6 +75,7 @@ const UpdateClientDialog = ({ clientId }: Props) => {
         toast.success("Client updated successfully");
         utils.clientQuery.getClient.invalidate({ clientId: Number(clientId) });
         utils.clientQuery.getClients.invalidate();
+        utils.clientQuery.getClientGroups.invalidate();
         handleCloseDialog();
       },
       onError: (error: any) => {

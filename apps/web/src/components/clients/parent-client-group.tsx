@@ -68,6 +68,7 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
         toast.success("Main client deleted successfully");
         utils.clientQuery.getParentClients.invalidate();
         utils.clientQuery.getClients.invalidate();
+        utils.clientQuery.getClientGroups.invalidate();
       },
       onError: (error: any) => handleError(error, { showToast: true }),
     },

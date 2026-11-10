@@ -92,6 +92,7 @@ const ClientContactTab = ({ tab }: Props) => {
         toast.success("Contact deleted successfully");
         utils.clientQuery.getAllClientContacts.invalidate();
         utils.clientQuery.getClients.invalidate();
+        utils.clientQuery.getClientGroups.invalidate();
       },
       onError: (error: any) => {
         handleError(error, { showToast: true });
