@@ -9,10 +9,11 @@ import {
   like,
   or,
 } from "drizzle-orm";
-import { schema } from "@pkg/db";
+import { schema, type Database } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import {
+  type AccessScope,
   assertCanAccessClient,
   clientIdsVisibleToScope,
   getAccessScope,
@@ -36,6 +37,107 @@ const {
   scheduleOfRatesTable,
   bioremediationContSoilTable
 } = schema;
+
+type ClientListFilters = {
+  searchQuery?: string;
+  status?: "all" | "active" | "inactive";
+};
+
+// The clients a list shows: its search and status, within what the user may
+// see. The search also matches the main client's name, so queries using this
+// must join parentClientTable.
+const clientListWhere = (
+  { searchQuery, status }: ClientListFilters,
+  scope: AccessScope,
+  clientIds: number[] | null,
+) => {
+  const term = searchQuery ? `%${escapeLike(searchQuery)}%` : undefined;
+
+  return and(
+    status && status !== "all" ? eq(clientTable.status, status) : undefined,
+    term
+      ? or(
+          like(clientTable.name, term),
+          like(clientTable.email, term),
+          like(clientTable.gst_number, term),
+          like(clientTable.city, term),
+          like(clientTable.contact_number, term),
+          like(parentClientTable.name, term),
+        )
+      : undefined,
+    scope.kind === "restricted"
+      ? clientIds && clientIds.length > 0
+        ? inArray(clientTable.id, clientIds)
+        : eq(clientTable.id, -1)
+      : undefined,
+  );
+};
+
+type WithClientCounts<T> = T & {
+  contacts_count: number;
+  work_order_number: number;
+  proposal_number: number;
+  sites_work_done: number;
+};
+
+// Adds the counts each client row on the clients list shows.
+const withClientCounts = async <T extends { id: number }>(
+  db: Database,
+  clients: T[],
+): Promise<WithClientCounts<T>[]> => {
+  if (clients.length === 0) return [];
+
+  const ids = clients.map((c) => c.id);
+
+  const [contactCounts, workOrderCounts, proposalCounts, siteCounts] =
+    await Promise.all([
+      db
+        .select({ client_id: clientContactTable.client_id, cnt: count() })
+        .from(clientContactTable)
+        .where(inArray(clientContactTable.client_id, ids))
+        .groupBy(clientContactTable.client_id),
+      db
+        .select({ client_id: workOrderTable.client_id, cnt: count() })
+        .from(workOrderTable)
+        .where(inArray(workOrderTable.client_id, ids))
+        .groupBy(workOrderTable.client_id),
+      db
+        .select({ client_id: proposalTable.client_id, cnt: count() })
+        .from(proposalTable)
+        .where(inArray(proposalTable.client_id, ids))
+        .groupBy(proposalTable.client_id),
+      db
+        .select({
+          client_id: workOrderTable.client_id,
+          cnt: count(workOrderSiteTable.id),
+        })
+        .from(workOrderTable)
+        .leftJoin(
+          workOrderSiteTable,
+          and(
+            eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+            hasPhysicalSite,
+          ),
+        )
+        .where(inArray(workOrderTable.client_id, ids))
+        .groupBy(workOrderTable.client_id),
+    ]);
+
+  const contactMap = new Map(contactCounts.map((r) => [r.client_id, r.cnt]));
+  const workOrderMap = new Map(
+    workOrderCounts.map((r) => [r.client_id, r.cnt]),
+  );
+  const proposalMap = new Map(proposalCounts.map((r) => [r.client_id, r.cnt]));
+  const siteMap = new Map(siteCounts.map((r) => [r.client_id, r.cnt]));
+
+  return clients.map((client) => ({
+    ...client,
+    contacts_count: contactMap.get(client.id) ?? 0,
+    work_order_number: workOrderMap.get(client.id) ?? 0,
+    proposal_number: proposalMap.get(client.id) ?? 0,
+    sites_work_done: siteMap.get(client.id) ?? 0,
+  }));
+};
 
 export const clientQueryRouter = router({
   // Restricted users only see main clients that have a branch visible to them.
@@ -126,44 +228,13 @@ export const clientQueryRouter = router({
 
   getClients: protectedProcedure.input(clientSchemas.getAllClientsSchema).query(
     handleQuery(async ({ input, ctx }) => {
-      const { searchQuery, status } = input;
-
       const scope = await getAccessScope(
         ctx.db,
         Number(ctx.user!.sub),
         ctx.user!.role,
       );
       const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
-
-      let clientQuery = undefined;
-
-      if (status && status !== "all") {
-        clientQuery = eq(clientTable.status, status);
-      }
-
-      if (searchQuery && searchQuery.trim() !== "") {
-        const searchCondition = or(
-          like(clientTable.name, `%${escapeLike(searchQuery)}%`),
-          like(clientTable.email, `%${escapeLike(searchQuery)}%`),
-          like(clientTable.gst_number, `%${escapeLike(searchQuery)}%`),
-          like(clientTable.city, `%${escapeLike(searchQuery)}%`),
-          like(clientTable.contact_number, `%${escapeLike(searchQuery)}%`),
-          like(parentClientTable.name, `%${escapeLike(searchQuery)}%`),
-        );
-        clientQuery = clientQuery
-          ? and(clientQuery, searchCondition)
-          : searchCondition;
-      }
-
-      if (scope.kind === "restricted") {
-        const scopeFilter =
-          clientIds && clientIds.length > 0
-            ? inArray(clientTable.id, clientIds)
-            : eq(clientTable.id, -1);
-        clientQuery = clientQuery
-          ? and(clientQuery, scopeFilter)
-          : scopeFilter;
-      }
+      const clientQuery = clientListWhere(input, scope, clientIds);
 
       try {
         const clients = await ctx.db
@@ -179,56 +250,7 @@ export const clientQueryRouter = router({
           .where(clientQuery)
           .orderBy(desc(clientTable.created_at));
 
-        if (clients.length === 0) return [];
-
-        const ids = clients.map((c) => c.id);
-
-        const [contactCounts, workOrderCounts, proposalCounts, siteCounts] =
-          await Promise.all([
-            ctx.db
-              .select({ client_id: clientContactTable.client_id, cnt: count() })
-              .from(clientContactTable)
-              .where(inArray(clientContactTable.client_id, ids))
-              .groupBy(clientContactTable.client_id),
-            ctx.db
-              .select({ client_id: workOrderTable.client_id, cnt: count() })
-              .from(workOrderTable)
-              .where(inArray(workOrderTable.client_id, ids))
-              .groupBy(workOrderTable.client_id),
-            ctx.db
-              .select({ client_id: proposalTable.client_id, cnt: count() })
-              .from(proposalTable)
-              .where(inArray(proposalTable.client_id, ids))
-              .groupBy(proposalTable.client_id),
-            ctx.db
-              .select({
-                client_id: workOrderTable.client_id,
-                cnt: count(workOrderSiteTable.id),
-              })
-              .from(workOrderTable)
-              .leftJoin(
-                workOrderSiteTable,
-                and(
-                  eq(workOrderSiteTable.work_order_id, workOrderTable.id),
-                  hasPhysicalSite,
-                ),
-              )
-              .where(inArray(workOrderTable.client_id, ids))
-              .groupBy(workOrderTable.client_id),
-          ]);
-
-        const contactMap = new Map(contactCounts.map((r) => [r.client_id, r.cnt]));
-        const workOrderMap = new Map(workOrderCounts.map((r) => [r.client_id, r.cnt]));
-        const proposalMap = new Map(proposalCounts.map((r) => [r.client_id, r.cnt]));
-        const siteMap = new Map(siteCounts.map((r) => [r.client_id, r.cnt]));
-
-        return clients.map((client) => ({
-          ...client,
-          contacts_count: contactMap.get(client.id) ?? 0,
-          work_order_number: workOrderMap.get(client.id) ?? 0,
-          proposal_number: proposalMap.get(client.id) ?? 0,
-          sites_work_done: siteMap.get(client.id) ?? 0,
-        }));
+        return await withClientCounts(ctx.db, clients);
       } catch (error) {
         throw fromDatabaseError(error, "Fetching clients");
       }
