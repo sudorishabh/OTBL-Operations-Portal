@@ -24,7 +24,7 @@ import {
   parentClientIdsOfClients,
 } from "../../access-scope";
 import { clientSchemas } from "@pkg/schema";
-import { notFound, fromDatabaseError } from "../../errors";
+import { notFound, fromDatabaseError, isAppError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { buildPagination, pageOffset } from "../../helper/pagination";
@@ -274,7 +274,7 @@ export const clientQueryRouter = router({
 
           return { parentClient, contacts };
         } catch (error) {
-          if (error && typeof error === "object" && "errorCode" in error) {
+          if (isAppError(error)) {
             throw error;
           }
           throw fromDatabaseError(error, "Fetching main client");
@@ -667,7 +667,7 @@ export const clientQueryRouter = router({
           totalExpenseAmount,
         };
       } catch (error) {
-        if (error && typeof error === "object" && "errorCode" in error) {
+        if (isAppError(error)) {
           throw error;
         }
         throw fromDatabaseError(error, "Fetching client details");
@@ -813,7 +813,7 @@ export const clientQueryRouter = router({
             )
             .orderBy(asc(clientContactTable.name), asc(clientContactTable.id));
         } catch (error) {
-          if (error && typeof error === "object" && "errorCode" in error) {
+          if (isAppError(error)) {
             throw error;
           }
           throw fromDatabaseError(error, "Fetching client contacts");
@@ -849,7 +849,7 @@ export const clientQueryRouter = router({
 
           return contact[0];
         } catch (error) {
-          if (error && typeof error === "object" && "errorCode" in error) {
+          if (isAppError(error)) {
             throw error;
           }
           throw fromDatabaseError(error, "Fetching client contact");
@@ -889,7 +889,7 @@ export const clientQueryRouter = router({
             contacts,
           };
         } catch (error) {
-          if (error && typeof error === "object" && "errorCode" in error) {
+          if (isAppError(error)) {
             throw error;
           }
           throw fromDatabaseError(error, "Fetching client with contacts");
