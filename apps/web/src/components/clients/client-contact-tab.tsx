@@ -1,5 +1,9 @@
 import React from "react";
-import { trpc } from "@/lib/trpc";
+import type { UseQueryResult } from "@tanstack/react-query";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
+import PaginationSummary from "@/components/shared/pagination-summary";
 import { useClientManagementContext } from "@/contexts/ClientManagementContext";
 import { useIsViewer } from "@/contexts/AuthContext";
 import {
@@ -43,6 +47,11 @@ interface ClientContact {
     name: string;
   };
 }
+
+const CONTACTS_PAGE_SIZE = 50;
+
+type ContactsPage = RouterOutputs["clientQuery"]["getAllClientContacts"];
+
 const ClientContactTab = ({ tab }: Props) => {
   const isClientContactTab = tab === "contacts";
   const isViewer = useIsViewer();
@@ -50,20 +59,32 @@ const ClientContactTab = ({ tab }: Props) => {
   const utils = trpc.useUtils();
   const { handleError } = useApiError();
 
-  const {
-    data: contactsQueryData,
-    isLoading: isAllContactQueryLoading,
-    isError: isAllContactQueryError,
-    error: allContactQueryError,
-  } = trpc.clientQuery.getAllClientContacts.useQuery(
-    {
-      searchQuery: contactSearchQuery || undefined,
-      clientId: contactFilters.clientId,
-    },
-    {
-      enabled: isClientContactTab,
-    },
+  const queryInput = {
+    limit: CONTACTS_PAGE_SIZE,
+    searchQuery: contactSearchQuery || undefined,
+    clientId: contactFilters.clientId,
+  };
+
+  const { pages, loadMore } = useLoadMorePages(queryInput);
+
+  const pageQueries: UseQueryResult<ContactsPage>[] = trpc.useQueries(
+    (t: any) =>
+      pages.map((page) =>
+        t.clientQuery.getAllClientContacts(
+          { ...queryInput, page },
+          { enabled: isClientContactTab },
+        ),
+      ),
   );
+
+  const contacts: ClientContact[] = pageQueries.flatMap(
+    (query) => query.data?.contacts ?? [],
+  );
+  const pagination = pageQueries
+    .flatMap((query) => query.data?.pagination ?? [])
+    .at(-1);
+  const failedQuery = pageQueries.find((query) => query.isError);
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
 
   const deleteClientContact =
     trpc.clientMutation.deleteClientContact.useMutation({
@@ -71,6 +92,7 @@ const ClientContactTab = ({ tab }: Props) => {
         toast.success("Contact deleted successfully");
         utils.clientQuery.getAllClientContacts.invalidate();
         utils.clientQuery.getClients.invalidate();
+        utils.clientQuery.getClientGroups.invalidate();
       },
       onError: (error: any) => {
         handleError(error, { showToast: true });
@@ -95,20 +117,20 @@ const ClientContactTab = ({ tab }: Props) => {
     return contact.client?.name || "Unknown Client";
   };
 
-  if (isAllContactQueryLoading) {
+  if (pageQueries[0]?.isLoading) {
     return <ClientContactsSkeleton />;
   }
 
-  if (isAllContactQueryError && !isAllContactQueryLoading) {
+  if (failedQuery?.error) {
     return (
       <Error
         variant='default'
-        message={allContactQueryError.message}
+        message={failedQuery.error.message}
       />
     );
   }
 
-  const hasContacts = contactsQueryData && contactsQueryData?.length > 0;
+  const hasContacts = contacts.length > 0;
 
   if (!hasContacts) {
     return (
@@ -135,7 +157,7 @@ const ClientContactTab = ({ tab }: Props) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {contactsQueryData?.map((contact: ClientContact) => (
+          {contacts.map((contact) => (
             <TableRow key={contact.id}>
               <TableCell className='text-xs font-medium'>
                 {contact.name}
@@ -184,8 +206,30 @@ const ClientContactTab = ({ tab }: Props) => {
               </TableCell>
             </TableRow>
           ))}
+
+          {pagination?.hasMore && (
+            <TableRow>
+              <TableCell
+                colSpan={7}
+                className='text-center'>
+                <LoadMoreBtn
+                  onClick={loadMore}
+                  loading={isFetchingMore}
+                />
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
+
+      <PaginationSummary
+        shown={contacts.length}
+        total={pagination?.total}
+        page={pagination?.page}
+        totalPages={pagination?.totalPages}
+        noun='contacts'
+        className='border-t'
+      />
     </div>
   );
 };

@@ -54,6 +54,7 @@ const ParentClientDialog = () => {
     toast.success(message);
     utils.clientQuery.getParentClients.invalidate();
     utils.clientQuery.getClients.invalidate();
+    utils.clientQuery.getClientGroups.invalidate();
     handleClose();
   };
 

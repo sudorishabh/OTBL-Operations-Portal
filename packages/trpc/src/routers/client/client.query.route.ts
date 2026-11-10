@@ -6,13 +6,16 @@ import {
   eq,
   getTableColumns,
   inArray,
+  isNull,
   like,
   or,
+  type SQL,
 } from "drizzle-orm";
-import { schema } from "@pkg/db";
+import { schema, type Database } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import {
+  type AccessScope,
   assertCanAccessClient,
   clientIdsVisibleToScope,
   getAccessScope,
@@ -21,6 +24,7 @@ import { clientSchemas } from "@pkg/schema";
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { buildPagination, pageOffset } from "../../helper/pagination";
 import { hasPhysicalSite } from "../../helper/restoration";
 import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
@@ -35,6 +39,107 @@ const {
   scheduleOfRatesTable,
   bioremediationContSoilTable
 } = schema;
+
+type ClientListFilters = {
+  searchQuery?: string;
+  status?: "all" | "active" | "inactive";
+};
+
+// The clients a list shows: its search and status, within what the user may
+// see. The search also matches the main client's name, so queries using this
+// must join parentClientTable.
+const clientListWhere = (
+  { searchQuery, status }: ClientListFilters,
+  scope: AccessScope,
+  clientIds: number[] | null,
+) => {
+  const term = searchQuery ? `%${escapeLike(searchQuery)}%` : undefined;
+
+  return and(
+    status && status !== "all" ? eq(clientTable.status, status) : undefined,
+    term
+      ? or(
+          like(clientTable.name, term),
+          like(clientTable.email, term),
+          like(clientTable.gst_number, term),
+          like(clientTable.city, term),
+          like(clientTable.contact_number, term),
+          like(parentClientTable.name, term),
+        )
+      : undefined,
+    scope.kind === "restricted"
+      ? clientIds && clientIds.length > 0
+        ? inArray(clientTable.id, clientIds)
+        : eq(clientTable.id, -1)
+      : undefined,
+  );
+};
+
+type WithClientCounts<T> = T & {
+  contacts_count: number;
+  work_order_number: number;
+  proposal_number: number;
+  sites_work_done: number;
+};
+
+// Adds the counts each client row on the clients list shows.
+const withClientCounts = async <T extends { id: number }>(
+  db: Database,
+  clients: T[],
+): Promise<WithClientCounts<T>[]> => {
+  if (clients.length === 0) return [];
+
+  const ids = clients.map((c) => c.id);
+
+  const [contactCounts, workOrderCounts, proposalCounts, siteCounts] =
+    await Promise.all([
+      db
+        .select({ client_id: clientContactTable.client_id, cnt: count() })
+        .from(clientContactTable)
+        .where(inArray(clientContactTable.client_id, ids))
+        .groupBy(clientContactTable.client_id),
+      db
+        .select({ client_id: workOrderTable.client_id, cnt: count() })
+        .from(workOrderTable)
+        .where(inArray(workOrderTable.client_id, ids))
+        .groupBy(workOrderTable.client_id),
+      db
+        .select({ client_id: proposalTable.client_id, cnt: count() })
+        .from(proposalTable)
+        .where(inArray(proposalTable.client_id, ids))
+        .groupBy(proposalTable.client_id),
+      db
+        .select({
+          client_id: workOrderTable.client_id,
+          cnt: count(workOrderSiteTable.id),
+        })
+        .from(workOrderTable)
+        .leftJoin(
+          workOrderSiteTable,
+          and(
+            eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+            hasPhysicalSite,
+          ),
+        )
+        .where(inArray(workOrderTable.client_id, ids))
+        .groupBy(workOrderTable.client_id),
+    ]);
+
+  const contactMap = new Map(contactCounts.map((r) => [r.client_id, r.cnt]));
+  const workOrderMap = new Map(
+    workOrderCounts.map((r) => [r.client_id, r.cnt]),
+  );
+  const proposalMap = new Map(proposalCounts.map((r) => [r.client_id, r.cnt]));
+  const siteMap = new Map(siteCounts.map((r) => [r.client_id, r.cnt]));
+
+  return clients.map((client) => ({
+    ...client,
+    contacts_count: contactMap.get(client.id) ?? 0,
+    work_order_number: workOrderMap.get(client.id) ?? 0,
+    proposal_number: proposalMap.get(client.id) ?? 0,
+    sites_work_done: siteMap.get(client.id) ?? 0,
+  }));
+};
 
 export const clientQueryRouter = router({
   // Restricted users only see main clients that have a branch visible to them.
@@ -125,44 +230,13 @@ export const clientQueryRouter = router({
 
   getClients: protectedProcedure.input(clientSchemas.getAllClientsSchema).query(
     handleQuery(async ({ input, ctx }) => {
-      const { searchQuery, status } = input;
-
       const scope = await getAccessScope(
         ctx.db,
         Number(ctx.user!.sub),
         ctx.user!.role,
       );
       const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
-
-      let clientQuery = undefined;
-
-      if (status && status !== "all") {
-        clientQuery = eq(clientTable.status, status);
-      }
-
-      if (searchQuery && searchQuery.trim() !== "") {
-        const searchCondition = or(
-          like(clientTable.name, `%${escapeLike(searchQuery)}%`),
-          like(clientTable.email, `%${escapeLike(searchQuery)}%`),
-          like(clientTable.gst_number, `%${escapeLike(searchQuery)}%`),
-          like(clientTable.city, `%${escapeLike(searchQuery)}%`),
-          like(clientTable.contact_number, `%${escapeLike(searchQuery)}%`),
-          like(parentClientTable.name, `%${escapeLike(searchQuery)}%`),
-        );
-        clientQuery = clientQuery
-          ? and(clientQuery, searchCondition)
-          : searchCondition;
-      }
-
-      if (scope.kind === "restricted") {
-        const scopeFilter =
-          clientIds && clientIds.length > 0
-            ? inArray(clientTable.id, clientIds)
-            : eq(clientTable.id, -1);
-        clientQuery = clientQuery
-          ? and(clientQuery, scopeFilter)
-          : scopeFilter;
-      }
+      const clientQuery = clientListWhere(input, scope, clientIds);
 
       try {
         const clients = await ctx.db
@@ -178,61 +252,147 @@ export const clientQueryRouter = router({
           .where(clientQuery)
           .orderBy(desc(clientTable.created_at));
 
-        if (clients.length === 0) return [];
-
-        const ids = clients.map((c) => c.id);
-
-        const [contactCounts, workOrderCounts, proposalCounts, siteCounts] =
-          await Promise.all([
-            ctx.db
-              .select({ client_id: clientContactTable.client_id, cnt: count() })
-              .from(clientContactTable)
-              .where(inArray(clientContactTable.client_id, ids))
-              .groupBy(clientContactTable.client_id),
-            ctx.db
-              .select({ client_id: workOrderTable.client_id, cnt: count() })
-              .from(workOrderTable)
-              .where(inArray(workOrderTable.client_id, ids))
-              .groupBy(workOrderTable.client_id),
-            ctx.db
-              .select({ client_id: proposalTable.client_id, cnt: count() })
-              .from(proposalTable)
-              .where(inArray(proposalTable.client_id, ids))
-              .groupBy(proposalTable.client_id),
-            ctx.db
-              .select({
-                client_id: workOrderTable.client_id,
-                cnt: count(workOrderSiteTable.id),
-              })
-              .from(workOrderTable)
-              .leftJoin(
-                workOrderSiteTable,
-                and(
-                  eq(workOrderSiteTable.work_order_id, workOrderTable.id),
-                  hasPhysicalSite,
-                ),
-              )
-              .where(inArray(workOrderTable.client_id, ids))
-              .groupBy(workOrderTable.client_id),
-          ]);
-
-        const contactMap = new Map(contactCounts.map((r) => [r.client_id, r.cnt]));
-        const workOrderMap = new Map(workOrderCounts.map((r) => [r.client_id, r.cnt]));
-        const proposalMap = new Map(proposalCounts.map((r) => [r.client_id, r.cnt]));
-        const siteMap = new Map(siteCounts.map((r) => [r.client_id, r.cnt]));
-
-        return clients.map((client) => ({
-          ...client,
-          contacts_count: contactMap.get(client.id) ?? 0,
-          work_order_number: workOrderMap.get(client.id) ?? 0,
-          proposal_number: proposalMap.get(client.id) ?? 0,
-          sites_work_done: siteMap.get(client.id) ?? 0,
-        }));
+        return await withClientCounts(ctx.db, clients);
       } catch (error) {
         throw fromDatabaseError(error, "Fetching clients");
       }
     }),
   ),
+
+  // The clients page, paged so a main client always arrives with all of its
+  // branches: main clients by name first, then clients without one.
+  getClientGroups: protectedProcedure
+    .input(clientSchemas.getClientGroupsSchema)
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const { page, limit, searchQuery, status } = input;
+        const isFiltered = !!searchQuery || (!!status && status !== "all");
+
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
+        const clientWhere = clientListWhere(input, scope, clientIds);
+        const standaloneWhere = and(
+          clientWhere,
+          isNull(clientTable.parent_client_id),
+        );
+
+        const listClients = (where: SQL | undefined) =>
+          ctx.db
+            .select({
+              ...getTableColumns(clientTable),
+              parent_client_name: parentClientTable.name,
+            })
+            .from(clientTable)
+            .leftJoin(
+              parentClientTable,
+              eq(parentClientTable.id, clientTable.parent_client_id),
+            )
+            .where(where);
+
+        const countClients = async (where: SQL | undefined) => {
+          const [row] = await ctx.db
+            .select({ count: count() })
+            .from(clientTable)
+            .leftJoin(
+              parentClientTable,
+              eq(parentClientTable.id, clientTable.parent_client_id),
+            )
+            .where(where);
+          return row?.count ?? 0;
+        };
+
+        try {
+          // Main clients are few, so all of them are read and sliced here.
+          // Unfiltered, a full-access user also sees ones without branches.
+          const parentClients =
+            scope.kind === "full" && !isFiltered
+              ? await ctx.db
+                  .select({
+                    id: parentClientTable.id,
+                    name: parentClientTable.name,
+                  })
+                  .from(parentClientTable)
+                  .orderBy(
+                    asc(parentClientTable.name),
+                    asc(parentClientTable.id),
+                  )
+              : await ctx.db
+                  .selectDistinct({
+                    id: parentClientTable.id,
+                    name: parentClientTable.name,
+                  })
+                  .from(parentClientTable)
+                  .innerJoin(
+                    clientTable,
+                    eq(clientTable.parent_client_id, parentClientTable.id),
+                  )
+                  .where(clientWhere)
+                  .orderBy(
+                    asc(parentClientTable.name),
+                    asc(parentClientTable.id),
+                  );
+
+          const offset = pageOffset(page, limit);
+          const pageParents = parentClients.slice(offset, offset + limit);
+          const standaloneLimit = limit - pageParents.length;
+          const standaloneOffset = Math.max(0, offset - parentClients.length);
+
+          const branchRows =
+            pageParents.length === 0
+              ? []
+              : await listClients(
+                  and(
+                    clientWhere,
+                    inArray(
+                      clientTable.parent_client_id,
+                      pageParents.map((parent) => parent.id),
+                    ),
+                  ),
+                ).orderBy(desc(clientTable.created_at), desc(clientTable.id));
+
+          const standaloneRows =
+            standaloneLimit === 0
+              ? []
+              : await listClients(standaloneWhere)
+                  .orderBy(desc(clientTable.created_at), desc(clientTable.id))
+                  .limit(standaloneLimit)
+                  .offset(standaloneOffset);
+
+          const [standaloneTotal, totalClients, clients] = await Promise.all([
+            countClients(standaloneWhere),
+            countClients(clientWhere),
+            withClientCounts(ctx.db, [...branchRows, ...standaloneRows]),
+          ]);
+
+          return {
+            groups: pageParents.map((parentClient) => ({
+              parentClient,
+              branches: clients.filter(
+                (client) => client.parent_client_id === parentClient.id,
+              ),
+            })),
+            standalone: clients.filter(
+              (client) => client.parent_client_id === null,
+            ),
+            // Every client matching the filters, branches included.
+            totalClients,
+            totalStandalone: standaloneTotal,
+            pagination: buildPagination({
+              page,
+              limit,
+              total: parentClients.length + standaloneTotal,
+              shown: pageParents.length + standaloneRows.length,
+            }),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching client groups");
+        }
+      }),
+    ),
 
   getClient: protectedProcedure.input(clientSchemas.getClientSchema).query(
     handleQuery(async ({ input, ctx }) => {
@@ -373,7 +533,7 @@ export const clientQueryRouter = router({
     .input(clientSchemas.getAllClientContactsSchema)
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { searchQuery, clientId } = input;
+        const { searchQuery, clientId, page, limit } = input;
 
         const scope = await getAccessScope(
           ctx.db,
@@ -386,7 +546,10 @@ export const clientQueryRouter = router({
           scope.kind === "restricted" &&
           (!clientIds || clientIds.length === 0)
         ) {
-          return [];
+          return {
+            contacts: [],
+            pagination: buildPagination({ page, limit, total: 0, shown: 0 }),
+          };
         }
 
         let contactQuery = undefined;
@@ -415,11 +578,34 @@ export const clientQueryRouter = router({
         }
 
         try {
-          return await ctx.db
+          const contactList = ctx.db
             .select()
             .from(clientContactTable)
             .where(contactQuery)
             .orderBy(desc(clientContactTable.id));
+
+          const contacts = page
+            ? await contactList.limit(limit).offset(pageOffset(page, limit))
+            : await contactList;
+
+          let total = contacts.length;
+          if (page) {
+            const [totalResult] = await ctx.db
+              .select({ count: count() })
+              .from(clientContactTable)
+              .where(contactQuery);
+            total = totalResult?.count ?? 0;
+          }
+
+          return {
+            contacts,
+            pagination: buildPagination({
+              page,
+              limit,
+              total,
+              shown: contacts.length,
+            }),
+          };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching client contacts");
         }

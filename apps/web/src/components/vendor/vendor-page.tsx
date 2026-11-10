@@ -8,10 +8,12 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import { useIsManager } from "@/contexts/AuthContext";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
+import PaginationSummary from "@/components/shared/pagination-summary";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { VendorsTableSkeleton } from "@/components/skeleton/vendor/vendor-skeletons";
@@ -95,17 +97,10 @@ const VendorPage = () => {
     status: status === ALL ? undefined : (status as "active" | "inactive"),
   };
 
-  // Loaded pages belong to one query input; changing it starts over at page 1.
-  const queryKey = JSON.stringify(queryInput);
-  const [loadedPages, setLoadedPages] = useState({ queryKey, count: 1 });
-  const pageCount = loadedPages.queryKey === queryKey ? loadedPages.count : 1;
+  const { pages, loadMore } = useLoadMorePages(queryInput);
 
-  // Every loaded page stays an active query, so invalidating refreshes rows
-  // in place instead of appending a page twice.
   const pageQueries: UseQueryResult<VendorsPage>[] = trpc.useQueries((t: any) =>
-    Array.from({ length: pageCount }, (_, index) =>
-      t.contractorQuery.getVendors({ ...queryInput, page: index + 1 }),
-    ),
+    pages.map((page) => t.contractorQuery.getVendors({ ...queryInput, page })),
   );
 
   const vendors = pageQueries.flatMap((query) => query.data?.vendors ?? []);
@@ -114,7 +109,7 @@ const VendorPage = () => {
     .at(-1);
   const failedQuery = pageQueries.find((query) => query.isError);
   const isInitialLoading = !!pageQueries[0]?.isLoading;
-  const isFetchingMore = pageCount > 1 && !!pageQueries.at(-1)?.isLoading;
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
   const isFiltered = !!queryInput.search || status !== ALL;
 
   const deleteVendor = trpc.contractorMutation.deleteContractor.useMutation({
@@ -257,15 +252,19 @@ const VendorPage = () => {
         {pagination?.hasMore && (
           <div className='flex justify-center border-t py-3'>
             <LoadMoreBtn
-              onClick={() => setLoadedPages({ queryKey, count: pageCount + 1 })}
+              onClick={loadMore}
               loading={isFetchingMore}
             />
           </div>
         )}
-        <div className='border-t px-4 py-2 text-xs text-muted-foreground'>
-          Showing {vendors.length} of {pagination?.total ?? vendors.length}{" "}
-          vendors
-        </div>
+        <PaginationSummary
+          shown={vendors.length}
+          total={pagination?.total}
+          page={pagination?.page}
+          totalPages={pagination?.totalPages}
+          noun='vendors'
+          className='border-t'
+        />
       </div>
     );
   };

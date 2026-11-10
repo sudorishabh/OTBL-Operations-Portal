@@ -12,6 +12,7 @@ import { officeSchemas } from "@pkg/schema";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { buildPagination, pageOffset } from "../../helper/pagination";
 
 const {
   officeTable,
@@ -26,7 +27,7 @@ const { ROLES } = constants;
 export const officeQueryRouter = router({
   getOffices: protectedProcedure.input(officeSchemas.getOfficesSchema).query(
     handleQuery(async ({ input, ctx }) => {
-      const { searchQuery, status, officeNamesOrder } = input;
+      const { searchQuery, status, officeNamesOrder, page, limit } = input;
 
       let officeQuery = undefined;
 
@@ -81,11 +82,25 @@ export const officeQueryRouter = router({
           }
         }
 
-        const offices = await ctx.db
+        const officeList = ctx.db
           .select()
           .from(officeTable)
           .where(officeWhere)
-          .orderBy(officeOrder);
+          // The id breaks ties so offices never repeat or go missing across pages.
+          .orderBy(officeOrder, asc(officeTable.id));
+
+        const offices = page
+          ? await officeList.limit(limit).offset(pageOffset(page, limit))
+          : await officeList;
+
+        let total = offices.length;
+        if (page) {
+          const [totalResult] = await ctx.db
+            .select({ count: count() })
+            .from(officeTable)
+            .where(officeWhere);
+          total = totalResult?.count ?? 0;
+        }
 
         const officesWithUsersAndSitesCount = await Promise.all(
           offices.map(async (office: any) => {
@@ -120,7 +135,15 @@ export const officeQueryRouter = router({
           }),
         );
 
-        return { offices: officesWithUsersAndSitesCount };
+        return {
+          offices: officesWithUsersAndSitesCount,
+          pagination: buildPagination({
+            page,
+            limit,
+            total,
+            shown: offices.length,
+          }),
+        };
       } catch (error) {
         throw fromDatabaseError(error, "Fetching offices");
       }

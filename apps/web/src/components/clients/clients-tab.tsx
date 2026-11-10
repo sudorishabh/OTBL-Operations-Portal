@@ -1,153 +1,69 @@
 import { useClientManagementContext } from "@/contexts/ClientManagementContext";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
 import React from "react";
+import type { UseQueryResult } from "@tanstack/react-query";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
+import PaginationSummary from "@/components/shared/pagination-summary";
 import ClientCard from "./client-card";
 import ParentClientGroup from "./parent-client-group";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import { Webhook } from "lucide-react";
 import ClientsSkeleton from "../skeleton/clients/clients-skeleton";
 import Error from "@/components/shared/error";
-interface ClientContact {
-  id: number;
-  client_id: number;
-  name: string;
-  designation?: string;
-  contact_number: string;
-  email: string;
-  contact_type?: string;
-}
 
-interface Client {
-  id: number;
-  parent_client_id: number | null;
-  parent_client_name: string | null;
-  name: string;
-  email: string;
-  contact_number: string;
-  address?: string;
-  state?: string;
-  city?: string;
-  pincode?: string;
-  status?: string;
-  created_at?: string | Date;
-  contacts_count?: number;
-  work_order_number?: number;
-  proposal_number?: number;
-  sites_work_done?: number;
-}
+// A page holds this many main clients (each with all its branches) and
+// clients without a main client.
+const CLIENTS_PAGE_SIZE = 10;
 
-interface ClientContactsTableProps {
-  contacts: ClientContact[];
-  clients: Client[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    hasMore: boolean;
-    totalPages: number;
-  } | null;
-  handleLoadMore: () => void;
-  isLoadingData: boolean;
-}
+type ClientGroupsPage = RouterOutputs["clientQuery"]["getClientGroups"];
 
 interface Props {
   tab: string;
 }
-
-type ParentClient = { id: number; name: string };
-
-type ClientGroup = { parentClient: ParentClient; branches: Client[] };
-
-// Branches sit under their main client; clients without one stay standalone.
-const groupClients = (
-  clients: Client[],
-  parentClients: ParentClient[],
-  showEmptyGroups: boolean,
-) => {
-  const groups = new Map<number, ClientGroup>(
-    parentClients.map((parentClient) => [
-      parentClient.id,
-      { parentClient, branches: [] },
-    ]),
-  );
-  const standalone: Client[] = [];
-
-  for (const client of clients) {
-    if (!client.parent_client_id) {
-      standalone.push(client);
-      continue;
-    }
-
-    let group = groups.get(client.parent_client_id);
-    if (!group) {
-      // Main client list not refreshed yet; fall back to the joined name.
-      group = {
-        parentClient: {
-          id: client.parent_client_id,
-          name: client.parent_client_name ?? "",
-        },
-        branches: [],
-      };
-      groups.set(client.parent_client_id, group);
-    }
-    group.branches.push(client);
-  }
-
-  return {
-    groups: [...groups.values()]
-      .filter((group) => showEmptyGroups || group.branches.length > 0)
-      .sort((a, b) => a.parentClient.name.localeCompare(b.parentClient.name)),
-    standalone,
-  };
-};
 
 const ClientsTab = ({ tab }: Props) => {
   const isClientTab = tab === "clients";
 
   const { clientSearchQuery, clientFilters } = useClientManagementContext();
 
-  const {
-    data: clients,
-    isLoading,
-    isError,
-    error,
-  } = trpc.clientQuery.getClients.useQuery(
-    {
-      searchQuery: clientSearchQuery || undefined,
-      status: clientFilters.status,
-    },
-    {
-      enabled: isClientTab,
-    },
+  const queryInput = {
+    limit: CLIENTS_PAGE_SIZE,
+    searchQuery: clientSearchQuery || undefined,
+    status: clientFilters.status,
+  };
+
+  const { pages, loadMore } = useLoadMorePages(queryInput);
+
+  const pageQueries: UseQueryResult<ClientGroupsPage>[] = trpc.useQueries(
+    (t: any) =>
+      pages.map((page) =>
+        t.clientQuery.getClientGroups(
+          { ...queryInput, page },
+          { enabled: isClientTab },
+        ),
+      ),
   );
 
-  const { data: parentClients, isLoading: isParentClientsLoading } =
-    trpc.clientQuery.getParentClients.useQuery(undefined, {
-      enabled: isClientTab,
-    });
+  const loadedPages = pageQueries.flatMap((query) => query.data ?? []);
+  const lastLoadedPage = loadedPages.at(-1);
+  const groups = loadedPages.flatMap((page) => page.groups);
+  const standalone = loadedPages.flatMap((page) => page.standalone);
+  const failedQuery = pageQueries.find((query) => query.isError);
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
 
-  if (isLoading || isParentClientsLoading) {
+  if (pageQueries[0]?.isLoading) {
     return <ClientsSkeleton />;
   }
 
-  if (isError) {
+  if (failedQuery?.error) {
     return (
       <Error
         variant='default'
-        message={error.message}
+        message={failedQuery.error.message}
       />
     );
   }
-
-  // While searching or filtering, only show main clients with matching branches.
-  const hasActiveFilters =
-    clientSearchQuery.trim() !== "" || clientFilters.status !== "all";
-
-  const { groups, standalone } = groupClients(
-    (clients ?? []) as Client[],
-    (parentClients ?? []) as ParentClient[],
-    !hasActiveFilters,
-  );
 
   if (groups.length === 0 && standalone.length === 0) {
     return (
@@ -158,6 +74,11 @@ const ClientsTab = ({ tab }: Props) => {
       />
     );
   }
+
+  const shownClients = groups.reduce(
+    (sum, group) => sum + group.branches.length,
+    standalone.length,
+  );
 
   return (
     <div className='space-y-4'>
@@ -175,7 +96,7 @@ const ClientsTab = ({ tab }: Props) => {
             <h3 className='pt-3 text-sm font-medium text-gray-500'>
               Clients without a main client
               <span className='ml-1.5 tabular-nums text-gray-400'>
-                {standalone.length}
+                {lastLoadedPage?.totalStandalone ?? standalone.length}
               </span>
             </h3>
           )}
@@ -189,6 +110,22 @@ const ClientsTab = ({ tab }: Props) => {
           </div>
         </div>
       )}
+
+      {lastLoadedPage?.pagination.hasMore && (
+        <LoadMoreBtn
+          onClick={loadMore}
+          loading={isFetchingMore}
+        />
+      )}
+
+      <PaginationSummary
+        shown={shownClients}
+        total={lastLoadedPage?.totalClients}
+        page={lastLoadedPage?.pagination.page}
+        totalPages={lastLoadedPage?.pagination.totalPages}
+        noun='clients'
+        className='rounded-lg border bg-white'
+      />
     </div>
   );
 };

@@ -1,8 +1,12 @@
 "use client";
 import { Building2, Search, X } from "lucide-react";
 import NoFetchData from "@/components/shared/no-fetch-data";
-import { trpc } from "@/lib/trpc";
+import PaginationSummary from "@/components/shared/pagination-summary";
+import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import { useOfficeManagementContext } from "@/contexts/OfficeManagementContext";
+import type { UseQueryResult } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import Error from "@/components/shared/error";
@@ -23,21 +27,35 @@ const OfficeCard = dynamic(() => import("./office-card"), {
   loading: () => <OfficeCardLoading />,
 });
 
+const OFFICES_PAGE_SIZE = 10;
+
+type OfficesPage = RouterOutputs["officeQuery"]["getOffices"];
+
 const OfficeSitePage = () => {
   const { setSearchQuery, filters, setFilters, searchQuery, resetFilters } =
     useOfficeManagementContext();
 
-  const {
-    data: officesQuery,
-    isLoading: isOfficesQueryLoading,
-    isError,
-    error,
-  } = trpc.officeQuery.getOffices.useQuery({
+  const queryInput = {
+    limit: OFFICES_PAGE_SIZE,
     status: filters.status,
-    searchQuery: searchQuery,
-  });
-  const isOffice = (officesQuery?.offices?.length ?? 0) > 0;
-  const offices = officesQuery?.offices ?? [];
+    searchQuery,
+  };
+
+  const { pages, loadMore } = useLoadMorePages(queryInput);
+
+  const pageQueries: UseQueryResult<OfficesPage>[] = trpc.useQueries((t: any) =>
+    pages.map((page) => t.officeQuery.getOffices({ ...queryInput, page })),
+  );
+
+  const offices = pageQueries.flatMap((query) => query.data?.offices ?? []);
+  const pagination = pageQueries
+    .flatMap((query) => query.data?.pagination ?? [])
+    .at(-1);
+  const failedQuery = pageQueries.find((query) => query.isError);
+
+  const isOfficesQueryLoading = !!pageQueries[0]?.isLoading;
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
+  const isOffice = offices.length > 0;
 
   const hasActiveFilters = searchQuery !== "" || filters.status !== "all";
 
@@ -57,10 +75,10 @@ const OfficeSitePage = () => {
         <Suspense fallback={<OfficeSiteSkeleton />}>
           {isOfficesQueryLoading ? (
             <OfficeSiteSkeleton />
-          ) : isError && error ? (
+          ) : failedQuery?.error ? (
             <Error
               variant='default'
-              message={error.message}
+              message={failedQuery.error.message}
             />
           ) : !isOffice ? (
             <NoFetchData
@@ -73,7 +91,7 @@ const OfficeSitePage = () => {
               }
             />
           ) : (
-            <div className='space-y-6'>
+            <div>
               <div className='grid grid-cols-1 sm:grid-cols-1 gap-4'>
                 {offices.map((office: any) => (
                   <OfficeCard
@@ -82,6 +100,22 @@ const OfficeSitePage = () => {
                   />
                 ))}
               </div>
+
+              {pagination?.hasMore && (
+                <LoadMoreBtn
+                  onClick={loadMore}
+                  loading={isFetchingMore}
+                />
+              )}
+
+              <PaginationSummary
+                shown={offices.length}
+                total={pagination?.total}
+                page={pagination?.page}
+                totalPages={pagination?.totalPages}
+                noun='offices'
+                className='mt-4 rounded-lg border bg-white'
+              />
             </div>
           )}
         </Suspense>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import {
   Table,
   TableBody,
@@ -32,7 +32,9 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import NoFetchData from "@/components/shared/no-fetch-data";
+import PaginationSummary from "@/components/shared/pagination-summary";
 import StatusIndicator from "../shared/status-indicator";
 import { userTypes } from "@pkg/schema";
 import UserTabSkeleton from "../skeleton/user/user-tab-skeleton";
@@ -56,18 +58,11 @@ const UserTable = () => {
     userNamesOrder,
   };
 
-  // Loaded pages belong to one query input; changing it starts over at page 1.
-  const queryKey = JSON.stringify(queryInput);
-  const [loadedPages, setLoadedPages] = useState({ queryKey, count: 1 });
-  const pageCount = loadedPages.queryKey === queryKey ? loadedPages.count : 1;
+  const { pages, loadMore } = useLoadMorePages(queryInput);
 
-  // Every loaded page stays an active query, so invalidating getAllUser
-  // refreshes the rows in place instead of appending a page twice.
   const pageQueries: UseQueryResult<userTypes.AllUsersQueryType>[] =
     trpc.useQueries((t: any) =>
-      Array.from({ length: pageCount }, (_, index) =>
-        t.userQuery.getAllUser({ ...queryInput, page: index + 1 }),
-      ),
+      pages.map((page) => t.userQuery.getAllUser({ ...queryInput, page })),
     );
 
   const allUsersList = pageQueries.flatMap((query) => query.data?.users ?? []);
@@ -83,11 +78,7 @@ const UserTable = () => {
     filters.status === "all" &&
     userNamesOrder === "latest";
 
-  const isFetchingMore = pageCount > 1 && !!pageQueries.at(-1)?.isLoading;
-
-  const handleLoadMore = () => {
-    setLoadedPages({ queryKey, count: pageCount + 1 });
-  };
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -273,7 +264,7 @@ const UserTable = () => {
                 colSpan={8}
                 className='text-center'>
                 <LoadMoreBtn
-                  onClick={handleLoadMore}
+                  onClick={loadMore}
                   loading={isFetchingMore}
                 />
               </TableCell>
@@ -282,17 +273,14 @@ const UserTable = () => {
         </TableBody>
       </Table>
 
-      <div className='flex justify-between items-center px-4 py-2 text-xs text-muted-foreground border-t'>
-        <span>
-          Showing {allUsersList.length} of{" "}
-          {pagination?.total || allUsersList.length} users
-        </span>
-        {pagination && pagination.totalPages > 1 && (
-          <span>
-            Page {pagination.page} of {pagination.totalPages}
-          </span>
-        )}
-      </div>
+      <PaginationSummary
+        shown={allUsersList.length}
+        total={pagination?.total}
+        page={pagination?.page}
+        totalPages={pagination?.totalPages}
+        noun='users'
+        className='border-t'
+      />
     </div>
   );
 };

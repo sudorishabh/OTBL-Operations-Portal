@@ -34,10 +34,6 @@ export const updateSiteSchema = siteBaseSchema.extend({
 
 export const getSiteSchema = z.object({ siteId: positiveIntValidator });
 
-export const get6SitesByOfficeIdSchema = z.object({
-  office_id: positiveIntValidator,
-});
-
 export const getAllSitesByOfficeIdSchema = z.object({
   office_id: positiveIntValidator,
   searchQuery: searchQueryValidator,

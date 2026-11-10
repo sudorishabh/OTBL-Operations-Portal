@@ -68,12 +68,14 @@ const CreateClientDialog = () => {
       clientId: "",
     },
   );
+  const existingContacts = existingClientContacts.data?.contacts ?? [];
 
   const addClientWithContacts =
     trpc.clientMutation.createClientWithContacts.useMutation({
       onSuccess: () => {
         toast.success("Client added successfully");
         utils.clientQuery.getClients.invalidate();
+        utils.clientQuery.getClientGroups.invalidate();
         utils.clientQuery.getAllClientContacts.invalidate();
       },
       onError: (error: any) => {
@@ -337,7 +339,7 @@ const CreateClientDialog = () => {
                     <div className='p-4'>
                       <ScrollArea className='h-56 pr-3 -mr-3'>
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                          {(existingClientContacts.data || [])
+                          {existingContacts
                             .filter(
                               (c: any) =>
                                 !contactSearch ||
@@ -398,7 +400,7 @@ const CreateClientDialog = () => {
                                 </div>
                               );
                             })}
-                          {existingClientContacts.data?.length === 0 && (
+                          {existingContacts.length === 0 && (
                             <div className='col-span-2 flex flex-col items-center justify-center py-10 text-gray-500'>
                               <div className='h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-3'>
                                 <Users className='h-6 w-6 text-gray-400' />

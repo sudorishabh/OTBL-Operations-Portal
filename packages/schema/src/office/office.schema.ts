@@ -11,6 +11,8 @@ import {
   positiveIntValidator,
   optionalPositiveIntValidator,
   searchQueryValidator,
+  pageValidator,
+  limitValidator,
 } from "../validators";
 
 const { STATUS } = constants;
@@ -51,10 +53,13 @@ export const expelUserFromOfficeSchema = z.object({
   user_id: positiveIntValidator,
 });
 
+// Without a page every matching office comes back, for pickers and lookups.
 export const getOfficesSchema = z.object({
   searchQuery: searchQueryValidator,
   status: z.enum([...statusEnum.options, "all"]).optional(),
   officeNamesOrder: officeNamesOrderEnum.optional(),
+  page: pageValidator.optional(),
+  limit: limitValidator,
 });
 
 export const getOfficeSchema = z.object({ officeId: positiveIntValidator });

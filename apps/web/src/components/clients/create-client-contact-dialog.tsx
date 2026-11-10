@@ -54,6 +54,7 @@ const CreateClientContactDialog = () => {
       toast.success("Contact added successfully");
       utils.clientQuery.getAllClientContacts.invalidate();
       utils.clientQuery.getClients.invalidate();
+      utils.clientQuery.getClientGroups.invalidate();
     },
     onError: (error: any) => {
       handleError(error, { showToast: true });
