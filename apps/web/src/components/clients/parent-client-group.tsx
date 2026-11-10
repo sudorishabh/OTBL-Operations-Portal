@@ -1,6 +1,13 @@
 "use client";
 import React, { useState } from "react";
-import { ChevronDown, Network, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  MoreVertical,
+  Network,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
 import {
@@ -13,6 +20,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useApiError } from "@/hooks/useApiError";
@@ -34,33 +48,6 @@ interface Props {
   // details show here, and its contacts in a dialog.
   branches: ClientListItem[];
 }
-
-const IconAction = ({
-  label,
-  icon: Icon,
-  onClick,
-  disabled,
-  className,
-}: {
-  label: string;
-  icon: React.ElementType;
-  onClick: () => void;
-  disabled?: boolean;
-  className?: string;
-}) => (
-  <button
-    type='button'
-    title={label}
-    aria-label={label}
-    onClick={onClick}
-    disabled={disabled}
-    className={cn(
-      "flex size-8 cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 outline-none transition-colors duration-150 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50",
-      className,
-    )}>
-    <Icon className='size-3.5' />
-  </button>
-);
 
 const ParentClientGroup = ({ parentClient, branches }: Props) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -156,18 +143,32 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
                 variant='outline'
                 onClick={() => openDialog("create-client")}
               />
-              <IconAction
-                label={`Edit ${displayName}`}
-                icon={Pencil}
-                onClick={() => openDialog("edit-parent-client")}
-              />
-              <IconAction
-                label={`Delete ${displayName}`}
-                icon={Trash2}
-                onClick={() => setIsConfirmingDelete(true)}
-                disabled={deleteParentClient.isPending}
-                className='hover:border-red-200 hover:bg-red-50 hover:text-red-600'
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type='button'
+                    title='More actions'
+                    aria-label={`More actions for ${displayName}`}
+                    className='flex size-8 cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 outline-none transition-colors duration-150 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-emerald-500/30 data-[state=open]:bg-gray-50'>
+                    <MoreVertical className='size-4' />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end'>
+                  <DropdownMenuItem
+                    onClick={() => openDialog("edit-parent-client")}>
+                    <Pencil className='mr-2 size-4' />
+                    Edit main client
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={deleteParentClient.isPending}
+                    onClick={() => setIsConfirmingDelete(true)}
+                    className='text-red-600 focus:text-red-600'>
+                    <Trash2 className='mr-2 size-4' />
+                    Delete main client
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
         </div>

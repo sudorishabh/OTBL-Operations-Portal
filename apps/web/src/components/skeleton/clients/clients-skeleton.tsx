@@ -85,7 +85,6 @@ export const ClientGroupSkeleton = ({
           <>
             <Skeleton className='h-8 w-28' />
             <Skeleton className='size-8' />
-            <Skeleton className='size-8' />
           </>
         )}
       </div>
