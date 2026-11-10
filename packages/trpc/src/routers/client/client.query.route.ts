@@ -380,6 +380,7 @@ export const clientQueryRouter = router({
             ),
             // Every client matching the filters, branches included.
             totalClients,
+            totalStandalone: standaloneTotal,
             pagination: buildPagination({
               page,
               limit,
