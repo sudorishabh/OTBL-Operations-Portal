@@ -1,9 +1,10 @@
 import { and, asc, count, desc, eq, inArray, like, or } from "drizzle-orm";
-import { schema } from "@pkg/db";
+import { schema, type Database } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure, publicProcedure } from "../../core";
 import {
+  type AccessScope,
   assertCanAccessOffice,
   getAccessScope,
   resolveVisibleOfficeIds,
@@ -23,6 +24,19 @@ const {
   siteTable,
 } = schema;
 const { ROLES } = constants;
+
+// The offices a user may see: all of them, those they belong to, or none for
+// users who only work on sites.
+const visibleOfficesWhere = async (db: Database, scope: AccessScope) => {
+  if (scope.kind !== "restricted") return undefined;
+  if (scope.ui === "site_only" || scope.ui === "wo_site_upload") {
+    return eq(officeTable.id, -1);
+  }
+  const visibleOfficeIds = (await resolveVisibleOfficeIds(db, scope)) ?? [];
+  return visibleOfficeIds.length > 0
+    ? inArray(officeTable.id, visibleOfficeIds)
+    : eq(officeTable.id, -1);
+};
 
 export const officeQueryRouter = router({
   getOffices: protectedProcedure.input(officeSchemas.getOfficesSchema).query(
@@ -63,24 +77,10 @@ export const officeQueryRouter = router({
           currentUserId,
           ctx.user!.role,
         );
-        let officeWhere = officeQuery;
-
-        if (scope.kind === "restricted") {
-          if (scope.ui === "site_only" || scope.ui === "wo_site_upload") {
-            const noOffices = eq(officeTable.id, -1);
-            officeWhere = officeQuery ? and(officeQuery, noOffices) : noOffices;
-          } else {
-            const visibleOfficeIds =
-              (await resolveVisibleOfficeIds(ctx.db, scope)) ?? [];
-            const scopeFilter =
-              visibleOfficeIds.length > 0
-                ? inArray(officeTable.id, visibleOfficeIds)
-                : eq(officeTable.id, -1);
-            officeWhere = officeQuery
-              ? and(officeQuery, scopeFilter)
-              : scopeFilter;
-          }
-        }
+        const officeWhere = and(
+          officeQuery,
+          await visibleOfficesWhere(ctx.db, scope),
+        );
 
         const officeList = ctx.db
           .select()
