@@ -398,9 +398,9 @@ const UPLOAD_DESCRIPTIONS = [
 const COLUMNS = {
   users: ["id", "name", "email", "password", "contact_number", "role", "created_by", "status", "created_at", "updated_at"],
   offices: ["id", "name", "address", "state", "city", "gst_number", "pincode", "email", "status", "created_at", "updated_at"],
-  parent_clients: ["id", "name", "created_at", "updated_at"],
+  parent_clients: ["id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   clients: ["id", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
-  client_contacts: ["id", "client_id", "name", "designation", "contact_number", "email", "contact_type", "created_at", "updated_at"],
+  client_contacts: ["id", "client_id", "parent_client_id", "name", "designation", "contact_number", "email", "contact_type", "created_at", "updated_at"],
   contractors: ["id", "name", "contact_number", "email", "address", "gst_number", "pan_number", "status", "created_at", "updated_at"],
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
   sites: ["id", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
@@ -767,9 +767,36 @@ for (let i = 0; i < COUNT; i++) {
     nameCursor++;
   } while (takenParentNames.has(name.toLowerCase()));
   takenParentNames.add(name.toLowerCase());
-  const parent = add("parent_clients", { name, ...stamp(atWorkHour(addDays(BASE, int(0, 60)))) });
+  // A main client has a head office with the details a branch has, and its
+  // own contact persons.
+  const loc = pick(LOCATIONS);
+  const domain = `${slug(base.short).replace(/-/g, "")}.test`;
+  const parent = add("parent_clients", {
+    name,
+    address: address(loc),
+    state: loc.state,
+    city: loc.city,
+    pincode: pincode(loc),
+    gst_number: gstin(loc.state, pan("C", base.short)),
+    contact_number: chance(0.9) ? phone() : null,
+    email: chance(0.9) ? uniqueEmail("head office", domain) : null,
+    status: chance(0.03) ? "inactive" : "active",
+    ...stamp(atWorkHour(addDays(BASE, int(0, 60)))),
+  });
   parent._short = base.short;
   parents.push(parent);
+  for (let c = int(1, 2); c > 0; c--) {
+    const person = personName();
+    add("client_contacts", {
+      parent_client_id: parent.id,
+      name: person,
+      designation: pick(DESIGNATIONS),
+      contact_number: phone(),
+      email: uniqueEmail(person, domain),
+      contact_type: pick(CONTACT_TYPES),
+      ...stamp(addHours(parent.created_at, int(1, 24 * 60))),
+    });
+  }
 }
 const clients = [];
 const clientsByState = new Map();
