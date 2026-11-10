@@ -21,19 +21,8 @@ const { STATUS } = constants;
 
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
-export const createParentClientSchema = z.object({ name: nameValidator });
-
-export const updateParentClientSchema = createParentClientSchema.extend({
-  id: positiveIntValidator,
-});
-
-export const deleteParentClientSchema = z.object({
-  parentClientId: positiveIntValidator,
-});
-
-export const createClientSchema = z.object({
-  // null leaves the client as a standalone, ungrouped client.
-  parent_client_id: positiveIntValidator.nullable().optional(),
+// The details a main client and each of its branches both have.
+const clientDetailsSchema = z.object({
   name: nameValidator,
   address: addressValidator,
   state: stateValidator,
@@ -45,12 +34,8 @@ export const createClientSchema = z.object({
   status: statusEnum.optional(),
 });
 
-export const updateClientSchema = createClientSchema.extend({
-  id: positiveIntValidator,
-});
-
-export const createClientContactSchema = z.object({
-  client_id: positiveIntValidator,
+// A contact person's own fields; who they belong to is given apart.
+export const clientContactFieldsSchema = z.object({
   name: nameValidator,
   designation: z
     .string()
@@ -66,24 +51,74 @@ export const createClientContactSchema = z.object({
     .optional(),
 });
 
-export const updateClientContactSchema = createClientContactSchema.extend({
+const contactsToAddValidator = z.array(clientContactFieldsSchema).optional();
+const contactsToRemoveValidator = z.array(positiveIntValidator).optional();
+
+export const createParentClientSchema = clientDetailsSchema;
+
+export const updateParentClientSchema = createParentClientSchema.extend({
+  id: positiveIntValidator,
+});
+
+export const createParentClientWithContactsSchema = z.object({
+  parentClient: createParentClientSchema,
+  contacts: contactsToAddValidator,
+});
+
+export const updateParentClientWithContactsSchema = z.object({
+  parentClientId: positiveIntValidator,
+  parentClient: createParentClientSchema.partial(),
+  contactsToAdd: contactsToAddValidator,
+  contactsToRemove: contactsToRemoveValidator,
+});
+
+export const deleteParentClientSchema = z.object({
+  parentClientId: positiveIntValidator,
+});
+
+export const getParentClientSchema = z.object({
+  parentClientId: positiveIntValidator,
+});
+
+export const createClientSchema = clientDetailsSchema.extend({
+  // null leaves the client as a standalone, ungrouped client.
+  parent_client_id: positiveIntValidator.nullable().optional(),
+});
+
+export const updateClientSchema = createClientSchema.extend({
+  id: positiveIntValidator,
+});
+
+// Exactly one of a client (branch) or a main client.
+const hasOneContactOwner = (owner: {
+  client_id?: number;
+  parent_client_id?: number;
+}) => (owner.client_id === undefined) !== (owner.parent_client_id === undefined);
+
+export const createClientContactSchema = clientContactFieldsSchema
+  .extend({
+    client_id: positiveIntValidator.optional(),
+    parent_client_id: positiveIntValidator.optional(),
+  })
+  .refine(hasOneContactOwner, {
+    message: "A contact belongs to either a client or a main client",
+    path: ["client_id"],
+  });
+
+export const updateClientContactSchema = clientContactFieldsSchema.extend({
   id: positiveIntValidator,
 });
 
 export const createClientWithContactsSchema = z.object({
   client: createClientSchema,
-  contacts: z
-    .array(createClientContactSchema.omit({ client_id: true }))
-    .optional(),
+  contacts: contactsToAddValidator,
 });
 
 export const updateClientWithContactsSchema = z.object({
   clientId: positiveIntValidator,
   client: createClientSchema.partial(),
-  contactsToAdd: z
-    .array(createClientContactSchema.omit({ client_id: true }))
-    .optional(),
-  contactsToRemove: z.array(positiveIntValidator).optional(),
+  contactsToAdd: contactsToAddValidator,
+  contactsToRemove: contactsToRemoveValidator,
 });
 
 export const deleteClientContactSchema = z.object({
@@ -124,6 +159,17 @@ export const getClientContactSchema = z.object({
   clientContactId: positiveIntValidator,
 });
 
-export const getClientContactsSchema = z.object({
-  clientId: z.number(),
-});
+// A client's (branch's) or a main client's contacts.
+export const getClientContactsSchema = z
+  .object({
+    clientId: positiveIntValidator.optional(),
+    parentClientId: positiveIntValidator.optional(),
+  })
+  .refine(
+    (owner) =>
+      hasOneContactOwner({
+        client_id: owner.clientId,
+        parent_client_id: owner.parentClientId,
+      }),
+    { message: "Give either a client or a main client", path: ["clientId"] },
+  );

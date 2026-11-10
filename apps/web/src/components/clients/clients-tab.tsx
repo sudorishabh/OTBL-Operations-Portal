@@ -6,8 +6,10 @@ import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import { useDebounce } from "@/hooks/useDebounce";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import PaginationSummary from "@/components/shared/pagination-summary";
+import { cn } from "@/lib/utils";
 import ClientCard from "./client-card";
 import ParentClientGroup from "./parent-client-group";
+import { LIST_COLUMNS, LIST_SUBGRID } from "./client-list-parts";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import { Webhook } from "lucide-react";
 import ClientsSkeleton from "../skeleton/clients/clients-skeleton";
@@ -19,13 +21,7 @@ const CLIENTS_PAGE_SIZE = 10;
 
 type ClientGroupsPage = RouterOutputs["clientQuery"]["getClientGroups"];
 
-interface Props {
-  tab: string;
-}
-
-const ClientsTab = ({ tab }: Props) => {
-  const isClientTab = tab === "clients";
-
+const ClientsTab = () => {
   const { clientSearchQuery, clientFilters } = useClientManagementContext();
 
   const debouncedSearch = useDebounce(clientSearchQuery.trim(), 300);
@@ -55,10 +51,7 @@ const ClientsTab = ({ tab }: Props) => {
   const pageQueries: UseQueryResult<ClientGroupsPage>[] = trpc.useQueries(
     (t: any) =>
       pages.map((page) =>
-        t.clientQuery.getClientGroups(
-          { ...queryInput, page },
-          { enabled: isClientTab },
-        ),
+        t.clientQuery.getClientGroups({ ...queryInput, page }),
       ),
   );
 
@@ -102,7 +95,7 @@ const ClientsTab = ({ tab }: Props) => {
   );
 
   return (
-    <div className='space-y-4'>
+    <div className={cn("space-y-4 lg:gap-y-4 lg:space-y-0", LIST_COLUMNS)}>
       {groups.map(({ parentClient, branches }) => (
         <ParentClientGroup
           key={parentClient.id}
@@ -112,16 +105,17 @@ const ClientsTab = ({ tab }: Props) => {
       ))}
 
       {standalone.length > 0 && (
-        <div className='space-y-3'>
+        <div className={cn("space-y-3 lg:gap-y-3 lg:space-y-0", LIST_SUBGRID)}>
           {groups.length > 0 && (
-            <h3 className='pt-3 text-sm font-medium text-gray-500'>
+            <h3 className='pt-3 text-sm font-medium text-gray-500 lg:col-span-full'>
               Clients without a main client
               <span className='ml-1.5 tabular-nums text-gray-400'>
                 {lastLoadedPage?.totalStandalone ?? standalone.length}
               </span>
             </h3>
           )}
-          <div className='space-y-3'>
+          <div
+            className={cn("space-y-3 lg:gap-y-3 lg:space-y-0", LIST_SUBGRID)}>
             {standalone.map((client) => (
               <ClientCard
                 key={client.id}
@@ -133,10 +127,12 @@ const ClientsTab = ({ tab }: Props) => {
       )}
 
       {lastLoadedPage?.pagination.hasMore && (
-        <LoadMoreBtn
-          onClick={loadMore}
-          loading={isFetchingMore}
-        />
+        <div className='lg:col-span-full'>
+          <LoadMoreBtn
+            onClick={loadMore}
+            loading={isFetchingMore}
+          />
+        </div>
       )}
 
       <PaginationSummary
@@ -145,7 +141,7 @@ const ClientsTab = ({ tab }: Props) => {
         page={lastLoadedPage?.pagination.page}
         totalPages={lastLoadedPage?.pagination.totalPages}
         noun='clients'
-        className='rounded-lg border bg-white'
+        className='rounded-lg border bg-white lg:col-span-full'
       />
     </div>
   );

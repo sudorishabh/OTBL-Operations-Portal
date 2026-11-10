@@ -2,12 +2,15 @@
 import React from "react";
 import { ChevronRight } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
+import { cn } from "@/lib/utils";
 import {
   ClientContactLines,
   ClientCounts,
   ClientLink,
   ClientStatus,
+  ContactsButton,
   formatClientLocation,
+  LIST_SUBGRID,
   type ClientListItem,
 } from "./client-list-parts";
 
@@ -25,10 +28,17 @@ const getBranchLabel = (name: string, parentName: string) => {
   const prefix = parentName.trim().toLowerCase();
   const rest = trimmed.slice(prefix.length);
 
-  if (!prefix || !trimmed.toLowerCase().startsWith(prefix) || !SEPARATOR.test(rest)) {
+  if (
+    !prefix ||
+    !trimmed.toLowerCase().startsWith(prefix) ||
+    !SEPARATOR.test(rest)
+  ) {
     return capitalizeEachWord(trimmed);
   }
-  return capitalizeEachWord(rest.replace(SEPARATOR, "")) || capitalizeEachWord(trimmed);
+  return (
+    capitalizeEachWord(rest.replace(SEPARATOR, "")) ||
+    capitalizeEachWord(trimmed)
+  );
 };
 
 const BranchRow = ({ branch, parentName, isLast }: Props) => {
@@ -36,7 +46,7 @@ const BranchRow = ({ branch, parentName, isLast }: Props) => {
   const location = formatClientLocation(branch);
 
   return (
-    <li className='relative pl-10'>
+    <li className={cn("relative pl-10", LIST_SUBGRID)}>
       {/* Tree connector: an elbow into this row, and the rail on to the next. */}
       <span
         aria-hidden='true'
@@ -52,7 +62,10 @@ const BranchRow = ({ branch, parentName, isLast }: Props) => {
       <ClientLink
         clientId={branch.id}
         label={`Open branch ${label}`}
-        className='grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 rounded-lg px-3 py-3 transition-colors duration-150 hover:bg-gray-50 focus-visible:bg-gray-50 focus-visible:ring-2 focus-visible:ring-emerald-500/30 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto_auto]'>
+        className={cn(
+          "grid grid-cols-1 items-center gap-y-2 rounded-lg px-3 py-3 transition-colors duration-150 hover:bg-gray-50 focus-visible:bg-gray-50 focus-visible:ring-2 focus-visible:ring-emerald-500/30",
+          LIST_SUBGRID,
+        )}>
         <div className='min-w-0'>
           <div className='flex items-center gap-2'>
             <span
@@ -69,20 +82,22 @@ const BranchRow = ({ branch, parentName, isLast }: Props) => {
           </p>
         </div>
 
-        <ClientContactLines
-          client={branch}
-          className='col-start-1 row-start-2 lg:col-start-2 lg:row-start-1'
-        />
+        <ClientContactLines client={branch} />
 
-        <ClientCounts
-          client={branch}
-          className='col-start-1 row-start-3 lg:col-start-3 lg:row-start-1'
-        />
-
-        <ChevronRight
-          aria-hidden='true'
-          className='col-start-2 row-span-3 row-start-1 size-4 shrink-0 text-gray-300 transition-colors duration-150 group-hover:text-emerald-600 lg:col-start-4 lg:row-span-1'
-        />
+        <div className='flex flex-wrap items-center gap-x-4 gap-y-2 lg:justify-end'>
+          <ClientCounts client={branch} />
+          <div className='ml-auto flex items-center gap-3 lg:ml-0'>
+            <ContactsButton
+              owner={{ clientId: branch.id }}
+              ownerName={branch.name}
+              count={branch.contacts_count}
+            />
+            <ChevronRight
+              aria-hidden='true'
+              className='size-4 shrink-0 text-gray-300 transition-colors duration-150 group-hover:text-emerald-600'
+            />
+          </div>
+        </div>
       </ClientLink>
     </li>
   );

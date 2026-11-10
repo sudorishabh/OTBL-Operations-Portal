@@ -176,6 +176,13 @@
       "when": 1793790488302,
       "tag": "0024_order_rules_and_po_cost",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1794301568396,
+      "tag": "0025_main_client_details_and_contacts",
+      "breakpoints": true
     }
   ]
 }

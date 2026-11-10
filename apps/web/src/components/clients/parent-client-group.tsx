@@ -1,6 +1,13 @@
 "use client";
 import React, { useState } from "react";
-import { ChevronDown, Network, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  MoreVertical,
+  Network,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
 import {
@@ -13,46 +20,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useIsAdmin } from "@/contexts/AuthContext";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useApiError } from "@/hooks/useApiError";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import BranchRow from "./branch-row";
-import type { ClientListItem } from "./client-list-parts";
+import {
+  ClientContactLines,
+  ClientStatus,
+  ContactsButton,
+  formatClientLocation,
+  LIST_SUBGRID,
+  type ClientListItem,
+} from "./client-list-parts";
+import MainClientInfoChip, {
+  type MainClientInfo,
+} from "./main-client-info-chip";
 
 interface Props {
-  parentClient: { id: number; name: string };
-  // A main client has no page of its own; only its branches open.
+  parentClient: MainClientInfo;
+  // A main client has no page of its own; only its branches open. Its
+  // details show here, and its contacts in a dialog.
   branches: ClientListItem[];
 }
-
-const IconAction = ({
-  label,
-  icon: Icon,
-  onClick,
-  disabled,
-  className,
-}: {
-  label: string;
-  icon: React.ElementType;
-  onClick: () => void;
-  disabled?: boolean;
-  className?: string;
-}) => (
-  <button
-    type='button'
-    title={label}
-    aria-label={label}
-    onClick={onClick}
-    disabled={disabled}
-    className={cn(
-      "flex size-8 cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 outline-none transition-colors duration-150 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50",
-      className,
-    )}>
-    <Icon className='size-3.5' />
-  </button>
-);
 
 const ParentClientGroup = ({ parentClient, branches }: Props) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -69,6 +67,7 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
         utils.clientQuery.getParentClients.invalidate();
         utils.clientQuery.getClients.invalidate();
         utils.clientQuery.getClientGroups.invalidate();
+        utils.clientQuery.totalClientAndContact.invalidate();
       },
       onError: (error: any) => handleError(error, { showToast: true }),
     },
@@ -79,64 +78,117 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
 
   const displayName = parentClient.name.toUpperCase();
   const branchCount = branches.length;
+  const contactCount = parentClient.contacts_count;
+  const location = formatClientLocation(parentClient);
 
   return (
-    <section className='rounded-xl border border-gray-200 bg-white shadow-sm'>
-      <div className='flex flex-wrap items-center justify-between gap-3 px-4 pb-1 pt-3'>
-        <button
-          type='button'
-          onClick={() => setIsExpanded((value) => !value)}
-          aria-expanded={isExpanded}
-          className='flex min-w-0 cursor-pointer items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
-          <span className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100'>
+    <section
+      className={cn(
+        "rounded-xl border border-gray-200 bg-white shadow-sm",
+        LIST_SUBGRID,
+      )}>
+      {/* Stacked on phones; in the list's columns on large screens. */}
+      <div
+        className={cn(
+          "grid grid-cols-1 items-center gap-y-2 px-4 pb-1 pt-3",
+          LIST_SUBGRID,
+        )}>
+        {/* The name is the expand/collapse button, stretched over the whole
+            cell; the info chip sits above it so it stays its own control. */}
+        <div className='relative flex min-w-0 items-center gap-3'>
+          <span
+            aria-hidden='true'
+            className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100'>
             <Network className='size-4' />
           </span>
-          <span className='min-w-0'>
-            <span
-              className='block truncate text-[15px] font-semibold tracking-tight text-gray-900'
-              title={displayName}>
-              {displayName}
-            </span>
-            <span className='block text-xs text-gray-500'>
+          <div className='min-w-0'>
+            <div className='flex items-center gap-2'>
+              <button
+                type='button'
+                onClick={() => setIsExpanded((value) => !value)}
+                aria-expanded={isExpanded}
+                title={displayName}
+                className='min-w-0 cursor-pointer truncate text-left text-[15px] font-semibold tracking-tight text-gray-900 outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-emerald-500/30'>
+                {displayName}
+              </button>
+              <ClientStatus status={parentClient.status} />
+              <MainClientInfoChip
+                parentClient={parentClient}
+                branchCount={branchCount}
+                className='relative z-10'
+              />
+            </div>
+            <p
+              className='truncate text-xs text-gray-500'
+              title={location || undefined}>
               Main client with {branchCount}{" "}
               {branchCount === 1 ? "branch" : "branches"}
-            </span>
-          </span>
+              {location && ` · ${location}`}
+            </p>
+          </div>
           <ChevronDown
+            aria-hidden='true'
             className={cn(
               "size-4 shrink-0 text-gray-400 transition-transform duration-200",
               !isExpanded && "-rotate-90",
             )}
           />
-        </button>
+        </div>
 
-        {isAdmin && (
-          <div className='flex items-center gap-2'>
-            <CustomButton
-              text='Add Branch'
-              Icon={Plus}
-              variant='outline'
-              onClick={() => openDialog("create-client")}
-            />
-            <IconAction
-              label={`Rename ${displayName}`}
-              icon={Pencil}
-              onClick={() => openDialog("edit-parent-client")}
-            />
-            <IconAction
-              label={`Delete ${displayName}`}
-              icon={Trash2}
-              onClick={() => setIsConfirmingDelete(true)}
-              disabled={deleteParentClient.isPending}
-              className='hover:border-red-200 hover:bg-red-50 hover:text-red-600'
-            />
-          </div>
-        )}
+        <ClientContactLines
+          client={parentClient}
+          className='pl-12 lg:pl-0'
+        />
+
+        <div className='flex flex-wrap items-center gap-2 sm:pl-12 lg:justify-end lg:pl-0'>
+          <ContactsButton
+            owner={{ parentClientId: parentClient.id }}
+            ownerName={parentClient.name}
+            count={contactCount}
+            className='h-8 px-2.5'
+          />
+          {isAdmin && (
+            <>
+              <CustomButton
+                text='Add Branch'
+                Icon={Plus}
+                variant='outline'
+                onClick={() => openDialog("create-client")}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type='button'
+                    title='More actions'
+                    aria-label={`More actions for ${displayName}`}
+                    className='flex size-8 cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 outline-none transition-colors duration-150 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-emerald-500/30 data-[state=open]:bg-gray-50'>
+                    <MoreVertical className='size-4' />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end'>
+                  <DropdownMenuItem
+                    onClick={() => openDialog("edit-parent-client")}>
+                    <Pencil className='mr-2 size-4' />
+                    Edit main client
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={deleteParentClient.isPending}
+                    onClick={() => setIsConfirmingDelete(true)}
+                    className='text-red-600 focus:text-red-600'>
+                    <Trash2 className='mr-2 size-4' />
+                    Delete main client
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+        </div>
       </div>
 
       {isExpanded &&
         (branchCount > 0 ? (
-          <ul className='px-4 pb-3'>
+          <ul className={cn("px-4 pb-3", LIST_SUBGRID)}>
             {branches.map((branch, index) => (
               <BranchRow
                 key={branch.id}
@@ -147,7 +199,7 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
             ))}
           </ul>
         ) : (
-          <p className='pb-4 pl-16 pr-4 pt-2 text-sm text-gray-500'>
+          <p className='pb-4 pl-16 pr-4 pt-2 text-sm text-gray-500 lg:col-span-full'>
             No branches yet.
             {isAdmin && " Add the first one with Add Branch."}
           </p>
@@ -158,12 +210,15 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
         onOpenChange={setIsConfirmingDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete main client {displayName}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete main client {displayName}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Only the grouping is removed.{" "}
               {branchCount > 0
                 ? `Its ${branchCount} ${branchCount === 1 ? "branch stays" : "branches stay"} as standalone clients, with all their work orders and contacts.`
-                : "It has no branches."}
+                : "It has no branches."}{" "}
+              {contactCount > 0 &&
+                `Its own ${contactCount === 1 ? "contact is" : `${contactCount} contacts are`} deleted with it.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

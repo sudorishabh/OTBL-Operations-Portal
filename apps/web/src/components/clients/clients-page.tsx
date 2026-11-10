@@ -1,108 +1,33 @@
 "use client";
 import React from "react";
-import { Building2, Users } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ClientSearchFilter from "./client-search-filter";
-import useHandleParams from "@/hooks/useHandleParams";
-import { trpc } from "@/lib/trpc";
-import { Badge } from "@/components/ui/badge";
-import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
+import ClientSearchFilter from "./client-search-filter";
 import ClientsSkeleton from "@/components/skeleton/clients/clients-skeleton";
-import ClientContactsSkeleton from "@/components/skeleton/clients/client-contacts-skeleton";
-import { InlineSkeleton } from "@/components/skeleton/parts";
 import ScrollToTop from "@/components/scroll-to-top";
 
 const ClientsTab = dynamic(() => import("./clients-tab"), {
   loading: () => <ClientsSkeleton />,
 });
-const ClientContactTab = dynamic(() => import("./client-contact-tab"), {
-  loading: () => <ClientContactsSkeleton />,
-});
 const CreateClientDialog = dynamic(() => import("./create-client-dialog"));
 const ParentClientDialog = dynamic(() => import("./parent-client-dialog"));
-const CreateClientContactDialog = dynamic(
-  () => import("./create-client-contact-dialog"),
-);
 
+// Main clients with their branches, and clients without a main client.
+// Contact persons are kept on each main client and branch.
 const ClientsPage = () => {
-  const { getParam, setParam } = useHandleParams();
-  const clientsTab = getParam("tab") || "clients";
-
-  const { data, isLoading: isClientsLoading } =
-    trpc.clientQuery.totalClientAndContact.useQuery();
-
-  const handleTabChange = (value: string) => {
-    setParam("tab", value);
-  };
-
   return (
     <>
-      <div className='space-y-4 mt-8'>
-        <Tabs
-          value={clientsTab}
-          onValueChange={handleTabChange}
-          className='w-full'>
-          <div className='mb-4 space-y-3'>
-            <TabsList className='bg-gray-300/60 h-8!'>
-              <TabsTrigger
-                value='clients'
-                className='text-xs cursor-pointer flex items-center gap-2'>
-                <Building2 className='h-4 w-4 text-gray-500' />
-                Clients
-                <Badge
-                  variant='secondary'
-                  className='ml-1 text-xs rounded-full'>
-                  {isClientsLoading ? (
-                    <InlineSkeleton className='bg-gray-300/70' />
-                  ) : (
-                    data?.totalClients || 0
-                  )}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger
-                value='contacts'
-                className='text-xs cursor-pointer flex items-center gap-2'>
-                <Users className='h-4 w-4 text-gray-500' />
-                Contacts
-                <Badge
-                  variant='secondary'
-                  className='ml-1 text-xs rounded-full'>
-                  {isClientsLoading ? (
-                    <InlineSkeleton className='bg-gray-300/70' />
-                  ) : (
-                    data?.totalContacts || 0
-                  )}
-                </Badge>
-              </TabsTrigger>
-            </TabsList>
-
-            <ClientSearchFilter
-              type={clientsTab === "clients" ? "clients" : "contacts"}
-            />
-          </div>
-          <Suspense
-            fallback={
-              clientsTab === "contacts" ? (
-                <ClientContactsSkeleton />
-              ) : (
-                <ClientsSkeleton />
-              )
-            }>
-            <TabsContent value='clients'>
-              <ClientsTab tab={clientsTab} />
-            </TabsContent>
-
-            <TabsContent value='contacts'>
-              <ClientContactTab tab={clientsTab} />
-            </TabsContent>
-          </Suspense>
-        </Tabs>
+      <div className='mt-8 space-y-4'>
+        <div className='mb-4'>
+          <ClientSearchFilter />
+        </div>
+        <Suspense fallback={<ClientsSkeleton />}>
+          <ClientsTab />
+        </Suspense>
       </div>
 
       <CreateClientDialog />
       <ParentClientDialog />
-      <CreateClientContactDialog />
       <ScrollToTop />
     </>
   );

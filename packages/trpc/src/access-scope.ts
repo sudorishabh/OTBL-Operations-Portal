@@ -1,4 +1,4 @@
-import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or, sql, type SQL } from "drizzle-orm";
 import type { Database } from "@pkg/db";
 import { schema } from "@pkg/db";
 import type { UserRole } from "@pkg/utils/auth";
@@ -6,6 +6,7 @@ import { USER_ROLES } from "@pkg/utils/auth";
 import { forbidden, notFound } from "./errors";
 
 const {
+  clientTable,
   officeUserTable,
   workOrderSiteTable,
   workOrderSiteUserTable,
@@ -327,6 +328,40 @@ export async function assertCanAccessClient(
   const allowed = await clientIdsVisibleToScope(db, scope);
   if (allowed?.includes(clientId)) return;
   throw forbidden("access this client");
+}
+
+// The main clients the given clients (branches) belong to.
+export async function parentClientIdsOfClients(
+  db: Database,
+  clientIds: number[],
+): Promise<number[]> {
+  if (clientIds.length === 0) return [];
+
+  const rows = await db
+    .selectDistinct({ id: clientTable.parent_client_id })
+    .from(clientTable)
+    .where(
+      and(
+        inArray(clientTable.id, clientIds),
+        isNotNull(clientTable.parent_client_id),
+      ),
+    );
+  return rows.map((r) => r.id!);
+}
+
+// A restricted user may see a main client once they can see one of its
+// branches.
+export async function assertCanAccessParentClient(
+  db: Database,
+  scope: AccessScope,
+  parentClientId: number,
+): Promise<void> {
+  if (scope.kind === "full") return;
+
+  const clientIds = await clientIdsVisibleToScope(db, scope);
+  const allowed = await parentClientIdsOfClients(db, clientIds ?? []);
+  if (allowed.includes(parentClientId)) return;
+  throw forbidden("access this main client");
 }
 
 export async function assertCanAccessProposal(

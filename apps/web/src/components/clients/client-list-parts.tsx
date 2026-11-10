@@ -1,17 +1,32 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { Users } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
 import { cn } from "@/lib/utils";
+import type { ContactOwner } from "./client-contacts-dialog";
 
-// Shared by the branch rows and the standalone client cards on the clients list.
+const ClientContactsDialog = dynamic(() => import("./client-contacts-dialog"));
+
+// On large screens the whole clients list is one grid, so the main client
+// headers, branch rows and client cards line up in the same three columns:
+// who and where, phone and email, then counts and actions. Each level in
+// between is a subgrid spanning them.
+export const LIST_COLUMNS =
+  "lg:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto] lg:gap-x-4";
+export const LIST_SUBGRID = "lg:col-span-full lg:grid lg:grid-cols-subgrid";
+
+// Shared by the branch rows, the standalone client cards and the main client
+// headers on the clients list. Main clients added before they had details
+// have none.
 export interface ClientListItem {
   id: number;
   name: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  pincode?: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
   contact_number?: string | null;
   email?: string | null;
   status?: string;
@@ -32,7 +47,8 @@ export const formatClientLocation = (client: ClientListItem) => {
   return [location, client.pincode].filter(Boolean).join(" ");
 };
 
-// The whole row/card opens the client page, so it acts as one link.
+// The whole row/card opens the client page, so it acts as one link. Buttons
+// inside it, and dialogs they open, don't.
 export const ClientLink = ({
   clientId,
   label,
@@ -52,8 +68,12 @@ export const ClientLink = ({
       role='link'
       tabIndex={0}
       aria-label={label}
-      onClick={open}
+      onClick={(e) => {
+        // A dialog's clicks reach here through its portal; skip them.
+        if (e.currentTarget.contains(e.target as Node)) open();
+      }}
       onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           open();
@@ -157,3 +177,50 @@ export const ClientCounts = ({
     />
   </div>
 );
+
+// Shows how many contact persons a client or main client has and opens them.
+// The dialog mounts on first open, so a long list doesn't build one per row.
+export const ContactsButton = ({
+  owner,
+  ownerName,
+  count = 0,
+  className,
+}: {
+  owner: ContactOwner;
+  ownerName: string;
+  count?: number;
+  className?: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
+  const label = count === 1 ? "1 contact" : `${count} contacts`;
+
+  return (
+    <>
+      <button
+        type='button'
+        onClick={(e) => {
+          e.stopPropagation();
+          setHasOpened(true);
+          setIsOpen(true);
+        }}
+        title={`Contacts of ${capitalizeEachWord(ownerName)}`}
+        className={cn(
+          "inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-gray-200 bg-white px-2 text-xs font-medium outline-none transition-colors duration-150 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/30",
+          count === 0 ? "text-gray-400" : "text-gray-700",
+          className,
+        )}>
+        <Users className='size-3.5' />
+        <span className='tabular-nums'>{label}</span>
+      </button>
+      {hasOpened && (
+        <ClientContactsDialog
+          open={isOpen}
+          onClose={() => setIsOpen(false)}
+          owner={owner}
+          ownerName={ownerName}
+        />
+      )}
+    </>
+  );
+};
