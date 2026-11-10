@@ -51,6 +51,7 @@ const CreateSiteDialog = () => {
     onSuccess: () => {
       toast.success("Site added successfully");
       utils.officeQuery.getOffices.invalidate();
+      utils.officeQuery.getOffice.invalidate();
       utils.siteQuery.getSitesByOfficeId.invalidate();
       handleClose();
     },
@@ -63,6 +64,7 @@ const CreateSiteDialog = () => {
     onSuccess: () => {
       toast.success("Site updated successfully");
       utils.officeQuery.getOffices.invalidate();
+      utils.officeQuery.getOffice.invalidate();
       utils.siteQuery.getSitesByOfficeId.invalidate();
       handleClose();
     },
