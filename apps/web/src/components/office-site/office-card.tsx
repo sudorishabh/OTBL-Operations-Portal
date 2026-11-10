@@ -315,14 +315,6 @@ const OfficeCard: React.FC<{ office: Office }> = ({ office }) => {
         </div>
       </div>
       <OfficeSiteTable officeId={office.id} />
-
-      {office.siteCount > 6 && (
-        <div className='flex items-center justify-center pt-3'>
-          <p className='text-sm text-gray-500'>
-            {office.siteCount - 6} more sites
-          </p>
-        </div>
-      )}
     </div>
   );
 };
