@@ -4,6 +4,7 @@ import CreateVendorButton from "@/components/vendor/create-vendor-btn";
 import VendorPage from "@/components/vendor/vendor-page";
 import { VENDOR_DESCRIPTION } from "@/components/vendor/vendor-labels";
 import { MultiRoleProtectedRoute } from "@/components/auth";
+import { VendorListSkeleton } from "@/components/skeleton/vendor/vendor-skeletons";
 import { constants } from "@pkg/utils";
 
 const { ROLES } = constants;
@@ -25,7 +26,7 @@ const page = () => {
             <CreateVendorButton />
           </Suspense>
         }>
-        <Suspense fallback={null}>
+        <Suspense fallback={<VendorListSkeleton />}>
           <VendorPage />
         </Suspense>
       </PageWrapper>

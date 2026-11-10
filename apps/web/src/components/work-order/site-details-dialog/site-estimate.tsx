@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import CustomButton from "@/components/shared/btn";
 import UploadSectionHeader from "@/components/shared/upload-section-header";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // The contaminated soil record the estimate is saved as, and the site
 // document type of its estimate document.
@@ -65,6 +66,7 @@ const EstimateForm = ({
   activities,
   getActivityData,
   siteDocuments,
+  documentsLoading,
 }: {
   woSiteId: number;
   processType: string | undefined;
@@ -94,6 +96,7 @@ const EstimateForm = ({
         document_id?: string | null;
       }[]
     | undefined;
+  documentsLoading: boolean;
 }) => {
   const utils = trpc.useUtils();
   const isBioremediation = processType === "bioremediation";
@@ -377,6 +380,7 @@ const EstimateForm = ({
 
       <div className='grid grid-cols-1 gap-3 lg:grid-cols-3'>
         <DocumentsField
+          isLoading={documentsLoading}
           label='Doc upload'
           files={pendingDocs}
           onFilesChange={setPendingDocs}
@@ -548,15 +552,18 @@ const SiteEstimate = ({
           activities={siteActivitiesQuery.data}
           getActivityData={getActivityData}
           siteDocuments={siteDocumentsQuery.data}
+          documentsLoading={siteDocumentsQuery.isLoading}
         />
       ) : (
         <div className='space-y-3'>
           <EstimateHeader />
-          <p className='rounded-lg border border-dashed border-gray-200 px-3 py-2.5 text-xs text-gray-400'>
-            {siteActivitiesQuery.isLoading
-              ? "Loading the site's activities…"
-              : "This site has no activities to estimate."}
-          </p>
+          {siteActivitiesQuery.isLoading ? (
+            <Skeleton className='h-[70px] w-full rounded-lg' />
+          ) : (
+            <p className='rounded-lg border border-dashed border-gray-200 px-3 py-2.5 text-xs text-gray-400'>
+              This site has no activities to estimate.
+            </p>
+          )}
         </div>
       )}
     </div>

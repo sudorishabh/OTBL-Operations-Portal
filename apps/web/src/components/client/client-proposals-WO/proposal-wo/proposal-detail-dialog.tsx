@@ -21,6 +21,7 @@ import React from "react";
 import toast from "react-hot-toast";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { toDocuments } from "@/lib/documents";
+import { DetailsSkeleton } from "@/components/skeleton/dialog-skeletons";
 
 const ProposalDetailDialog = () => {
   const { getParam, deleteParams, deleteParam, setParam } = useHandleParams();
@@ -89,12 +90,7 @@ const ProposalDetailDialog = () => {
         isFull ? deleteParam("window") : setParam("window", "full")
       }>
       {isLoading ? (
-        <div className='flex items-center justify-center p-12'>
-          <div className='animate-pulse flex flex-col items-center gap-4'>
-            <div className='h-12 w-12 bg-gray-200 rounded-full'></div>
-            <div className='h-4 w-48 bg-gray-200 rounded'></div>
-          </div>
-        </div>
+        <DetailsSkeleton />
       ) : proposal ? (
         <div className='space-y-8 p-1'>
           <div className='bg-white rounded-xl border border-gray-100 shadow-sm p-6'>

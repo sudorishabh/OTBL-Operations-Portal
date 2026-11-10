@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import { capitalFirstLetter } from "@pkg/utils";
-import SitesSkeleton from "../skeleton/office-site/sites-skeleton";
+import { OfficeSitesTableSkeleton } from "../skeleton/office-site/office-site-skeleton";
 import Error from "@/components/shared/error";
 
 type Site = {
@@ -40,7 +40,7 @@ const OfficeSiteTable: React.FC<Props> = ({ officeId }) => {
   });
 
   if (sitesLoading) {
-    return <SitesSkeleton />;
+    return <OfficeSitesTableSkeleton />;
   }
 
   if (isError && error) {

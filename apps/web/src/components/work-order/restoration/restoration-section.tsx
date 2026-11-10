@@ -7,7 +7,7 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { useIsManager } from "@/contexts/AuthContext";
 import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
-import { Skeleton } from "@/components/ui/skeleton";
+import RestorationCardSkeleton from "@/components/skeleton/work-order/restoration-card-skeleton";
 import ProcessSectionHeader from "../process-section-header";
 import RestorationCard from "./restoration-card";
 import useRestorationRates from "./use-restoration-rates";
@@ -45,6 +45,11 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
 
   const { rates, estimatedTotal } = useRestorationRates(scheduleOfRates);
 
+  // Most work orders have their restoration set up, so load as its panel.
+  if (restorationQuery.isLoading) {
+    return <RestorationCardSkeleton labels={rates.map((rate) => rate.label)} />;
+  }
+
   // Set up, the restoration is one panel that opens its page, which sits
   // under whichever work order page this is.
   if (restoration) {
@@ -60,10 +65,6 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
   }
 
   const renderState = () => {
-    if (restorationQuery.isLoading) {
-      return <Skeleton className='h-20 w-full rounded-lg' />;
-    }
-
     if (restorationQuery.isError) {
       return (
         <Error

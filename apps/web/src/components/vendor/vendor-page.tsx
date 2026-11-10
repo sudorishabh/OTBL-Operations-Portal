@@ -14,7 +14,7 @@ import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { VendorsTableSkeleton } from "@/components/skeleton/vendor/vendor-skeletons";
 import {
   Select,
   SelectContent,
@@ -133,16 +133,7 @@ const VendorPage = () => {
 
   const renderList = () => {
     if (isInitialLoading) {
-      return (
-        <div className='space-y-2'>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton
-              key={i}
-              className='h-12 w-full'
-            />
-          ))}
-        </div>
-      );
+      return <VendorsTableSkeleton withActions={isManager} />;
     }
 
     if (failedQuery) {

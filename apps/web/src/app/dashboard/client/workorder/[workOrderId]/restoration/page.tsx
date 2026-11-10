@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import PageLoading from "@/components/loading/PageLoading";
+import { RestorationPageSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 import RestorationPage from "@/components/work-order/restoration/restoration-page";
 
 type PageProps = {
@@ -11,7 +11,7 @@ const ClientWorkOrderRestorationPage = ({ params }: PageProps) => {
   const { workOrderId } = React.use(params);
 
   return (
-    <React.Suspense fallback={<PageLoading />}>
+    <React.Suspense fallback={<RestorationPageSkeleton />}>
       <RestorationPage
         workOrderId={workOrderId}
         from='client'

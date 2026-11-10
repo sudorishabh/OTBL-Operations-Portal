@@ -45,6 +45,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonRegion, TextLine } from "@/components/skeleton/parts";
 
 const { MAX_DOCUMENTS, PHOTO_EXTENSIONS } = constants;
 
@@ -235,19 +237,56 @@ export default function WoSiteOperatorUploadPage() {
   }
 
   if (isLoading) {
-    return shell(
-      <div className='animate-pulse space-y-3'>
-        <div className='rounded-xl border border-gray-200 bg-white p-4'>
-          <div className='h-4 w-1/2 rounded bg-gray-200' />
-          <div className='mt-2 h-3 w-32 rounded bg-gray-100' />
-          <div className='mt-3.5 grid grid-cols-2 gap-4 border-t border-gray-100 pt-3.5'>
-            <div className='h-9 rounded bg-gray-100' />
-            <div className='h-9 rounded bg-gray-100' />
-          </div>
+    // The site card line for line, then the two document sections, whose
+    // headings never change.
+    const fields = (widths: string[]) =>
+      widths.map((width) => (
+        <div key={width}>
+          <TextLine
+            line='h-[17px]'
+            className='h-2.5 w-16'
+          />
+          <TextLine
+            line='mt-0.5 h-5'
+            className={`h-3.5 ${width}`}
+          />
         </div>
-        <div className='h-36 rounded-xl border border-gray-200 bg-white' />
-        <div className='h-44 rounded-xl border border-gray-200 bg-white' />
-      </div>,
+      ));
+    return shell(
+      <SkeletonRegion
+        label='Loading the site'
+        className='space-y-3'>
+        <section className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
+          <div className='flex h-6 items-center justify-between gap-2'>
+            <Skeleton className='h-4 w-1/2' />
+            <Skeleton className='h-5 w-16 rounded-full' />
+          </div>
+          <TextLine
+            line='mt-1 h-[19px]'
+            className='w-44'
+          />
+          <TextLine
+            line='mt-1.5 h-[19.5px]'
+            className='w-2/3'
+          />
+          <div className='mt-3 grid grid-cols-1 gap-x-4 gap-y-3 border-t border-gray-100 pt-3 sm:grid-cols-2'>
+            {fields(["w-64", "w-36"])}
+          </div>
+          <div className='mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-gray-100 pt-3 sm:grid-cols-3'>
+            {fields(["w-32", "w-24", "w-20"])}
+          </div>
+        </section>
+        <Section
+          title='Add documents'
+          description='Measurement sheets, bills and other PDFs, or photos from the camera.'>
+          <Skeleton className='h-9 w-full rounded-lg' />
+        </Section>
+        <Section
+          title='Uploaded documents'
+          action={<Skeleton className='h-5 w-7 rounded-full' />}>
+          <Skeleton className='h-36 w-full rounded-lg bg-gray-100' />
+        </Section>
+      </SkeletonRegion>,
     );
   }
 

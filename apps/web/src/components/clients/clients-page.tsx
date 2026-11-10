@@ -9,10 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import ClientsSkeleton from "@/components/skeleton/clients/clients-skeleton";
+import ClientContactsSkeleton from "@/components/skeleton/clients/client-contacts-skeleton";
+import { InlineSkeleton } from "@/components/skeleton/parts";
 import ScrollToTop from "@/components/scroll-to-top";
 
-const ClientsTab = dynamic(() => import("./clients-tab"));
-const ClientContactTab = dynamic(() => import("./client-contact-tab"));
+const ClientsTab = dynamic(() => import("./clients-tab"), {
+  loading: () => <ClientsSkeleton />,
+});
+const ClientContactTab = dynamic(() => import("./client-contact-tab"), {
+  loading: () => <ClientContactsSkeleton />,
+});
 const CreateClientDialog = dynamic(() => import("./create-client-dialog"));
 const ParentClientDialog = dynamic(() => import("./parent-client-dialog"));
 const CreateClientContactDialog = dynamic(
@@ -52,7 +58,11 @@ const ClientsPage = () => {
                 <Badge
                   variant='secondary'
                   className='ml-1 text-xs rounded-full'>
-                  {data?.totalClients || 0}
+                  {isClientsLoading ? (
+                    <InlineSkeleton className='bg-gray-300/70' />
+                  ) : (
+                    data?.totalClients || 0
+                  )}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger
@@ -63,12 +73,23 @@ const ClientsPage = () => {
                 <Badge
                   variant='secondary'
                   className='ml-1 text-xs rounded-full'>
-                  {data?.totalContacts || 0}
+                  {isClientsLoading ? (
+                    <InlineSkeleton className='bg-gray-300/70' />
+                  ) : (
+                    data?.totalContacts || 0
+                  )}
                 </Badge>
               </TabsTrigger>
             </TabsList>
           </div>
-          <Suspense fallback={<ClientsSkeleton />}>
+          <Suspense
+            fallback={
+              clientsTab === "contacts" ? (
+                <ClientContactsSkeleton />
+              ) : (
+                <ClientsSkeleton />
+              )
+            }>
             <TabsContent value='clients'>
               <ClientsTab tab={clientsTab} />
             </TabsContent>

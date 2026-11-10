@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Maximize2, Minimize2 } from "lucide-react";
-import Loading from "../loading/Loading";
+import { FormSkeleton, ListSkeleton } from "../skeleton/dialog-skeletons";
 
 type HeightMode = "auto" | "fixed" | "full";
 
@@ -26,6 +26,8 @@ interface Props {
 
   heightMode?: HeightMode;
   isLoading?: boolean;
+  // What to sketch while loading: a form (the default) or a list.
+  loadingSkeleton?: "form" | "list";
   isFullScreen?: boolean;
   onToggleFullScreen?: () => void;
 }
@@ -41,6 +43,7 @@ const DialogWindow = ({
   heightFull,
   heightMode = "auto",
   isLoading,
+  loadingSkeleton = "form",
   isFullScreen,
   onToggleFullScreen,
 }: Props) => {
@@ -122,9 +125,11 @@ const DialogWindow = ({
             "pb-1",
           )}>
           {isLoading ? (
-            <div className='h-full flex items-center justify-center min-h-[200px]'>
-              <Loading />
-            </div>
+            loadingSkeleton === "list" ? (
+              <ListSkeleton />
+            ) : (
+              <FormSkeleton />
+            )
           ) : (
             <div className='h-full'>{children}</div>
           )}

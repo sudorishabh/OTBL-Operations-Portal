@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Form } from "@/components/ui/form";
 import Input from "@/components/shared/input";
 import CustomButton from "@/components/shared/btn";
-import { Skeleton } from "@/components/ui/skeleton";
+import ProfileSkeleton from "@/components/skeleton/profile/profile-skeleton";
 import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -136,11 +136,7 @@ export default function ProfilePage() {
       <PageWrapper
         title='Profile'
         description='View and update your account details'>
-        <div className='mt-6 max-w-2xl space-y-3'>
-          <Skeleton className='h-28 w-full rounded-xl' />
-          <Skeleton className='h-56 w-full rounded-xl' />
-          <Skeleton className='h-52 w-full rounded-xl' />
-        </div>
+        <ProfileSkeleton />
       </PageWrapper>
     );
   }

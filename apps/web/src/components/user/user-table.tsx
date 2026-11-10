@@ -35,7 +35,7 @@ import useHandleParams from "@/hooks/useHandleParams";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import StatusIndicator from "../shared/status-indicator";
 import { userTypes } from "@pkg/schema";
-import UserPageSkeleton from "../skeleton/user/user-tab-skeleton";
+import UserTabSkeleton from "../skeleton/user/user-tab-skeleton";
 import { toast } from "react-hot-toast";
 import Error from "@/components/shared/error";
 
@@ -138,7 +138,7 @@ const UserTable = () => {
     }
   };
 
-  if (isInitialLoading) return <UserPageSkeleton />;
+  if (isInitialLoading) return <UserTabSkeleton />;
 
   if (failedQuery?.error) {
     return (

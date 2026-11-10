@@ -93,6 +93,7 @@ const RestorationCompletion = ({ restoration }: Props) => {
       />
 
       <DocumentsField
+        isLoading={documentsQuery.isLoading}
         label='Upload completion certificate'
         files={files}
         onFilesChange={setFiles}

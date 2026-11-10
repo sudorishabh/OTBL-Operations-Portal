@@ -7,7 +7,9 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import Error from "@/components/shared/error";
 import OfficeSiteFilter from "./office-site-filter";
-import OfficeSiteSkeleton from "../skeleton/office-site/office-site-skeleton";
+import OfficeSiteSkeleton, {
+  OfficeCardLoading,
+} from "../skeleton/office-site/office-site-skeleton";
 import ScrollToTop from "@/components/scroll-to-top";
 
 const CreateOfficeDialog = dynamic(() => import("./create-office-dialog"));
@@ -17,7 +19,9 @@ const OfficeDetailsDialog = dynamic(() => import("./office-details-dialog"));
 const ManageOfficeMembersDialog = dynamic(
   () => import("./manage-office-members-dialog"),
 );
-const OfficeCard = dynamic(() => import("./office-card"));
+const OfficeCard = dynamic(() => import("./office-card"), {
+  loading: () => <OfficeCardLoading />,
+});
 
 const OfficeSitePage = () => {
   const { setSearchQuery, filters, setFilters, searchQuery, resetFilters } =

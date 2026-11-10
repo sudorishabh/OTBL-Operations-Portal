@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
 import { trpc } from "@/lib/trpc";
-import Loading from "@/components/loading/Loading";
+import { ListSkeleton } from "@/components/skeleton/dialog-skeletons";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import {
   Table,
@@ -184,7 +184,7 @@ const OfficeDetailsDialog = () => {
         </div>
 
         {isLoading && page === 1 ? (
-          <Loading />
+          <ListSkeleton />
         ) : allSites.length === 0 ? (
           <div className='text-center py-12 text-muted-foreground'>
             No sites found for this office

@@ -5,7 +5,9 @@ import CreateUserButton from "@/components/user/create-user-button";
 import UserPageSkeleton from "@/components/skeleton/user/user-page-skeleton";
 import { AdminRoute } from "@/components/auth";
 
-const UserPage = dynamic(() => import("@/components/user/user-page"));
+const UserPage = dynamic(() => import("@/components/user/user-page"), {
+  loading: () => <UserPageSkeleton />,
+});
 
 const page = () => {
   return (

@@ -4,7 +4,7 @@ import React from "react";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
 import { trpc } from "@/lib/trpc";
-import Loading from "@/components/loading/Loading";
+import { ListSkeleton } from "@/components/skeleton/dialog-skeletons";
 import { Badge } from "@/components/ui/badge";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
 import { Briefcase, Users } from "lucide-react";
@@ -61,7 +61,7 @@ const SiteWorkOrdersDialog = () => {
       size='lg'
       heightMode='full'>
       {isLoading ? (
-        <Loading />
+        <ListSkeleton />
       ) : rows.length === 0 ? (
         <div className='text-center py-12 text-sm text-muted-foreground'>
           This site isn&apos;t part of any work order yet.

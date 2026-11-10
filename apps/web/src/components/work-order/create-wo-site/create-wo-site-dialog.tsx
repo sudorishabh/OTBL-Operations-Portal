@@ -27,6 +27,8 @@ import toast from "react-hot-toast";
 import useHandleParams from "@/hooks/useHandleParams";
 import CustomButton from "@/components/shared/btn";
 import WOSiteCreationWay from "./wo-site-creation-way";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonRegion } from "@/components/skeleton/parts";
 
 interface Props {
   workOrder: any;
@@ -321,9 +323,19 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
 
                     <div className='grid grid-cols-1 gap-2 min-h-[200px]'>
                       {isLoadingSites && allSites.length === 0 ? (
-                        <div className='flex items-center justify-center p-8'>
-                          <Loader2 className='w-6 h-6 animate-spin text-primary/40' />
-                        </div>
+                        // Site options, each a name over its address.
+                        <SkeletonRegion
+                          label='Loading sites'
+                          className='grid grid-cols-1 gap-2'>
+                          {["w-40", "w-52", "w-36"].map((width) => (
+                            <div
+                              key={width}
+                              className='flex h-16 flex-col justify-center gap-1.5 rounded-lg border-2 border-slate-100 bg-white p-3'>
+                              <Skeleton className={`h-3.5 ${width}`} />
+                              <Skeleton className='h-3 w-56' />
+                            </div>
+                          ))}
+                        </SkeletonRegion>
                       ) : allSites.length > 0 ? (
                         allSites.map((site) => {
                           const isSelected = selectedSiteId === site.id;

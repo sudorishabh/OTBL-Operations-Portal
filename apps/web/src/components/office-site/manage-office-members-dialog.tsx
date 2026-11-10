@@ -21,7 +21,8 @@ import { cn } from "@/lib/utils";
 import { capitalizeEachWord, constants } from "@pkg/utils";
 import toast from "react-hot-toast";
 import { useApiError } from "@/hooks/useApiError";
-import Loading from "@/components/loading/Loading";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonRegion } from "@/components/skeleton/parts";
 
 const { ROLES } = constants;
 
@@ -209,7 +210,23 @@ const ManageOfficeMembersDialog = () => {
               Currently assigned
             </p>
             {isLoading ? (
-              <Loading />
+              <SkeletonRegion
+                label='Loading the members'
+                className='space-y-3'>
+                {[["w-28"], ["w-24", "w-32"]].map((chips, row) => (
+                  <div
+                    key={row}
+                    className='flex items-center gap-2'>
+                    <Skeleton className='h-3 w-20 shrink-0' />
+                    {chips.map((width) => (
+                      <Skeleton
+                        key={width}
+                        className={`h-7 rounded-full ${width}`}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </SkeletonRegion>
             ) : (
               <div className='space-y-3'>
                 <div className='flex flex-wrap items-center gap-2'>

@@ -8,6 +8,7 @@ import { capitalizeEachWord } from "@pkg/utils";
 import { useIsManager } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import WoSiteOperatorsDialog from "./wo-site-operators-dialog";
+import { InlineSkeleton } from "@/components/skeleton/parts";
 
 type Props = {
   woSiteId: number;
@@ -59,7 +60,7 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
         </span>
 
         {isLoading ? (
-          <span className='h-5 w-40 animate-pulse rounded-full bg-muted/60' />
+          <InlineSkeleton className='h-5 w-40 rounded-full' />
         ) : operators.length === 0 ? (
           <span className='text-xs text-gray-400'>
             None assigned yet. Only assigned operators can upload documents to
