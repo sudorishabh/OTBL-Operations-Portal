@@ -9,6 +9,7 @@ import {
   isNull,
   like,
   or,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
@@ -17,8 +18,10 @@ import { protectedProcedure } from "../../core";
 import {
   type AccessScope,
   assertCanAccessClient,
+  assertCanAccessParentClient,
   clientIdsVisibleToScope,
   getAccessScope,
+  parentClientIdsOfClients,
 } from "../../access-scope";
 import { clientSchemas } from "@pkg/schema";
 import { notFound, fromDatabaseError } from "../../errors";
@@ -112,6 +115,24 @@ const clientOrder = (sort: ClientSort | undefined) => {
     default:
       return [desc(clientTable.created_at), desc(clientTable.id)];
   }
+};
+
+// Contacts of the clients a user may see and of those clients' main clients;
+// undefined for a full-access user.
+const visibleContactsWhere = async (
+  db: Database,
+  clientIds: number[] | null,
+) => {
+  if (clientIds === null) return undefined;
+  if (clientIds.length === 0) return eq(clientContactTable.id, -1);
+
+  const parentClientIds = await parentClientIdsOfClients(db, clientIds);
+  return or(
+    inArray(clientContactTable.client_id, clientIds),
+    parentClientIds.length > 0
+      ? inArray(clientContactTable.parent_client_id, parentClientIds)
+      : undefined,
+  );
 };
 
 type WithClientCounts<T> = T & {
@@ -219,6 +240,48 @@ export const clientQueryRouter = router({
     }),
   ),
 
+  // A main client's details and contact persons.
+  getParentClient: protectedProcedure
+    .input(clientSchemas.getParentClientSchema)
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        try {
+          const [parentClient] = await ctx.db
+            .select()
+            .from(parentClientTable)
+            .where(eq(parentClientTable.id, input.parentClientId));
+
+          if (!parentClient) {
+            throw notFound("Main client", input.parentClientId);
+          }
+
+          const scope = await getAccessScope(
+            ctx.db,
+            Number(ctx.user!.sub),
+            ctx.user!.role,
+          );
+          await assertCanAccessParentClient(
+            ctx.db,
+            scope,
+            input.parentClientId,
+          );
+
+          const contacts = await ctx.db
+            .select()
+            .from(clientContactTable)
+            .where(eq(clientContactTable.parent_client_id, input.parentClientId))
+            .orderBy(asc(clientContactTable.name), asc(clientContactTable.id));
+
+          return { parentClient, contacts };
+        } catch (error) {
+          if (error && typeof error === "object" && "errorCode" in error) {
+            throw error;
+          }
+          throw fromDatabaseError(error, "Fetching main client");
+        }
+      }),
+    ),
+
   // Every client the user can see, with only what list filters show and
   // search by; also gives the states clients are in.
   getClientOptions: protectedProcedure.query(
@@ -278,12 +341,8 @@ export const clientQueryRouter = router({
           .from(clientTable)
           .where(clientWhere);
 
-        const contactWhere =
-          scope.kind === "full"
-            ? undefined
-            : clientIds && clientIds.length > 0
-              ? inArray(clientContactTable.client_id, clientIds)
-              : eq(clientContactTable.client_id, -1);
+        // Main clients' contacts count too.
+        const contactWhere = await visibleContactsWhere(ctx.db, clientIds);
 
         const contactsResult = await ctx.db
           .select({ count: count() })
@@ -385,12 +444,8 @@ export const clientQueryRouter = router({
         try {
           // Main clients are few, so all of them are read and sliced here.
           // Unfiltered, a full-access user also sees ones without branches.
-          // created_at is selected as DISTINCT can only order by its columns.
-          const parentColumns = {
-            id: parentClientTable.id,
-            name: parentClientTable.name,
-            created_at: parentClientTable.created_at,
-          };
+          // All columns are selected, as DISTINCT can only order by them.
+          const parentColumns = getTableColumns(parentClientTable);
           const parentClients =
             scope.kind === "full" && !isFiltered
               ? await ctx.db
@@ -433,17 +488,37 @@ export const clientQueryRouter = router({
                   .limit(standaloneLimit)
                   .offset(standaloneOffset);
 
-          const [standaloneTotal, totalClients, clients] = await Promise.all([
-            countClients(standaloneWhere),
-            countClients(clientWhere),
-            withClientCounts(ctx.db, [...branchRows, ...standaloneRows]),
-          ]);
+          const pageParentIds = pageParents.map((parent) => parent.id);
+          const [standaloneTotal, totalClients, clients, parentContactCounts] =
+            await Promise.all([
+              countClients(standaloneWhere),
+              countClients(clientWhere),
+              withClientCounts(ctx.db, [...branchRows, ...standaloneRows]),
+              pageParentIds.length === 0
+                ? []
+                : ctx.db
+                    .select({
+                      parent_client_id: clientContactTable.parent_client_id,
+                      cnt: count(),
+                    })
+                    .from(clientContactTable)
+                    .where(
+                      inArray(clientContactTable.parent_client_id, pageParentIds),
+                    )
+                    .groupBy(clientContactTable.parent_client_id),
+            ]);
+          const parentContactMap = new Map(
+            parentContactCounts.map((r) => [r.parent_client_id, r.cnt]),
+          );
 
           return {
-            groups: pageParents.map(({ id, name }) => ({
-              parentClient: { id, name },
+            groups: pageParents.map((parent) => ({
+              parentClient: {
+                ...parent,
+                contacts_count: parentContactMap.get(parent.id) ?? 0,
+              },
               branches: clients.filter(
-                (client) => client.parent_client_id === id,
+                (client) => client.parent_client_id === parent.id,
               ),
             })),
             standalone: clients.filter(
@@ -623,7 +698,7 @@ export const clientQueryRouter = router({
           };
         }
 
-        let contactQuery = undefined;
+        let contactQuery: SQL | undefined = undefined;
 
         if (clientId && clientId !== "all") {
           contactQuery = eq(clientContactTable.client_id, parseInt(clientId));
@@ -637,18 +712,17 @@ export const clientQueryRouter = router({
             like(clientContactTable.contact_number, term),
             like(clientContactTable.designation, term),
             like(clientTable.name, term),
+            like(parentClientTable.name, term),
           );
           contactQuery = contactQuery
             ? and(contactQuery, searchCondition)
             : searchCondition;
         }
 
-        if (scope.kind === "restricted" && clientIds) {
-          const scopeFilter = inArray(clientContactTable.client_id, clientIds);
-          contactQuery = contactQuery
-            ? and(contactQuery, scopeFilter)
-            : scopeFilter;
-        }
+        contactQuery = and(
+          contactQuery,
+          await visibleContactsWhere(ctx.db, clientIds),
+        );
 
         const contactOrder =
           sort === "oldest"
@@ -660,14 +734,19 @@ export const clientQueryRouter = router({
                 : [desc(clientContactTable.id)];
 
         try {
-          // The client is joined for its name, which the search matches too.
+          // The client or main client is joined for its name, which the
+          // search matches too.
           const contactList = ctx.db
             .select({
               ...getTableColumns(clientContactTable),
-              client_name: clientTable.name,
+              client_name: sql<string>`coalesce(${clientTable.name}, ${parentClientTable.name})`,
             })
             .from(clientContactTable)
             .leftJoin(clientTable, eq(clientTable.id, clientContactTable.client_id))
+            .leftJoin(
+              parentClientTable,
+              eq(parentClientTable.id, clientContactTable.parent_client_id),
+            )
             .where(contactQuery)
             .orderBy(...contactOrder);
 
@@ -681,6 +760,10 @@ export const clientQueryRouter = router({
               .select({ count: count() })
               .from(clientContactTable)
               .leftJoin(clientTable, eq(clientTable.id, clientContactTable.client_id))
+              .leftJoin(
+                parentClientTable,
+                eq(parentClientTable.id, clientContactTable.parent_client_id),
+              )
               .where(contactQuery);
             total = totalResult?.count ?? 0;
           }
@@ -710,12 +793,25 @@ export const clientQueryRouter = router({
             Number(ctx.user!.sub),
             ctx.user!.role,
           );
-          await assertCanAccessClient(ctx.db, scope, input.clientId);
+          if (input.clientId) {
+            await assertCanAccessClient(ctx.db, scope, input.clientId);
+          } else {
+            await assertCanAccessParentClient(
+              ctx.db,
+              scope,
+              input.parentClientId!,
+            );
+          }
 
           return await ctx.db
             .select()
             .from(clientContactTable)
-            .where(eq(clientContactTable.client_id, input.clientId));
+            .where(
+              input.clientId
+                ? eq(clientContactTable.client_id, input.clientId)
+                : eq(clientContactTable.parent_client_id, input.parentClientId!),
+            )
+            .orderBy(asc(clientContactTable.name), asc(clientContactTable.id));
         } catch (error) {
           if (error && typeof error === "object" && "errorCode" in error) {
             throw error;
@@ -744,7 +840,12 @@ export const clientQueryRouter = router({
             Number(ctx.user!.sub),
             ctx.user!.role,
           );
-          await assertCanAccessClient(ctx.db, scope, contact[0]!.client_id);
+          const { client_id, parent_client_id } = contact[0]!;
+          if (client_id) {
+            await assertCanAccessClient(ctx.db, scope, client_id);
+          } else {
+            await assertCanAccessParentClient(ctx.db, scope, parent_client_id!);
+          }
 
           return contact[0];
         } catch (error) {

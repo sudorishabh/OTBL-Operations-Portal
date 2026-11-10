@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
 import { router } from "../../trpc";
 import { adminProcedure } from "../../middleware";
@@ -50,36 +50,97 @@ async function assertParentClientExists(
 }
 
 export const clientMutationRouter = router({
-  createParentClient: adminProcedure
-    .input(clientSchemas.createParentClientSchema)
+  createParentClientWithContacts: adminProcedure
+    .input(clientSchemas.createParentClientWithContactsSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        await assertParentClientNameAvailable(ctx.db, input.name);
+        const { parentClient, contacts } = input;
+        await assertParentClientNameAvailable(ctx.db, parentClient.name);
 
         try {
-          const result = await ctx.db.insert(parentClientTable).values(input);
+          const parentClientId = await ctx.db.transaction(async (tx) => {
+            const result = await tx
+              .insert(parentClientTable)
+              .values(parentClient);
+            const id = result[0].insertId;
 
-          return { success: true, parentClientId: result[0].insertId };
+            if (contacts && contacts.length > 0) {
+              await tx
+                .insert(clientContactTable)
+                .values(
+                  contacts.map((contact) => ({
+                    ...contact,
+                    parent_client_id: id,
+                  })),
+                );
+            }
+            return id;
+          });
+
+          return {
+            success: true,
+            parentClientId,
+            contactsAdded: contacts?.length ?? 0,
+          };
         } catch (error) {
           throw fromDatabaseError(error, "Creating main client");
         }
       }),
     ),
 
-  updateParentClient: adminProcedure
-    .input(clientSchemas.updateParentClientSchema)
+  // Only the main client's own contacts can be removed here.
+  updateParentClientWithContacts: adminProcedure
+    .input(clientSchemas.updateParentClientWithContactsSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        await assertParentClientExists(ctx.db, input.id);
-        await assertParentClientNameAvailable(ctx.db, input.name, input.id);
+        const { parentClientId, parentClient, contactsToAdd, contactsToRemove } =
+          input;
+
+        await assertParentClientExists(ctx.db, parentClientId);
+        if (parentClient.name) {
+          await assertParentClientNameAvailable(
+            ctx.db,
+            parentClient.name,
+            parentClientId,
+          );
+        }
 
         try {
-          await ctx.db
-            .update(parentClientTable)
-            .set({ name: input.name })
-            .where(eq(parentClientTable.id, input.id));
+          await ctx.db.transaction(async (tx) => {
+            if (Object.keys(parentClient).length > 0) {
+              await tx
+                .update(parentClientTable)
+                .set(parentClient)
+                .where(eq(parentClientTable.id, parentClientId));
+            }
 
-          return { success: true };
+            if (contactsToRemove && contactsToRemove.length > 0) {
+              await tx
+                .delete(clientContactTable)
+                .where(
+                  and(
+                    inArray(clientContactTable.id, contactsToRemove),
+                    eq(clientContactTable.parent_client_id, parentClientId),
+                  ),
+                );
+            }
+
+            if (contactsToAdd && contactsToAdd.length > 0) {
+              await tx.insert(clientContactTable).values(
+                contactsToAdd.map((contact) => ({
+                  ...contact,
+                  parent_client_id: parentClientId,
+                })),
+              );
+            }
+          });
+
+          return {
+            success: true,
+            parentClientId,
+            contactsAdded: contactsToAdd?.length ?? 0,
+            contactsRemoved: contactsToRemove?.length ?? 0,
+          };
         } catch (error) {
           throw fromDatabaseError(error, "Updating main client");
         }
@@ -87,6 +148,7 @@ export const clientMutationRouter = router({
     ),
 
   // Branches are kept; the foreign key ungroups them (ON DELETE SET NULL).
+  // The main client's own contacts are deleted with it.
   deleteParentClient: adminProcedure
     .input(clientSchemas.deleteParentClientSchema)
     .mutation(
@@ -207,19 +269,24 @@ export const clientMutationRouter = router({
     }),
   ),
 
+  // Adds a contact person to a client (branch) or to a main client.
   createClientContact: adminProcedure
     .input(clientSchemas.createClientContactSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const client = await ctx.db
-          .select()
-          .from(clientTable)
-          .where(eq(clientTable.id, input.client_id));
+        if (input.client_id) {
+          const [client] = await ctx.db
+            .select({ id: clientTable.id })
+            .from(clientTable)
+            .where(eq(clientTable.id, input.client_id));
 
-        if (client.length === 0) {
-          throw notFound("Client", input.client_id, {
-            userMessage: "Cannot add contact: the client doesn't exist.",
-          });
+          if (!client) {
+            throw notFound("Client", input.client_id, {
+              userMessage: "Cannot add contact: the client doesn't exist.",
+            });
+          }
+        } else {
+          await assertParentClientExists(ctx.db, input.parent_client_id);
         }
 
         try {
@@ -313,12 +380,16 @@ export const clientMutationRouter = router({
               .where(eq(clientTable.id, clientId));
           }
 
+          // Only this client's own contacts can be removed here.
           if (contactsToRemove && contactsToRemove.length > 0) {
-            for (const contactId of contactsToRemove) {
-              await ctx.db
-                .delete(clientContactTable)
-                .where(eq(clientContactTable.id, contactId));
-            }
+            await ctx.db
+              .delete(clientContactTable)
+              .where(
+                and(
+                  inArray(clientContactTable.id, contactsToRemove),
+                  eq(clientContactTable.client_id, clientId),
+                ),
+              );
           }
 
           if (contactsToAdd && contactsToAdd.length > 0) {
