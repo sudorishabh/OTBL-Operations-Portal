@@ -42,7 +42,8 @@ const BranchRowSkeleton = ({ isLast }: { isLast: boolean }) => (
   </li>
 );
 
-// Mirrors ParentClientGroup: the main client's header over its branches.
+// Mirrors ParentClientGroup: the main client's details, contacts and actions
+// over its branches.
 export const ClientGroupSkeleton = ({
   branches = 1,
   isAdmin,
@@ -51,28 +52,41 @@ export const ClientGroupSkeleton = ({
   isAdmin: boolean;
 }) => (
   <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
-    <div className='flex flex-wrap items-center justify-between gap-3 px-4 pb-1 pt-3'>
+    <div className='grid grid-cols-1 items-center gap-x-4 gap-y-2 px-4 pb-1 pt-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto]'>
       <div className='flex min-w-0 items-center gap-3'>
         <Skeleton className='size-9 shrink-0 rounded-lg' />
         <div className='min-w-0'>
-          <TextLine
-            line='h-[22.5px]'
-            className='h-4 w-56'
-          />
+          <div className='flex h-[22.5px] items-center gap-2'>
+            <Skeleton className='h-4 w-56 max-w-full' />
+            <Skeleton className='h-3 w-12 rounded-full' />
+          </div>
           <TextLine
             line='h-4'
-            className='w-32'
+            className='w-64 max-w-full'
           />
         </div>
         <Skeleton className='size-4 shrink-0' />
       </div>
-      {isAdmin && (
-        <div className='flex items-center gap-2'>
-          <Skeleton className='h-8 w-28' />
-          <Skeleton className='size-8' />
-          <Skeleton className='size-8' />
-        </div>
-      )}
+      <div className='min-w-0 pl-12 lg:pl-0'>
+        <TextLine
+          line='h-4'
+          className='w-20'
+        />
+        <TextLine
+          line='h-4'
+          className='w-44 max-w-full'
+        />
+      </div>
+      <div className='flex items-center gap-2 sm:pl-12 lg:pl-0'>
+        <Skeleton className='h-8 w-24' />
+        {isAdmin && (
+          <>
+            <Skeleton className='h-8 w-28' />
+            <Skeleton className='size-8' />
+            <Skeleton className='size-8' />
+          </>
+        )}
+      </div>
     </div>
     <ul className='px-4 pb-3'>
       {Array.from({ length: branches }, (_, index) => (

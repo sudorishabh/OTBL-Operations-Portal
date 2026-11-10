@@ -4,14 +4,16 @@ import { useRouter } from "next/navigation";
 import { capitalizeEachWord } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 
-// Shared by the branch rows and the standalone client cards on the clients list.
+// Shared by the branch rows, the standalone client cards and the main client
+// headers on the clients list. Main clients added before they had details
+// have none.
 export interface ClientListItem {
   id: number;
   name: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  pincode?: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
   contact_number?: string | null;
   email?: string | null;
   status?: string;

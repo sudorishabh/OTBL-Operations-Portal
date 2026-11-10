@@ -1,6 +1,13 @@
 "use client";
 import React, { useState } from "react";
-import { ChevronDown, Network, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Network,
+  Pencil,
+  Plus,
+  Trash2,
+  Users,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
 import {
@@ -19,11 +26,18 @@ import { useApiError } from "@/hooks/useApiError";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import BranchRow from "./branch-row";
-import type { ClientListItem } from "./client-list-parts";
+import ClientContactsDialog from "./client-contacts-dialog";
+import {
+  ClientContactLines,
+  ClientStatus,
+  formatClientLocation,
+  type ClientListItem,
+} from "./client-list-parts";
 
 interface Props {
-  parentClient: { id: number; name: string };
-  // A main client has no page of its own; only its branches open.
+  parentClient: ClientListItem & { contacts_count: number };
+  // A main client has no page of its own; only its branches open. Its
+  // details show here, and its contacts in a dialog.
   branches: ClientListItem[];
 }
 
@@ -57,6 +71,7 @@ const IconAction = ({
 const ParentClientGroup = ({ parentClient, branches }: Props) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isContactsOpen, setIsContactsOpen] = useState(false);
   const isAdmin = useIsAdmin();
   const { setParams } = useHandleParams();
   const { handleError } = useApiError();
@@ -79,10 +94,13 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
 
   const displayName = parentClient.name.toUpperCase();
   const branchCount = branches.length;
+  const contactCount = parentClient.contacts_count;
+  const location = formatClientLocation(parentClient);
 
   return (
     <section className='rounded-xl border border-gray-200 bg-white shadow-sm'>
-      <div className='flex flex-wrap items-center justify-between gap-3 px-4 pb-1 pt-3'>
+      {/* Stacked on phones; name, contact lines and actions in a row on large screens. */}
+      <div className='grid grid-cols-1 items-center gap-x-4 gap-y-2 px-4 pb-1 pt-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto]'>
         <button
           type='button'
           onClick={() => setIsExpanded((value) => !value)}
@@ -92,14 +110,20 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
             <Network className='size-4' />
           </span>
           <span className='min-w-0'>
-            <span
-              className='block truncate text-[15px] font-semibold tracking-tight text-gray-900'
-              title={displayName}>
-              {displayName}
+            <span className='flex items-center gap-2'>
+              <span
+                className='truncate text-[15px] font-semibold tracking-tight text-gray-900'
+                title={displayName}>
+                {displayName}
+              </span>
+              <ClientStatus status={parentClient.status} />
             </span>
-            <span className='block text-xs text-gray-500'>
+            <span
+              className='block truncate text-xs text-gray-500'
+              title={location || undefined}>
               Main client with {branchCount}{" "}
               {branchCount === 1 ? "branch" : "branches"}
+              {location && ` · ${location}`}
             </span>
           </span>
           <ChevronDown
@@ -110,28 +134,43 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
           />
         </button>
 
-        {isAdmin && (
-          <div className='flex items-center gap-2'>
-            <CustomButton
-              text='Add Branch'
-              Icon={Plus}
-              variant='outline'
-              onClick={() => openDialog("create-client")}
-            />
-            <IconAction
-              label={`Rename ${displayName}`}
-              icon={Pencil}
-              onClick={() => openDialog("edit-parent-client")}
-            />
-            <IconAction
-              label={`Delete ${displayName}`}
-              icon={Trash2}
-              onClick={() => setIsConfirmingDelete(true)}
-              disabled={deleteParentClient.isPending}
-              className='hover:border-red-200 hover:bg-red-50 hover:text-red-600'
-            />
-          </div>
-        )}
+        <ClientContactLines
+          client={parentClient}
+          className='pl-12 lg:pl-0'
+        />
+
+        <div className='flex flex-wrap items-center gap-2 sm:pl-12 lg:pl-0'>
+          <button
+            type='button'
+            onClick={() => setIsContactsOpen(true)}
+            title={`Contacts of ${displayName}`}
+            className='inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 outline-none transition-colors hover:bg-emerald-100 focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+            <Users className='size-3.5' />
+            {contactCount === 1 ? "1 contact" : `${contactCount} contacts`}
+          </button>
+          {isAdmin && (
+            <>
+              <CustomButton
+                text='Add Branch'
+                Icon={Plus}
+                variant='outline'
+                onClick={() => openDialog("create-client")}
+              />
+              <IconAction
+                label={`Edit ${displayName}`}
+                icon={Pencil}
+                onClick={() => openDialog("edit-parent-client")}
+              />
+              <IconAction
+                label={`Delete ${displayName}`}
+                icon={Trash2}
+                onClick={() => setIsConfirmingDelete(true)}
+                disabled={deleteParentClient.isPending}
+                className='hover:border-red-200 hover:bg-red-50 hover:text-red-600'
+              />
+            </>
+          )}
+        </div>
       </div>
 
       {isExpanded &&
@@ -158,12 +197,15 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
         onOpenChange={setIsConfirmingDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete main client {displayName}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete main client {displayName}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Only the grouping is removed.{" "}
               {branchCount > 0
                 ? `Its ${branchCount} ${branchCount === 1 ? "branch stays" : "branches stay"} as standalone clients, with all their work orders and contacts.`
-                : "It has no branches."}
+                : "It has no branches."}{" "}
+              {contactCount > 0 &&
+                `Its own ${contactCount === 1 ? "contact is" : `${contactCount} contacts are`} deleted with it.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -178,6 +220,13 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ClientContactsDialog
+        open={isContactsOpen}
+        onClose={() => setIsContactsOpen(false)}
+        owner={{ parentClientId: parentClient.id }}
+        ownerName={parentClient.name}
+      />
     </section>
   );
 };
