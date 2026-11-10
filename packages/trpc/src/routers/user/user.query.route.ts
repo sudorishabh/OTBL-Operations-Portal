@@ -32,7 +32,7 @@ const {
   workOrderSiteTable,
   workOrderSiteUserTable,
 } = schema;
-const { ROLES, STATUS } = constants;
+const { ROLES } = constants;
 
 export const userQueryRouter = router({
   me: protectedProcedure.query(
@@ -417,88 +417,4 @@ export const userQueryRouter = router({
         };
       }),
     ),
-
-  getCategories8User: protectedProcedure.use(hasRole(ROLES.ADMIN)).query(
-    handleProtectedQuery(async ({ ctx }) => {
-      const userInfoNeeded = {
-        id: userTable.id,
-        name: userTable.name,
-        email: userTable.email,
-        role: userTable.role,
-        contact_number: userTable.contact_number,
-        status: userTable.status,
-        created_at: userTable.created_at,
-      };
-
-      const fetchEightByRole = async (
-        role: (typeof ROLES)[keyof typeof ROLES],
-      ) => {
-        try {
-          return await ctx.db
-            .select(userInfoNeeded)
-            .from(userTable)
-            .where(
-              and(
-                eq(userTable.role, role),
-                eq(userTable.status, STATUS.ACTIVE),
-                not(eq(userTable.role, ROLES.ADMIN)),
-              ),
-            )
-            .orderBy(desc(userTable.created_at))
-            .limit(8);
-        } catch (error) {
-          throw fromDatabaseError(error, `Fetching ${role} users`);
-        }
-      };
-
-      const totalUserByRole = async (
-        role: (typeof ROLES)[keyof typeof ROLES],
-      ) => {
-        try {
-          return await ctx.db
-            .select({ count: count() })
-            .from(userTable)
-            .where(
-              and(
-                not(eq(userTable.role, ROLES.ADMIN)),
-                eq(userTable.role, role),
-              ),
-            );
-        } catch (error) {
-          throw fromDatabaseError(error, `Counting ${role} users`);
-        }
-      };
-
-      const [
-        managers,
-        officeOperators,
-        siteOperators,
-        viewers,
-        totalManagers,
-        totalOfficeOperators,
-        totalSiteOperators,
-        totalViewers,
-      ] = await Promise.all([
-        fetchEightByRole(ROLES.MANAGER),
-        fetchEightByRole(ROLES.OFFICE_OPERATOR),
-        fetchEightByRole(ROLES.SITE_OPERATOR),
-        fetchEightByRole(ROLES.VIEWER),
-        totalUserByRole(ROLES.MANAGER),
-        totalUserByRole(ROLES.OFFICE_OPERATOR),
-        totalUserByRole(ROLES.SITE_OPERATOR),
-        totalUserByRole(ROLES.VIEWER),
-      ]);
-
-      return {
-        managers,
-        officeOperators,
-        siteOperators,
-        viewers,
-        totalManagers: totalManagers[0]?.count,
-        totalOfficeOperators: totalOfficeOperators[0]?.count,
-        totalSiteOperators: totalSiteOperators[0]?.count,
-        totalViewers: totalViewers[0]?.count,
-      };
-    }),
-  ),
 });
