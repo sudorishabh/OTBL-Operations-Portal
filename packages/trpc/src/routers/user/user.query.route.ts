@@ -4,10 +4,13 @@ import {
   count,
   desc,
   eq,
+  exists,
   inArray,
   like,
+  ne,
   not,
   or,
+  sql,
 } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
@@ -25,6 +28,7 @@ const {
   officeTable,
   officeUserTable,
   siteTable,
+  workOrderTable,
   workOrderSiteTable,
   workOrderSiteUserTable,
 } = schema;
@@ -64,8 +68,16 @@ export const userQueryRouter = router({
     .input(userSchemas.getAllUsersSchema)
     .query(
       handleProtectedQuery(async ({ input, ctx }) => {
-        const { page, limit, searchQuery, role, status, userNamesOrder } =
-          input;
+        const {
+          page,
+          limit,
+          searchQuery,
+          role,
+          status,
+          officeId,
+          assignment,
+          userNamesOrder,
+        } = input;
 
         const offset = (page - 1) * limit;
         let userQuery = not(eq(userTable.role, ROLES.ADMIN));
@@ -76,6 +88,63 @@ export const userQueryRouter = router({
 
         if (status && status !== "all") {
           userQuery = and(userQuery, eq(userTable.status, status)) ?? userQuery;
+        }
+
+        // An office seat, or a pin on a work order site, optionally in one
+        // office.
+        const hasOfficeSeat = (inOffice?: number) =>
+          exists(
+            ctx.db
+              .select({ one: sql`1` })
+              .from(officeUserTable)
+              .where(
+                and(
+                  eq(officeUserTable.user_id, userTable.id),
+                  inOffice ? eq(officeUserTable.office_id, inOffice) : undefined,
+                ),
+              ),
+          );
+        const hasSitePin = (inOffice?: number) =>
+          exists(
+            ctx.db
+              .select({ one: sql`1` })
+              .from(workOrderSiteUserTable)
+              .innerJoin(
+                workOrderSiteTable,
+                eq(
+                  workOrderSiteUserTable.work_order_site_id,
+                  workOrderSiteTable.id,
+                ),
+              )
+              .innerJoin(
+                workOrderTable,
+                eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+              )
+              .where(
+                and(
+                  eq(workOrderSiteUserTable.user_id, userTable.id),
+                  inOffice ? eq(workOrderTable.office_id, inOffice) : undefined,
+                ),
+              ),
+          );
+
+        if (officeId) {
+          userQuery =
+            and(userQuery, or(hasOfficeSeat(officeId), hasSitePin(officeId))) ??
+            userQuery;
+        }
+
+        if (assignment === "assigned") {
+          userQuery =
+            and(userQuery, or(hasOfficeSeat(), hasSitePin())) ?? userQuery;
+        } else if (assignment === "unassigned") {
+          userQuery =
+            and(
+              userQuery,
+              ne(userTable.role, ROLES.VIEWER),
+              not(hasOfficeSeat()),
+              not(hasSitePin()),
+            ) ?? userQuery;
         }
 
         if (searchQuery && searchQuery.trim() !== "") {
@@ -128,6 +197,11 @@ export const userQueryRouter = router({
             userOrder = asc(userTable.created_at);
             break;
         }
+        // The id breaks ties so users never repeat or go missing across pages.
+        const userTieBreak =
+          userNamesOrder === "desc" || userNamesOrder === "latest"
+            ? desc(userTable.id)
+            : asc(userTable.id);
 
         const users = await ctx.db
           .select({
@@ -143,7 +217,7 @@ export const userQueryRouter = router({
           .where(userQuery)
           .limit(limit)
           .offset(offset)
-          .orderBy(userOrder);
+          .orderBy(userOrder, userTieBreak);
 
         const userIds = users.map((u: any) => u.id);
         let allOffices: {
