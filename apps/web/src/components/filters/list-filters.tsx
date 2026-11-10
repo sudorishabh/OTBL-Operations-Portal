@@ -37,7 +37,8 @@ const controlClass =
   "h-8! rounded-md border bg-white text-xs shadow-xs transition-colors";
 const activeClass = "border-emerald-300 bg-emerald-50/60 text-emerald-900";
 
-// The row a list's search, filters, sort and clear button sit in.
+// The row a list's search, filters, sort and clear button sit in; on phones
+// the search takes a line and the rest go two to a line under it.
 export const FilterBar = ({
   children,
   className,
@@ -47,7 +48,7 @@ export const FilterBar = ({
 }) => (
   <div
     className={cn(
-      "flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center",
+      "grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center",
       className,
     )}>
     {children}
@@ -67,7 +68,7 @@ export const SearchFilter = ({
   label: string;
   className?: string;
 }) => (
-  <div className={cn("relative w-full sm:w-72", className)}>
+  <div className={cn("relative col-span-2 w-full sm:w-72", className)}>
     <Search className='pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400' />
     <Input
       value={value}
@@ -122,8 +123,11 @@ export const SelectFilter = ({
           isApplied && activeClass,
           className,
         )}>
-        {Icon && <Icon className='size-3.5 text-gray-400' />}
-        <SelectValue />
+        {/* Grows so the label sits by its icon, not centered, on phones. */}
+        <span className='flex min-w-0 flex-1 items-center gap-1.5'>
+          {Icon && <Icon className='size-3.5 text-gray-400' />}
+          <SelectValue />
+        </span>
       </SelectTrigger>
       <SelectContent className='text-xs'>
         {options.map((option) => (
