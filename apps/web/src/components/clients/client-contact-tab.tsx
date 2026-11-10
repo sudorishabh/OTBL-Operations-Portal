@@ -2,6 +2,7 @@ import React from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import { useDebounce } from "@/hooks/useDebounce";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import PaginationSummary from "@/components/shared/pagination-summary";
 import { useClientManagementContext } from "@/contexts/ClientManagementContext";
@@ -42,10 +43,7 @@ interface ClientContact {
   designation?: string | null;
   contact_type?: string | null;
   client_id: number;
-  client?: {
-    id: number;
-    name: string;
-  };
+  client_name: string | null;
 }
 
 const CONTACTS_PAGE_SIZE = 50;
@@ -59,10 +57,14 @@ const ClientContactTab = ({ tab }: Props) => {
   const utils = trpc.useUtils();
   const { handleError } = useApiError();
 
+  const debouncedSearch = useDebounce(contactSearchQuery.trim(), 300);
+  const isFiltered = !!debouncedSearch || contactFilters.clientId !== "all";
+
   const queryInput = {
     limit: CONTACTS_PAGE_SIZE,
-    searchQuery: contactSearchQuery || undefined,
+    searchQuery: debouncedSearch || undefined,
     clientId: contactFilters.clientId,
+    sort: contactFilters.sort,
   };
 
   const { pages, loadMore } = useLoadMorePages(queryInput);
@@ -113,10 +115,6 @@ const ClientContactTab = ({ tab }: Props) => {
     }
   };
 
-  const getClientName = (contact: ClientContact) => {
-    return contact.client?.name || "Unknown Client";
-  };
-
   if (pageQueries[0]?.isLoading) {
     return <ClientContactsSkeleton />;
   }
@@ -136,8 +134,12 @@ const ClientContactTab = ({ tab }: Props) => {
     return (
       <NoFetchData
         Icon={Webhook}
-        title='No Client Contacts Found'
-        description='Add a contact to get started'
+        title={isFiltered ? "No matching contacts" : "No Client Contacts Found"}
+        description={
+          isFiltered
+            ? "Try another search or clear the filters."
+            : "Add a contact to get started"
+        }
       />
     );
   }
@@ -170,7 +172,7 @@ const ClientContactTab = ({ tab }: Props) => {
                 {contact.designation || "N/A"}
               </TableCell>
               <TableCell className='text-xs'>
-                {getClientName(contact)}
+                {contact.client_name || "—"}
               </TableCell>
               <TableCell className='text-xs'>
                 {contact.contact_type && (

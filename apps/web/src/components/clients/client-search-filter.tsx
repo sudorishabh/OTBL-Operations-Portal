@@ -1,24 +1,64 @@
+"use client";
+import React, { useMemo } from "react";
+import {
+  ArrowUpDown,
+  Building2,
+  MapPin,
+  Network,
+  UserPlus,
+} from "lucide-react";
 import Btn from "@/components/shared/btn";
-import Input from "@/components/shared/input";
-import { useClientManagementContext } from "@/contexts/ClientManagementContext";
-import { Search, X, UserPlus } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import React from "react";
+import {
+  ALL,
+  ClearFiltersButton,
+  ComboboxFilter,
+  FilterBar,
+  SearchFilter,
+  SelectFilter,
+} from "@/components/filters/list-filters";
+import {
+  useClientManagementContext,
+  type ClientFilters,
+  type ContactFilters,
+} from "@/contexts/ClientManagementContext";
+import useHandleParams from "@/hooks/useHandleParams";
+import { trpc } from "@/lib/trpc";
 
 interface Props {
   type: "clients" | "contacts";
-  clients?: Array<{ id: number; name: string }>;
-  isLoading?: boolean;
 }
 
-const ClientSearchFilter = ({
-  type,
-  clients = [],
-  isLoading = false,
-}: Props) => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+type ClientOption = {
+  id: number;
+  name: string;
+  city: string;
+  state: string;
+  parent_client_name: string | null;
+};
 
+const STATUS_OPTIONS = [
+  { label: "All statuses", value: ALL },
+  { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" },
+];
+
+const CLIENT_SORT_OPTIONS = [
+  { label: "Name A–Z", value: "name_asc" },
+  { label: "Name Z–A", value: "name_desc" },
+  { label: "Newest first", value: "newest" },
+  { label: "Oldest first", value: "oldest" },
+];
+
+const CONTACT_SORT_OPTIONS = [
+  { label: "Newest first", value: "newest" },
+  { label: "Oldest first", value: "oldest" },
+  { label: "Name A–Z", value: "name_asc" },
+  { label: "Name Z–A", value: "name_desc" },
+];
+
+// The search, filters and order of the clients page's two tabs.
+const ClientSearchFilter = ({ type }: Props) => {
+  const { setParam } = useHandleParams();
   const {
     clientSearchQuery,
     setClientSearchQuery,
@@ -33,107 +73,145 @@ const ClientSearchFilter = ({
   } = useClientManagementContext();
 
   const isClientsTab = type === "clients";
-  const searchQuery = isClientsTab ? clientSearchQuery : contactSearchQuery;
-  const setSearchQuery = isClientsTab
-    ? setClientSearchQuery
-    : setContactSearchQuery;
 
-  const hasActiveFilters = isClientsTab
-    ? clientSearchQuery !== "" || clientFilters.status !== "all"
-    : contactSearchQuery !== "" || contactFilters.clientId !== "all";
+  const parentClientsQuery = trpc.clientQuery.getParentClients.useQuery(
+    undefined,
+    { enabled: isClientsTab },
+  );
+  const clientOptionsQuery = trpc.clientQuery.getClientOptions.useQuery();
+  const clientOptions = (clientOptionsQuery.data ?? []) as ClientOption[];
 
-  const resetFilters = isClientsTab ? resetClientFilters : resetContactFilters;
+  const parentClientOptions = (
+    (parentClientsQuery.data ?? []) as { id: number; name: string }[]
+  ).map((parent) => ({ value: String(parent.id), label: parent.name }));
 
-  const handleAddContact = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("dialog", "create-client-contact");
-    router.push(`?${params.toString()}`);
-  };
+  const stateOptions = useMemo(
+    () =>
+      [...new Set(clientOptions.map((client) => client.state))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+        .map((state) => ({ value: state, label: state })),
+    [clientOptions],
+  );
+
+  const contactClientOptions = useMemo(
+    () =>
+      clientOptions.map((client) => ({
+        value: String(client.id),
+        label: client.name,
+        hint: [client.parent_client_name, client.city]
+          .filter(Boolean)
+          .join(" · "),
+      })),
+    [clientOptions],
+  );
+
+  if (isClientsTab) {
+    const setFilter = (next: Partial<ClientFilters>) =>
+      setClientFilters({ ...clientFilters, ...next });
+
+    const hasActiveFilters =
+      clientSearchQuery !== "" ||
+      clientFilters.status !== ALL ||
+      clientFilters.parentClientId !== ALL ||
+      clientFilters.state !== ALL;
+
+    return (
+      <FilterBar>
+        <SearchFilter
+          label='Search clients'
+          placeholder='Search clients, GST, email, city...'
+          value={clientSearchQuery}
+          onChange={setClientSearchQuery}
+        />
+        <SelectFilter
+          label='Status'
+          value={clientFilters.status}
+          onChange={(status) =>
+            setFilter({ status: status as ClientFilters["status"] })
+          }
+          options={STATUS_OPTIONS}
+        />
+        <ComboboxFilter
+          label='Main client'
+          allLabel='All main clients'
+          Icon={Network}
+          value={clientFilters.parentClientId}
+          onChange={(parentClientId) => setFilter({ parentClientId })}
+          options={parentClientOptions}
+          pinnedOptions={[{ value: "none", label: "No main client" }]}
+          isLoading={parentClientsQuery.isLoading}
+          searchPlaceholder='Search main clients...'
+        />
+        <ComboboxFilter
+          label='State'
+          allLabel='All states'
+          Icon={MapPin}
+          value={clientFilters.state}
+          onChange={(state) => setFilter({ state })}
+          options={stateOptions}
+          isLoading={clientOptionsQuery.isLoading}
+          searchPlaceholder='Search states...'
+        />
+        <SelectFilter
+          label='Sort clients'
+          Icon={ArrowUpDown}
+          value={clientFilters.sort}
+          onChange={(sort) =>
+            setFilter({ sort: sort as ClientFilters["sort"] })
+          }
+          options={CLIENT_SORT_OPTIONS}
+          defaultValue={null}
+        />
+        {hasActiveFilters && (
+          <ClearFiltersButton onClick={resetClientFilters} />
+        )}
+      </FilterBar>
+    );
+  }
+
+  const setFilter = (next: Partial<ContactFilters>) =>
+    setContactFilters({ ...contactFilters, ...next });
+
+  const hasActiveFilters =
+    contactSearchQuery !== "" || contactFilters.clientId !== ALL;
 
   return (
-    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
-      <div className='w-full sm:w-80'>
-        <Input
-          mode='standalone'
-          type='text'
-          isWhiteBg={true}
-          placeholder={
-            isClientsTab
-              ? "Search clients by name, email, GST, city..."
-              : "Search contacts by name, email, phone..."
-          }
-          value={searchQuery}
-          onChange={setSearchQuery}
-          inputIcon={Search}
-          className='h-8'
-          disabled={isLoading}
-        />
-      </div>
-      <div className='flex flex-wrap items-center gap-2 sm:gap-3 text-xs'>
-        {isClientsTab ? (
-          <Input
-            mode='standalone'
-            isSelect
-            isWhiteBg={true}
-            selectOptions={[
-              { label: "All Status", value: "all" },
-              { label: "Active", value: "active" },
-              { label: "Inactive", value: "inactive" },
-            ]}
-            placeholder='All Status'
-            value={clientFilters.status}
-            onChange={(value) =>
-              setClientFilters({
-                ...clientFilters,
-                status: value as "all" | "active" | "inactive",
-              })
-            }
-            className='h-8! w-[140px] text-xs'
-            disabled={isLoading}
-          />
-        ) : (
-          <Input
-            mode='standalone'
-            isSelect
-            selectOptions={[
-              { label: "All Clients", value: "all" },
-              ...clients.map((client) => ({
-                label: client.name,
-                value: client.id.toString(),
-              })),
-            ]}
-            placeholder='All Clients'
-            value={contactFilters.clientId}
-            onChange={(value) =>
-              setContactFilters({ ...contactFilters, clientId: value })
-            }
-            className='h-8! w-[180px] text-xs'
-            disabled={isLoading}
-          />
-        )}
-
-        {hasActiveFilters && (
-          <Btn
-            text='Reset'
-            onClick={resetFilters}
-            variant='outline'
-            Icon={X}
-            className='h-8 text-xs'
-          />
-        )}
-
-        {!isClientsTab && (
-          <Btn
-            text='Add Contact'
-            onClick={handleAddContact}
-            variant='primary'
-            Icon={UserPlus}
-            className='h-8 text-xs'
-            disableForViewer
-          />
-        )}
-      </div>
-    </div>
+    <FilterBar>
+      <SearchFilter
+        label='Search contacts'
+        placeholder='Search by name, client, email, phone...'
+        value={contactSearchQuery}
+        onChange={setContactSearchQuery}
+      />
+      <ComboboxFilter
+        label='Client'
+        allLabel='All clients'
+        Icon={Building2}
+        value={contactFilters.clientId}
+        onChange={(clientId) => setFilter({ clientId })}
+        options={contactClientOptions}
+        isLoading={clientOptionsQuery.isLoading}
+        searchPlaceholder='Search clients, main clients, cities...'
+      />
+      <SelectFilter
+        label='Sort contacts'
+        Icon={ArrowUpDown}
+        value={contactFilters.sort}
+        onChange={(sort) => setFilter({ sort: sort as ContactFilters["sort"] })}
+        options={CONTACT_SORT_OPTIONS}
+        defaultValue={null}
+      />
+      {hasActiveFilters && <ClearFiltersButton onClick={resetContactFilters} />}
+      <Btn
+        text='Add Contact'
+        onClick={() => setParam("dialog", "create-client-contact")}
+        variant='primary'
+        Icon={UserPlus}
+        className='h-8 text-xs sm:ml-auto'
+        disableForViewer
+      />
+    </FilterBar>
   );
 };
 

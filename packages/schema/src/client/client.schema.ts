@@ -91,9 +91,16 @@ export const deleteClientContactSchema = z.object({
 });
 export const deleteClientSchema = z.object({ clientId: positiveIntValidator });
 
+// How the clients list is ordered: by name, or by when they were added.
+export const clientSortEnum = z.enum(["name_asc", "name_desc", "newest", "oldest"]);
+
 export const getAllClientsSchema = z.object({
   searchQuery: searchQueryValidator,
   status: z.enum(["all", "active", "inactive"]).optional(),
+  // A main client's id, or "none" for clients without a main client.
+  parentClientId: z.union([positiveIntValidator, z.literal("none")]).optional(),
+  state: z.string().trim().max(255).optional(),
+  sort: clientSortEnum.optional(),
 });
 
 // A page counts main clients (with all their branches) and clients without one.
@@ -106,6 +113,7 @@ export const getClientGroupsSchema = getAllClientsSchema.extend({
 export const getAllClientContactsSchema = z.object({
   searchQuery: searchQueryValidator.optional(),
   clientId: z.string().optional(),
+  sort: z.enum(["newest", "oldest", "name_asc", "name_desc"]).optional(),
   page: pageValidator.optional(),
   limit: limitValidator,
 });

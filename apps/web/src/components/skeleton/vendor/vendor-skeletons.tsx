@@ -2,8 +2,8 @@
 import React from "react";
 import { ClipboardList, ShoppingCart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useIsManager } from "@/contexts/AuthContext";
 import {
+  FilterBarSkeleton,
   SkeletonCard,
   SkeletonRegion,
   TableSkeleton,
@@ -164,17 +164,14 @@ export const VendorDetailSkeleton = () => (
   </SkeletonRegion>
 );
 
-// The whole vendor list, search and status filter included, for before the
-// page itself has mounted.
-export const VendorListSkeleton = () => {
-  const isManager = useIsManager();
-  return (
-    <div className='mt-4 space-y-4'>
-      <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
-        <Skeleton className='h-9 flex-1 bg-white/80' />
-        <Skeleton className='h-9 w-full bg-white/80 sm:w-36' />
-      </div>
-      <VendorsTableSkeleton withActions={isManager} />
-    </div>
-  );
-};
+// The whole vendor list, its filter bar included, for before the page itself
+// has mounted.
+export const VendorListSkeleton = () => (
+  <div className='mt-4 space-y-4'>
+    <FilterBarSkeleton
+      search='sm:w-72'
+      selects={["w-28", "w-32", "w-28"]}
+    />
+    <VendorsTableSkeleton withActions />
+  </div>
+);

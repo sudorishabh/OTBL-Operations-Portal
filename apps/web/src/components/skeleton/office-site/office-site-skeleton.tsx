@@ -7,7 +7,7 @@ import {
   type SkeletonColumn,
 } from "../parts";
 
-// Same columns as OfficeSiteTable; its rows carry a trailing empty cell.
+// Same columns as OfficeSiteTable.
 const SITE_COLUMNS: SkeletonColumn[] = [
   { label: "Status", cellClassName: "pl-6", shape: "dot" },
   {
@@ -19,6 +19,12 @@ const SITE_COLUMNS: SkeletonColumn[] = [
   { label: "Address", bar: ["w-44", "w-40", "w-48"], sub: "w-28" },
   { label: "Pincode", bar: "w-14" },
   { label: "Created", bar: "w-16" },
+  {
+    label: "Actions",
+    headClassName: "pr-4 text-right",
+    cellClassName: "pr-4",
+    shape: "menu",
+  },
 ];
 
 const SitesTable = ({ rows }: { rows: number }) => (
@@ -89,8 +95,8 @@ export default OfficeSiteSkeleton;
 export const OfficeSitePageSkeleton = () => (
   <div className='mt-8'>
     <FilterBarSkeleton
-      search='sm:w-80'
-      selects={["w-[140px]"]}
+      search='sm:w-72'
+      selects={["w-28", "w-28", "w-28", "w-28"]}
       className='mb-6'
     />
     <OfficeSiteSkeleton />

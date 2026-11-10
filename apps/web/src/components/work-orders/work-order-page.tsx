@@ -1,64 +1,99 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React from "react";
+import type { UseQueryResult } from "@tanstack/react-query";
+import { ClipboardList } from "lucide-react";
 import WorkOrderTable from "./work-order-table";
 import { trpc } from "@/lib/trpc";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import { useWorkOrderManagementContext } from "@/contexts/WorkOrderManagementContext";
 import WorkOrderSearchNFilter from "./work-order-search-filter";
-import { IWorkOrder } from "@/types/work-order.types";
+import { IWorkOrder, IWorkOrderPagination } from "@/types/work-order.types";
 import { WorkOrdersTableSkeleton } from "../skeleton/work-orders/work-orders-skeleton";
+import Error from "@/components/shared/error";
+import NoFetchData from "@/components/shared/no-fetch-data";
 import ScrollToTop from "@/components/scroll-to-top";
 
-const WorkOrderPage = () => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [allWorkOrdersList, setAllWorkOrdersList] = useState<IWorkOrder[]>([]);
+const PAGE_SIZE = 40;
 
+type WorkOrdersPage = {
+  workOrders: IWorkOrder[];
+  pagination: IWorkOrderPagination;
+};
+
+const WorkOrderPage = () => {
   const { searchQuery, filters, workOrderOrder } =
     useWorkOrderManagementContext();
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300);
 
-  const allWorkOrdersQueryLimit = 40;
-  const getAllWorkOrdersQuery = trpc.workOrderQuery.getAll.useQuery({
-    page: currentPage,
-    limit: allWorkOrdersQueryLimit,
-    searchQuery: searchQuery || undefined,
+  const queryInput = {
+    limit: PAGE_SIZE,
+    searchQuery: debouncedSearch || undefined,
     status: filters.status,
     office_id: filters.office_id,
+    client_id: filters.client_id,
+    process_type: filters.process_type,
     workOrderOrder,
-  });
-
-  const isAllWorkOrderQueryLoading = getAllWorkOrdersQuery.isLoading;
-  const { workOrders, pagination } = getAllWorkOrdersQuery?.data || {
-    workOrders: [],
-    pagination: null,
   };
 
-  const isInitialLoading =
-    isAllWorkOrderQueryLoading &&
-    currentPage === 1 &&
-    searchQuery === "" &&
-    filters.status === "all" &&
-    filters.office_id === undefined &&
-    workOrderOrder === "latest";
+  const { pages, loadMore } = useLoadMorePages(queryInput);
 
-  const isFetchingMore = getAllWorkOrdersQuery.isFetching && currentPage > 1;
+  const pageQueries: UseQueryResult<WorkOrdersPage>[] = trpc.useQueries(
+    (t: any) =>
+      pages.map((page) => t.workOrderQuery.getAll({ ...queryInput, page })),
+  );
 
-  useEffect(() => {
-    setCurrentPage(1);
-    setAllWorkOrdersList([]);
-  }, [searchQuery, filters.status, filters.office_id]);
+  const workOrders = pageQueries.flatMap(
+    (query) => query.data?.workOrders ?? [],
+  );
+  const pagination =
+    pageQueries.flatMap((query) => query.data?.pagination ?? []).at(-1) ?? null;
+  const failedQuery = pageQueries.find((query) => query.isError);
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
 
-  useEffect(() => {
-    if (!workOrders || isAllWorkOrderQueryLoading) return;
-    if (pagination?.page !== currentPage) return;
+  const isFiltered =
+    !!debouncedSearch ||
+    filters.status !== "all" ||
+    filters.office_id !== undefined ||
+    filters.client_id !== undefined ||
+    filters.process_type !== undefined;
 
-    if (currentPage === 1) {
-      setAllWorkOrdersList(workOrders);
-    } else {
-      setAllWorkOrdersList((prev) => [...prev, ...workOrders]);
+  const renderList = () => {
+    if (pageQueries[0]?.isLoading) {
+      return <WorkOrdersTableSkeleton />;
     }
-  }, [workOrders, currentPage, isAllWorkOrderQueryLoading]);
 
-  const handleLoadMore = () => {
-    setCurrentPage((prev) => prev + 1);
+    if (failedQuery?.error) {
+      return (
+        <Error
+          variant='default'
+          message={failedQuery.error.message}
+        />
+      );
+    }
+
+    if (workOrders.length === 0) {
+      return (
+        <NoFetchData
+          Icon={ClipboardList}
+          title={isFiltered ? "No matching work orders" : "No work orders yet"}
+          description={
+            isFiltered
+              ? "Try another search or clear the filters."
+              : "Work orders appear here once they are created from a client's proposal."
+          }
+        />
+      );
+    }
+
+    return (
+      <WorkOrderTable
+        workOrders={workOrders}
+        pagination={pagination}
+        handleLoadMore={loadMore}
+        isLoadingData={isFetchingMore}
+      />
+    );
   };
 
   return (
@@ -68,16 +103,7 @@ const WorkOrderPage = () => {
           <WorkOrderSearchNFilter />
         </div>
 
-        {isInitialLoading ? (
-          <WorkOrdersTableSkeleton />
-        ) : (
-          <WorkOrderTable
-            workOrders={allWorkOrdersList}
-            pagination={pagination}
-            handleLoadMore={handleLoadMore}
-            isLoadingData={isFetchingMore}
-          />
-        )}
+        {renderList()}
       </div>
       <ScrollToTop />
     </div>

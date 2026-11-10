@@ -1,10 +1,11 @@
 "use client";
-import { Building2, Search, X } from "lucide-react";
+import { Building2 } from "lucide-react";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import PaginationSummary from "@/components/shared/pagination-summary";
 import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useOfficeManagementContext } from "@/contexts/OfficeManagementContext";
 import type { UseQueryResult } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
@@ -32,13 +33,16 @@ const OFFICES_PAGE_SIZE = 10;
 type OfficesPage = RouterOutputs["officeQuery"]["getOffices"];
 
 const OfficeSitePage = () => {
-  const { setSearchQuery, filters, setFilters, searchQuery, resetFilters } =
+  const { filters, searchQuery, officeNamesOrder } =
     useOfficeManagementContext();
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300);
 
   const queryInput = {
     limit: OFFICES_PAGE_SIZE,
     status: filters.status,
-    searchQuery,
+    state: filters.state === "all" ? undefined : filters.state,
+    searchQuery: debouncedSearch || undefined,
+    officeNamesOrder,
   };
 
   const { pages, loadMore } = useLoadMorePages(queryInput);
@@ -57,20 +61,13 @@ const OfficeSitePage = () => {
   const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
   const isOffice = offices.length > 0;
 
-  const hasActiveFilters = searchQuery !== "" || filters.status !== "all";
+  const hasActiveFilters =
+    !!debouncedSearch || filters.status !== "all" || filters.state !== "all";
 
   return (
     <>
       <div className='w-full mt-8'>
-        <OfficeSiteFilter
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          filters={filters}
-          setFilters={setFilters}
-          resetFilters={resetFilters}
-          isOfficesQueryLoading={isOfficesQueryLoading}
-          hasActiveFilters={hasActiveFilters}
-        />
+        <OfficeSiteFilter />
 
         <Suspense fallback={<OfficeSiteSkeleton />}>
           {isOfficesQueryLoading ? (
@@ -97,6 +94,7 @@ const OfficeSitePage = () => {
                   <OfficeCard
                     key={office.id}
                     office={office}
+                    siteStatus={filters.siteStatus}
                   />
                 ))}
               </div>

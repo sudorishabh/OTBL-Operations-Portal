@@ -1,9 +1,10 @@
 import { and, asc, count, desc, eq, inArray, like, or } from "drizzle-orm";
-import { schema } from "@pkg/db";
+import { schema, type Database } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure, publicProcedure } from "../../core";
 import {
+  type AccessScope,
   assertCanAccessOffice,
   getAccessScope,
   resolveVisibleOfficeIds,
@@ -24,10 +25,24 @@ const {
 } = schema;
 const { ROLES } = constants;
 
+// The offices a user may see: all of them, those they belong to, or none for
+// users who only work on sites.
+const visibleOfficesWhere = async (db: Database, scope: AccessScope) => {
+  if (scope.kind !== "restricted") return undefined;
+  if (scope.ui === "site_only" || scope.ui === "wo_site_upload") {
+    return eq(officeTable.id, -1);
+  }
+  const visibleOfficeIds = (await resolveVisibleOfficeIds(db, scope)) ?? [];
+  return visibleOfficeIds.length > 0
+    ? inArray(officeTable.id, visibleOfficeIds)
+    : eq(officeTable.id, -1);
+};
+
 export const officeQueryRouter = router({
   getOffices: protectedProcedure.input(officeSchemas.getOfficesSchema).query(
     handleQuery(async ({ input, ctx }) => {
-      const { searchQuery, status, officeNamesOrder, page, limit } = input;
+      const { searchQuery, status, state, officeNamesOrder, page, limit } =
+        input;
 
       let officeQuery = undefined;
 
@@ -35,13 +50,20 @@ export const officeQueryRouter = router({
         officeQuery = and(officeQuery, eq(officeTable.status, status));
       }
 
+      if (state) {
+        officeQuery = and(officeQuery, eq(officeTable.state, state));
+      }
+
       if (searchQuery && searchQuery.trim() !== "") {
+        const term = `%${escapeLike(searchQuery)}%`;
         officeQuery = and(
           officeQuery,
           or(
-            like(officeTable.name, `%${escapeLike(searchQuery)}%`),
-            like(officeTable.address, `%${escapeLike(searchQuery)}%`),
-            like(officeTable.email, `%${escapeLike(searchQuery)}%`),
+            like(officeTable.name, term),
+            like(officeTable.address, term),
+            like(officeTable.city, term),
+            like(officeTable.state, term),
+            like(officeTable.email, term),
           ),
         );
       }
@@ -63,24 +85,10 @@ export const officeQueryRouter = router({
           currentUserId,
           ctx.user!.role,
         );
-        let officeWhere = officeQuery;
-
-        if (scope.kind === "restricted") {
-          if (scope.ui === "site_only" || scope.ui === "wo_site_upload") {
-            const noOffices = eq(officeTable.id, -1);
-            officeWhere = officeQuery ? and(officeQuery, noOffices) : noOffices;
-          } else {
-            const visibleOfficeIds =
-              (await resolveVisibleOfficeIds(ctx.db, scope)) ?? [];
-            const scopeFilter =
-              visibleOfficeIds.length > 0
-                ? inArray(officeTable.id, visibleOfficeIds)
-                : eq(officeTable.id, -1);
-            officeWhere = officeQuery
-              ? and(officeQuery, scopeFilter)
-              : scopeFilter;
-          }
-        }
+        const officeWhere = and(
+          officeQuery,
+          await visibleOfficesWhere(ctx.db, scope),
+        );
 
         const officeList = ctx.db
           .select()
@@ -146,6 +154,33 @@ export const officeQueryRouter = router({
         };
       } catch (error) {
         throw fromDatabaseError(error, "Fetching offices");
+      }
+    }),
+  ),
+
+  // Every office the user can see, with only what list filters show and
+  // search by; also gives the states offices are in.
+  getOfficeOptions: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const scope = await getAccessScope(
+        ctx.db,
+        Number(ctx.user!.sub),
+        ctx.user!.role,
+      );
+
+      try {
+        return await ctx.db
+          .select({
+            id: officeTable.id,
+            name: officeTable.name,
+            city: officeTable.city,
+            state: officeTable.state,
+          })
+          .from(officeTable)
+          .where(await visibleOfficesWhere(ctx.db, scope))
+          .orderBy(asc(officeTable.name), asc(officeTable.id));
+      } catch (error) {
+        throw fromDatabaseError(error, "Fetching office options");
       }
     }),
   ),

@@ -62,5 +62,10 @@ export const getAllUsersSchema = z.object({
     ])
     .optional(),
   status: z.enum([...statusEnum.options, "all"]).optional(),
+  // Users working at the office: its seats, and site operators on its work
+  // orders.
+  officeId: positiveIntValidator.optional(),
+  // Viewers see everything, so they count as neither.
+  assignment: z.enum(["assigned", "unassigned"]).optional(),
   userNamesOrder: sortOrderValidator,
 });

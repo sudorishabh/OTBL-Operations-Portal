@@ -245,7 +245,14 @@ export const getAllWorkOrdersPaginatedSchema = z.object({
   searchQuery: z.string().optional(),
   status: z.string().optional(),
   office_id: z.number().optional(),
-  workOrderOrder: z.enum(["asc", "desc", "latest", "oldest"]).optional(),
+  client_id: z.number().optional(),
+  process_type: z
+    .enum(["bioremediation", "restoration", "bioremediation_restoration"])
+    .optional(),
+  // asc and desc order by title; ending_soonest by end date.
+  workOrderOrder: z
+    .enum(["asc", "desc", "latest", "oldest", "ending_soonest"])
+    .optional(),
 });
 
 export const createWorkOrderSiteSchema = z.object({

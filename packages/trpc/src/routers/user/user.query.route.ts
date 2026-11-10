@@ -4,10 +4,13 @@ import {
   count,
   desc,
   eq,
+  exists,
   inArray,
   like,
+  ne,
   not,
   or,
+  sql,
 } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
@@ -25,10 +28,11 @@ const {
   officeTable,
   officeUserTable,
   siteTable,
+  workOrderTable,
   workOrderSiteTable,
   workOrderSiteUserTable,
 } = schema;
-const { ROLES, STATUS } = constants;
+const { ROLES } = constants;
 
 export const userQueryRouter = router({
   me: protectedProcedure.query(
@@ -64,8 +68,16 @@ export const userQueryRouter = router({
     .input(userSchemas.getAllUsersSchema)
     .query(
       handleProtectedQuery(async ({ input, ctx }) => {
-        const { page, limit, searchQuery, role, status, userNamesOrder } =
-          input;
+        const {
+          page,
+          limit,
+          searchQuery,
+          role,
+          status,
+          officeId,
+          assignment,
+          userNamesOrder,
+        } = input;
 
         const offset = (page - 1) * limit;
         let userQuery = not(eq(userTable.role, ROLES.ADMIN));
@@ -76,6 +88,63 @@ export const userQueryRouter = router({
 
         if (status && status !== "all") {
           userQuery = and(userQuery, eq(userTable.status, status)) ?? userQuery;
+        }
+
+        // An office seat, or a pin on a work order site, optionally in one
+        // office.
+        const hasOfficeSeat = (inOffice?: number) =>
+          exists(
+            ctx.db
+              .select({ one: sql`1` })
+              .from(officeUserTable)
+              .where(
+                and(
+                  eq(officeUserTable.user_id, userTable.id),
+                  inOffice ? eq(officeUserTable.office_id, inOffice) : undefined,
+                ),
+              ),
+          );
+        const hasSitePin = (inOffice?: number) =>
+          exists(
+            ctx.db
+              .select({ one: sql`1` })
+              .from(workOrderSiteUserTable)
+              .innerJoin(
+                workOrderSiteTable,
+                eq(
+                  workOrderSiteUserTable.work_order_site_id,
+                  workOrderSiteTable.id,
+                ),
+              )
+              .innerJoin(
+                workOrderTable,
+                eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+              )
+              .where(
+                and(
+                  eq(workOrderSiteUserTable.user_id, userTable.id),
+                  inOffice ? eq(workOrderTable.office_id, inOffice) : undefined,
+                ),
+              ),
+          );
+
+        if (officeId) {
+          userQuery =
+            and(userQuery, or(hasOfficeSeat(officeId), hasSitePin(officeId))) ??
+            userQuery;
+        }
+
+        if (assignment === "assigned") {
+          userQuery =
+            and(userQuery, or(hasOfficeSeat(), hasSitePin())) ?? userQuery;
+        } else if (assignment === "unassigned") {
+          userQuery =
+            and(
+              userQuery,
+              ne(userTable.role, ROLES.VIEWER),
+              not(hasOfficeSeat()),
+              not(hasSitePin()),
+            ) ?? userQuery;
         }
 
         if (searchQuery && searchQuery.trim() !== "") {
@@ -128,6 +197,11 @@ export const userQueryRouter = router({
             userOrder = asc(userTable.created_at);
             break;
         }
+        // The id breaks ties so users never repeat or go missing across pages.
+        const userTieBreak =
+          userNamesOrder === "desc" || userNamesOrder === "latest"
+            ? desc(userTable.id)
+            : asc(userTable.id);
 
         const users = await ctx.db
           .select({
@@ -143,7 +217,7 @@ export const userQueryRouter = router({
           .where(userQuery)
           .limit(limit)
           .offset(offset)
-          .orderBy(userOrder);
+          .orderBy(userOrder, userTieBreak);
 
         const userIds = users.map((u: any) => u.id);
         let allOffices: {
@@ -343,88 +417,4 @@ export const userQueryRouter = router({
         };
       }),
     ),
-
-  getCategories8User: protectedProcedure.use(hasRole(ROLES.ADMIN)).query(
-    handleProtectedQuery(async ({ ctx }) => {
-      const userInfoNeeded = {
-        id: userTable.id,
-        name: userTable.name,
-        email: userTable.email,
-        role: userTable.role,
-        contact_number: userTable.contact_number,
-        status: userTable.status,
-        created_at: userTable.created_at,
-      };
-
-      const fetchEightByRole = async (
-        role: (typeof ROLES)[keyof typeof ROLES],
-      ) => {
-        try {
-          return await ctx.db
-            .select(userInfoNeeded)
-            .from(userTable)
-            .where(
-              and(
-                eq(userTable.role, role),
-                eq(userTable.status, STATUS.ACTIVE),
-                not(eq(userTable.role, ROLES.ADMIN)),
-              ),
-            )
-            .orderBy(desc(userTable.created_at))
-            .limit(8);
-        } catch (error) {
-          throw fromDatabaseError(error, `Fetching ${role} users`);
-        }
-      };
-
-      const totalUserByRole = async (
-        role: (typeof ROLES)[keyof typeof ROLES],
-      ) => {
-        try {
-          return await ctx.db
-            .select({ count: count() })
-            .from(userTable)
-            .where(
-              and(
-                not(eq(userTable.role, ROLES.ADMIN)),
-                eq(userTable.role, role),
-              ),
-            );
-        } catch (error) {
-          throw fromDatabaseError(error, `Counting ${role} users`);
-        }
-      };
-
-      const [
-        managers,
-        officeOperators,
-        siteOperators,
-        viewers,
-        totalManagers,
-        totalOfficeOperators,
-        totalSiteOperators,
-        totalViewers,
-      ] = await Promise.all([
-        fetchEightByRole(ROLES.MANAGER),
-        fetchEightByRole(ROLES.OFFICE_OPERATOR),
-        fetchEightByRole(ROLES.SITE_OPERATOR),
-        fetchEightByRole(ROLES.VIEWER),
-        totalUserByRole(ROLES.MANAGER),
-        totalUserByRole(ROLES.OFFICE_OPERATOR),
-        totalUserByRole(ROLES.SITE_OPERATOR),
-        totalUserByRole(ROLES.VIEWER),
-      ]);
-
-      return {
-        managers,
-        officeOperators,
-        siteOperators,
-        viewers,
-        totalManagers: totalManagers[0]?.count,
-        totalOfficeOperators: totalOfficeOperators[0]?.count,
-        totalSiteOperators: totalSiteOperators[0]?.count,
-        totalViewers: totalViewers[0]?.count,
-      };
-    }),
-  ),
 });
