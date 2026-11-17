@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CalendarRange,
   CheckCircle2,
@@ -19,7 +18,7 @@ import NoFetchData from "@/components/shared/no-fetch-data";
 import { RestorationPageSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
-import { workOrderPath, type WorkOrderFrom } from "../work-order-path";
+import type { WorkOrderFrom } from "../work-order-path";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
 import JobOrderCertificates from "./job-order-certificates";
@@ -41,13 +40,12 @@ const NO_RATES: any[] = [];
 
 interface Props {
   workOrderId: string;
-  // Which work order page to go back to.
+  // Which work order page the trail leads back to.
   from: WorkOrderFrom;
 }
 
 // The one place restoration work is managed, as it has no sites.
 const RestorationPage = ({ workOrderId, from }: Props) => {
-  const router = useRouter();
   const { setParam } = useHandleParams();
   const [jobOrderDialogOpen, setJobOrderDialogOpen] = useState(false);
   const [editingJobOrder, setEditingJobOrder] = useState<JobOrder | null>(null);
@@ -77,8 +75,6 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
     setEditingJobOrder(jobOrder);
     setJobOrderDialogOpen(true);
   };
-
-  const goBack = () => router.push(workOrderPath(workOrderId, from));
 
   if (workOrderQuery.isLoading || restorationQuery.isLoading) {
     return <RestorationPageSkeleton from={from} />;
@@ -125,8 +121,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
       <PageWrapper
         title='Restoration'
         description={description}
-        breadcrumbs={breadcrumbs}
-        backClick={goBack}>
+        breadcrumbs={breadcrumbs}>
         <NoFetchData
           title='No Restoration'
           Icon={File}
@@ -144,8 +139,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
     <PageWrapper
       title='Restoration'
       description={description}
-      breadcrumbs={breadcrumbs}
-      backClick={goBack}>
+      breadcrumbs={breadcrumbs}>
       <div className='mt-4 space-y-4'>
         {/* Set on its own once completion certificates use up the schedule of
             rates. */}

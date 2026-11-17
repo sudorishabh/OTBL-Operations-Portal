@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { PencilLine } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
@@ -32,7 +31,6 @@ const NO_RETRY_CODES = ["FORBIDDEN", "NOT_FOUND", "UNAUTHORIZED"];
 // An office's own page: its details and members, then its sites and work
 // orders in tabs.
 const OfficePage = ({ officeId }: { officeId: number }) => {
-  const router = useRouter();
   const { setParams } = useHandleParams();
 
   const { data, isLoading, error } = trpc.officeQuery.getOffice.useQuery(
@@ -46,8 +44,6 @@ const OfficePage = ({ officeId }: { officeId: number }) => {
   );
   const details = data as OfficeDetails | undefined;
 
-  const goBack = () => router.push("/dashboard/office-site");
-
   if (isLoading) return <OfficePageSkeleton />;
 
   if (!details) {
@@ -55,8 +51,7 @@ const OfficePage = ({ officeId }: { officeId: number }) => {
       <PageWrapper
         title='Office'
         description={OFFICE_PAGE_DESCRIPTION}
-        breadcrumbs={recordTrail("offices", "Office")}
-        backClick={goBack}>
+        breadcrumbs={recordTrail("offices", "Office")}>
         <div className='mt-4'>
           <Error
             variant='default'
@@ -74,7 +69,6 @@ const OfficePage = ({ officeId }: { officeId: number }) => {
       title={office.name.toUpperCase()}
       description={OFFICE_PAGE_DESCRIPTION}
       breadcrumbs={recordTrail("offices", office.name)}
-      backClick={goBack}
       button={
         canManage && (
           <CustomButton

@@ -4,7 +4,6 @@ import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import { workOrderTrail } from "@/lib/breadcrumbs";
 import { trpc } from "@/lib/trpc";
 import { constants, getEffectiveWorkOrderStatus } from "@pkg/utils";
-import { useRouter } from "next/navigation";
 import WorkOrderDetailsCard from "./work-order-details-card";
 import { File, FolderOpen, ReceiptIndianRupee, Rows3 } from "lucide-react";
 import ScheduleOfRatesTable from "./schedule-of-rates-table";
@@ -26,7 +25,6 @@ interface Props {
 }
 
 const WorkOrder = ({ workOrderId, from }: Props) => {
-  const router = useRouter();
   const { setParam } = useHandleParams();
 
   const {
@@ -141,14 +139,7 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
           id: workOrderData.workOrder.client_id,
           name: workOrderData.workOrder.client_name,
         },
-      })}
-      backClick={() => {
-        if (from === "list") {
-          router.push("/dashboard/work-order");
-        } else {
-          router.push(`/dashboard/client/${workOrderData.workOrder.client_id}`);
-        }
-      }}>
+      })}>
       <div className='mt-4 space-y-4'>
         <WorkOrderDetailsCard
           workOrder={derivedWorkOrder}
