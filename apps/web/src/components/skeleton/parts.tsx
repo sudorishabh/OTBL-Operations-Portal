@@ -1,4 +1,5 @@
 import React from "react";
+import { ChevronRight, House } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -78,49 +79,81 @@ export const SkeletonCard = ({
   </div>
 );
 
+// The breadcrumb trail PageWrapper draws: the house, then a bar for each
+// step. As on the page, small screens keep only the last two steps.
+export const BreadcrumbSkeleton = ({ steps }: { steps: number }) => (
+  <div className='mb-3 flex'>
+    <div className='inline-flex h-6 items-center gap-1.5 rounded-full bg-white/75 px-2.5 shadow-sm ring-1 ring-gray-300/60'>
+      <House className='size-3.5 text-gray-300' />
+      {Array.from({ length: steps }, (_, index) => (
+        <span
+          key={index}
+          className={cn(
+            "inline-flex items-center gap-1.5",
+            index < steps - 2 && "hidden sm:inline-flex",
+          )}>
+          <ChevronRight className='size-3.5 text-gray-300' />
+          <Skeleton
+            className={cn(
+              "h-2.5 rounded-full",
+              index === steps - 1 ? "w-24" : "w-16",
+            )}
+          />
+        </span>
+      ))}
+    </div>
+  </div>
+);
+
 // The title row PageWrapper draws, for pages whose title waits on data.
-// Text that never changes is shown as is.
+// Text that never changes is shown as is. A trail draws the breadcrumbs
+// above it, with that many steps after the house.
 export const PageHeaderSkeleton = ({
   back = false,
   title,
   description,
   action = false,
+  trail,
 }: {
   back?: boolean;
   title?: string;
   description?: string;
   action?: boolean;
+  trail?: number;
 }) => (
-  <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-    <div className='flex min-w-0 flex-1 items-center gap-3 sm:gap-4'>
-      {back && (
-        <Skeleton className='size-8 shrink-0 rounded-full bg-white/80' />
-      )}
-      <div className='min-w-0 flex-1'>
-        {title ? (
-          <p className='truncate text-lg font-bold text-cyan-800 sm:text-xl'>
-            {title}
-          </p>
-        ) : (
-          <TextLine
-            line='h-7'
-            className={cn("h-5 w-96 max-w-[75%]", ON_PAGE)}
-          />
+  <>
+    {trail != null && <BreadcrumbSkeleton steps={trail} />}
+    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+      <div className='flex min-w-0 flex-1 items-center gap-3 sm:gap-4'>
+        {back && (
+          <Skeleton className='size-8 shrink-0 rounded-full bg-white/80' />
         )}
-        {description ? (
-          <p className='line-clamp-2 text-xs font-medium text-gray-500 sm:text-sm'>
-            {description}
-          </p>
-        ) : (
-          <TextLine
-            line='h-4 sm:h-5'
-            className={cn("w-72 max-w-[60%]", ON_PAGE)}
-          />
-        )}
+        <div className='min-w-0 flex-1'>
+          {title ? (
+            <p className='truncate text-lg font-bold text-cyan-800 sm:text-xl'>
+              {title}
+            </p>
+          ) : (
+            <TextLine
+              line='h-7'
+              className={cn("h-5 w-96 max-w-[75%]", ON_PAGE)}
+            />
+          )}
+          {description ? (
+            <p className='line-clamp-2 text-xs font-medium text-gray-500 sm:text-sm'>
+              {description}
+            </p>
+          ) : (
+            <TextLine
+              line='h-4 sm:h-5'
+              className={cn("w-72 max-w-[60%]", ON_PAGE)}
+            />
+          )}
+        </div>
       </div>
+      {action && <Skeleton className={cn("h-8 w-32 shrink-0", ON_PAGE)} />}
     </div>
-    {action && <Skeleton className={cn("h-8 w-32 shrink-0", ON_PAGE)} />}
-  </div>
+  </>
 );
 
 // White boxes where the search field and filter selects sit.

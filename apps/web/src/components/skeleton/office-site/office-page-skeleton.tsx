@@ -184,6 +184,7 @@ const OfficePageSkeleton = () => {
   return (
     <PageWrapper>
       <PageHeaderSkeleton
+        trail={2}
         back
         description={OFFICE_PAGE_DESCRIPTION}
         action={isAdmin}

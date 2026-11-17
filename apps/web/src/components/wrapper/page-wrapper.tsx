@@ -30,7 +30,7 @@ export const PageWrapper = ({
       <BuildingPatterns />
 
       {breadcrumbs && (
-        <div className='relative z-10 mb-3'>
+        <div className='relative z-10 mb-3 flex'>
           <PageBreadcrumbs items={breadcrumbs} />
         </div>
       )}
