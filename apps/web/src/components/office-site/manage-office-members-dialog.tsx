@@ -124,6 +124,7 @@ const ManageOfficeMembersDialog = () => {
   const invalidateOffice = useCallback(async () => {
     await utils.officeQuery.getOfficeUsers.invalidate({ office_id });
     await utils.officeQuery.getOffices.invalidate();
+    await utils.officeQuery.getOffice.invalidate({ officeId: office_id });
   }, [utils, office_id]);
 
   const handleClose = useCallback(() => {

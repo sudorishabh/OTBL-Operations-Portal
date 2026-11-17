@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo } from "react";
-import { ArrowUpDown, MapPin, MapPinned } from "lucide-react";
+import { ArrowUpDown, MapPin } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import {
   ALL,
@@ -22,12 +22,6 @@ const STATUS_OPTIONS = [
   { label: "Inactive offices", value: "inactive" },
 ];
 
-const SITE_STATUS_OPTIONS = [
-  { label: "All sites", value: ALL },
-  { label: "Active sites", value: "active" },
-  { label: "Inactive sites", value: "inactive" },
-];
-
 const SORT_OPTIONS = [
   { label: "Name A–Z", value: "asc" },
   { label: "Name Z–A", value: "desc" },
@@ -35,7 +29,7 @@ const SORT_OPTIONS = [
   { label: "Oldest first", value: "oldest" },
 ];
 
-// The offices and sites page's search, filters and order.
+// The offices page's search, filters and order.
 const OfficeSiteFilter = () => {
   const {
     searchQuery,
@@ -68,10 +62,7 @@ const OfficeSiteFilter = () => {
     setFilters({ ...filters, ...next });
 
   const hasActiveFilters =
-    searchQuery !== "" ||
-    filters.status !== ALL ||
-    filters.state !== ALL ||
-    filters.siteStatus !== ALL;
+    searchQuery !== "" || filters.status !== ALL || filters.state !== ALL;
 
   return (
     <FilterBar className='mb-6'>
@@ -98,15 +89,6 @@ const OfficeSiteFilter = () => {
         options={stateOptions}
         isLoading={officesQuery.isLoading}
         searchPlaceholder='Search states...'
-      />
-      <SelectFilter
-        label='Sites shown'
-        Icon={MapPinned}
-        value={filters.siteStatus}
-        onChange={(siteStatus) =>
-          setFilter({ siteStatus: siteStatus as OfficeFilters["siteStatus"] })
-        }
-        options={SITE_STATUS_OPTIONS}
       />
       <SelectFilter
         label='Sort offices'

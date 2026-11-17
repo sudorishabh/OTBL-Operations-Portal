@@ -65,14 +65,6 @@ export const getOfficesSchema = z.object({
 
 export const getOfficeSchema = z.object({ officeId: positiveIntValidator });
 
-export const getOfficeWorkOrderSchema = z.object({
-  officeId: positiveIntValidator,
-});
-
-export const getOfficeStatsSchema = z.object({
-  officeId: positiveIntValidator,
-});
-
 export const getOfficeUsersSchema = z.object({
   office_id: positiveIntValidator,
 });

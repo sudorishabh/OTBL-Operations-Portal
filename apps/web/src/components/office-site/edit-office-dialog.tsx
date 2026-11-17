@@ -29,11 +29,11 @@ const EditOfficeDialog = () => {
     resolver: zodResolver(officeSchemas.updateOfficeSchema),
   });
 
-  const { data: officesData, isLoading } = trpc.officeQuery.getOffices.useQuery(
-    {},
-    { enabled: isOpenDialog && !!officeId },
+  const { data, isLoading } = trpc.officeQuery.getOffice.useQuery(
+    { officeId },
+    { enabled: isOpenDialog && officeId > 0 },
   );
-  const office = officesData?.offices?.find((o: any) => o.id === officeId);
+  const office = data?.office;
 
   // Re-seed on every open so a cancelled edit doesn't linger.
   useEffect(() => {
@@ -58,7 +58,8 @@ const EditOfficeDialog = () => {
   const updateOffice = trpc.officeMutation.updateOffice.useMutation({
     onSuccess: () => {
       toast.success("Office updated successfully");
-      utils.officeQuery.getOffices.invalidate();
+      // The office list, its page and the office pickers all show its name.
+      utils.officeQuery.invalidate();
       handleClose();
     },
     onError: (error: any) => {

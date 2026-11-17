@@ -1,330 +1,326 @@
+import React from "react";
+import Link from "next/link";
+import { differenceInCalendarDays, format } from "date-fns";
 import {
+  ArrowUpRight,
   Building2,
-  Calendar,
-  Info,
+  CalendarDays,
+  ChevronRight,
   Mail,
   MapPin,
+  MoreVertical,
   Pencil,
   Plus,
-  ReceiptText,
   UserCog,
   Users,
 } from "lucide-react";
-import React from "react";
-import OfficeSiteTable from "./office-site-table";
-import { capitalizeEachWord, capitalFirstLetter } from "@pkg/utils";
-import CustomButton from "@/components/shared/btn";
+import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
+import { Pill } from "@/components/shared/detail-card-parts";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import useHandleParams from "@/hooks/useHandleParams";
+import type { RouterOutputs } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 
-type Site = {
-  id: number;
-  name: string;
-  address: string;
-  state: string;
-  city: string;
-  pincode: string;
-  office_id: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  users: {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-  }[];
+export type OfficeListItem =
+  RouterOutputs["officeQuery"]["getOffices"]["offices"][number];
+type LatestSite = OfficeListItem["latestSites"][number];
+
+const STATUS_STYLES: Record<string, string> = {
+  active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  inactive: "bg-amber-50 text-amber-700 ring-amber-200",
 };
 
-type Office = {
-  id: number;
-  name: string;
-  address: string;
-  state: string;
-  city: string;
-  gst_number: string;
-  pincode: string;
-  email: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  siteCount: number;
-  operators: {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-  }[];
-  manager: {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-  } | null;
-  canManage?: boolean;
-};
+// Phones list this many of the newest sites; wider screens list them all.
+const PHONE_SITES = 3;
 
-const InfoRow: React.FC<{
-  icon: React.ElementType;
+// Sites added within this many days are marked new.
+const NEW_SITE_DAYS = 30;
+
+const officeHref = (office: OfficeListItem) =>
+  `/dashboard/office-site/${office.id}`;
+
+// One of the office's totals. Each sits in a fixed-width column, so the
+// figures line up from card to card and the list reads like a ledger.
+const Figure = ({
+  label,
+  value,
+  note,
+}: {
   label: string;
-  value: React.ReactNode;
-}> = ({ icon: Icon, label, value }) => (
-  <div className='flex items-start gap-3'>
-    <Icon className='mt-0.5 size-4 shrink-0 text-slate-400' />
-    <div className='min-w-0 leading-snug'>
-      <p className='text-[11px] font-medium uppercase tracking-wide text-slate-400'>
-        {label}
-      </p>
-      <p className='mt-0.5 break-words text-sm text-slate-700'>{value}</p>
-    </div>
+  value: number;
+  note?: string;
+}) => (
+  <div className='min-w-0 px-4 py-3 lg:w-24 lg:px-0 lg:py-0 lg:text-right'>
+    <dt className='text-[11px] text-gray-500'>{label}</dt>
+    <dd className='text-xl font-semibold leading-7 tabular-nums text-gray-900'>
+      {value.toLocaleString("en-IN")}
+    </dd>
+    <dd className='h-4 text-[11px] leading-4 text-gray-400'>{note}</dd>
   </div>
 );
 
-const OfficeCard: React.FC<{
-  office: Office;
-  /** Which of the office's sites to list. */
-  siteStatus?: "active" | "inactive" | "all";
-}> = ({ office, siteStatus = "all" }) => {
-  const { setParams } = useHandleParams();
-  const isActive = office.status?.toLowerCase() === "active";
-
-  const handleAddSiteDialogOpen = () => {
-    setParams({
-      dialog: "create-site",
-      officeId: office.id.toString(),
-      officeName: office.name,
-    });
-  };
-
-  const handleOfficeDetailsDialogOpen = () => {
-    setParams({
-      dialog: "view-office",
-      officeId: office.id.toString(),
-      officeName: office.name,
-    });
-  };
-
-  const handleEditOfficeOpen = () => {
-    setParams({
-      dialog: "edit-office",
-      officeId: office.id.toString(),
-    });
-  };
-
-  const handleManageMembersOpen = () => {
-    setParams({
-      dialog: "manage-office-members",
-      officeId: office.id.toString(),
-      officeName: office.name,
-    });
-  };
+// A site among the office's newest, as a line in a dated log. Sites are
+// active unless marked, and recent ones are marked new.
+const SiteLine = ({ site, index }: { site: LatestSite; index: number }) => {
+  const addedOn = new Date(site.created_at);
+  const isActive = site.status === "active";
+  const isNew = differenceInCalendarDays(new Date(), addedOn) < NEW_SITE_DAYS;
+  // Most site names already say where they are.
+  const showCity =
+    !!site.city && !site.name.toLowerCase().includes(site.city.toLowerCase());
 
   return (
-    <div className='bg-white rounded-xl hover:border-emerald-400 border border-gray-50 shadow-sm hover:shadow-lg transition-all duration-300 p-3 sm:p-4'>
-      <div className='flex flex-col gap-4 border-b border-gray-100 pb-4 mb-4 lg:flex-row lg:items-start lg:justify-between'>
-        <div className='min-w-0'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <h3 className='break-words font-semibold leading-tight text-gray-900'>
-              {office.name.toUpperCase()}
-            </h3>
-            <span
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                isActive
-                  ? "bg-emerald-100/60 text-emerald-800 "
-                  : "bg-slate-100 text-slate-800"
-              }`}>
-              <span
-                className={`size-1.5 rounded-full ${
-                  isActive ? "bg-emerald-500" : "bg-slate-400"
-                }`}
-              />
-              {capitalFirstLetter(office.status)}
-            </span>
-          </div>
+    <li
+      className={cn(
+        "flex h-9 min-w-0 items-center gap-3 border-t border-gray-100",
+        index >= PHONE_SITES && "max-sm:hidden",
+      )}>
+      <time
+        dateTime={addedOn.toISOString()}
+        className='w-[4.5rem] shrink-0 text-[11px] tabular-nums text-gray-400'>
+        {format(addedOn, "d MMM yyyy")}
+      </time>
+      <span
+        className={cn(
+          "truncate text-[13px] font-medium",
+          isActive ? "text-gray-800" : "text-gray-400",
+        )}
+        title={site.name}>
+        {capitalFirstLetter(site.name)}
+      </span>
+      {showCity && (
+        <span className='hidden shrink-0 text-xs text-gray-400 md:inline'>
+          {capitalizeEachWord(site.city)}
+        </span>
+      )}
+      {!isActive && (
+        <span className='shrink-0 text-[11px] text-gray-500'>Inactive</span>
+      )}
+      {isNew && (
+        <span className='ml-auto shrink-0 rounded-full bg-emerald-50 px-1.5 text-[10px] font-semibold leading-4 text-emerald-700 ring-1 ring-inset ring-emerald-200'>
+          New
+        </span>
+      )}
+    </li>
+  );
+};
 
-          <div className='mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500'>
-            <div className='group relative inline-flex'>
-              <button
-                type='button'
-                className='-ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300'>
-                <Info className='size-3.5' />
-                Info
-              </button>
+// The office's newest sites, newest first down each column.
+const NewestSites = ({ office }: { office: OfficeListItem }) => {
+  const sites = office.latestSites;
+  const hasMoreOnPhones =
+    office.siteCount > Math.min(sites.length, PHONE_SITES);
+  const hasMoreOnWider = office.siteCount > sites.length;
+  const seeAll = `See all ${office.siteCount} sites`;
 
-              <div className='pointer-events-none absolute left-0 top-full z-30 w-[24rem] max-w-[calc(100vw-2rem)] origin-top-left scale-95 pt-2 opacity-0 transition-all duration-200 ease-out group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:scale-100 group-focus-within:opacity-100 sm:w-[34rem]'>
-                <div className='overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ring-1 ring-black/5'>
-                  <div className='flex items-start justify-between gap-3 border-b border-slate-100 bg-linear-to-br from-slate-50 to-white px-5 py-4'>
-                    <div className='flex min-w-0 items-center gap-3'>
-                      <span className='flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-100'>
-                        <Building2 className='size-5' />
-                      </span>
-                      <div className='min-w-0'>
-                        <p className='truncate text-base font-semibold text-slate-800'>
-                          {capitalizeEachWord(office.name)}
-                        </p>
-                        <p className='text-xs text-slate-400'>
-                          Office overview
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        isActive
-                          ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-                          : "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
-                      }`}>
-                      <span
-                        className={`size-2 rounded-full ${
-                          isActive ? "bg-emerald-500" : "bg-slate-400"
-                        }`}
-                      />
-                      {capitalFirstLetter(office.status)}
-                    </span>
-                  </div>
-
-                  <div className='space-y-4 px-5 py-4'>
-                    <InfoRow
-                      icon={MapPin}
-                      label='Address'
-                      value={`${capitalFirstLetter(office.address)}${
-                        office.city
-                          ? `, ${capitalizeEachWord(office.city)}`
-                          : ""
-                      }${
-                        office.state
-                          ? `, ${capitalizeEachWord(office.state)}`
-                          : ""
-                      }${office.pincode ? ` – ${office.pincode}` : ""}`}
-                    />
-                    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-                      <InfoRow
-                        icon={Mail}
-                        label='Email'
-                        value={office.email}
-                      />
-                      {office.gst_number ? (
-                        <InfoRow
-                          icon={ReceiptText}
-                          label='GST Number'
-                          value={office.gst_number}
-                        />
-                      ) : null}
-                      {office.manager?.name ? (
-                        <InfoRow
-                          icon={UserCog}
-                          label='Manager'
-                          value={capitalizeEachWord(office.manager.name)}
-                        />
-                      ) : null}
-                    </div>
-
-                    <div className='flex flex-wrap items-center gap-3 pt-1'>
-                      <div className='flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-inset ring-slate-100'>
-                        <Building2 className='size-4 text-emerald-600' />
-                        <span className='text-sm font-semibold text-slate-700'>
-                          {office.siteCount}
-                        </span>
-                        <span className='text-xs text-slate-400'>
-                          {office.siteCount === 1 ? "Site" : "Sites"}
-                        </span>
-                      </div>
-                      <div className='flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-inset ring-slate-100'>
-                        <Users className='size-4 text-emerald-600' />
-                        <span className='text-sm font-semibold text-slate-700'>
-                          {office.operators.length}
-                        </span>
-                        <span className='text-xs text-slate-400'>
-                          {office.operators.length === 1
-                            ? "Office Operator"
-                            : "Office Operators"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className='flex items-center gap-1.5 border-t border-slate-100 bg-slate-50/60 px-5 py-2.5 text-xs text-slate-500'>
-                    <Calendar className='size-4 text-slate-400' />
-                    Created{" "}
-                    {new Date(office.created_at).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {office.manager?.name ? (
-              <span className='inline-flex items-center gap-1'>
-                <UserCog className='size-3.5 text-gray-400' />
-                <span className='text-gray-600'>
-                  {capitalFirstLetter(office.manager.name)}
-                </span>
-              </span>
-            ) : null}
-
-            <span className='inline-flex items-center gap-1'>
-              <Users className='size-3.5 text-gray-400' />
-              <span className='font-medium text-gray-600'>
-                {office.operators.length}
-              </span>
-              {office.operators.length === 1
-                ? "Office Operator"
-                : "Office Operators"}
-            </span>
-          </div>
-        </div>
-
-        <div className='flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end'>
-          <span className='inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-gray-500 border border-gray-300'>
-            <Building2 className='size-3.5 text-emerald-600' />
-            <span className='font-semibold text-gray-700'>
-              {office.siteCount}
-            </span>
-            {office.siteCount === 1 ? "Site" : "Sites"}
-          </span>
-
-          <div className='mx-0.5 hidden h-6 w-px bg-gray-200 lg:block' />
-
-          <CustomButton
-            arrowType='upright'
-            variant='arrow'
-            onClick={handleOfficeDetailsDialogOpen}
-          />
-          {office.canManage && (
-            <CustomButton
-              text='Edit'
-              Icon={Pencil}
-              variant='outline'
-              onClick={handleEditOfficeOpen}
-              disableForViewer
-            />
-          )}
-          {office.canManage && (
-            <CustomButton
-              text='Members'
-              Icon={Users}
-              variant='outline'
-              onClick={handleManageMembersOpen}
-            />
-          )}
-          {office.canManage && (
-            <CustomButton
-              text='Create Site'
-              Icon={Plus}
-              variant='outline'
-              onClick={handleAddSiteDialogOpen}
-            />
-          )}
-        </div>
+  return (
+    <div className='px-4 pb-3 pt-3 lg:px-5'>
+      <div className='flex items-baseline justify-between gap-3 pb-2'>
+        <h4 className='text-xs font-medium text-gray-700'>Newest sites</h4>
+        {/* The card itself opens the office, so this only says so. */}
+        <p
+          aria-hidden='true'
+          className='text-xs font-medium text-emerald-700 group-hover:underline'>
+          {hasMoreOnPhones && <span className='sm:hidden'>{seeAll}</span>}
+          {hasMoreOnWider && <span className='max-sm:hidden'>{seeAll}</span>}
+        </p>
       </div>
-      <OfficeSiteTable
-        officeId={office.id}
-        officeName={office.name}
-        status={siteStatus}
-        canManage={!!office.canManage}
-      />
+
+      {sites.length === 0 ? (
+        <p className='flex h-9 items-center border-t border-gray-100 text-xs text-gray-400'>
+          No sites yet.
+        </p>
+      ) : (
+        <ol className='grid grid-cols-1 lg:grid-flow-col lg:grid-cols-2 lg:grid-rows-3 lg:gap-x-10'>
+          {sites.map((site, index) => (
+            <SiteLine
+              key={site.id}
+              site={site}
+              index={index}
+            />
+          ))}
+        </ol>
+      )}
     </div>
   );
 };
+
+// Changes to an office, for its manager and admins.
+const OfficeActions = ({ office }: { office: OfficeListItem }) => {
+  const { setParams } = useHandleParams();
+  const officeParams = {
+    officeId: String(office.id),
+    officeName: office.name,
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant='ghost'
+          aria-label={`More actions for ${office.name}`}
+          className='relative z-10 size-8 shrink-0 p-0 text-gray-500 hover:text-gray-900'>
+          <MoreVertical className='size-4' />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align='end'
+        className='w-48'>
+        <DropdownMenuItem asChild>
+          <Link href={officeHref(office)}>
+            <ArrowUpRight className='mr-2 size-4' />
+            Open office
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() =>
+            setParams({ dialog: "edit-office", officeId: String(office.id) })
+          }>
+          <Pencil className='mr-2 size-4' />
+          Edit office
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() =>
+            setParams({ dialog: "manage-office-members", ...officeParams })
+          }>
+          <Users className='mr-2 size-4' />
+          Manage members
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setParams({ dialog: "create-site", ...officeParams })}>
+          <Plus className='mr-2 size-4' />
+          Create site
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+// One office in the list, a full row wide: who it is and who runs it, its
+// totals in aligned columns, and a log of its newest sites. The whole card
+// opens the office's page, which lists every site and work order.
+const OfficeCard = ({ office }: { office: OfficeListItem }) => {
+  const status = office.status.toLowerCase();
+  const location = [office.city, office.state]
+    .filter(Boolean)
+    .map((part) => capitalizeEachWord(part))
+    .join(", ");
+
+  return (
+    <article className='group relative overflow-hidden rounded-xl border border-gray-200 bg-white transition-colors duration-200 focus-within:ring-2 focus-within:ring-emerald-500/30 hover:border-emerald-300'>
+      <div className='flex flex-col lg:flex-row lg:items-start'>
+        {/* Identity */}
+        <div className='flex min-w-0 flex-1 items-start gap-3 px-4 pt-4 lg:px-5 lg:pb-4'>
+          <div className='shrink-0 rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100'>
+            <Building2 className='size-5' />
+          </div>
+          <div className='min-w-0 flex-1'>
+            <div className='flex flex-wrap items-center gap-x-2.5 gap-y-1'>
+              <h3 className='text-[15px] font-semibold leading-snug text-gray-900'>
+                {/* Stretched over the card, so a click anywhere opens it. */}
+                <Link
+                  href={officeHref(office)}
+                  className='break-words outline-none transition-colors after:absolute after:inset-0 after:rounded-xl after:content-[""] group-hover:text-emerald-700'>
+                  {office.name.toUpperCase()}
+                </Link>
+              </h3>
+              <Pill
+                className={cn(
+                  "shrink-0",
+                  STATUS_STYLES[status] ??
+                    "bg-gray-50 text-gray-700 ring-gray-200",
+                )}>
+                {capitalFirstLetter(office.status)}
+              </Pill>
+            </div>
+            <div className='mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500'>
+              {location && (
+                <span className='inline-flex items-center gap-1.5'>
+                  <MapPin className='size-3.5 shrink-0 text-gray-400' />
+                  {location}
+                </span>
+              )}
+              <span className='inline-flex items-center gap-1.5'>
+                <UserCog className='size-3.5 shrink-0 text-gray-400' />
+                {office.manager ? (
+                  <span>
+                    Managed by{" "}
+                    <span className='font-medium text-gray-700'>
+                      {capitalizeEachWord(office.manager.name)}
+                    </span>
+                  </span>
+                ) : (
+                  "No manager yet"
+                )}
+              </span>
+            </div>
+            <div className='mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500'>
+              <span
+                className='inline-flex min-w-0 max-w-full items-center gap-1.5'
+                title={office.email}>
+                <Mail className='size-3.5 shrink-0 text-gray-400' />
+                <span className='truncate'>{office.email}</span>
+              </span>
+              <span className='inline-flex items-center gap-1.5'>
+                <CalendarDays className='size-3.5 shrink-0 text-gray-400' />
+                Added {format(new Date(office.created_at), "d MMM yyyy")}
+              </span>
+            </div>
+          </div>
+          {/* Until the figures fit beside the name, the menu stays by it. */}
+          <div className='lg:hidden'>
+            {office.canManage && <OfficeActions office={office} />}
+          </div>
+        </div>
+
+        {/* Totals */}
+        <dl className='mt-3 grid grid-cols-3 divide-x divide-gray-100 border-y border-gray-100 bg-gray-50/70 lg:mt-0 lg:flex lg:shrink-0 lg:gap-2 lg:divide-x-0 lg:border-0 lg:bg-transparent lg:py-4'>
+          <Figure
+            label='Sites'
+            value={office.siteCount}
+            note={
+              office.siteCount > 0
+                ? `${office.activeSiteCount} active`
+                : undefined
+            }
+          />
+          <Figure
+            label='Work orders'
+            value={office.workOrderCount}
+          />
+          <Figure
+            label='Operators'
+            value={office.operators.length}
+          />
+        </dl>
+
+        <div className='hidden shrink-0 items-start gap-1 py-4 pl-6 pr-3 lg:flex'>
+          {/* An empty slot without the menu keeps the figures in line. */}
+          {office.canManage ? (
+            <OfficeActions office={office} />
+          ) : (
+            <span className='size-8' />
+          )}
+          <ChevronRight
+            aria-hidden='true'
+            className='mt-2 size-4 text-gray-300 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-emerald-600'
+          />
+        </div>
+      </div>
+
+      <div className='lg:border-t lg:border-gray-100'>
+        <NewestSites office={office} />
+      </div>
+    </article>
+  );
+};
+
 export default OfficeCard;
