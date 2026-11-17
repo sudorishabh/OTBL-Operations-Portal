@@ -33,14 +33,7 @@ export const createSiteActivitySchema = z.object({
   client_id: positiveIntValidator,
   work_order_id: positiveIntValidator,
   work_order_site_id: positiveIntValidator,
-  job_number: z.string().min(1, "Job number is required").max(255),
   area: z.string().min(1, "Area is required").max(255),
-  installation: z.string().min(1, "Installation is required").max(255),
-  joint_estimate_number: z
-    .string()
-    .min(1, "Joint estimate number is required")
-    .max(255),
-  land_owner_name: z.string().min(1, "Land owner name is required").max(255),
   start_date: z.string().or(dateValidator),
   end_date: z.string().or(dateValidator),
   remark: z.string().optional(),

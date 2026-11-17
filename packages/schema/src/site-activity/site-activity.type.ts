@@ -40,11 +40,7 @@ export interface WorkOrderSiteDetails {
     code: string;
     title: string;
     process_type: string;
-    job_number: string;
     area: string;
-    installation_type: string;
-    joint_estimate_number: string;
-    land_owner_name: string;
     remarks: string;
   };
   activities?: SiteActivity[];

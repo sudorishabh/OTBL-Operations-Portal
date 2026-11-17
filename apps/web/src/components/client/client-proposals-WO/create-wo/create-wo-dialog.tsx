@@ -103,11 +103,7 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
         handing_over_date: undefined,
         process_type: undefined,
         description: "",
-        job_number: "",
-        joint_estimate_number: "",
         area: "",
-        installation_type: "",
-        land_owner_name: "",
         remarks: "",
         schedule_of_rates: [],
       });
@@ -133,11 +129,7 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
       "end_date",
       "handing_over_date",
       "process_type",
-      "job_number",
-      "joint_estimate_number",
       "area",
-      "installation_type",
-      "land_owner_name",
       "remarks",
     ]);
     if (files.length === 0) {

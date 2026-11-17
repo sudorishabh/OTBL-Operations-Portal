@@ -43,11 +43,7 @@ const toFormValues = (workOrder: any): EditFormInput => ({
   end_date: new Date(workOrder.end_date),
   handing_over_date: new Date(workOrder.handing_over_date),
   description: workOrder.description ?? "",
-  job_number: workOrder.job_number,
-  joint_estimate_number: workOrder.joint_estimate_number,
   area: workOrder.area,
-  installation_type: workOrder.installation_type,
-  land_owner_name: workOrder.land_owner_name,
   remarks: workOrder.remarks ?? "",
 });
 
