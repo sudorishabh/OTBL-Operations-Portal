@@ -52,6 +52,8 @@ interface Props {
   items: Crumb[];
   // Where the house icon leads.
   home?: Required<Crumb>;
+  // Name home beside the house, not only to screen readers.
+  showHomeLabel?: boolean;
   tone?: Tone;
   className?: string;
 }
@@ -64,6 +66,7 @@ const DEFAULT_HOME: Required<Crumb> = { label: "Overview", href: "/dashboard" };
 const PageBreadcrumbs = ({
   items,
   home = DEFAULT_HOME,
+  showHomeLabel = false,
   tone = "light",
   className,
 }: Props) => {
@@ -94,12 +97,14 @@ const PageBreadcrumbs = ({
           ) : (
             <BreadcrumbLink
               asChild
-              className={cn("inline-flex items-center", styles.link)}>
+              className={cn("inline-flex items-center gap-1.5", styles.link)}>
               <Link
                 href={home.href}
                 title={home.label}>
                 <House className='size-3.5' />
-                <span className='sr-only'>{home.label}</span>
+                <span className={cn(!showHomeLabel && "sr-only")}>
+                  {home.label}
+                </span>
               </Link>
             </BreadcrumbLink>
           )}
