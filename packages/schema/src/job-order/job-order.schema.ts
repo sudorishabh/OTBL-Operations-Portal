@@ -68,9 +68,6 @@ export const baseJobOrderSchema = z
       .array(jobOrderActivitySchema)
       .max(JOB_ORDER_ACTIVITIES.length)
       .optional(),
-    contractor_ids: z
-      .array(positiveIntValidator)
-      .min(1, "Choose at least one vendor"),
   })
   .refine((data) => data.end_date >= data.start_date, {
     message: "End date must be on or after the start date",

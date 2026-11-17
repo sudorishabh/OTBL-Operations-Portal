@@ -180,56 +180,36 @@ export const jobOrderMutationRouter = router({
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         await assertManagesRestoration(ctx, input.work_order_site_id);
-        const contractorIds = unique(input.contractor_ids);
-        await assertVendorsExist(ctx, contractorIds);
 
+        // Its vendors are chosen once it exists, with setJobOrderVendors.
         try {
-          const id = await ctx.db.transaction(async (tx) => {
-            const [result] = await tx.insert(jobOrderTable).values({
-              ...jobOrderValues(input),
-              work_order_site_id: input.work_order_site_id,
-              documents: [],
-              created_by: Number(ctx.user!.sub),
-            });
-            const jobOrderId = Number(result.insertId);
-
-            await tx.insert(jobOrderContractorTable).values(
-              contractorIds.map((contractorId) => ({
-                job_order_id: jobOrderId,
-                contractor_id: contractorId,
-              })),
-            );
-            return jobOrderId;
+          const [result] = await ctx.db.insert(jobOrderTable).values({
+            ...jobOrderValues(input),
+            work_order_site_id: input.work_order_site_id,
+            documents: [],
+            created_by: Number(ctx.user!.sub),
           });
 
-          return { success: true, id };
+          return { success: true, id: Number(result.insertId) };
         } catch (error) {
           throw fromDatabaseError(error, "Creating job order");
         }
       }),
     ),
 
-  // A vendor with expenses on the job order can't be taken off it.
+  // The job order form only; its vendors are set with setJobOrderVendors.
   updateJobOrder: protectedProcedure
     .input(jobOrderSchemas.updateJobOrderSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const jobOrder = await getJobOrder(ctx, input.id);
         await assertManagesRestoration(ctx, jobOrder.work_order_site_id);
-        const vendorChange = await planVendorChange(
-          ctx,
-          input.id,
-          unique(input.contractor_ids),
-        );
 
         try {
-          await ctx.db.transaction(async (tx) => {
-            await tx
-              .update(jobOrderTable)
-              .set(jobOrderValues(input))
-              .where(eq(jobOrderTable.id, input.id));
-            await applyVendorChange(tx, input.id, vendorChange);
-          });
+          await ctx.db
+            .update(jobOrderTable)
+            .set(jobOrderValues(input))
+            .where(eq(jobOrderTable.id, input.id));
 
           return { success: true };
         } catch (error) {

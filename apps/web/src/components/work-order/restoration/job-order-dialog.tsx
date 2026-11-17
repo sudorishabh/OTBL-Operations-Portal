@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
-import { CheckCircle2, FileDown } from "lucide-react";
+import { CheckCircle2, FileDown, HardHat } from "lucide-react";
 import { jobOrderSchemas } from "@pkg/schema";
 import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
@@ -11,7 +11,6 @@ import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import JobOrderActivitiesTable, {
   toActivityEntries,
   toActivityRows,
@@ -22,6 +21,9 @@ import type { JobOrderFormContent } from "./job-order-form-pdf";
 import { sorLeftByRow } from "./restoration-display";
 import type { RestorationRate } from "./restoration-rates-table";
 import useJobOrderFormDownload from "./use-job-order-form-download";
+import JobOrderVendorsDialog, {
+  type VendorsJobOrder,
+} from "./job-order-vendors-dialog";
 
 // A restoration job order as getJobOrders returns it. Job orders saved before
 // the client's forms were added have none of their fields.
@@ -171,8 +173,8 @@ const FormSection = ({
   </section>
 );
 
-// Creates or edits a restoration job order: the client's job order form, and
-// the vendors the work is given to.
+// Creates or edits a restoration job order: the client's job order form. Its
+// vendors are chosen once it is saved, in their own dialog.
 const JobOrderDialog = ({
   restorationId,
   workOrder,
@@ -188,9 +190,11 @@ const JobOrderDialog = ({
     formValues(null, null, workOrder),
   );
   const [activities, setActivities] = useState<JobOrderActivityEntries>({});
-  const [vendorIds, setVendorIds] = useState<number[]>([]);
   // The job order as saved, ready to download as the client's form.
   const [saved, setSaved] = useState<JobOrderFormContent | null>(null);
+  const [savedId, setSavedId] = useState<number | null>(null);
+  // A new job order whose vendors are being chosen, once this form closes.
+  const [vendorsFor, setVendorsFor] = useState<VendorsJobOrder | null>(null);
   const { download, isDownloading } = useJobOrderFormDownload(workOrder);
 
   const jobOrdersQuery = trpc.jobOrderQuery.getJobOrders.useQuery(
@@ -200,16 +204,6 @@ const JobOrderDialog = ({
   const sorLeft = sorLeftByRow(
     rates,
     (jobOrdersQuery.data ?? []) as JobOrder[],
-  );
-
-  const vendorsQuery = trpc.contractorQuery.getContractors.useQuery(
-    {},
-    { enabled: open },
-  );
-  // Inactive vendors can't take new job orders, but an edit keeps its own.
-  const vendors = (vendorsQuery.data?.contractors ?? []).filter(
-    (vendor: any) =>
-      vendor.status === "active" || vendorIds.includes(vendor.id),
   );
 
   // Filled in once as the dialog opens, so a refetch doesn't undo typing.
@@ -223,8 +217,8 @@ const JobOrderDialog = ({
       formValues(editing, editing ?? latestWithContract(jobOrders), workOrder),
     );
     setActivities(toActivityEntries(editing?.activities));
-    setVendorIds(editing?.vendors.map((vendor) => vendor.id) ?? []);
     setSaved(null);
+    setSavedId(null);
   }, [open, editing]);
 
   const setValue =
@@ -233,8 +227,9 @@ const JobOrderDialog = ({
       setValues((prev) => ({ ...prev, [field]: e.target.value }));
 
   // Stays open on the saved job order, so its form can be downloaded.
-  const onSaved = async (jobOrder: JobOrderFormContent) => {
+  const onSaved = async (jobOrder: JobOrderFormContent, id: number | null) => {
     setSaved(jobOrder);
+    setSavedId(id);
     await utils.jobOrderQuery.getJobOrders.invalidate({
       work_order_site_id: restorationId,
     });
@@ -256,7 +251,6 @@ const JobOrderDialog = ({
       rc_noa_date: toDate(values.rc_noa_date) ?? null,
       mobilization_date: toDate(values.mobilization_date) ?? null,
       activities: toActivityRows(activities),
-      contractor_ids: vendorIds,
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Check the job order");
@@ -264,13 +258,15 @@ const JobOrderDialog = ({
     }
 
     const jobOrder = parsed.data;
-    const options = { onSuccess: () => onSaved(jobOrder) };
     if (editing) {
-      updateJobOrder.mutate({ ...jobOrder, id: editing.id }, options);
+      updateJobOrder.mutate(
+        { ...jobOrder, id: editing.id },
+        { onSuccess: () => onSaved(jobOrder, editing.id) },
+      );
     } else {
       createJobOrder.mutate(
         { ...jobOrder, work_order_site_id: restorationId },
-        options,
+        { onSuccess: (data: { id: number }) => onSaved(jobOrder, data.id) },
       );
     }
   };
@@ -278,244 +274,240 @@ const JobOrderDialog = ({
   const isSaving = createJobOrder.isPending || updateJobOrder.isPending;
 
   return (
-    <DialogWindow
-      title={
-        saved ? "Job Order Saved" : editing ? "Edit Job Order" : "New Job Order"
-      }
-      description={
-        saved
-          ? undefined
-          : "Fill in the client's job order form and give the work to vendors"
-      }
-      size='lg'
-      heightMode='auto'
-      open={open}
-      setOpen={(next) => {
-        if (!next && !isSaving) onClose();
-      }}>
-      {saved ? (
-        <div className='flex flex-col items-center px-4 py-8 text-center'>
-          <div className='flex size-11 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-inset ring-emerald-100'>
-            <CheckCircle2 className='size-5 text-emerald-600' />
-          </div>
-          <p className='mt-3 text-sm font-medium text-gray-900'>
-            Job order {saved.jo_number} {editing ? "updated" : "added"}
-          </p>
-          <p className='mt-1 max-w-sm text-xs text-gray-500'>
-            Download its form to print for the installation manager's and the
-            contractor representative's signatures.
-          </p>
-          <div className='mt-5 flex gap-2'>
-            <CustomButton
-              type='button'
-              variant='outline'
-              text='Done'
-              onClick={onClose}
-            />
-            <CustomButton
-              type='button'
-              variant='primary'
-              Icon={FileDown}
-              text='Download form'
-              loading={isDownloading}
-              disabled={isDownloading}
-              onClick={() => download(saved)}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className='space-y-4 py-2'>
-          <FormSection
-            title='Job order'
-            description='As the installation manager issues it.'>
-            <div className='grid grid-cols-1 gap-4 sm:grid-cols-[14rem_1fr]'>
-              <Field label='Job order number'>
-                <Input
-                  value={values.jo_number}
-                  onChange={setValue("jo_number")}
-                  placeholder='e.g. CA/GGS/05-26/OC/03'
-                  className='h-9'
-                />
-              </Field>
-              <Field label='Title'>
-                <Input
-                  value={values.title}
-                  onChange={setValue("title")}
-                  placeholder='What the job order covers'
-                  className='h-9'
-                />
-              </Field>
+    <>
+      <DialogWindow
+        title={
+          saved
+            ? "Job Order Saved"
+            : editing
+              ? "Edit Job Order"
+              : "New Job Order"
+        }
+        description={
+          saved
+            ? undefined
+            : "Fill in the client's job order form. Its vendors are chosen once it is saved."
+        }
+        size='lg'
+        heightMode='auto'
+        open={open}
+        setOpen={(next) => {
+          if (!next && !isSaving) onClose();
+        }}>
+        {saved ? (
+          <div className='flex flex-col items-center px-4 py-8 text-center'>
+            <div className='flex size-11 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-inset ring-emerald-100'>
+              <CheckCircle2 className='size-5 text-emerald-600' />
             </div>
-
-            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-              <Field label='Installation name'>
-                <Input
-                  value={values.installation_name}
-                  onChange={setValue("installation_name")}
-                  placeholder='e.g. CA GGS RDS'
-                  className='h-9'
-                />
-              </Field>
-              <Field label='Location of the job'>
-                <Input
-                  value={values.location}
-                  onChange={setValue("location")}
-                  placeholder='e.g. CA #42, well site area'
-                  className='h-9'
-                />
-              </Field>
-            </div>
-
-            <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
-              <Field label='Job order date'>
-                <Input
-                  type='date'
-                  value={values.start_date}
-                  onChange={setValue("start_date")}
-                  className='h-9'
-                />
-              </Field>
-              <Field label='Scheduled completion'>
-                <Input
-                  type='date'
-                  value={values.end_date}
-                  min={values.start_date || undefined}
-                  onChange={setValue("end_date")}
-                  className='h-9'
-                />
-              </Field>
-              <Field
-                label='Mobilization date'
-                hint='Only for ex-situ bioremediation jobs'>
-                <Input
-                  type='date'
-                  value={values.mobilization_date}
-                  onChange={setValue("mobilization_date")}
-                  className='h-9'
-                />
-              </Field>
-            </div>
-
-            <Field label='Description'>
-              <Textarea
-                value={values.description}
-                onChange={setValue("description")}
-                placeholder='Optional, not printed on the form'
-                rows={2}
+            <p className='mt-3 text-sm font-medium text-gray-900'>
+              Job order {saved.jo_number} {editing ? "updated" : "added"}
+            </p>
+            <p className='mt-1 max-w-sm text-xs text-gray-500'>
+              Download its form to print for the installation manager's and the
+              contractor representative's signatures.
+              {!editing && " Then choose the vendors the work is given to."}
+            </p>
+            <div className='mt-5 flex flex-wrap justify-center gap-2'>
+              <CustomButton
+                type='button'
+                variant='outline'
+                text='Done'
+                onClick={onClose}
               />
-            </Field>
-          </FormSection>
-
-          <FormSection
-            title='Contract'
-            description='Filled in from the work order and its last job order. Check them against the issued form.'>
-            <Field label='Issuing office'>
-              <Input
-                value={values.issued_by}
-                onChange={setValue("issued_by")}
-                placeholder='e.g. ONGC, Assam Asset, Surface Team'
-                className='h-9'
-              />
-            </Field>
-            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-              <Field label='RC NOA number'>
-                <Input
-                  value={values.rc_noa_number}
-                  onChange={setValue("rc_noa_number")}
-                  className='h-9'
+              {!editing && savedId && (
+                <CustomButton
+                  type='button'
+                  variant='outline'
+                  Icon={HardHat}
+                  text='Choose vendors'
+                  onClick={() => {
+                    setVendorsFor({
+                      id: savedId,
+                      jo_number: saved.jo_number,
+                      vendors: [],
+                    });
+                    onClose();
+                  }}
                 />
-              </Field>
-              <Field label='RC NOA date'>
-                <Input
-                  type='date'
-                  value={values.rc_noa_date}
-                  onChange={setValue("rc_noa_date")}
-                  className='h-9'
-                />
-              </Field>
-              <Field label='OLA number'>
-                <Input
-                  value={values.ola_number}
-                  onChange={setValue("ola_number")}
-                  className='h-9'
-                />
-              </Field>
-              <Field label='PO number'>
-                <Input
-                  value={values.po_number}
-                  onChange={setValue("po_number")}
-                  className='h-9'
-                />
-              </Field>
-            </div>
-          </FormSection>
-
-          <FormSection
-            title='Activities'
-            description='Write each quantity as it should read on the form, such as 25 × 20 = 500, No, or To be assessed later. Rows left blank print empty. SOR left is what the completion certificates have left of the schedule of rates.'>
-            <JobOrderActivitiesTable
-              entries={activities}
-              sorLeft={sorLeft}
-              onChange={(key, entry) =>
-                setActivities((prev) => ({ ...prev, [key]: entry }))
-              }
-            />
-          </FormSection>
-
-          <FormSection
-            title='Vendors'
-            description='Who the work is given to.'>
-            <div className='max-h-44 overflow-y-auto rounded-lg border bg-white p-2'>
-              {vendors.length === 0 ? (
-                <p className='px-1 py-2 text-xs text-gray-400'>
-                  {vendorsQuery.isLoading
-                    ? "Loading vendors..."
-                    : "No vendors yet. Add them on the Vendors page."}
-                </p>
-              ) : (
-                <div className='grid grid-cols-1 gap-1 sm:grid-cols-2'>
-                  {vendors.map((vendor: any) => (
-                    <label
-                      key={vendor.id}
-                      className='flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs text-gray-700 hover:bg-gray-50'>
-                      <Checkbox
-                        checked={vendorIds.includes(vendor.id)}
-                        onCheckedChange={(checked) =>
-                          setVendorIds((prev) =>
-                            checked === true
-                              ? [...prev, vendor.id]
-                              : prev.filter((id) => id !== vendor.id),
-                          )
-                        }
-                      />
-                      {vendor.name}
-                    </label>
-                  ))}
-                </div>
               )}
+              <CustomButton
+                type='button'
+                variant='primary'
+                Icon={FileDown}
+                text='Download form'
+                loading={isDownloading}
+                disabled={isDownloading}
+                onClick={() => download(saved)}
+              />
             </div>
-          </FormSection>
-
-          <div className='flex justify-end gap-2 border-t border-gray-100 pt-4'>
-            <CustomButton
-              type='button'
-              variant='outline'
-              text='Cancel'
-              disabled={isSaving}
-              onClick={onClose}
-            />
-            <CustomButton
-              type='button'
-              variant='primary'
-              text={editing ? "Save job order" : "Add job order"}
-              loading={isSaving}
-              disabled={isSaving}
-              onClick={save}
-            />
           </div>
-        </div>
-      )}
-    </DialogWindow>
+        ) : (
+          <div className='space-y-4 py-2'>
+            <FormSection
+              title='Job order'
+              description='As the installation manager issues it.'>
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-[14rem_1fr]'>
+                <Field label='Job order number'>
+                  <Input
+                    value={values.jo_number}
+                    onChange={setValue("jo_number")}
+                    placeholder='e.g. CA/GGS/05-26/OC/03'
+                    className='h-9'
+                  />
+                </Field>
+                <Field label='Title'>
+                  <Input
+                    value={values.title}
+                    onChange={setValue("title")}
+                    placeholder='What the job order covers'
+                    className='h-9'
+                  />
+                </Field>
+              </div>
+
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                <Field label='Installation name'>
+                  <Input
+                    value={values.installation_name}
+                    onChange={setValue("installation_name")}
+                    placeholder='e.g. CA GGS RDS'
+                    className='h-9'
+                  />
+                </Field>
+                <Field label='Location of the job'>
+                  <Input
+                    value={values.location}
+                    onChange={setValue("location")}
+                    placeholder='e.g. CA #42, well site area'
+                    className='h-9'
+                  />
+                </Field>
+              </div>
+
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
+                <Field label='Job order date'>
+                  <Input
+                    type='date'
+                    value={values.start_date}
+                    onChange={setValue("start_date")}
+                    className='h-9'
+                  />
+                </Field>
+                <Field label='Scheduled completion'>
+                  <Input
+                    type='date'
+                    value={values.end_date}
+                    min={values.start_date || undefined}
+                    onChange={setValue("end_date")}
+                    className='h-9'
+                  />
+                </Field>
+                <Field
+                  label='Mobilization date'
+                  hint='Only for ex-situ bioremediation jobs'>
+                  <Input
+                    type='date'
+                    value={values.mobilization_date}
+                    onChange={setValue("mobilization_date")}
+                    className='h-9'
+                  />
+                </Field>
+              </div>
+
+              <Field label='Description'>
+                <Textarea
+                  value={values.description}
+                  onChange={setValue("description")}
+                  placeholder='Optional, not printed on the form'
+                  rows={2}
+                />
+              </Field>
+            </FormSection>
+
+            <FormSection
+              title='Contract'
+              description='Filled in from the work order and its last job order. Check them against the issued form.'>
+              <Field label='Issuing office'>
+                <Input
+                  value={values.issued_by}
+                  onChange={setValue("issued_by")}
+                  placeholder='e.g. ONGC, Assam Asset, Surface Team'
+                  className='h-9'
+                />
+              </Field>
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                <Field label='RC NOA number'>
+                  <Input
+                    value={values.rc_noa_number}
+                    onChange={setValue("rc_noa_number")}
+                    className='h-9'
+                  />
+                </Field>
+                <Field label='RC NOA date'>
+                  <Input
+                    type='date'
+                    value={values.rc_noa_date}
+                    onChange={setValue("rc_noa_date")}
+                    className='h-9'
+                  />
+                </Field>
+                <Field label='OLA number'>
+                  <Input
+                    value={values.ola_number}
+                    onChange={setValue("ola_number")}
+                    className='h-9'
+                  />
+                </Field>
+                <Field label='PO number'>
+                  <Input
+                    value={values.po_number}
+                    onChange={setValue("po_number")}
+                    className='h-9'
+                  />
+                </Field>
+              </div>
+            </FormSection>
+
+            <FormSection
+              title='Activities'
+              description='Write each quantity as it should read on the form, such as 25 × 20 = 500, No, or To be assessed later. Rows left blank print empty. SOR left is what the completion certificates have left of the schedule of rates.'>
+              <JobOrderActivitiesTable
+                entries={activities}
+                sorLeft={sorLeft}
+                onChange={(key, entry) =>
+                  setActivities((prev) => ({ ...prev, [key]: entry }))
+                }
+              />
+            </FormSection>
+
+            <div className='flex justify-end gap-2 border-t border-gray-100 pt-4'>
+              <CustomButton
+                type='button'
+                variant='outline'
+                text='Cancel'
+                disabled={isSaving}
+                onClick={onClose}
+              />
+              <CustomButton
+                type='button'
+                variant='primary'
+                text={editing ? "Save job order" : "Add job order"}
+                loading={isSaving}
+                disabled={isSaving}
+                onClick={save}
+              />
+            </div>
+          </div>
+        )}
+      </DialogWindow>
+
+      <JobOrderVendorsDialog
+        restorationId={restorationId}
+        jobOrder={vendorsFor}
+        open={vendorsFor !== null}
+        onClose={() => setVendorsFor(null)}
+      />
+    </>
   );
 };
 
