@@ -450,6 +450,8 @@ const doc = (name) => ({
 const usedEmails = new Set();
 const takenParentNames = new Set();
 const takenProposalCodes = new Set();
+// The last work order serials in use, overall and by financial year.
+const lastWorkOrderSerial = { overall: 0, byYear: new Map() };
 
 // ---------------------------------------------------------------------------
 // The database. It is read before anything is built: to check its schema, and
@@ -943,7 +945,6 @@ const estimates = new Map();
 // Work orders are numbered as the app numbers them: by the financial year they
 // start in, April to March in India time, and overall, such as
 // 2025-26(10)OTBL163. With --append, the numbers carry on from those in use.
-const lastWorkOrderSerial = { overall: 0, byYear: new Map() };
 const financialYearOf = (d) => {
   const inIndia = new Date(d.getTime() + 330 * 60 * 1000);
   const year = inIndia.getUTCMonth() >= 3 ? inIndia.getUTCFullYear() : inIndia.getUTCFullYear() - 1;
