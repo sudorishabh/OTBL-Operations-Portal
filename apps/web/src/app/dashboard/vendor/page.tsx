@@ -1,4 +1,5 @@
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { sectionTrail } from "@/lib/breadcrumbs";
 import React, { Suspense } from "react";
 import CreateVendorButton from "@/components/vendor/create-vendor-btn";
 import VendorPage from "@/components/vendor/vendor-page";
@@ -19,6 +20,7 @@ const page = () => {
         ROLES.VIEWER,
       ]}>
       <PageWrapper
+        breadcrumbs={sectionTrail("vendors")}
         title='Vendors'
         description={VENDOR_DESCRIPTION}
         button={

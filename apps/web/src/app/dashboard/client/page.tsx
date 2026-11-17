@@ -1,4 +1,5 @@
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { sectionTrail } from "@/lib/breadcrumbs";
 import React, { Suspense } from "react";
 import CreateClientButton from "@/components/clients/create-client-btn";
 import CreateParentClientButton from "@/components/clients/create-parent-client-btn";
@@ -8,6 +9,7 @@ import ClientsPageSkeleton from "@/components/skeleton/clients/clients-page-skel
 const page = () => {
   return (
     <PageWrapper
+      breadcrumbs={sectionTrail("clients")}
       title='Clients'
       description='Manage and monitor all your clients, their branches and contacts'
       button={

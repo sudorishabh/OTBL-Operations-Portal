@@ -167,6 +167,7 @@ export default function DashboardPage() {
   if (isUserLoading) {
     return (
       <PageWrapper
+        breadcrumbs={[]}
         title='Overview'
         description='OTBL Operations Portal'>
         <DashboardPageSkeleton />
@@ -176,6 +177,7 @@ export default function DashboardPage() {
 
   return (
     <PageWrapper
+      breadcrumbs={[]}
       title='Overview'
       description={
         user?.name
