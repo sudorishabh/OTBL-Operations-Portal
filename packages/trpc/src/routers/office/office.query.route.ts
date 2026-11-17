@@ -46,7 +46,7 @@ const {
 const { ROLES, STATUS } = constants;
 
 // How many of its newest sites each office in the list shows.
-const LATEST_SITES = 3;
+const LATEST_SITES = 6;
 
 // Each site of these offices, numbered from its office's newest.
 const sitesRankedByNewest = (db: Database, officeIds: number[]) =>
