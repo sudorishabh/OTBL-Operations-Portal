@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo } from "react";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { workOrderTrail } from "@/lib/breadcrumbs";
 import { trpc } from "@/lib/trpc";
 import { constants, getEffectiveWorkOrderStatus } from "@pkg/utils";
 import { useRouter } from "next/navigation";
@@ -132,6 +133,15 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
     <PageWrapper
       title={`${workOrderData.workOrder.code.toUpperCase()} - ${workOrderData.workOrder.title?.toUpperCase() || "Work Order"}`}
       description='Work Order Details and Management'
+      breadcrumbs={workOrderTrail({
+        id: workOrderId,
+        code: workOrderData.workOrder.code,
+        from,
+        client: {
+          id: workOrderData.workOrder.client_id,
+          name: workOrderData.workOrder.client_name,
+        },
+      })}
       backClick={() => {
         if (from === "list") {
           router.push("/dashboard/work-order");
