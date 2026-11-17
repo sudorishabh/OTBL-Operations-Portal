@@ -46,7 +46,7 @@ export const OfficeSitesTableSkeleton = ({ rows = 3 }: { rows?: number }) => (
 );
 
 // Mirrors OfficeCard: icon, name and place, status and menu; the three
-// totals; the manager and email; then when it was added.
+// totals; the newest sites; the manager and email; then when it was added.
 const OfficeCardSkeleton = () => (
   <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm'>
     <div className='flex items-start gap-3 px-4 pt-4'>
@@ -79,6 +79,23 @@ const OfficeCardSkeleton = () => (
           />
         </div>
       ))}
+    </div>
+    <div className='border-b border-gray-100 px-4 py-3'>
+      <TextLine
+        line='h-[16.5px]'
+        className='h-2.5 w-20'
+      />
+      <div className='mt-1.5 min-h-[68px] space-y-1'>
+        {["w-40", "w-32", "w-44"].map((width) => (
+          <div
+            key={width}
+            className='flex h-5 items-center gap-2'>
+            <Skeleton className='size-1.5 rounded-full' />
+            <Skeleton className={cn("h-3", width)} />
+            <Skeleton className='ml-auto h-3 w-16' />
+          </div>
+        ))}
+      </div>
     </div>
     <div className='space-y-1.5 px-4 py-3'>
       <TextLine

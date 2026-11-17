@@ -58,6 +58,57 @@ const Stat = ({
   </div>
 );
 
+// The office's newest sites, with how many more its page lists.
+const LatestSites = ({ office }: { office: OfficeListItem }) => {
+  const sites = office.latestSites;
+  const more = office.siteCount - sites.length;
+
+  return (
+    <div className='border-b border-gray-100 px-4 py-3'>
+      <div className='flex items-center justify-between text-[11px]'>
+        <span className='font-medium uppercase tracking-wide text-gray-400'>
+          Latest sites
+        </span>
+        {more > 0 && <span className='text-gray-500'>+{more} more</span>}
+      </div>
+      {/* Room for three rows, so cards side by side stay level. */}
+      <ul className='mt-1.5 min-h-[68px] space-y-1'>
+        {sites.length === 0 ? (
+          <li className='text-xs leading-5 text-gray-400'>No sites yet</li>
+        ) : (
+          sites.map((site) => {
+            const isActive = site.status === "active";
+            return (
+              <li
+                key={site.id}
+                className='flex h-5 min-w-0 items-center gap-2 text-xs'>
+                <span
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    isActive ? "bg-emerald-500" : "bg-gray-300",
+                  )}
+                  title={isActive ? "Active site" : "Inactive site"}
+                />
+                <span className='sr-only'>
+                  {isActive ? "Active:" : "Inactive:"}
+                </span>
+                <span
+                  className='truncate font-medium text-gray-700'
+                  title={site.name}>
+                  {capitalFirstLetter(site.name)}
+                </span>
+                <span className='ml-auto shrink-0 pl-2 text-gray-400'>
+                  {format(new Date(site.created_at), "d MMM yyyy")}
+                </span>
+              </li>
+            );
+          })
+        )}
+      </ul>
+    </div>
+  );
+};
+
 // Changes to an office, for its manager and admins.
 const OfficeActions = ({ office }: { office: OfficeListItem }) => {
   const { setParams } = useHandleParams();
@@ -110,8 +161,9 @@ const OfficeActions = ({ office }: { office: OfficeListItem }) => {
   );
 };
 
-// One office in the list: who it is, its totals and its manager. The whole
-// card opens the office's page, where its sites and work orders are listed.
+// One office in the list: who it is, its totals, its newest sites and its
+// manager. The whole card opens the office's page, which lists every site
+// and work order.
 const OfficeCard = ({ office }: { office: OfficeListItem }) => {
   const status = office.status.toLowerCase();
   const location = [office.city, office.state]
@@ -171,6 +223,8 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
           value={office.operators.length}
         />
       </div>
+
+      <LatestSites office={office} />
 
       <div className='space-y-1.5 px-4 py-3 text-xs text-gray-600'>
         <p className='flex min-w-0 items-center gap-1.5'>
