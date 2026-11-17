@@ -119,38 +119,76 @@ export const officeQueryRouter = router({
           total = totalResult?.count ?? 0;
         }
 
-        const officesWithUsersAndSitesCount = await Promise.all(
-          offices.map(async (office: any) => {
-            const users = await ctx.db
-              .select({
-                id: userTable.id,
-                name: userTable.name,
-                email: userTable.email,
-                role: officeUserTable.role,
-              })
-              .from(officeUserTable)
-              .leftJoin(userTable, eq(officeUserTable.user_id, userTable.id))
-              .where(eq(officeUserTable.office_id, office.id));
+        // Members, site counts and work order counts for the whole page at
+        // once rather than office by office.
+        const officeIds = offices.map((office) => office.id);
+        const [members, siteCounts, workOrderCounts] =
+          officeIds.length === 0
+            ? [[], [], []]
+            : await Promise.all([
+                ctx.db
+                  .select({
+                    office_id: officeUserTable.office_id,
+                    id: userTable.id,
+                    name: userTable.name,
+                    email: userTable.email,
+                    role: officeUserTable.role,
+                  })
+                  .from(officeUserTable)
+                  .innerJoin(
+                    userTable,
+                    eq(officeUserTable.user_id, userTable.id),
+                  )
+                  .where(inArray(officeUserTable.office_id, officeIds))
+                  .orderBy(asc(userTable.name), asc(userTable.id)),
+                ctx.db
+                  .select({
+                    office_id: siteTable.office_id,
+                    status: siteTable.status,
+                    count: count(),
+                  })
+                  .from(siteTable)
+                  .where(inArray(siteTable.office_id, officeIds))
+                  .groupBy(siteTable.office_id, siteTable.status),
+                // Only the work orders the user can see, as on the office's
+                // page.
+                ctx.db
+                  .select({
+                    office_id: workOrderTable.office_id,
+                    count: count(),
+                  })
+                  .from(workOrderTable)
+                  .where(
+                    andScope(
+                      inArray(workOrderTable.office_id, officeIds),
+                      workOrderScopeWhere(scope),
+                    ),
+                  )
+                  .groupBy(workOrderTable.office_id),
+              ]);
 
-            const [siteCount] = await ctx.db
-              .select({ count: count() })
-              .from(siteTable)
-              .where(eq(siteTable.office_id, office.id));
+        const officesWithUsersAndSitesCount = offices.map((office) => {
+          const users = members.filter(
+            (member) => member.office_id === office.id,
+          );
+          const manager = users.find((user) => user.role === ROLES.MANAGER);
+          const operators = users.filter((user) => user.role === "operator");
+          const sites = siteCounts.filter((row) => row.office_id === office.id);
 
-            const manager = users.find((u: any) => u.role === ROLES.MANAGER);
-            const operators = users.filter((u: any) => u.role === "operator");
-
-            const canManage = isAdmin || manager?.id === currentUserId;
-
-            return {
-              ...office,
-              manager,
-              operators,
-              siteCount: siteCount?.count || 0,
-              canManage,
-            };
-          }),
-        );
+          return {
+            ...office,
+            manager,
+            operators,
+            siteCount: sites.reduce((sum, row) => sum + row.count, 0),
+            activeSiteCount: sites
+              .filter((row) => row.status === STATUS.ACTIVE)
+              .reduce((sum, row) => sum + row.count, 0),
+            workOrderCount:
+              workOrderCounts.find((row) => row.office_id === office.id)
+                ?.count ?? 0,
+            canManage: isAdmin || manager?.id === currentUserId,
+          };
+        });
 
         return {
           offices: officesWithUsersAndSitesCount,
