@@ -22,6 +22,11 @@ export {
   type JobOrderActivityKey,
 } from "./job-order-sor";
 export {
+  financialYearOf,
+  formatWorkOrderCode,
+  type WorkOrderCodeParts,
+} from "./work-order-code";
+export {
   constants,
   dateTimeUtils,
   capitalFirstLetter,
