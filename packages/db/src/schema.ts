@@ -396,8 +396,9 @@ export const workOrderSiteTable = mysqlTable(
     site_id: int("site_id").references(() => siteTable.id, {
       onDelete: "cascade",
     }),
-    date: timestamp("date").notNull(),
-    end_date: timestamp("end_date").notNull(),
+    // Unset for a site added before its dates are known.
+    date: timestamp("date"),
+    end_date: timestamp("end_date"),
     process_type: varchar("process_type", {
       length: 50,
     }).notNull(),

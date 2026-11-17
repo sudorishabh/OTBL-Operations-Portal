@@ -476,8 +476,8 @@ export const workOrderMutationRouter = router({
               work_order_id: input.work_order_id,
               client_id: input.client_id,
               site_id: siteId,
-              date: input.date,
-              end_date: input.end_date,
+              date: input.date ?? null,
+              end_date: input.end_date ?? null,
               process_type: constants.WO_PROCESS.BIOREMEDIATION,
               status: "pending",
             });
