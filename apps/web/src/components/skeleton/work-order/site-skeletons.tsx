@@ -173,10 +173,7 @@ export const SiteDetailsSkeleton = ({
 }) => (
   <PageWrapper>
     <SkeletonRegion label='Loading site'>
-      <PageHeaderSkeleton
-        trail={workOrderTrailSteps(from) + 1}
-        back
-      />
+      <PageHeaderSkeleton trail={workOrderTrailSteps(from) + 1} />
       <div className='mt-4 space-y-4'>
         <SkeletonCard>
           <div className='px-5 py-4'>
@@ -273,7 +270,6 @@ export const RestorationPageSkeleton = ({
     <SkeletonRegion label='Loading restoration'>
       <PageHeaderSkeleton
         trail={workOrderTrailSteps(from) + 1}
-        back
         title='Restoration'
       />
       <div className='mt-4 space-y-4'>

@@ -79,11 +79,15 @@ export const SkeletonCard = ({
   </div>
 );
 
-// The breadcrumb trail PageWrapper draws: the house, then a bar for each
-// step. As on the page, small screens keep only the last two steps.
+// The breadcrumb trail PageWrapper draws: the back arrow when there is a
+// step above the page, the house, then a bar for each step. As on the page,
+// small screens keep only the last two steps.
 export const BreadcrumbSkeleton = ({ steps }: { steps: number }) => (
-  <div className='mb-3 flex'>
-    <div className='inline-flex h-6 items-center gap-1.5 rounded-full bg-white/75 px-2.5 shadow-sm ring-1 ring-gray-300/60'>
+  <div className='mb-3 flex items-center gap-2'>
+    {steps > 1 && (
+      <Skeleton className='size-7 shrink-0 rounded-full bg-white/80' />
+    )}
+    <div className='inline-flex h-7 items-center gap-1.5 rounded-full bg-white/75 px-2.5 shadow-sm ring-1 ring-gray-300/60'>
       <House className='size-3.5 text-gray-300' />
       {Array.from({ length: steps }, (_, index) => (
         <span
@@ -109,13 +113,11 @@ export const BreadcrumbSkeleton = ({ steps }: { steps: number }) => (
 // Text that never changes is shown as is. A trail draws the breadcrumbs
 // above it, with that many steps after the house.
 export const PageHeaderSkeleton = ({
-  back = false,
   title,
   description,
   action = false,
   trail,
 }: {
-  back?: boolean;
   title?: string;
   description?: string;
   action?: boolean;
@@ -125,9 +127,6 @@ export const PageHeaderSkeleton = ({
     {trail != null && <BreadcrumbSkeleton steps={trail} />}
     <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
       <div className='flex min-w-0 flex-1 items-center gap-3 sm:gap-4'>
-        {back && (
-          <Skeleton className='size-8 shrink-0 rounded-full bg-white/80' />
-        )}
         <div className='min-w-0 flex-1'>
           {title ? (
             <p className='truncate text-lg font-bold text-cyan-800 sm:text-xl'>

@@ -10,7 +10,6 @@ const ClientPageSkeleton = () => (
   <PageWrapper>
     <PageHeaderSkeleton
       trail={2}
-      back
       description='Manage Client Info and Work Orders'
       action
     />

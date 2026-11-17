@@ -22,7 +22,6 @@ const WorkOrderDetailsSkeleton = ({
     <SkeletonRegion label='Loading work order'>
       <PageHeaderSkeleton
         trail={workOrderTrailSteps(from)}
-        back
         description='Work Order Details and Management'
       />
       <div className='mt-4 space-y-4'>

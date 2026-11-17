@@ -82,7 +82,7 @@ const PageBreadcrumbs = ({
   return (
     <Breadcrumb
       className={cn(
-        "inline-flex min-w-0 max-w-full items-center rounded-full px-2.5 py-1 ring-1 backdrop-blur-sm",
+        "inline-flex min-w-0 max-w-full items-center rounded-full px-2.5 py-1.5 ring-1 backdrop-blur-sm",
         styles.trail,
         className,
       )}>
