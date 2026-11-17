@@ -14,8 +14,7 @@ import OfficePageSkeleton, {
 } from "@/components/skeleton/office-site/office-page-skeleton";
 import OfficeDetailsCard from "./office-details-card";
 import OfficeMembers from "./office-members";
-import OfficeSites from "./office-sites";
-import OfficeWorkOrders from "./office-work-orders";
+import OfficeTabs from "./office-tabs";
 import type { OfficeDetails } from "./office-types";
 
 const EditOfficeDialog = dynamic(() => import("../edit-office-dialog"));
@@ -29,7 +28,8 @@ const SiteWorkOrdersDialog = dynamic(
 
 const NO_RETRY_CODES = ["FORBIDDEN", "NOT_FOUND", "UNAUTHORIZED"];
 
-// An office's own page: its details, members, sites and work orders.
+// An office's own page: its details and members, then its sites and work
+// orders in tabs.
 const OfficePage = ({ officeId }: { officeId: number }) => {
   const router = useRouter();
   const { setParams } = useHandleParams();
@@ -88,8 +88,7 @@ const OfficePage = ({ officeId }: { officeId: number }) => {
       <div className='mt-4 space-y-4'>
         <OfficeDetailsCard details={details} />
         <OfficeMembers details={details} />
-        <OfficeSites details={details} />
-        <OfficeWorkOrders details={details} />
+        <OfficeTabs details={details} />
       </div>
 
       <EditOfficeDialog />

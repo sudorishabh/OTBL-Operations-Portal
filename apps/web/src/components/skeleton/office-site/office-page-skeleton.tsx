@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { ClipboardList, MapPinned } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import { useIsAdmin } from "@/contexts/AuthContext";
@@ -117,8 +118,14 @@ const MemberCardSkeleton = () => (
   </div>
 );
 
-// An office's page below its title: the details card, members, sites and
-// work orders.
+// The tabs over the office's sites and work orders; sites open first.
+const TABS = [
+  { label: "Sites", Icon: MapPinned },
+  { label: "Work orders", Icon: ClipboardList },
+];
+
+// An office's page below its title: the details card, members, then the
+// sites and work orders tabs.
 export const OfficePageContentSkeleton = () => {
   const isAdmin = useIsAdmin();
 
@@ -139,22 +146,31 @@ export const OfficePageContentSkeleton = () => {
         </section>
       </SkeletonRegion>
 
-      <SkeletonRegion label='Loading sites'>
-        <section className='rounded-lg border bg-white p-4 sm:p-6'>
-          <SectionHeaderSkeleton
-            title='Sites'
-            actions={isAdmin ? 1 : 0}
-          />
-          <SectionFilters selects={["sm:w-28"]} />
-          <OfficeSitesTableSkeleton rows={2} />
-        </section>
-      </SkeletonRegion>
-
-      <SkeletonRegion label='Loading work orders'>
-        <section className='rounded-lg border bg-white p-4 sm:p-6'>
-          <SectionHeaderSkeleton title='Work orders' />
-          <SectionFilters selects={["sm:w-28", "sm:w-32"]} />
-          <OfficeWorkOrdersTableSkeleton />
+      <SkeletonRegion label='Loading sites and work orders'>
+        <section className='rounded-lg border bg-white'>
+          <div className='flex flex-wrap items-center justify-between gap-x-4 border-b border-gray-200 px-4 sm:px-6'>
+            <div className='flex gap-6'>
+              {TABS.map(({ label, Icon }, index) => (
+                <div
+                  key={label}
+                  className={cn(
+                    "-mb-px flex items-center gap-2 border-b-2 px-0.5 py-3 text-sm font-medium",
+                    index === 0
+                      ? "border-emerald-600 text-emerald-700"
+                      : "border-transparent text-gray-500",
+                  )}>
+                  <Icon className='size-4' />
+                  {label}
+                  <Skeleton className='h-4 w-6 rounded-full' />
+                </div>
+              ))}
+            </div>
+            {isAdmin && <Skeleton className='my-2 h-8 w-28' />}
+          </div>
+          <div className='p-4 sm:p-6'>
+            <SectionFilters selects={["sm:w-28"]} />
+            <OfficeSitesTableSkeleton rows={3} />
+          </div>
         </section>
       </SkeletonRegion>
     </div>

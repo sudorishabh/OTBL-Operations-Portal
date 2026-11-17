@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import type { UseQueryResult } from "@tanstack/react-query";
-import { ArrowUpDown, ChevronRight, ClipboardList } from "lucide-react";
+import { keepPreviousData } from "@tanstack/react-query";
+import { ArrowUpDown, ChevronRight } from "lucide-react";
 import { capitalFirstLetter } from "@pkg/utils";
-import ProcessSectionHeader from "@/components/work-order/process-section-header";
 import {
   ALL,
   ClearFiltersButton,
@@ -14,8 +13,9 @@ import {
 } from "@/components/filters/list-filters";
 import { Pill, STATUS_STYLES } from "@/components/shared/detail-card-parts";
 import Error from "@/components/shared/error";
-import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
-import PaginationSummary from "@/components/shared/pagination-summary";
+import TablePagination, {
+  scrollIntoViewIfAbove,
+} from "@/components/shared/table-pagination";
 import {
   Table,
   TableBody,
@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/table";
 import { OfficeWorkOrdersTableSkeleton } from "@/components/skeleton/office-site/office-page-skeleton";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import { usePageNumber } from "@/hooks/usePageNumber";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type {
@@ -63,7 +63,8 @@ const CELL_CLASS = "px-4 py-2.5 text-sm text-gray-700";
 const formatDate = (value: string | Date) =>
   format(new Date(value), "dd MMM yyyy");
 
-// The office's work orders, newest first, a page at a time.
+// The office's work orders, searchable and a page at a time, each linking
+// to the work order and its client.
 const OfficeWorkOrders = ({ details }: { details: OfficeDetails }) => {
   const { office, workOrders: counts } = details;
   const [search, setSearch] = useState("");
@@ -72,37 +73,49 @@ const OfficeWorkOrders = ({ details }: { details: OfficeDetails }) => {
   const debouncedSearch = useDebounce(search.trim(), 300);
   const isFiltered = search !== "" || status !== ALL;
 
-  const queryInput = {
-    office_id: office.id,
-    limit: PAGE_SIZE,
-    searchQuery: debouncedSearch || undefined,
+  const [page, setPage] = usePageNumber({
     status,
-    workOrderOrder: order,
+    order,
+    search: debouncedSearch,
+  });
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // The rows on screen stay while another page or filter loads.
+  const { data, isLoading, isPlaceholderData, error } =
+    trpc.workOrderQuery.getAll.useQuery(
+      {
+        office_id: office.id,
+        page,
+        limit: PAGE_SIZE,
+        searchQuery: debouncedSearch || undefined,
+        status,
+        workOrderOrder: order,
+      },
+      { placeholderData: keepPreviousData },
+    );
+  const result = data as WorkOrdersPage | undefined;
+  const workOrders = result?.workOrders ?? [];
+  const total = result?.pagination.total ?? 0;
+  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Back to the last page when this one no longer exists.
+  useEffect(() => {
+    if (result && !isPlaceholderData && page > lastPage) setPage(lastPage);
+  }, [result, isPlaceholderData, page, lastPage, setPage]);
+
+  const goToPage = (next: number) => {
+    setPage(next);
+    scrollIntoViewIfAbove(listRef.current);
   };
-  const { pages, loadMore } = useLoadMorePages(queryInput);
-
-  const pageQueries: UseQueryResult<WorkOrdersPage>[] = trpc.useQueries(
-    (t: any) =>
-      pages.map((page) => t.workOrderQuery.getAll({ ...queryInput, page })),
-  );
-
-  const workOrders = pageQueries.flatMap(
-    (query) => query.data?.workOrders ?? [],
-  );
-  const pagination = pageQueries
-    .flatMap((query) => query.data?.pagination ?? [])
-    .at(-1);
-  const failedQuery = pageQueries.find((query) => query.isError);
-  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
 
   const renderList = () => {
-    if (pageQueries[0]?.isLoading) return <OfficeWorkOrdersTableSkeleton />;
+    if (isLoading) return <OfficeWorkOrdersTableSkeleton />;
 
-    if (failedQuery?.error) {
+    if (!result) {
       return (
         <Error
           variant='inline'
-          message={failedQuery.error.message}
+          message={error?.message ?? "The work orders could not be loaded."}
         />
       );
     }
@@ -118,7 +131,11 @@ const OfficeWorkOrders = ({ details }: { details: OfficeDetails }) => {
     }
 
     return (
-      <div className='overflow-hidden rounded-lg border border-gray-200'>
+      <div
+        className={cn(
+          "overflow-hidden rounded-lg border border-gray-200 transition-opacity",
+          isPlaceholderData && "pointer-events-none opacity-60",
+        )}>
         <div className='overflow-x-auto'>
           <Table>
             <TableHeader>
@@ -190,21 +207,12 @@ const OfficeWorkOrders = ({ details }: { details: OfficeDetails }) => {
           </Table>
         </div>
 
-        {pagination?.hasMore && (
-          <div className='border-t border-gray-100 py-2 text-center'>
-            <LoadMoreBtn
-              onClick={loadMore}
-              loading={isFetchingMore}
-            />
-          </div>
-        )}
-
-        <PaginationSummary
-          shown={workOrders.length}
-          total={pagination?.total}
-          page={pagination?.page}
-          totalPages={pagination?.totalPages}
-          noun='work orders'
+        <TablePagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          noun={total === 1 ? "work order" : "work orders"}
+          onPageChange={goToPage}
           className='border-t border-gray-200 bg-gray-50/60'
         />
       </div>
@@ -212,17 +220,9 @@ const OfficeWorkOrders = ({ details }: { details: OfficeDetails }) => {
   };
 
   return (
-    <section className='rounded-lg border bg-white p-4 sm:p-6'>
-      <ProcessSectionHeader
-        Icon={ClipboardList}
-        title='Work orders'
-        description={
-          counts.total === 0
-            ? "Work orders run from this office"
-            : `${counts.total} ${counts.total === 1 ? "work order" : "work orders"} run from this office`
-        }
-      />
-
+    <div
+      ref={listRef}
+      className='scroll-mt-4'>
       {counts.total > 0 && (
         <FilterBar className='mb-3'>
           <SearchFilter
@@ -257,7 +257,7 @@ const OfficeWorkOrders = ({ details }: { details: OfficeDetails }) => {
       )}
 
       {renderList()}
-    </section>
+    </div>
   );
 };
 
