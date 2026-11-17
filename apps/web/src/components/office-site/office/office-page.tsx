@@ -9,6 +9,7 @@ import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import ScrollToTop from "@/components/scroll-to-top";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { recordTrail } from "@/lib/breadcrumbs";
 import OfficePageSkeleton, {
   OFFICE_PAGE_DESCRIPTION,
 } from "@/components/skeleton/office-site/office-page-skeleton";
@@ -54,6 +55,7 @@ const OfficePage = ({ officeId }: { officeId: number }) => {
       <PageWrapper
         title='Office'
         description={OFFICE_PAGE_DESCRIPTION}
+        breadcrumbs={recordTrail("offices", "Office")}
         backClick={goBack}>
         <div className='mt-4'>
           <Error
@@ -71,6 +73,7 @@ const OfficePage = ({ officeId }: { officeId: number }) => {
     <PageWrapper
       title={office.name.toUpperCase()}
       description={OFFICE_PAGE_DESCRIPTION}
+      breadcrumbs={recordTrail("offices", office.name)}
       backClick={goBack}
       button={
         canManage && (

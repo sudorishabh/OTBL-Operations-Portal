@@ -1,5 +1,4 @@
-import { PageWrapper } from "@/components/wrapper/page-wrapper";
-import ContractorDetail from "@/components/vendor/contractor-detail";
+import VendorDetailPage from "@/components/vendor/vendor-detail-page";
 import { MultiRoleProtectedRoute } from "@/components/auth";
 import { constants } from "@pkg/utils";
 
@@ -20,11 +19,7 @@ export default async function Page({ params }: PageProps) {
         ROLES.OFFICE_OPERATOR,
         ROLES.VIEWER,
       ]}>
-      <PageWrapper
-        title='Vendor'
-        description='Every order and job order this vendor is on'>
-        <ContractorDetail contractorId={Number(contractorId)} />
-      </PageWrapper>
+      <VendorDetailPage contractorId={Number(contractorId)} />
     </MultiRoleProtectedRoute>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { recordTrail } from "@/lib/breadcrumbs";
 import { PencilLine } from "lucide-react";
 import { capitalFirstLetter } from "@pkg/utils";
 import { useRouter } from "next/navigation";
@@ -31,11 +32,13 @@ const UpdateClientDialog = dynamic(
 const ClientContent = ({ clientId }: { clientId: string }) => {
   const { setParam, getParam } = useHandleParams();
   const router = useRouter();
+  const name = getParam("name");
 
   return (
     <PageWrapper
-      title={getParam("name")?.toUpperCase() || "Client Info"}
+      title={name?.toUpperCase() || "Client Info"}
       description='Manage Client Info and Work Orders'
+      breadcrumbs={recordTrail("clients", name || "Client")}
       backClick={() => router.push("/dashboard/client")}
       button={
         <CustomButton
