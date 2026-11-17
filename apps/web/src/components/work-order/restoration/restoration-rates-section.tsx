@@ -2,11 +2,8 @@
 import React from "react";
 import { certifiedQuantityByActivity } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
-import {
-  SkeletonRegion,
-  TableSkeleton,
-  type SkeletonColumn,
-} from "@/components/skeleton/parts";
+import { SkeletonRegion } from "@/components/skeleton/parts";
+import { RestorationRatesTableSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 import type { JobOrder } from "./job-order-dialog";
 import { QTY_EPSILON } from "./restoration-display";
 import RestorationRatesTable, {
@@ -19,17 +16,6 @@ interface Props {
   estimatedTotal: number;
   className?: string;
 }
-
-// The table's own headings, for its loading rows.
-const LOADING_COLUMNS: SkeletonColumn[] = [
-  { label: "Activity", bar: ["w-40", "w-32", "w-44"] },
-  { label: "RC rate", align: "right", bar: "w-16" },
-  { label: "Certified", bar: "w-24" },
-  { label: "Left", align: "right", bar: "w-12" },
-  { label: "Estimated cost", align: "right", bar: "w-20" },
-  { label: "Certified value", align: "right", bar: "w-20" },
-  { label: "Vendor spend", align: "right", bar: "w-20" },
-];
 
 // The restoration schedule of rates, kept in view on the restoration page:
 // its activities in the order the work is done, with what the completion
@@ -91,10 +77,7 @@ const RestorationRatesSection = ({
 
       {isLoading ? (
         <SkeletonRegion label='Loading the schedule of rates'>
-          <TableSkeleton
-            columns={LOADING_COLUMNS}
-            rows={Math.max(rates.length, 1)}
-          />
+          <RestorationRatesTableSkeleton rows={rates.length} />
         </SkeletonRegion>
       ) : (
         <RestorationRatesTable

@@ -259,8 +259,31 @@ export const SiteDetailsSkeleton = ({
   </PageWrapper>
 );
 
-// The restoration page: its information card, the dialog buttons, the
-// completion certificate, then the expenses by job order.
+// The restoration schedule of rates table's headings, over placeholder rows.
+const RATES_COLUMNS: SkeletonColumn[] = [
+  { label: "Activity", bar: ["w-40", "w-32", "w-44"] },
+  { label: "RC rate", align: "right", bar: "w-16" },
+  { label: "Certified", bar: "w-24" },
+  { label: "Left", align: "right", bar: "w-12" },
+  { label: "Estimated cost", align: "right", bar: "w-20" },
+  { label: "Certified value", align: "right", bar: "w-20" },
+  { label: "Vendor spend", align: "right", bar: "w-20" },
+];
+
+export const RestorationRatesTableSkeleton = ({
+  rows = 5,
+}: {
+  rows?: number;
+}) => (
+  <TableSkeleton
+    columns={RATES_COLUMNS}
+    rows={rows}
+  />
+);
+
+// The restoration page: its information card, the monthly expenses button,
+// the schedule of rates, the completion certificate, then the expenses by job
+// order.
 export const RestorationPageSkeleton = ({
   from = "list",
 }: {
@@ -300,9 +323,21 @@ export const RestorationPageSkeleton = ({
         </SkeletonCard>
 
         <div className='flex flex-wrap justify-end gap-2'>
-          <Skeleton className='h-8 w-44 bg-white/80' />
           <Skeleton className='h-8 w-48 bg-white/80' />
         </div>
+
+        <SkeletonCard className='p-5'>
+          <p className='text-sm font-semibold text-gray-900'>
+            Schedule of Rates
+          </p>
+          <TextLine
+            line='h-4'
+            className='w-[28rem] max-w-full'
+          />
+          <div className='mt-3'>
+            <RestorationRatesTableSkeleton />
+          </div>
+        </SkeletonCard>
 
         <SkeletonCard className='space-y-2 p-4'>
           <TextLine
