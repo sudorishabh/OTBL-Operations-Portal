@@ -6,6 +6,7 @@ import { capitalFirstLetter } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { workOrderChildTrail } from "@/lib/breadcrumbs";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import { SiteDetailsSkeleton } from "@/components/skeleton/work-order/site-skeletons";
@@ -65,6 +66,7 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
     return (
       <PageWrapper
         title='Site'
+        breadcrumbs={workOrderChildTrail({ id: workOrderId, from }, "Site")}
         backClick={goBack}>
         <NoFetchData
           title='Site Not Found'
@@ -84,11 +86,24 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
   ]
     .filter(Boolean)
     .join(" - ");
+  const breadcrumbs = workOrderChildTrail(
+    {
+      id: workOrderId,
+      code: siteDetails.work_order.code,
+      from,
+      client: {
+        id: siteDetails.work_order.client_id,
+        name: siteDetails.work_order.client_name,
+      },
+    },
+    siteName,
+  );
 
   return (
     <PageWrapper
       title={siteName}
       description={description}
+      breadcrumbs={breadcrumbs}
       backClick={goBack}>
       <div className='mt-4 space-y-4'>
         <SiteDetailsCard

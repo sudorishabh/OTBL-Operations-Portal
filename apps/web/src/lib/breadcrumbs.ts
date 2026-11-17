@@ -32,7 +32,7 @@ export type WorkOrderTrail = {
   code?: string | null;
   // The work order list, or its client's page.
   from: WorkOrderFrom;
-  client?: { id: string | number; name?: string | null };
+  client?: { id?: string | number | null; name?: string | null };
 };
 
 const workOrderLabel = (code?: string | null) =>
@@ -40,7 +40,7 @@ const workOrderLabel = (code?: string | null) =>
 
 // The steps above a work order: the work order list, or its client.
 const workOrderParents = ({ from, client }: WorkOrderTrail): Crumb[] =>
-  from === "client" && client
+  from === "client" && client?.id != null
     ? [
         SECTIONS.clients,
         {

@@ -12,6 +12,7 @@ import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { workOrderChildTrail } from "@/lib/breadcrumbs";
 import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
@@ -106,6 +107,15 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
   const description = [workOrder.code?.toUpperCase(), workOrder.title]
     .filter(Boolean)
     .join(" - ");
+  const breadcrumbs = workOrderChildTrail(
+    {
+      id: workOrderId,
+      code: workOrder.code,
+      from,
+      client: { id: workOrder.client_id, name: workOrder.client_name },
+    },
+    "Restoration",
+  );
 
   if (!restoration) {
     const hasRestoration =
@@ -115,6 +125,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
       <PageWrapper
         title='Restoration'
         description={description}
+        breadcrumbs={breadcrumbs}
         backClick={goBack}>
         <NoFetchData
           title='No Restoration'
@@ -133,6 +144,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
     <PageWrapper
       title='Restoration'
       description={description}
+      breadcrumbs={breadcrumbs}
       backClick={goBack}>
       <div className='mt-4 space-y-4'>
         {/* Set on its own once completion certificates use up the schedule of
