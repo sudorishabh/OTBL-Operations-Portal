@@ -347,9 +347,6 @@ const DEITIES = [
 const INSTALLATIONS = [
   "Well", "GGS", "GCS", "CTF", "EPS", "Pipeline", "Drill Site", "Tank Farm", "Oil Collecting Station",
 ];
-const LAND_TITLES = [
-  "Govt. land (Revenue Dept.)", "Acquired land of the client", "Panchayat land", "Forest Dept. land",
-];
 const REMARKS = [
   "", "", "Work to be executed as per OISD guidelines.", "Joint measurement with the client before billing.",
   "Site access through the client's approach road only.", "Monsoon break to be accounted in the schedule.",
@@ -405,7 +402,7 @@ const COLUMNS = {
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
   sites: ["id", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
-  work_orders: ["id", "code", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "job_number", "area", "installation", "joint_estimate_number", "land_owner_name", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
+  work_orders: ["id", "code", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
   schedule_of_rates: ["id", "work_order_id", "activity", "unit", "estimated_quantity", "rc_unit_rate", "gst_percentage", "unit_rate_inc_gst", "total_cost", "transportation_km", "transportation_slabs", "created_at", "updated_at"],
   work_order_sites: ["id", "work_order_id", "client_id", "site_id", "date", "end_date", "process_type", "status", "isCompleted", "created_at", "updated_at"],
   site_activity_items: ["id", "work_order_site_id", "schedule_of_rates_id", "activity", "unit", "created_at", "updated_at"],
@@ -1697,11 +1694,7 @@ function buildWorkOrder(index) {
     documents,
     process_type: processType,
     description: chance(0.7) ? `Work order against ${proposal.code} for ${client.name}.` : null,
-    job_number: `JOB-${int(10000, 99999)}`,
     area: `${client.city} ${pick(["North", "South", "East", "West", "Central"])} Area`,
-    installation: pick(INSTALLATIONS),
-    joint_estimate_number: `JE/${yy(start)}/${int(100, 9999)}`,
-    land_owner_name: chance(0.3) ? pick(LAND_TITLES) : personName(),
     remarks: pick(REMARKS),
     status: phase === "cancelled" ? "cancelled" : "pending",
     cancellation_reason: phase === "cancelled" ? pick(CANCEL_REASONS) : null,
