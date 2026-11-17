@@ -24,71 +24,44 @@ import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import PaginationSummary from "@/components/shared/pagination-summary";
 import { OfficeSitesTableSkeleton } from "../skeleton/office-site/office-site-skeleton";
 import Error from "@/components/shared/error";
+import { cn } from "@/lib/utils";
 
 // An office card shows a few sites at a time.
 const SITES_PAGE_SIZE = 6;
 
 type SitesPage = RouterOutputs["siteQuery"]["getSitesByOfficeId"];
+export type OfficeSite = SitesPage["sites"][number];
 
-interface Props {
+interface SitesTableProps {
+  sites: OfficeSite[];
   officeId: number;
   officeName: string;
-  /** Which of the office's sites to list. */
-  status?: "active" | "inactive" | "all";
-  /** Only sites whose name, address or city match. */
-  searchQuery?: string;
-  pageSize?: number;
   /** The office's manager or an admin, who may edit its sites. */
-  canManage?: boolean;
+  canManage: boolean;
+  /** Shown in place of the rows when there are none. */
+  emptyMessage: string;
+  /** Rows after the sites, such as a "Load more" button. */
+  extraRows?: React.ReactNode;
+  /** Under the table, such as a count or page controls. */
+  footer?: React.ReactNode;
+  className?: string;
 }
 
-const OfficeSiteTable: React.FC<Props> = ({
+// An office's sites, each with its work orders and edit options.
+export const SitesTable = ({
+  sites,
   officeId,
   officeName,
-  status = "all",
-  searchQuery = "",
-  pageSize = SITES_PAGE_SIZE,
-  canManage = false,
-}) => {
+  canManage,
+  emptyMessage,
+  extraRows,
+  footer,
+  className,
+}: SitesTableProps) => {
   const { setParams } = useHandleParams();
 
-  const queryInput = {
-    office_id: officeId,
-    status,
-    searchQuery: searchQuery || undefined,
-    limit: pageSize,
-  };
-
-  const { pages, loadMore } = useLoadMorePages(queryInput);
-
-  const pageQueries: UseQueryResult<SitesPage>[] = trpc.useQueries((t: any) =>
-    pages.map((page) =>
-      t.siteQuery.getSitesByOfficeId({ ...queryInput, page }),
-    ),
-  );
-
-  const sites = pageQueries.flatMap((query) => query.data?.sites ?? []);
-  const loadedPages = pageQueries.flatMap((query) => query.data ?? []);
-  const lastLoadedPage = loadedPages.at(-1);
-  const failedQuery = pageQueries.find((query) => query.isError);
-
-  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
-
-  if (pageQueries[0]?.isLoading) {
-    return <OfficeSitesTableSkeleton />;
-  }
-
-  if (failedQuery?.error) {
-    return (
-      <Error
-        variant='inline'
-        message={failedQuery.error.message}
-      />
-    );
-  }
-
   return (
-    <div className='border rounded-lg bg-gray-100/60 '>
+    <div className={cn("border rounded-lg bg-gray-100/60", className)}>
       <Table>
         <TableHeader>
           <TableRow>
@@ -106,11 +79,7 @@ const OfficeSiteTable: React.FC<Props> = ({
               <TableCell
                 colSpan={6}
                 className='text-center py-8 text-muted-foreground'>
-                {searchQuery
-                  ? "No sites match your search"
-                  : status === "all"
-                    ? "No sites found"
-                    : `No ${status} sites`}
+                {emptyMessage}
               </TableCell>
             </TableRow>
           ) : (
@@ -186,34 +155,101 @@ const OfficeSiteTable: React.FC<Props> = ({
             ))
           )}
 
-          {lastLoadedPage?.hasMore && (
-            <TableRow>
-              <TableCell
-                colSpan={6}
-                className='text-center'>
-                <LoadMoreBtn
-                  onClick={loadMore}
-                  loading={isFetchingMore}
-                />
-              </TableCell>
-            </TableRow>
-          )}
+          {extraRows}
         </TableBody>
       </Table>
 
-      {sites.length > 0 && (
-        <PaginationSummary
-          shown={sites.length}
-          total={lastLoadedPage?.totalCount}
-          page={loadedPages.length}
-          totalPages={Math.ceil(
-            (lastLoadedPage?.totalCount ?? 0) / pageSize,
-          )}
-          noun='sites'
-          className='border-t'
-        />
-      )}
+      {footer}
     </div>
+  );
+};
+
+interface Props {
+  officeId: number;
+  officeName: string;
+  /** Which of the office's sites to list. */
+  status?: "active" | "inactive" | "all";
+  /** The office's manager or an admin, who may edit its sites. */
+  canManage?: boolean;
+}
+
+// An office card's sites, a few at a time with "Load more".
+const OfficeSiteTable: React.FC<Props> = ({
+  officeId,
+  officeName,
+  status = "all",
+  canManage = false,
+}) => {
+  const queryInput = {
+    office_id: officeId,
+    status,
+    limit: SITES_PAGE_SIZE,
+  };
+
+  const { pages, loadMore } = useLoadMorePages(queryInput);
+
+  const pageQueries: UseQueryResult<SitesPage>[] = trpc.useQueries((t: any) =>
+    pages.map((page) =>
+      t.siteQuery.getSitesByOfficeId({ ...queryInput, page }),
+    ),
+  );
+
+  const sites = pageQueries.flatMap((query) => query.data?.sites ?? []);
+  const loadedPages = pageQueries.flatMap((query) => query.data ?? []);
+  const lastLoadedPage = loadedPages.at(-1);
+  const failedQuery = pageQueries.find((query) => query.isError);
+
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
+
+  if (pageQueries[0]?.isLoading) {
+    return <OfficeSitesTableSkeleton />;
+  }
+
+  if (failedQuery?.error) {
+    return (
+      <Error
+        variant='inline'
+        message={failedQuery.error.message}
+      />
+    );
+  }
+
+  return (
+    <SitesTable
+      sites={sites}
+      officeId={officeId}
+      officeName={officeName}
+      canManage={canManage}
+      emptyMessage={status === "all" ? "No sites found" : `No ${status} sites`}
+      extraRows={
+        lastLoadedPage?.hasMore && (
+          <TableRow>
+            <TableCell
+              colSpan={6}
+              className='text-center'>
+              <LoadMoreBtn
+                onClick={loadMore}
+                loading={isFetchingMore}
+              />
+            </TableCell>
+          </TableRow>
+        )
+      }
+      footer={
+        sites.length > 0 && (
+          <PaginationSummary
+            shown={sites.length}
+            total={lastLoadedPage?.totalCount}
+            page={loadedPages.length}
+            totalPages={Math.ceil(
+              (lastLoadedPage?.totalCount ?? 0) / SITES_PAGE_SIZE,
+            )}
+            noun='sites'
+            className='border-t'
+          />
+        )
+      }
+    />
   );
 };
 
