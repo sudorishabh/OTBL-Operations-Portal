@@ -398,7 +398,7 @@ const COLUMNS = {
   parent_clients: ["id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   clients: ["id", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   client_contacts: ["id", "client_id", "parent_client_id", "name", "designation", "contact_number", "email", "contact_type", "created_at", "updated_at"],
-  contractors: ["id", "name", "contact_number", "email", "address", "gst_number", "pan_number", "status", "created_at", "updated_at"],
+  contractors: ["id", "code", "name", "contact_number", "email", "address", "gst_number", "pan_number", "status", "created_at", "updated_at"],
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
   sites: ["id", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
@@ -452,6 +452,8 @@ const takenParentNames = new Set();
 const takenProposalCodes = new Set();
 // The last work order serials in use, overall and by financial year.
 const lastWorkOrderSerial = { overall: 0, byYear: new Map() };
+// The last vendor code number in use, as in VEN-0012.
+let lastVendorSerial = 0;
 
 // ---------------------------------------------------------------------------
 // The database. It is read before anything is built: to check its schema, and
@@ -593,6 +595,10 @@ if (!DRY_RUN || APPEND) {
       "SELECT financial_year AS fy, MAX(fy_serial) AS n FROM work_orders GROUP BY financial_year",
     );
     for (const r of years) lastWorkOrderSerial.byYear.set(r.fy, Number(r.n));
+    const [[{ maxVendor }]] = await db.conn.query(
+      "SELECT COALESCE(MAX(CAST(SUBSTRING(code, 5) AS UNSIGNED)), 0) AS maxVendor FROM contractors",
+    );
+    lastVendorSerial = Number(maxVendor);
   } else {
     const filled = [];
     for (const table of Object.keys(COLUMNS)) {
@@ -859,6 +865,7 @@ for (let i = 0; i < COUNT + 20; i++) {
   const name = pick(contractorNames)();
   const panNumber = pan(pick(["C", "F", "P"]), name);
   add("contractors", {
+    code: `VEN-${String(++lastVendorSerial).padStart(4, "0")}`,
     name,
     contact_number: chance(0.9) ? phone() : null,
     email: chance(0.7) ? uniqueEmail("accounts", `${slug(name).replace(/-/g, "")}${i}.test`) : null,
