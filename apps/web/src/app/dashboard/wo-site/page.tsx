@@ -92,11 +92,6 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
           <span className='truncate font-medium tabular-nums'>
             {site.wo_code}
           </span>
-          <span
-            aria-hidden
-            className='h-3 w-px shrink-0 bg-gray-200'
-          />
-          <span className='shrink-0 tabular-nums'>Job {site.job_number}</span>
         </div>
 
         {site.wo_title && (
@@ -251,7 +246,6 @@ export default function OperatorAssignedSitesPage() {
         site.wo_title,
         site.site_city,
         site.site_state,
-        String(site.job_number),
       ].some((field) => field?.toLowerCase().includes(term));
     });
   }, [sites, filter, search, showToolbar]);

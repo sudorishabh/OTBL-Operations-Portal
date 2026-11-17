@@ -31,8 +31,8 @@ const WorkOrderDetailsSkeleton = ({
           pillsOwnRow
           metrics={5}
           metricsClassName='sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0'
-          fields={Array.from({ length: 7 }, () => "")}
-          fieldsClassName='sm:grid-cols-4 xl:grid-cols-7'
+          fields={Array.from({ length: 3 }, () => "")}
+          fieldsClassName='sm:grid-cols-3'
           notes
         />
         <div className='flex flex-wrap justify-end gap-2'>
