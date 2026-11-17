@@ -1,4 +1,15 @@
-import { and, asc, count, desc, eq, inArray, like, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  like,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
 import {
   constants,
@@ -33,6 +44,28 @@ const {
   bioremediationContSoilTable,
 } = schema;
 const { ROLES, STATUS } = constants;
+
+// How many of its newest sites each office in the list shows.
+const LATEST_SITES = 3;
+
+// Each site of these offices, numbered from its office's newest.
+const sitesRankedByNewest = (db: Database, officeIds: number[]) =>
+  db
+    .select({
+      id: siteTable.id,
+      office_id: siteTable.office_id,
+      name: siteTable.name,
+      city: siteTable.city,
+      status: siteTable.status,
+      created_at: siteTable.created_at,
+      site_rank:
+        sql<number>`row_number() over (partition by ${siteTable.office_id} order by ${siteTable.created_at} desc, ${siteTable.id} desc)`.as(
+          "site_rank",
+        ),
+    })
+    .from(siteTable)
+    .where(inArray(siteTable.office_id, officeIds))
+    .as("ranked_sites");
 
 // The offices a user may see: all of them, those they belong to, or none for
 // users who only work on sites.
@@ -122,9 +155,10 @@ export const officeQueryRouter = router({
         // Members, site counts and work order counts for the whole page at
         // once rather than office by office.
         const officeIds = offices.map((office) => office.id);
-        const [members, siteCounts, workOrderCounts] =
+        const rankedSites = sitesRankedByNewest(ctx.db, officeIds);
+        const [members, siteCounts, workOrderCounts, latestSites] =
           officeIds.length === 0
-            ? [[], [], []]
+            ? [[], [], [], []]
             : await Promise.all([
                 ctx.db
                   .select({
@@ -165,6 +199,21 @@ export const officeQueryRouter = router({
                     ),
                   )
                   .groupBy(workOrderTable.office_id),
+                ctx.db
+                  .select({
+                    id: rankedSites.id,
+                    office_id: rankedSites.office_id,
+                    name: rankedSites.name,
+                    city: rankedSites.city,
+                    status: rankedSites.status,
+                    created_at: rankedSites.created_at,
+                  })
+                  .from(rankedSites)
+                  .where(lte(rankedSites.site_rank, LATEST_SITES))
+                  .orderBy(
+                    asc(rankedSites.office_id),
+                    asc(rankedSites.site_rank),
+                  ),
               ]);
 
         const officesWithUsersAndSitesCount = offices.map((office) => {
@@ -186,6 +235,10 @@ export const officeQueryRouter = router({
             workOrderCount:
               workOrderCounts.find((row) => row.office_id === office.id)
                 ?.count ?? 0,
+            // Newest first.
+            latestSites: latestSites
+              .filter((site) => site.office_id === office.id)
+              .map(({ office_id, ...site }) => site),
             canManage: isAdmin || manager?.id === currentUserId,
           };
         });
