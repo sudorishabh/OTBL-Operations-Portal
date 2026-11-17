@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   titleValidator,
-  codeValidator,
   agreementNumberValidator,
   documentsValidator,
   positiveIntValidator,
@@ -114,8 +113,8 @@ export const scheduleOfRateSchema = z
     }
   });
 
+// The code isn't typed: the server numbers each new work order.
 export const baseWorkOrderSchema = z.object({
-  code: codeValidator,
   agreement_number: agreementNumberValidator,
   rate_contract_number: z
     .string({ message: "Rate contract number is required" })
@@ -208,6 +207,11 @@ export const getWorkOrdersByClientSchema = z.object({
 
 export const getWorkOrdersByOfficeSchema = z.object({
   office_id: positiveIntValidator,
+});
+
+// The code a new work order starting on this date would get.
+export const getNextWorkOrderCodeSchema = z.object({
+  start_date: dateValidator,
 });
 
 export const getWorkOrderSchema = z.object({
