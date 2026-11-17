@@ -45,87 +45,82 @@ export const OfficeSitesTableSkeleton = ({ rows = 3 }: { rows?: number }) => (
   </SkeletonRegion>
 );
 
-// Mirrors OfficeCard: icon, name and place, status and menu; the three
-// totals; the newest sites; the manager and email; then when it was added.
+// Mirrors OfficeCard: icon, name and status, the meta line; then the
+// totals beside a grid of the newest sites.
 const OfficeCardSkeleton = () => (
-  <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm'>
-    <div className='flex items-start gap-3 px-4 pt-4'>
-      <Skeleton className='size-8 shrink-0 rounded-lg' />
+  <div className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+    <div className='flex items-start gap-3 px-4 py-4 lg:px-5'>
+      <Skeleton className='size-10 shrink-0 rounded-lg' />
       <div className='min-w-0 flex-1'>
-        <TextLine className='h-3.5 w-48 max-w-full' />
-        <TextLine
-          line='mt-0.5 h-4'
-          className='w-32'
-        />
-      </div>
-      <Skeleton className='h-5 w-14 shrink-0 rounded-full' />
-    </div>
-    <div className='mt-4 grid grid-cols-3 divide-x divide-gray-200 border-y border-gray-200 bg-gray-50/60'>
-      {["w-8", "w-6", "w-6"].map((width, index) => (
-        <div
-          key={index}
-          className='px-4 py-2.5'>
-          <TextLine
-            line='h-[16.5px]'
-            className='h-2.5 w-14'
-          />
-          <TextLine
-            line='h-5'
-            className={cn("h-4", width)}
-          />
-          <TextLine
-            line='h-4'
-            className='h-2.5 w-12'
-          />
+        <div className='flex h-[22.5px] items-center gap-2.5'>
+          <Skeleton className='h-4 w-56 max-w-[60%]' />
+          <Skeleton className='h-5 w-14 rounded-full' />
         </div>
-      ))}
+        <div className='mt-1 flex h-4 flex-wrap items-center gap-4 overflow-hidden'>
+          {["w-28", "w-36", "w-52", "w-24"].map((width) => (
+            <Skeleton
+              key={width}
+              className={cn("h-3", width)}
+            />
+          ))}
+        </div>
+      </div>
+      <Skeleton className='hidden h-6 w-24 rounded-full sm:block' />
     </div>
-    <div className='border-b border-gray-100 px-4 py-3'>
-      <TextLine
-        line='h-[16.5px]'
-        className='h-2.5 w-20'
-      />
-      <div className='mt-1.5 min-h-[68px] space-y-1'>
-        {["w-40", "w-32", "w-44"].map((width) => (
+    <div className='grid border-t border-gray-100 lg:grid-cols-[13rem_minmax(0,1fr)]'>
+      <div className='grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100 bg-gray-50/70 lg:grid-cols-1 lg:content-start lg:divide-x-0 lg:divide-y lg:border-b-0 lg:border-r'>
+        {["w-10", "w-16", "w-20"].map((width) => (
           <div
             key={width}
-            className='flex h-5 items-center gap-2'>
-            <Skeleton className='size-1.5 rounded-full' />
-            <Skeleton className={cn("h-3", width)} />
-            <Skeleton className='ml-auto h-3 w-16' />
+            className='px-4 py-3 lg:flex lg:items-center lg:justify-between lg:px-5 lg:py-2.5'>
+            <TextLine
+              line='h-[16.5px] lg:h-4'
+              className={cn("h-2.5", width)}
+            />
+            <TextLine
+              line='h-[22.5px]'
+              className='h-4 w-8'
+            />
           </div>
         ))}
       </div>
-    </div>
-    <div className='space-y-1.5 px-4 py-3'>
-      <TextLine
-        line='h-4'
-        className='w-40'
-      />
-      <TextLine
-        line='h-4'
-        className='w-52'
-      />
-    </div>
-    <div className='flex items-center justify-between border-t border-gray-100 px-4 py-2.5'>
-      <TextLine
-        line='h-4'
-        className='w-32'
-      />
-      <TextLine
-        line='h-4'
-        className='w-20'
-      />
+      <div className='p-4 lg:px-5'>
+        <TextLine
+          line='mb-2.5 h-4'
+          className='w-24'
+        />
+        <div className='grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3'>
+          {["w-36", "w-28", "w-40", "w-32", "w-36", "w-28"].map(
+            (width, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "flex items-start gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5",
+                  index >= 3 && "max-sm:hidden",
+                )}>
+                <Skeleton className='mt-1.5 size-2 rounded-full' />
+                <div className='min-w-0 flex-1'>
+                  <TextLine className={cn("h-3.5", width)} />
+                  <TextLine
+                    line='mt-0.5 h-4'
+                    className='h-2.5 w-32'
+                  />
+                </div>
+              </div>
+            ),
+          )}
+        </div>
+      </div>
     </div>
   </div>
 );
 
-// The office list: a grid of office cards.
+// The office list: one office card per row.
 const OfficeSiteSkeleton = () => (
   <SkeletonRegion
     label='Loading offices'
-    className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'>
-    {Array.from({ length: 6 }, (_, index) => (
+    className='grid grid-cols-1 gap-4'>
+    {Array.from({ length: 3 }, (_, index) => (
       <OfficeCardSkeleton key={index} />
     ))}
   </SkeletonRegion>

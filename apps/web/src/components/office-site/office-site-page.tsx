@@ -25,8 +25,7 @@ const ManageOfficeMembersDialog = dynamic(
   () => import("./manage-office-members-dialog"),
 );
 
-// Fills whole rows of one, two or three cards.
-const OFFICES_PAGE_SIZE = 12;
+const OFFICES_PAGE_SIZE = 10;
 
 type OfficesPage = RouterOutputs["officeQuery"]["getOffices"];
 
@@ -98,7 +97,7 @@ const OfficeSitePage = () => {
       <>
         <div
           className={cn(
-            "grid grid-cols-1 gap-4 transition-opacity md:grid-cols-2 xl:grid-cols-3",
+            "grid grid-cols-1 gap-4 transition-opacity",
             isPlaceholderData && "pointer-events-none opacity-60",
           )}>
           {offices.map((office) => (
