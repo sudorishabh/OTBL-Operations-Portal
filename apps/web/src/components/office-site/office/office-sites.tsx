@@ -16,7 +16,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { usePageNumber } from "@/hooks/usePageNumber";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { SitesTable } from "../office-site-table";
+import { SitesTable } from "../sites-table";
 import type { OfficeDetails } from "./office-types";
 
 const PAGE_SIZE = 10;
