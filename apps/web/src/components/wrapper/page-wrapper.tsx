@@ -2,6 +2,9 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import PageBreadcrumbs, {
+  type Crumb,
+} from "@/components/shared/page-breadcrumbs";
 import { BuildingPatterns } from "./building-patterns";
 
 interface Props {
@@ -10,6 +13,8 @@ interface Props {
   description?: string;
   button?: React.ReactNode;
   backClick?: () => void;
+  // The trail from home to this page, drawn above the title.
+  breadcrumbs?: Crumb[];
 }
 
 export const PageWrapper = ({
@@ -18,10 +23,17 @@ export const PageWrapper = ({
   description,
   button,
   backClick,
+  breadcrumbs,
 }: Props) => {
   return (
     <div className='relative overflow-hidden py-4 px-3 sm:px-4 md:px-6 bg-gray-200/80 min-h-screen'>
       <BuildingPatterns />
+
+      {breadcrumbs && (
+        <div className='relative z-10 mb-3'>
+          <PageBreadcrumbs items={breadcrumbs} />
+        </div>
+      )}
 
       <div className='relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex items-center gap-3 sm:gap-4 min-w-0'>
