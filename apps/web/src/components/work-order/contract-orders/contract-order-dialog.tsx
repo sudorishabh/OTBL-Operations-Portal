@@ -17,6 +17,7 @@ import {
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
+import NewVendorButton from "@/components/vendor/new-vendor-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -309,6 +310,13 @@ const ContractOrderDialog = ({
       checked ? [...prev, id] : prev.filter((vendorId) => vendorId !== id),
     );
 
+  // A vendor added from here is chosen for the order: as a purchase order's
+  // one vendor, or alongside a sub-contract's others.
+  const chooseNewVendor = (id: number) =>
+    setVendorIds((prev) =>
+      isPurchase ? [id] : prev.includes(id) ? prev : [...prev, id],
+    );
+
   // A purchase order's cost, as it will be recorded at its sites.
   const rate = Number(unitRate) || 0;
   const gst = Number(gstPercentage) || 0;
@@ -405,7 +413,7 @@ const ContractOrderDialog = ({
 
   const noVendorsText = vendorsQuery.isLoading
     ? "Loading vendors..."
-    : "No vendors yet. Add them on the Vendors page.";
+    : "No vendors yet. Add one with New vendor.";
 
   return (
     <DialogWindow
@@ -465,26 +473,31 @@ const ContractOrderDialog = ({
                 title='Vendor'
                 description='A purchase order is given to one vendor.'
               />
-              <Select
-                value={vendorIds.length === 1 ? String(vendorIds[0]) : ""}
-                onValueChange={(id) => setVendorIds([Number(id)])}>
-                <SelectTrigger className='h-9 w-full sm:w-1/2'>
-                  <SelectValue
-                    placeholder={
-                      vendors.length === 0 ? noVendorsText : "Choose the vendor"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendors.map((vendor) => (
-                    <SelectItem
-                      key={vendor.id}
-                      value={String(vendor.id)}>
-                      {vendor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className='flex flex-wrap items-center gap-3'>
+                <Select
+                  value={vendorIds.length === 1 ? String(vendorIds[0]) : ""}
+                  onValueChange={(id) => setVendorIds([Number(id)])}>
+                  <SelectTrigger className='h-9 w-full sm:w-1/2'>
+                    <SelectValue
+                      placeholder={
+                        vendors.length === 0
+                          ? noVendorsText
+                          : "Choose the vendor"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendors.map((vendor) => (
+                      <SelectItem
+                        key={vendor.id}
+                        value={String(vendor.id)}>
+                        {vendor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <NewVendorButton onAdded={chooseNewVendor} />
+              </div>
               {vendorIds.length > 1 && (
                 <p className='flex items-center gap-1.5 text-xs text-amber-700'>
                   <AlertTriangle className='size-3.5' />
@@ -647,7 +660,10 @@ const ContractOrderDialog = ({
                   )}
                 </div>
                 <div>
-                  <label className={fieldLabel}>Vendors</label>
+                  <div className='mb-1 flex items-center justify-between gap-2'>
+                    <label className={cn(fieldLabel, "mb-0")}>Vendors</label>
+                    <NewVendorButton onAdded={chooseNewVendor} />
+                  </div>
                   <div className='max-h-32 overflow-y-auto rounded-lg border bg-white p-2'>
                     {vendors.length === 0 ? (
                       <p className='px-1 py-1 text-xs text-gray-400'>
