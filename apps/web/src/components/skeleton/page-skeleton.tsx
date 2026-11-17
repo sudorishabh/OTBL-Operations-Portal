@@ -1,6 +1,7 @@
 import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import type { Crumb } from "@/components/shared/page-breadcrumbs";
 import {
   FilterBarSkeleton,
   PageHeaderSkeleton,
@@ -32,19 +33,23 @@ const GenericListSkeleton = () => (
 );
 
 // A dashboard page before it can render, such as while the route guard
-// checks who is signed in. With a title, the page's own header shows.
+// checks who is signed in. With a title, the page's own header shows, and
+// with breadcrumbs its trail.
 const PageSkeleton = ({
   title,
   description,
+  breadcrumbs,
   children,
 }: {
   title?: string;
   description?: string;
+  breadcrumbs?: Crumb[];
   children?: React.ReactNode;
 }) => (
   <PageWrapper
     title={title}
-    description={description}>
+    description={description}
+    breadcrumbs={breadcrumbs}>
     {!title && (
       <SkeletonRegion label='Loading'>
         <PageHeaderSkeleton />
