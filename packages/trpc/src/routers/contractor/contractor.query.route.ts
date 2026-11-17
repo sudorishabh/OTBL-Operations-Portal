@@ -20,6 +20,7 @@ import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { z } from "zod";
 import { assertCanUseVendors, canUseVendors } from "./vendor-access";
+import { formatVendorCode } from "./vendor-code";
 import { getAccessScope, workOrderScopeWhere } from "../../access-scope";
 
 const {
@@ -34,16 +35,26 @@ const {
   workOrderSiteExpenseTable,
 } = schema;
 
+// A vendor code typed short, such as "VEN-12", "ven12" or "12", for the
+// vendor whose code is VEN-0012.
+const typedVendorCode = (search: string) => {
+  const match = search.match(/^(?:ven)?[\s-]*0*(\d+)$/i);
+  return match ? formatVendorCode(Number(match[1])) : null;
+};
+
 const searchWhere = (search: string | undefined) => {
-  const term = search?.trim() ? `%${escapeLike(search.trim())}%` : null;
-  return term
-    ? or(
-        like(contractorTable.name, term),
-        like(contractorTable.contact_number, term),
-        like(contractorTable.email, term),
-        like(contractorTable.gst_number, term),
-      )
-    : undefined;
+  const trimmed = search?.trim();
+  if (!trimmed) return undefined;
+  const term = `%${escapeLike(trimmed)}%`;
+  const code = typedVendorCode(trimmed);
+  return or(
+    like(contractorTable.code, term),
+    code ? eq(contractorTable.code, code) : undefined,
+    like(contractorTable.name, term),
+    like(contractorTable.contact_number, term),
+    like(contractorTable.email, term),
+    like(contractorTable.gst_number, term),
+  );
 };
 
 // How a vendors list can be narrowed by the orders vendors are on.
