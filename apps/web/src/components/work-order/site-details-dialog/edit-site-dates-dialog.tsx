@@ -13,6 +13,7 @@ import CustomButton from "@/components/shared/btn";
 import CustomForm from "@/components/shared/form";
 import CustomInput from "@/components/shared/input";
 import { Form } from "@/components/ui/form";
+import { toDate } from "@/lib/wo-site-display";
 
 const datesSchema = workOrderSchemas.updateWorkOrderSiteDatesSchema;
 type DatesInput = z.input<typeof datesSchema>;
@@ -20,11 +21,12 @@ type DatesValues = z.output<typeof datesSchema>;
 
 interface Props {
   woSiteId: number;
-  date: string;
-  endDate: string;
+  // Unset for a site added before its dates are known.
+  date: string | null;
+  endDate: string | null;
 }
 
-// Lets an admin correct the dates a work order site runs over.
+// Lets an admin set or correct the dates a work order site runs over.
 const EditSiteDatesDialog = ({ woSiteId, date, endDate }: Props) => {
   const [open, setOpen] = useState(false);
   const { handleError } = useApiError();
@@ -56,8 +58,8 @@ const EditSiteDatesDialog = ({ woSiteId, date, endDate }: Props) => {
         onClick={() => {
           form.reset({
             id: woSiteId,
-            date: new Date(date),
-            end_date: new Date(endDate),
+            date: toDate(date) ?? undefined,
+            end_date: toDate(endDate) ?? undefined,
           });
           setOpen(true);
         }}
@@ -67,7 +69,7 @@ const EditSiteDatesDialog = ({ woSiteId, date, endDate }: Props) => {
 
       <DialogWindow
         title='Edit Site Dates'
-        description='Correct when work at this site starts and ends'
+        description='Set or correct when work at this site starts and ends'
         size='sm'
         heightMode='auto'
         open={open}

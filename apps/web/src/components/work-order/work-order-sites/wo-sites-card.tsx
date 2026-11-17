@@ -19,8 +19,9 @@ interface Site {
   city: string;
   state: string;
   status: "pending" | "completed" | "cancelled";
-  start_date: string;
-  end_date: string;
+  // Unset for a site added before its dates are known.
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
   users: { user_id: number; user_name: string }[];
   measurement_sheets?: { id: number; document_url: string }[];
