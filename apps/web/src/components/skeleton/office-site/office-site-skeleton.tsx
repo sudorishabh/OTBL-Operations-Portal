@@ -45,71 +45,66 @@ export const OfficeSitesTableSkeleton = ({ rows = 3 }: { rows?: number }) => (
   </SkeletonRegion>
 );
 
-// Mirrors OfficeCard: icon, name and status, the meta line; then the
-// totals beside a grid of the newest sites.
+// Mirrors OfficeCard: icon, name and status, two meta lines and the three
+// figures; then the log of the newest sites.
 const OfficeCardSkeleton = () => (
-  <div className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-    <div className='flex items-start gap-3 px-4 py-4 lg:px-5'>
-      <Skeleton className='size-10 shrink-0 rounded-lg' />
-      <div className='min-w-0 flex-1'>
-        <div className='flex h-[22.5px] items-center gap-2.5'>
-          <Skeleton className='h-4 w-56 max-w-[60%]' />
-          <Skeleton className='h-5 w-14 rounded-full' />
-        </div>
-        <div className='mt-1 flex h-4 flex-wrap items-center gap-4 overflow-hidden'>
-          {["w-28", "w-36", "w-52", "w-24"].map((width) => (
-            <Skeleton
-              key={width}
-              className={cn("h-3", width)}
-            />
-          ))}
+  <div className='overflow-hidden rounded-xl border border-gray-200 bg-white'>
+    <div className='flex flex-col lg:flex-row lg:items-start'>
+      <div className='flex min-w-0 flex-1 items-start gap-3 px-4 pt-4 lg:px-5 lg:pb-4'>
+        <Skeleton className='size-10 shrink-0 rounded-lg' />
+        <div className='min-w-0 flex-1'>
+          <div className='flex h-[22.5px] items-center gap-2.5'>
+            <Skeleton className='h-4 w-56 max-w-[60%]' />
+            <Skeleton className='h-5 w-14 rounded-full' />
+          </div>
+          <div className='mt-1.5 flex h-4 items-center gap-4'>
+            <Skeleton className='h-3 w-28' />
+            <Skeleton className='h-3 w-36' />
+          </div>
+          <div className='mt-1 flex h-4 items-center gap-4'>
+            <Skeleton className='h-3 w-52 max-w-[60%]' />
+            <Skeleton className='h-3 w-24' />
+          </div>
         </div>
       </div>
-      <Skeleton className='hidden h-6 w-24 rounded-full sm:block' />
-    </div>
-    <div className='grid border-t border-gray-100 lg:grid-cols-[13rem_minmax(0,1fr)]'>
-      <div className='grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100 bg-gray-50/70 lg:grid-cols-1 lg:content-start lg:divide-x-0 lg:divide-y lg:border-b-0 lg:border-r'>
-        {["w-10", "w-16", "w-20"].map((width) => (
+      <div className='mt-3 grid grid-cols-3 divide-x divide-gray-100 border-y border-gray-100 bg-gray-50/70 lg:mt-0 lg:flex lg:shrink-0 lg:gap-2 lg:divide-x-0 lg:border-0 lg:bg-transparent lg:py-4'>
+        {["w-8", "w-16", "w-14"].map((width) => (
           <div
             key={width}
-            className='px-4 py-3 lg:flex lg:items-center lg:justify-between lg:px-5 lg:py-2.5'>
+            className='flex flex-col px-4 py-3 lg:w-24 lg:items-end lg:px-0 lg:py-0'>
             <TextLine
-              line='h-[16.5px] lg:h-4'
+              line='h-[16.5px]'
               className={cn("h-2.5", width)}
             />
             <TextLine
-              line='h-[22.5px]'
-              className='h-4 w-8'
+              line='h-7'
+              className='h-5 w-6'
             />
+            <div className='h-4' />
           </div>
         ))}
       </div>
-      <div className='p-4 lg:px-5'>
-        <TextLine
-          line='mb-2.5 h-4'
-          className='w-24'
-        />
-        <div className='grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3'>
-          {["w-36", "w-28", "w-40", "w-32", "w-36", "w-28"].map(
-            (width, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "flex items-start gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5",
-                  index >= 3 && "max-sm:hidden",
-                )}>
-                <Skeleton className='mt-1.5 size-2 rounded-full' />
-                <div className='min-w-0 flex-1'>
-                  <TextLine className={cn("h-3.5", width)} />
-                  <TextLine
-                    line='mt-0.5 h-4'
-                    className='h-2.5 w-32'
-                  />
-                </div>
-              </div>
-            ),
-          )}
-        </div>
+      <div className='hidden w-22 shrink-0 lg:block' />
+    </div>
+    <div className='px-4 pb-3 pt-3 lg:border-t lg:border-gray-100 lg:px-5'>
+      <TextLine
+        line='h-4 mb-2'
+        className='w-24'
+      />
+      <div className='grid grid-cols-1 lg:grid-flow-col lg:grid-cols-2 lg:grid-rows-3 lg:gap-x-10'>
+        {["w-40", "w-32", "w-48", "w-36", "w-44", "w-28"].map(
+          (width, index) => (
+            <div
+              key={width}
+              className={cn(
+                "flex h-9 items-center gap-3 border-t border-gray-100",
+                index >= 3 && "max-sm:hidden",
+              )}>
+              <Skeleton className='h-2.5 w-16 shrink-0' />
+              <Skeleton className={cn("h-3", width)} />
+            </div>
+          ),
+        )}
       </div>
     </div>
   </div>

@@ -5,9 +5,9 @@ import {
   ArrowUpRight,
   Building2,
   CalendarDays,
+  ChevronRight,
   Mail,
   MapPin,
-  MapPinned,
   MoreVertical,
   Pencil,
   Plus,
@@ -37,7 +37,7 @@ const STATUS_STYLES: Record<string, string> = {
   inactive: "bg-amber-50 text-amber-700 ring-amber-200",
 };
 
-// Phones show this many of the newest sites; wider screens show them all.
+// Phones list this many of the newest sites; wider screens list them all.
 const PHONE_SITES = 3;
 
 // Sites added within this many days are marked new.
@@ -46,149 +46,107 @@ const NEW_SITE_DAYS = 30;
 const officeHref = (office: OfficeListItem) =>
   `/dashboard/office-site/${office.id}`;
 
-// One of the office's totals: label over figure in the strip phones show,
-// label beside figure in the column wider screens show.
-const Stat = ({
+// One of the office's totals. Each sits in a fixed-width column, so the
+// figures line up from card to card and the list reads like a ledger.
+const Figure = ({
   label,
   value,
-  hint,
+  note,
 }: {
   label: string;
   value: number;
-  hint?: string;
+  note?: string;
 }) => (
-  <div className='min-w-0 px-4 py-3 lg:flex lg:items-center lg:justify-between lg:gap-3 lg:px-5 lg:py-2.5'>
-    <div className='min-w-0'>
-      <p className='text-[11px] text-gray-500 lg:text-xs lg:text-gray-600'>
-        {label}
-      </p>
-      {hint && (
-        <p className='hidden truncate text-[11px] text-gray-400 lg:block'>
-          {hint}
-        </p>
-      )}
-    </div>
-    <p className='flex items-baseline gap-1.5'>
-      <span className='text-lg font-semibold leading-tight tabular-nums text-gray-900'>
-        {value.toLocaleString("en-IN")}
-      </span>
-      {hint && (
-        <span className='truncate text-[11px] text-gray-400 lg:hidden'>
-          {hint}
-        </span>
-      )}
-    </p>
+  <div className='min-w-0 px-4 py-3 lg:w-24 lg:px-0 lg:py-0 lg:text-right'>
+    <dt className='text-[11px] text-gray-500'>{label}</dt>
+    <dd className='text-xl font-semibold leading-7 tabular-nums text-gray-900'>
+      {value.toLocaleString("en-IN")}
+    </dd>
+    <dd className='h-4 text-[11px] leading-4 text-gray-400'>{note}</dd>
   </div>
 );
 
-// A site among the office's newest: its status, name, city and when it was
-// added, marked new when recent.
-const SiteTile = ({ site, index }: { site: LatestSite; index: number }) => {
-  const isActive = site.status === "active";
+// A site among the office's newest, as a line in a dated log. Sites are
+// active unless marked, and recent ones are marked new.
+const SiteLine = ({ site, index }: { site: LatestSite; index: number }) => {
   const addedOn = new Date(site.created_at);
+  const isActive = site.status === "active";
   const isNew = differenceInCalendarDays(new Date(), addedOn) < NEW_SITE_DAYS;
+  // Most site names already say where they are.
+  const showCity =
+    !!site.city && !site.name.toLowerCase().includes(site.city.toLowerCase());
 
   return (
     <li
       className={cn(
-        "flex min-w-0 items-start gap-2.5 rounded-lg border border-gray-200 bg-white px-3 py-2.5 transition-colors group-hover:border-gray-300",
+        "flex h-9 min-w-0 items-center gap-3 border-t border-gray-100",
         index >= PHONE_SITES && "max-sm:hidden",
       )}>
+      <time
+        dateTime={addedOn.toISOString()}
+        className='w-[4.5rem] shrink-0 text-[11px] tabular-nums text-gray-400'>
+        {format(addedOn, "d MMM yyyy")}
+      </time>
       <span
         className={cn(
-          "mt-1.5 size-2 shrink-0 rounded-full ring-2",
-          isActive
-            ? "bg-emerald-500 ring-emerald-100"
-            : "bg-gray-300 ring-gray-100",
+          "truncate text-[13px] font-medium",
+          isActive ? "text-gray-800" : "text-gray-400",
         )}
-        title={isActive ? "Active site" : "Inactive site"}
-      />
-      <span className='sr-only'>{isActive ? "Active:" : "Inactive:"}</span>
-      <div className='min-w-0 flex-1'>
-        <div className='flex min-w-0 items-center gap-1.5'>
-          <span
-            className='truncate text-[13px] font-medium text-gray-800'
-            title={site.name}>
-            {capitalFirstLetter(site.name)}
-          </span>
-          {isNew && (
-            <span className='shrink-0 rounded-full bg-emerald-50 px-1.5 text-[10px] font-semibold leading-4 text-emerald-700 ring-1 ring-inset ring-emerald-200'>
-              New
-            </span>
-          )}
-        </div>
-        <p className='mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-gray-500'>
-          {site.city && (
-            <>
-              <span className='truncate'>{capitalizeEachWord(site.city)}</span>
-              <span
-                aria-hidden='true'
-                className='text-gray-300'>
-                ·
-              </span>
-            </>
-          )}
-          <span className='shrink-0'>
-            Added {format(addedOn, "d MMM yyyy")}
-          </span>
-        </p>
-      </div>
+        title={site.name}>
+        {capitalFirstLetter(site.name)}
+      </span>
+      {showCity && (
+        <span className='hidden shrink-0 text-xs text-gray-400 md:inline'>
+          {capitalizeEachWord(site.city)}
+        </span>
+      )}
+      {!isActive && (
+        <span className='shrink-0 text-[11px] text-gray-500'>Inactive</span>
+      )}
+      {isNew && (
+        <span className='ml-auto shrink-0 rounded-full bg-emerald-50 px-1.5 text-[10px] font-semibold leading-4 text-emerald-700 ring-1 ring-inset ring-emerald-200'>
+          New
+        </span>
+      )}
     </li>
   );
 };
 
-// The office's newest sites, newest first, and a pointer to all of them
-// when there are more.
-const LatestSites = ({ office }: { office: OfficeListItem }) => {
+// The office's newest sites, newest first down each column.
+const NewestSites = ({ office }: { office: OfficeListItem }) => {
   const sites = office.latestSites;
   const hasMoreOnPhones =
     office.siteCount > Math.min(sites.length, PHONE_SITES);
   const hasMoreOnWider = office.siteCount > sites.length;
-  const viewAll = (
-    <>
-      View all {office.siteCount}
-      <ArrowUpRight className='size-3' />
-    </>
-  );
+  const seeAll = `See all ${office.siteCount} sites`;
 
   return (
-    <div className='min-w-0 p-4 lg:px-5'>
-      <div className='mb-2.5 flex items-center justify-between gap-3'>
-        <p className='flex items-center gap-1.5 text-xs font-medium text-gray-700'>
-          <MapPinned className='size-3.5 text-gray-400' />
-          Latest sites
-        </p>
+    <div className='px-4 pb-3 pt-3 lg:px-5'>
+      <div className='flex items-baseline justify-between gap-3 pb-2'>
+        <h4 className='text-xs font-medium text-gray-700'>Newest sites</h4>
         {/* The card itself opens the office, so this only says so. */}
         <p
           aria-hidden='true'
-          className='text-xs font-medium text-emerald-700'>
-          {hasMoreOnPhones && (
-            <span className='inline-flex items-center gap-0.5 sm:hidden'>
-              {viewAll}
-            </span>
-          )}
-          {hasMoreOnWider && (
-            <span className='inline-flex items-center gap-0.5 max-sm:hidden'>
-              {viewAll}
-            </span>
-          )}
+          className='text-xs font-medium text-emerald-700 group-hover:underline'>
+          {hasMoreOnPhones && <span className='sm:hidden'>{seeAll}</span>}
+          {hasMoreOnWider && <span className='max-sm:hidden'>{seeAll}</span>}
         </p>
       </div>
 
       {sites.length === 0 ? (
-        <p className='flex h-[58px] items-center justify-center rounded-lg border border-dashed border-gray-200 text-xs text-gray-400'>
-          No sites yet
+        <p className='flex h-9 items-center border-t border-gray-100 text-xs text-gray-400'>
+          No sites yet.
         </p>
       ) : (
-        <ul className='grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3'>
+        <ol className='grid grid-cols-1 lg:grid-flow-col lg:grid-cols-2 lg:grid-rows-3 lg:gap-x-10'>
           {sites.map((site, index) => (
-            <SiteTile
+            <SiteLine
               key={site.id}
               site={site}
               index={index}
             />
           ))}
-        </ul>
+        </ol>
       )}
     </div>
   );
@@ -247,8 +205,8 @@ const OfficeActions = ({ office }: { office: OfficeListItem }) => {
 };
 
 // One office in the list, a full row wide: who it is and who runs it, its
-// totals, and its newest sites. The whole card opens the office's page,
-// which lists every site and work order.
+// totals in aligned columns, and a log of its newest sites. The whole card
+// opens the office's page, which lists every site and work order.
 const OfficeCard = ({ office }: { office: OfficeListItem }) => {
   const status = office.status.toLowerCase();
   const location = [office.city, office.state]
@@ -257,96 +215,109 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
     .join(", ");
 
   return (
-    <article className='group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-emerald-500/30 hover:border-emerald-300 hover:shadow-md'>
-      {/* Identity */}
-      <div className='flex items-start gap-3 px-4 py-4 lg:px-5'>
-        <div className='shrink-0 rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100'>
-          <Building2 className='size-5' />
-        </div>
-        <div className='min-w-0 flex-1'>
-          <div className='flex flex-wrap items-center gap-x-2.5 gap-y-1'>
-            <h3 className='text-[15px] font-semibold leading-snug text-gray-900'>
-              {/* Stretched over the card, so a click anywhere opens it. */}
-              <Link
-                href={officeHref(office)}
-                className='break-words outline-none transition-colors after:absolute after:inset-0 after:rounded-xl after:content-[""] group-hover:text-emerald-700'>
-                {office.name.toUpperCase()}
-              </Link>
-            </h3>
-            <Pill
-              className={cn(
-                "shrink-0",
-                STATUS_STYLES[status] ??
-                  "bg-gray-50 text-gray-700 ring-gray-200",
-              )}>
-              {capitalFirstLetter(office.status)}
-            </Pill>
+    <article className='group relative overflow-hidden rounded-xl border border-gray-200 bg-white transition-colors duration-200 focus-within:ring-2 focus-within:ring-emerald-500/30 hover:border-emerald-300'>
+      <div className='flex flex-col lg:flex-row lg:items-start'>
+        {/* Identity */}
+        <div className='flex min-w-0 flex-1 items-start gap-3 px-4 pt-4 lg:px-5 lg:pb-4'>
+          <div className='shrink-0 rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100'>
+            <Building2 className='size-5' />
           </div>
-          <div className='mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500'>
-            {location && (
-              <span className='inline-flex min-w-0 items-center gap-1.5'>
-                <MapPin className='size-3.5 shrink-0 text-gray-400' />
-                {location}
-              </span>
-            )}
-            <span className='inline-flex min-w-0 items-center gap-1.5'>
-              <UserCog className='size-3.5 shrink-0 text-gray-400' />
-              {office.manager ? (
-                <span>
-                  <span className='font-medium text-gray-700'>
-                    {capitalizeEachWord(office.manager.name)}
-                  </span>{" "}
-                  <span className='text-gray-400'>· Manager</span>
+          <div className='min-w-0 flex-1'>
+            <div className='flex flex-wrap items-center gap-x-2.5 gap-y-1'>
+              <h3 className='text-[15px] font-semibold leading-snug text-gray-900'>
+                {/* Stretched over the card, so a click anywhere opens it. */}
+                <Link
+                  href={officeHref(office)}
+                  className='break-words outline-none transition-colors after:absolute after:inset-0 after:rounded-xl after:content-[""] group-hover:text-emerald-700'>
+                  {office.name.toUpperCase()}
+                </Link>
+              </h3>
+              <Pill
+                className={cn(
+                  "shrink-0",
+                  STATUS_STYLES[status] ??
+                    "bg-gray-50 text-gray-700 ring-gray-200",
+                )}>
+                {capitalFirstLetter(office.status)}
+              </Pill>
+            </div>
+            <div className='mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500'>
+              {location && (
+                <span className='inline-flex items-center gap-1.5'>
+                  <MapPin className='size-3.5 shrink-0 text-gray-400' />
+                  {location}
                 </span>
-              ) : (
-                <span className='text-gray-400'>No manager yet</span>
               )}
-            </span>
-            <span
-              className='inline-flex min-w-0 max-w-full items-center gap-1.5'
-              title={office.email}>
-              <Mail className='size-3.5 shrink-0 text-gray-400' />
-              <span className='truncate'>{office.email}</span>
-            </span>
-            <span className='inline-flex items-center gap-1.5'>
-              <CalendarDays className='size-3.5 shrink-0 text-gray-400' />
-              Added {format(new Date(office.created_at), "d MMM yyyy")}
-            </span>
+              <span className='inline-flex items-center gap-1.5'>
+                <UserCog className='size-3.5 shrink-0 text-gray-400' />
+                {office.manager ? (
+                  <span>
+                    Managed by{" "}
+                    <span className='font-medium text-gray-700'>
+                      {capitalizeEachWord(office.manager.name)}
+                    </span>
+                  </span>
+                ) : (
+                  "No manager yet"
+                )}
+              </span>
+            </div>
+            <div className='mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500'>
+              <span
+                className='inline-flex min-w-0 max-w-full items-center gap-1.5'
+                title={office.email}>
+                <Mail className='size-3.5 shrink-0 text-gray-400' />
+                <span className='truncate'>{office.email}</span>
+              </span>
+              <span className='inline-flex items-center gap-1.5'>
+                <CalendarDays className='size-3.5 shrink-0 text-gray-400' />
+                Added {format(new Date(office.created_at), "d MMM yyyy")}
+              </span>
+            </div>
+          </div>
+          {/* Until the figures fit beside the name, the menu stays by it. */}
+          <div className='lg:hidden'>
+            {office.canManage && <OfficeActions office={office} />}
           </div>
         </div>
-        <div className='flex shrink-0 items-center gap-1'>
-          <span
-            aria-hidden='true'
-            className='hidden items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-emerald-700 transition-colors group-hover:bg-emerald-50 sm:inline-flex'>
-            Open office
-            <ArrowUpRight className='size-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5' />
-          </span>
-          {office.canManage && <OfficeActions office={office} />}
-        </div>
-      </div>
 
-      {/* Totals beside the newest sites; stacked on phones. */}
-      <div className='grid border-t border-gray-100 lg:grid-cols-[13rem_minmax(0,1fr)]'>
-        <div className='grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100 bg-gray-50/70 lg:grid-cols-1 lg:content-start lg:divide-x-0 lg:divide-y lg:border-b-0 lg:border-r'>
-          <Stat
+        {/* Totals */}
+        <dl className='mt-3 grid grid-cols-3 divide-x divide-gray-100 border-y border-gray-100 bg-gray-50/70 lg:mt-0 lg:flex lg:shrink-0 lg:gap-2 lg:divide-x-0 lg:border-0 lg:bg-transparent lg:py-4'>
+          <Figure
             label='Sites'
             value={office.siteCount}
-            hint={
+            note={
               office.siteCount > 0
                 ? `${office.activeSiteCount} active`
                 : undefined
             }
           />
-          <Stat
+          <Figure
             label='Work orders'
             value={office.workOrderCount}
           />
-          <Stat
-            label='Office operators'
+          <Figure
+            label='Operators'
             value={office.operators.length}
           />
+        </dl>
+
+        <div className='hidden shrink-0 items-start gap-1 py-4 pl-6 pr-3 lg:flex'>
+          {/* An empty slot without the menu keeps the figures in line. */}
+          {office.canManage ? (
+            <OfficeActions office={office} />
+          ) : (
+            <span className='size-8' />
+          )}
+          <ChevronRight
+            aria-hidden='true'
+            className='mt-2 size-4 text-gray-300 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-emerald-600'
+          />
         </div>
-        <LatestSites office={office} />
+      </div>
+
+      <div className='lg:border-t lg:border-gray-100'>
+        <NewestSites office={office} />
       </div>
     </article>
   );
