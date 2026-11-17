@@ -7,6 +7,7 @@ import { handleMutation } from "../../helper/typed-handler";
 import { vendorSchemas } from "@pkg/schema";
 import { z } from "zod";
 import { assertCanManageVendors, assertCanUseVendors } from "./vendor-access";
+import { nextVendorCode } from "./vendor-code";
 
 const { contractorTable } = schema;
 
@@ -22,17 +23,22 @@ export const contractorMutationRouter = router({
         await assertCanUseVendors(ctx);
 
         try {
-          const [created] = await ctx.db
-            .insert(contractorTable)
-            .values({
-              name: input.name.trim(),
-              contact_number: optionalText(input.contact_number) ?? null,
-              email: optionalText(input.email) ?? null,
-              address: optionalText(input.address) ?? null,
-              gst_number: optionalText(input.gst_number) ?? null,
-              pan_number: optionalText(input.pan_number) ?? null,
-            })
-            .$returningId();
+          const created = await ctx.db.transaction(async (tx) => {
+            const code = await nextVendorCode(tx);
+            const [row] = await tx
+              .insert(contractorTable)
+              .values({
+                code,
+                name: input.name.trim(),
+                contact_number: optionalText(input.contact_number) ?? null,
+                email: optionalText(input.email) ?? null,
+                address: optionalText(input.address) ?? null,
+                gst_number: optionalText(input.gst_number) ?? null,
+                pan_number: optionalText(input.pan_number) ?? null,
+              })
+              .$returningId();
+            return row && { id: row.id, code };
+          });
 
           if (!created) {
             throw notFound("Contractor", undefined, {
@@ -40,7 +46,7 @@ export const contractorMutationRouter = router({
             });
           }
 
-          return { success: true, id: created.id };
+          return { success: true, id: created.id, code: created.code };
         } catch (error) {
           if (error && typeof error === "object" && "errorCode" in error)
             throw error;

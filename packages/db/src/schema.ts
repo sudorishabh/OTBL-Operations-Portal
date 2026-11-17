@@ -592,6 +592,9 @@ export const contractorTable = mysqlTable(
   "contractors",
   {
     id: int("id").autoincrement().primaryKey(),
+    // The vendor's own code, such as VEN-0012, so vendors with similar names
+    // can be told apart and found.
+    code: varchar("code", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     contact_number: varchar("contact_number", { length: 15 }),
     email: varchar("email", { length: 320 }),

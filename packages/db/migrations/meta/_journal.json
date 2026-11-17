@@ -197,6 +197,13 @@
       "when": 1794912528011,
       "tag": "0027_work_order_code_serials",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1794913110749,
+      "tag": "0028_vendor_codes",
+      "breakpoints": true
     }
   ]
 }
