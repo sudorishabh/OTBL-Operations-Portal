@@ -1,34 +1,32 @@
 "use client";
+import { Suspense, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
+import { keepPreviousData } from "@tanstack/react-query";
 import { Building2 } from "lucide-react";
 import NoFetchData from "@/components/shared/no-fetch-data";
-import PaginationSummary from "@/components/shared/pagination-summary";
-import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
+import TablePagination, {
+  scrollIntoViewIfAbove,
+} from "@/components/shared/table-pagination";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
+import { usePageNumber } from "@/hooks/usePageNumber";
 import { useOfficeManagementContext } from "@/contexts/OfficeManagementContext";
-import type { UseQueryResult } from "@tanstack/react-query";
-import dynamic from "next/dynamic";
-import { Suspense } from "react";
 import Error from "@/components/shared/error";
-import OfficeSiteFilter from "./office-site-filter";
-import OfficeSiteSkeleton, {
-  OfficeCardLoading,
-} from "../skeleton/office-site/office-site-skeleton";
 import ScrollToTop from "@/components/scroll-to-top";
+import OfficeSiteFilter from "./office-site-filter";
+import OfficeCard from "./office-card";
+import OfficeSiteSkeleton from "../skeleton/office-site/office-site-skeleton";
 
 const CreateOfficeDialog = dynamic(() => import("./create-office-dialog"));
 const EditOfficeDialog = dynamic(() => import("./edit-office-dialog"));
 const CreateSiteDialog = dynamic(() => import("./create-site-dialog"));
-const SiteWorkOrdersDialog = dynamic(() => import("./site-work-orders-dialog"));
 const ManageOfficeMembersDialog = dynamic(
   () => import("./manage-office-members-dialog"),
 );
-const OfficeCard = dynamic(() => import("./office-card"), {
-  loading: () => <OfficeCardLoading />,
-});
 
-const OFFICES_PAGE_SIZE = 10;
+// Fills whole rows of one, two or three cards.
+const OFFICES_PAGE_SIZE = 12;
 
 type OfficesPage = RouterOutputs["officeQuery"]["getOffices"];
 
@@ -36,94 +34,106 @@ const OfficeSitePage = () => {
   const { filters, searchQuery, officeNamesOrder } =
     useOfficeManagementContext();
   const debouncedSearch = useDebounce(searchQuery.trim(), 300);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  const queryInput = {
-    limit: OFFICES_PAGE_SIZE,
+  const filterInput = {
     status: filters.status,
     state: filters.state === "all" ? undefined : filters.state,
     searchQuery: debouncedSearch || undefined,
     officeNamesOrder,
   };
+  const [page, setPage] = usePageNumber(filterInput);
 
-  const { pages, loadMore } = useLoadMorePages(queryInput);
+  // The cards on screen stay while another page or filter loads.
+  const { data, isLoading, isPlaceholderData, error } =
+    trpc.officeQuery.getOffices.useQuery(
+      { ...filterInput, page, limit: OFFICES_PAGE_SIZE },
+      { placeholderData: keepPreviousData },
+    );
+  const result = data as OfficesPage | undefined;
+  const offices = result?.offices ?? [];
+  const total = result?.pagination.total ?? 0;
+  const lastPage = Math.max(1, Math.ceil(total / OFFICES_PAGE_SIZE));
 
-  const pageQueries: UseQueryResult<OfficesPage>[] = trpc.useQueries((t: any) =>
-    pages.map((page) => t.officeQuery.getOffices({ ...queryInput, page })),
-  );
+  // Back to the last page when this one no longer exists.
+  useEffect(() => {
+    if (result && !isPlaceholderData && page > lastPage) setPage(lastPage);
+  }, [result, isPlaceholderData, page, lastPage, setPage]);
 
-  const offices = pageQueries.flatMap((query) => query.data?.offices ?? []);
-  const pagination = pageQueries
-    .flatMap((query) => query.data?.pagination ?? [])
-    .at(-1);
-  const failedQuery = pageQueries.find((query) => query.isError);
-
-  const isOfficesQueryLoading = !!pageQueries[0]?.isLoading;
-  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
-  const isOffice = offices.length > 0;
+  const goToPage = (next: number) => {
+    setPage(next);
+    scrollIntoViewIfAbove(listRef.current);
+  };
 
   const hasActiveFilters =
     !!debouncedSearch || filters.status !== "all" || filters.state !== "all";
 
+  const renderList = () => {
+    if (isLoading) return <OfficeSiteSkeleton />;
+
+    if (!result) {
+      return (
+        <Error
+          variant='default'
+          message={error?.message ?? "The offices could not be loaded."}
+        />
+      );
+    }
+
+    if (offices.length === 0) {
+      return (
+        <NoFetchData
+          Icon={Building2}
+          title={hasActiveFilters ? "No Results Found" : "No Offices Found"}
+          description={
+            hasActiveFilters
+              ? "Try adjusting your search or filters"
+              : "Add offices to manage them"
+          }
+        />
+      );
+    }
+
+    return (
+      <>
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4 transition-opacity md:grid-cols-2 xl:grid-cols-3",
+            isPlaceholderData && "pointer-events-none opacity-60",
+          )}>
+          {offices.map((office) => (
+            <OfficeCard
+              key={office.id}
+              office={office}
+            />
+          ))}
+        </div>
+
+        <TablePagination
+          page={page}
+          pageSize={OFFICES_PAGE_SIZE}
+          total={total}
+          noun={total === 1 ? "office" : "offices"}
+          onPageChange={goToPage}
+          className='mt-4 rounded-lg border bg-white'
+        />
+      </>
+    );
+  };
+
   return (
     <>
-      <div className='w-full mt-8'>
+      <div
+        ref={listRef}
+        className='mt-8 w-full scroll-mt-4'>
         <OfficeSiteFilter />
-
-        <Suspense fallback={<OfficeSiteSkeleton />}>
-          {isOfficesQueryLoading ? (
-            <OfficeSiteSkeleton />
-          ) : failedQuery?.error ? (
-            <Error
-              variant='default'
-              message={failedQuery.error.message}
-            />
-          ) : !isOffice ? (
-            <NoFetchData
-              Icon={Building2}
-              title={hasActiveFilters ? "No Results Found" : "No Offices Found"}
-              description={
-                hasActiveFilters
-                  ? "Try adjusting your search or filters"
-                  : "Add offices to manage them"
-              }
-            />
-          ) : (
-            <div>
-              <div className='grid grid-cols-1 sm:grid-cols-1 gap-4'>
-                {offices.map((office: any) => (
-                  <OfficeCard
-                    key={office.id}
-                    office={office}
-                    siteStatus={filters.siteStatus}
-                  />
-                ))}
-              </div>
-
-              {pagination?.hasMore && (
-                <LoadMoreBtn
-                  onClick={loadMore}
-                  loading={isFetchingMore}
-                />
-              )}
-
-              <PaginationSummary
-                shown={offices.length}
-                total={pagination?.total}
-                page={pagination?.page}
-                totalPages={pagination?.totalPages}
-                noun='offices'
-                className='mt-4 rounded-lg border bg-white'
-              />
-            </div>
-          )}
-        </Suspense>
+        {renderList()}
       </div>
 
       <Suspense fallback={null}>
         <CreateOfficeDialog />
         <EditOfficeDialog />
         <CreateSiteDialog />
-        <SiteWorkOrdersDialog />
         <ManageOfficeMembersDialog />
       </Suspense>
       <ScrollToTop />

@@ -7,8 +7,6 @@ export type OfficeFilters = {
   status: "active" | "inactive" | "all";
   /** "all" or a state name. */
   state: string;
-  /** Which sites each office card lists. */
-  siteStatus: "active" | "inactive" | "all";
 };
 
 type OfficeManagementContextType = {
@@ -24,7 +22,6 @@ type OfficeManagementContextType = {
 const defaultFilters: OfficeFilters = {
   status: "all",
   state: "all",
-  siteStatus: "all",
 };
 
 const OfficeManagementContext = createContext<
