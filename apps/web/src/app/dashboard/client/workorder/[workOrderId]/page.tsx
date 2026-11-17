@@ -5,7 +5,7 @@ import WorkOrderDetailsSkeleton from "@/components/skeleton/work-order/work-orde
 import { Suspense } from "react";
 
 const WorkOrder = dynamic(() => import("@/components/work-order/work-order"), {
-  loading: () => <WorkOrderDetailsSkeleton />,
+  loading: () => <WorkOrderDetailsSkeleton from='client' />,
 });
 
 type PageProps = {
@@ -16,7 +16,7 @@ const WorkOrderPage = ({ params }: PageProps) => {
   const { workOrderId } = React.use(params);
 
   return (
-    <Suspense fallback={<WorkOrderDetailsSkeleton />}>
+    <Suspense fallback={<WorkOrderDetailsSkeleton from='client' />}>
       <WorkOrder
         workOrderId={workOrderId}
         from='client'

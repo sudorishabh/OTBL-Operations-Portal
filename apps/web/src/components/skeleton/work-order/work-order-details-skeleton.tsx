@@ -1,6 +1,8 @@
 import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { workOrderTrailSteps } from "@/lib/breadcrumbs";
+import type { WorkOrderFrom } from "@/components/work-order/work-order-path";
 import {
   DetailCardSkeleton,
   PageHeaderSkeleton,
@@ -9,11 +11,17 @@ import {
 import BioremediationSectionSkeleton from "./work-order-sites-skeleton";
 
 // A work order's page: title row, the details card with its five figures
-// and seven fields, the dialog buttons, then a process section.
-const WorkOrderDetailsSkeleton = () => (
+// and seven fields, the dialog buttons, then a process section. Its trail
+// runs through the work order list or the client, as the page's will.
+const WorkOrderDetailsSkeleton = ({
+  from = "list",
+}: {
+  from?: WorkOrderFrom;
+}) => (
   <PageWrapper>
     <SkeletonRegion label='Loading work order'>
       <PageHeaderSkeleton
+        trail={workOrderTrailSteps(from)}
         back
         description='Work Order Details and Management'
       />

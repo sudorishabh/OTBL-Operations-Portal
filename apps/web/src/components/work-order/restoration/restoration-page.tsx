@@ -81,7 +81,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
   const goBack = () => router.push(workOrderPath(workOrderId, from));
 
   if (workOrderQuery.isLoading || restorationQuery.isLoading) {
-    return <RestorationPageSkeleton />;
+    return <RestorationPageSkeleton from={from} />;
   }
 
   const error = workOrderQuery.error ?? restorationQuery.error;

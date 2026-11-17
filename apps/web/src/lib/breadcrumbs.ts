@@ -50,6 +50,10 @@ const workOrderParents = ({ from, client }: WorkOrderTrail): Crumb[] =>
       ]
     : [SECTIONS.workOrders];
 
+// How many steps a work order's trail has, for its skeleton to sketch.
+export const workOrderTrailSteps = (from: WorkOrderFrom) =>
+  workOrderParents({ id: 0, from, client: { id: 0 } }).length + 1;
+
 // A work order's own page.
 export const workOrderTrail = (workOrder: WorkOrderTrail): Crumb[] => [
   ...workOrderParents(workOrder),

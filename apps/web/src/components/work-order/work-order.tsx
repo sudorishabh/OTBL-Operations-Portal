@@ -66,7 +66,7 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
     return { ...workOrder, status: effective };
   }, [workOrder, scheduleOfRates, sites]);
 
-  if (isWorkOrderQueryLoading) return <WorkOrderDetailsSkeleton />;
+  if (isWorkOrderQueryLoading) return <WorkOrderDetailsSkeleton from={from} />;
 
   if (isWorkOrderQueryError)
     return (

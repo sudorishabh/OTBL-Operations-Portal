@@ -1,6 +1,8 @@
 import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { workOrderTrailSteps } from "@/lib/breadcrumbs";
+import type { WorkOrderFrom } from "@/components/work-order/work-order-path";
 import {
   PageHeaderSkeleton,
   SkeletonCard,
@@ -164,10 +166,17 @@ const OperatorsRowSkeleton = () => (
 
 // A site's page: the site information card with its estimate and document
 // stages, what is left to draw on, then the activities and expenses.
-export const SiteDetailsSkeleton = () => (
+export const SiteDetailsSkeleton = ({
+  from = "list",
+}: {
+  from?: WorkOrderFrom;
+}) => (
   <PageWrapper>
     <SkeletonRegion label='Loading site'>
-      <PageHeaderSkeleton back />
+      <PageHeaderSkeleton
+        trail={workOrderTrailSteps(from) + 1}
+        back
+      />
       <div className='mt-4 space-y-4'>
         <SkeletonCard>
           <div className='px-5 py-4'>
@@ -255,10 +264,15 @@ export const SiteDetailsSkeleton = () => (
 
 // The restoration page: its information card, the dialog buttons, the
 // completion certificate, then the expenses by job order.
-export const RestorationPageSkeleton = () => (
+export const RestorationPageSkeleton = ({
+  from = "list",
+}: {
+  from?: WorkOrderFrom;
+}) => (
   <PageWrapper>
     <SkeletonRegion label='Loading restoration'>
       <PageHeaderSkeleton
+        trail={workOrderTrailSteps(from) + 1}
         back
         title='Restoration'
       />

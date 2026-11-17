@@ -45,7 +45,7 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
 
   const goBack = () => router.push(workOrderPath(workOrderId, from));
 
-  if (siteDetailsQuery.isLoading) return <SiteDetailsSkeleton />;
+  if (siteDetailsQuery.isLoading) return <SiteDetailsSkeleton from={from} />;
 
   if (siteDetailsQuery.isError) {
     return (

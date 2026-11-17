@@ -23,11 +23,17 @@ import {
 // guard is still finding out who is signed in. Titles mirror the pages'.
 const RouteSkeleton = () => {
   const path = usePathname().replace(/\/$/, "");
+  // Work orders opened from a client sit under its page.
+  const from = path.startsWith("/dashboard/client/workorder/")
+    ? "client"
+    : "list";
 
-  if (/\/sites\/[^/]+$/.test(path)) return <SiteDetailsSkeleton />;
-  if (/\/restoration$/.test(path)) return <RestorationPageSkeleton />;
+  if (/\/sites\/[^/]+$/.test(path)) return <SiteDetailsSkeleton from={from} />;
+  if (/\/restoration$/.test(path)) {
+    return <RestorationPageSkeleton from={from} />;
+  }
   if (/\/(work-order|workorder)\/[^/]+$/.test(path)) {
-    return <WorkOrderDetailsSkeleton />;
+    return <WorkOrderDetailsSkeleton from={from} />;
   }
   if (/^\/dashboard\/client\/[^/]+$/.test(path)) return <ClientPageSkeleton />;
   if (/^\/dashboard\/office-site\/[^/]+$/.test(path)) {
