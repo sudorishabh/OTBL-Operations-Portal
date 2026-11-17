@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { itemLabel, type ContractOrder } from "./contract-orders-section";
+import VendorCode from "@/components/vendor/vendor-code";
 
 const {
   CONTRACT_ORDER_TYPE,
@@ -189,7 +190,7 @@ const ContractOrderDialog = ({
   const vendors = (vendorsQuery.data?.contractors ?? []).filter(
     (vendor: any) =>
       vendor.status === "active" || vendorIds.includes(vendor.id),
-  ) as { id: number; name: string }[];
+  ) as { id: number; code: string; name: string }[];
   const sites = (sitesQuery.data ?? []) as { id: number; name: string }[];
 
   const documentsUpload = useSharePointUpload({
@@ -491,6 +492,7 @@ const ContractOrderDialog = ({
                       <SelectItem
                         key={vendor.id}
                         value={String(vendor.id)}>
+                        <VendorCode code={vendor.code} />
                         {vendor.name}
                       </SelectItem>
                     ))}
@@ -681,7 +683,8 @@ const ContractOrderDialog = ({
                                 toggleVendor(vendor.id, checked === true)
                               }
                             />
-                            {vendor.name}
+                            <VendorCode code={vendor.code} />
+                            <span className='truncate'>{vendor.name}</span>
                           </label>
                         ))}
                       </div>
