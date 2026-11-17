@@ -402,7 +402,7 @@ const COLUMNS = {
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
   sites: ["id", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
-  work_orders: ["id", "code", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
+  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
   schedule_of_rates: ["id", "work_order_id", "activity", "unit", "estimated_quantity", "rc_unit_rate", "gst_percentage", "unit_rate_inc_gst", "total_cost", "transportation_km", "transportation_slabs", "created_at", "updated_at"],
   work_order_sites: ["id", "work_order_id", "client_id", "site_id", "date", "end_date", "process_type", "status", "isCompleted", "created_at", "updated_at"],
   site_activity_items: ["id", "work_order_site_id", "schedule_of_rates_id", "activity", "unit", "created_at", "updated_at"],
@@ -450,7 +450,6 @@ const doc = (name) => ({
 const usedEmails = new Set();
 const takenParentNames = new Set();
 const takenProposalCodes = new Set();
-const takenWorkOrderCodes = new Set();
 
 // ---------------------------------------------------------------------------
 // The database. It is read before anything is built: to check its schema, and
@@ -586,7 +585,12 @@ if (!DRY_RUN || APPEND) {
     await lowerSet("SELECT email AS v FROM users", usedEmails);
     await lowerSet("SELECT name AS v FROM parent_clients", takenParentNames);
     await lowerSet("SELECT code AS v FROM proposals", takenProposalCodes);
-    await lowerSet("SELECT code AS v FROM work_orders", takenWorkOrderCodes);
+    const [[{ maxSerial }]] = await db.conn.query("SELECT COALESCE(MAX(serial), 0) AS maxSerial FROM work_orders");
+    lastWorkOrderSerial.overall = Number(maxSerial);
+    const [years] = await db.conn.query(
+      "SELECT financial_year AS fy, MAX(fy_serial) AS n FROM work_orders GROUP BY financial_year",
+    );
+    for (const r of years) lastWorkOrderSerial.byYear.set(r.fy, Number(r.n));
   } else {
     const filled = [];
     for (const table of Object.keys(COLUMNS)) {
@@ -936,12 +940,21 @@ function addProposal({ client, office, processType, date, status }) {
 
 // Every expense's planned quantity, by site and activity, for its is_exceeded flag.
 const estimates = new Map();
-let woSeq = 0;
+// Work orders are numbered as the app numbers them: by the financial year they
+// start in, April to March in India time, and overall, such as
+// 2025-26(10)OTBL163. With --append, the numbers carry on from those in use.
+const lastWorkOrderSerial = { overall: 0, byYear: new Map() };
+const financialYearOf = (d) => {
+  const inIndia = new Date(d.getTime() + 330 * 60 * 1000);
+  const year = inIndia.getUTCMonth() >= 3 ? inIndia.getUTCFullYear() : inIndia.getUTCFullYear() - 1;
+  return `${year}-${String((year + 1) % 100).padStart(2, "0")}`;
+};
 const workOrderCode = (start) => {
-  let code;
-  do code = `OTBL/WO/${yy(start)}/${String(++woSeq).padStart(4, "0")}`;
-  while (takenWorkOrderCodes.has(code.toLowerCase()));
-  return code;
+  const financial_year = financialYearOf(start);
+  const fy_serial = (lastWorkOrderSerial.byYear.get(financial_year) ?? 0) + 1;
+  const serial = ++lastWorkOrderSerial.overall;
+  lastWorkOrderSerial.byYear.set(financial_year, fy_serial);
+  return { code: `${financial_year}(${fy_serial})OTBL${serial}`, financial_year, fy_serial, serial };
 };
 let joSeq = 0;
 let poSeq = 0;
@@ -1680,7 +1693,7 @@ function buildWorkOrder(index) {
   if (chance(0.4)) documents.push(doc(`Rate Contract ${index + 1}.pdf`));
 
   const wo = add("work_orders", {
-    code: workOrderCode(start),
+    ...workOrderCode(start),
     agreement_number: `AGR/${client._short.replace(/\s+/g, "")}/${yy(start)}/${int(100, 999)}`,
     rate_contract_number: `RC-${int(8_000_000_000, 8_099_999_999)}`,
     title: PROCESS_TITLES[processType](client).slice(0, 255),
