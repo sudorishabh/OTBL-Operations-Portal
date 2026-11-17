@@ -190,6 +190,13 @@
       "when": 1794912248099,
       "tag": "0026_drop_work_order_job_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1794912528011,
+      "tag": "0027_work_order_code_serials",
+      "breakpoints": true
     }
   ]
 }
