@@ -283,6 +283,7 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                       fieldName='date'
                       Label='Start Date'
                       isDate
+                      optional
                       formatDisplay={(val) =>
                         val ? format(new Date(val), "yyyy-MM-dd") : ""
                       }
@@ -293,11 +294,16 @@ const CreateWorkOrderSiteDialog = ({ workOrder, scheduleOfRates }: Props) => {
                       fieldName='end_date'
                       Label='End Date'
                       isDate
+                      optional
                       formatDisplay={(val) =>
                         val ? format(new Date(val), "yyyy-MM-dd") : ""
                       }
                     />
                   </div>
+                  <p className='mt-3 text-xs text-slate-500'>
+                    Leave them blank if they aren&apos;t known yet. An admin can
+                    set them later from the site&apos;s page.
+                  </p>
                 </div>
 
                 {siteChoice === "existing" ? (
