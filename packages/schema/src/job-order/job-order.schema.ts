@@ -90,6 +90,12 @@ export const updateJobOrderSchema = z.intersection(
   z.object({ id: positiveIntValidator }),
 );
 
+// A job order's vendors, chosen once it exists. None is allowed.
+export const setJobOrderVendorsSchema = z.object({
+  id: positiveIntValidator,
+  contractor_ids: z.array(positiveIntValidator),
+});
+
 export const jobOrderIdSchema = z.object({
   id: positiveIntValidator,
 });
