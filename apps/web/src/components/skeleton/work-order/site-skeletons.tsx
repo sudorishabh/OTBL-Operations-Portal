@@ -275,7 +275,9 @@ export const SiteDetailsSkeleton = ({
           </div>
         </SkeletonCard>
 
-        <SkeletonCard className='p-5'>
+        {/* The activities and expenses tabs, the activities open. */}
+        <SkeletonCard className='space-y-4 p-5'>
+          <Skeleton className='h-8 w-80 max-w-full rounded-lg' />
           <ActivitiesSkeleton />
         </SkeletonCard>
       </div>
