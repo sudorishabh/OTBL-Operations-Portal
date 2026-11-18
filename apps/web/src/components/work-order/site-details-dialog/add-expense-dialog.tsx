@@ -40,6 +40,12 @@ import { format } from "date-fns";
 import { capitalFirstLetter } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import RecordCode from "@/components/shared/record-code";
+import ExpenseActivityLines, {
+  formatQty,
+  newActivityLine,
+  remainingQuantity,
+  type ActivityLine,
+} from "./expense-activity-lines";
 
 export interface ActivityOption {
   key: string;
@@ -115,9 +121,6 @@ const initialsOf = (name: string) => {
   return letters.toUpperCase();
 };
 
-const formatQty = (value: number) =>
-  new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
-
 const AddExpenseDialog = ({
   open,
   onClose,
@@ -138,6 +141,12 @@ const AddExpenseDialog = ({
   const spentOn = orderItem ?? jobOrder;
   // A job order's expenses are each for one day, so they take a single date.
   const isOneDay = !!jobOrder || editingExpense?.job_order_id != null;
+  // A new job order expense can be for several of its activities, each
+  // recorded as its own expense.
+  const takesSeveralActivities = !!jobOrder && !editingExpense;
+  const [lines, setLines] = useState<ActivityLine[]>(() => [
+    newActivityLine(),
+  ]);
   const utils = trpc.useUtils();
 
   const [amount, setAmount] = useState("");
@@ -232,6 +241,7 @@ const AddExpenseDialog = ({
       setStartDate(toDateInput());
       setEndDate(toDateInput());
       setInvoiceNumber("");
+      setLines([newActivityLine()]);
       resetDocumentState();
     }
     setShowAddContractor(false);
@@ -314,6 +324,16 @@ const AddExpenseDialog = ({
       handleSaved(isExceededMode ? "Exceeded expense recorded" : "Expense recorded"),
     onError: (e: any) => toast.error(e.message || "Failed to record expense"),
   });
+  const createJobOrderExpensesMutation =
+    trpc.expenseMutation.createJobOrderExpenses.useMutation({
+      onSuccess: (data: { ids: number[] }) =>
+        handleSaved(
+          data.ids.length > 1
+            ? `${data.ids.length} expenses recorded`
+            : "Expense recorded",
+        ),
+      onError: (e: any) => toast.error(e.message || "Failed to record expenses"),
+    });
   const updateExpenseMutation = trpc.expenseMutation.updateExpense.useMutation({
     onSuccess: () => handleSaved("Expense updated"),
     onError: (e: any) => toast.error(e.message || "Failed to update expense"),
@@ -331,19 +351,51 @@ const AddExpenseDialog = ({
     });
   };
 
+  // What stops the activity lines being recorded, if anything.
+  const linesProblem = () => {
+    for (const line of lines) {
+      const activity = activities.find((a) => a.key === line.activityKey);
+      if (!activity) return "Choose the activity on each line";
+      const lineAmount = parseFloat(line.amount);
+      if (!Number.isFinite(lineAmount) || lineAmount <= 0) {
+        return `Enter a valid amount for ${activity.label}`;
+      }
+      if (!line.quantity) continue;
+      const lineQty = parseFloat(line.quantity);
+      if (isNaN(lineQty) || lineQty < 0) {
+        return `${activity.label}'s quantity must be a positive number`;
+      }
+      const left = remainingQuantity(activity, usedQtyByActivity);
+      if (left !== null && left > 0 && lineQty > left) {
+        return `Only ${formatQty(left)} ${activity.unit ?? "Nos"} left on ${activity.label}`;
+      }
+    }
+    return null;
+  };
+
   const handleSubmit = async () => {
     if (siteVendors.length > 0 && !underId) {
       toast.error("Choose which vendor this expense is under");
       return;
     }
-    if ((activities.length > 0 || activitiesNote) && !selectedActivityKey) {
-      toast.error("Please select an activity");
-      return;
-    }
-    const parsedAmount = parseFloat(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      toast.error("Enter a valid amount");
-      return;
+    if (takesSeveralActivities) {
+      const problem = expenseContractorId
+        ? linesProblem()
+        : "Give the job order its vendors first, to record expenses under them";
+      if (problem) {
+        toast.error(problem);
+        return;
+      }
+    } else {
+      if ((activities.length > 0 || activitiesNote) && !selectedActivityKey) {
+        toast.error("Please select an activity");
+        return;
+      }
+      const parsedAmount = parseFloat(amount);
+      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        toast.error("Enter a valid amount");
+        return;
+      }
     }
     if (!title.trim()) { toast.error("Title is required"); return; }
     const lastDate = isOneDay ? startDate : endDate;
@@ -370,6 +422,30 @@ const AddExpenseDialog = ({
     const uploaded = await sharePointUpload.uploadFiles(files);
     if (!uploaded) return;
     const documents = [...savedDocuments, ...uploaded.map(toStoredDocument)];
+
+    if (takesSeveralActivities && jobOrder) {
+      createJobOrderExpensesMutation.mutate({
+        work_order_site_id: workOrderSiteId,
+        job_order_id: jobOrder.id,
+        contractor_id: expenseContractorId,
+        title: title.trim(),
+        start_date: new Date(startDate).toISOString(),
+        end_date: new Date(lastDate).toISOString(),
+        invoice_number: invoiceNumber.trim() || null,
+        documents,
+        lines: lines.map((line) => ({
+          activity_key: line.activityKey,
+          quantity: line.quantity || null,
+          amount: line.amount,
+          is_exceeded:
+            remainingQuantity(
+              activities.find((a) => a.key === line.activityKey),
+              usedQtyByActivity,
+            ) === 0,
+        })),
+      });
+      return;
+    }
 
     const payload = {
       contractor_id: expenseContractorId,
@@ -400,8 +476,24 @@ const AddExpenseDialog = ({
   const isUploadingDoc = sharePointUpload.isUploading;
   const isSaving =
     createExpenseMutation.isPending ||
+    createJobOrderExpensesMutation.isPending ||
     updateExpenseMutation.isPending ||
     isUploadingDoc;
+
+  // A job order expense's one day.
+  const singleDateField = (
+    <div className='space-y-1.5'>
+      <Label className='text-xs font-medium text-gray-700'>
+        Date <span className='text-red-500'>*</span>
+      </Label>
+      <Input
+        type='date'
+        value={startDate}
+        onChange={(e) => setStartDate(e.target.value)}
+        className='h-9 text-sm'
+      />
+    </div>
+  );
 
   const vendorQuery = vendorSearch.trim().toLowerCase();
   const shownVendors = vendorQuery
@@ -564,7 +656,17 @@ const AddExpenseDialog = ({
             </fieldset>
           )}
 
-          {(activities.length > 0 || activitiesNote) && (
+          {takesSeveralActivities && (
+            <ExpenseActivityLines
+              lines={lines}
+              onChange={setLines}
+              activities={activities}
+              usedQtyByActivity={usedQtyByActivity}
+              note={activitiesNote}
+            />
+          )}
+
+          {!takesSeveralActivities && (activities.length > 0 || activitiesNote) && (
             <div className='space-y-1.5'>
               <div
                 className={cn(
@@ -762,20 +864,25 @@ const AddExpenseDialog = ({
           </div>
 
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-            <div className='space-y-1.5'>
-              <Label className='text-xs font-medium text-gray-700'>
-                Amount <span className='text-red-500'>*</span>
-              </Label>
-              <div className='relative'>
-                <span className='absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400'>₹</span>
-                <Input
-                  type='number' min='0' step='0.01' placeholder='0.00'
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className='h-9 pl-7 text-sm'
-                />
+            {/* Each activity line has its own amount. */}
+            {takesSeveralActivities ? (
+              singleDateField
+            ) : (
+              <div className='space-y-1.5'>
+                <Label className='text-xs font-medium text-gray-700'>
+                  Amount <span className='text-red-500'>*</span>
+                </Label>
+                <div className='relative'>
+                  <span className='absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400'>₹</span>
+                  <Input
+                    type='number' min='0' step='0.01' placeholder='0.00'
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className='h-9 pl-7 text-sm'
+                  />
+                </div>
               </div>
-            </div>
+            )}
             <div className='space-y-1.5'>
               <Label className='text-xs font-medium text-gray-700'>
                 Invoice # <span className='text-gray-400'>(optional)</span>
@@ -788,17 +895,8 @@ const AddExpenseDialog = ({
             </div>
           </div>
 
-          {isOneDay ? (
-            <div className='space-y-1.5 sm:w-1/2 sm:pr-1.5'>
-              <Label className='text-xs font-medium text-gray-700'>
-                Date <span className='text-red-500'>*</span>
-              </Label>
-              <Input
-                type='date' value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className='h-9 text-sm'
-              />
-            </div>
+          {takesSeveralActivities ? null : isOneDay ? (
+            <div className='sm:w-1/2 sm:pr-1.5'>{singleDateField}</div>
           ) : (
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
               <div className='space-y-1.5'>
@@ -855,9 +953,11 @@ const AddExpenseDialog = ({
                 ? `Uploading… ${sharePointUpload.progress}%`
                 : isEditing
                   ? "Save Changes"
-                  : isExceededMode
-                    ? "Record Exceeded Expense"
-                    : "Record Expense"
+                  : takesSeveralActivities && lines.length > 1
+                    ? `Record ${lines.length} Expenses`
+                    : isExceededMode
+                      ? "Record Exceeded Expense"
+                      : "Record Expense"
             }
             variant='primary'
             Icon={Save}
