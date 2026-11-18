@@ -163,7 +163,10 @@ async function assertOrderParts(
 
 async function getOrder(ctx: TrpcContext, id: number) {
   const [order] = await ctx.db
-    .select({ work_order_id: contractOrderTable.work_order_id })
+    .select({
+      work_order_id: contractOrderTable.work_order_id,
+      type: contractOrderTable.type,
+    })
     .from(contractOrderTable)
     .where(eq(contractOrderTable.id, id));
 
@@ -242,7 +245,6 @@ export const contractOrderMutationRouter = router({
               work_order_id: input.work_order_id,
               type: input.type,
               code,
-              order_number: input.order_number,
               order_date: input.order_date,
               description: input.description || null,
               ...costValues(input),
@@ -375,11 +377,16 @@ export const contractOrderMutationRouter = router({
           await ctx.db.transaction(async (tx) => {
             await clearOrderExpenses(tx, existingItemIds);
 
+            // An order that changes type is numbered as one of its new type.
+            const code =
+              order.type === input.type
+                ? undefined
+                : await nextCode(tx, contractOrderTable, codePrefix(input));
             await tx
               .update(contractOrderTable)
               .set({
                 type: input.type,
-                order_number: input.order_number,
+                ...(code && { code }),
                 order_date: input.order_date,
                 description: input.description || null,
                 ...costValues(input),

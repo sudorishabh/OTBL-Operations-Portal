@@ -39,13 +39,10 @@ export const contractOrderItemSchema = z
     path: ["description"],
   });
 
+// An order's code, PO-0003 or SC-0003, is given as it is added, so it isn't
+// typed.
 const orderFields = z.object({
   type: contractOrderTypeEnum,
-  order_number: z
-    .string({ message: "Order number is required" })
-    .trim()
-    .min(1, "Order number is required")
-    .max(255, "Order number cannot exceed 255 characters"),
   order_date: dateValidator,
   description: longDescriptionValidator,
   // The order's own paperwork, and its completion documents, uploaded once
