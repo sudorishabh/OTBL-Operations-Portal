@@ -9,11 +9,11 @@ type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 // A table whose records are known by a code.
 type CodedTable = MySqlTable & { id: MySqlColumn; code: MySqlColumn };
 
-// The code the next record gets: one after the newest record's, such as
-// USR-0008 after USR-0007. Called in the transaction that adds the record, it
-// holds the newest record's row until then, so two records added at once
-// can't take the same code. The unique index on the code catches any that
-// slip through.
+// The code the next record gets: one after the newest record's with the same
+// prefix, such as USR-0008 after USR-0007, so a table can hold two kinds of
+// code. Called in the transaction that adds the record, it holds the newest
+// record's row until then, so two records added at once can't take the same
+// code. The unique index on the code catches any that slip through.
 export const nextCode = async (
   tx: Transaction,
   table: CodedTable,
@@ -22,6 +22,7 @@ export const nextCode = async (
   const [newest] = await tx
     .select({ code: table.code })
     .from(table)
+    .where(like(table.code, `${prefix}-%`))
     .orderBy(desc(table.id))
     .limit(1)
     .for("update");
