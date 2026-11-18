@@ -58,7 +58,7 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
   if (!workOrder) return <NoWorkOrder proposalId={proposalId} />;
 
   const status = statusOf(workOrder.status);
-  const title = capitalFirstLetter(workOrder.title || "Untitled work order");
+  const title = workOrder.code;
   const documents = toDocuments(workOrder.documents);
   const note = scheduleNote(status, workOrder.start_date, workOrder.end_date);
   const processType = PROCESSES[workOrder.process_type];
@@ -105,11 +105,6 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
           </>
         )
       }>
-      <span
-        className='min-w-0 truncate font-mono font-medium text-gray-700'
-        title={workOrder.code}>
-        {workOrder.code.toUpperCase()}
-      </span>
       {processType && (
         <span className='inline-flex items-center gap-1.5'>
           <span

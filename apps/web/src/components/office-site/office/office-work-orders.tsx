@@ -53,8 +53,6 @@ const SORT_OPTIONS = [
   { label: "Newest first", value: "latest" },
   { label: "Oldest first", value: "oldest" },
   { label: "Ending soonest", value: "ending_soonest" },
-  { label: "Title A–Z", value: "asc" },
-  { label: "Title Z–A", value: "desc" },
 ];
 
 const HEAD_CLASS = "h-9 px-4 text-xs font-medium text-gray-500";
@@ -157,24 +155,18 @@ const OfficeWorkOrders = ({ details }: { details: OfficeDetails }) => {
                   <TableCell className={cn(CELL_CLASS, "max-w-md")}>
                     <Link
                       href={`/dashboard/work-order/${workOrder.id}`}
-                      title={workOrder.title}
-                      className='block truncate font-medium text-gray-900 hover:text-emerald-700 hover:underline'>
-                      {capitalFirstLetter(workOrder.title)}
+                      className='block truncate font-mono font-medium text-gray-900 hover:text-emerald-700 hover:underline'>
+                      {workOrder.code}
                     </Link>
-                    <p className='truncate font-mono text-xs text-gray-500'>
-                      {workOrder.code.toUpperCase()}
-                      {workOrder.purchase_order_code && (
-                        <span className='font-sans text-gray-400'>
-                          {" · PO "}
-                          {workOrder.purchase_order_code}
-                        </span>
-                      )}
-                      {workOrder.agreement_number && (
-                        <span className='font-sans text-gray-400'>
-                          {" · Agreement "}
-                          {workOrder.agreement_number.toUpperCase()}
-                        </span>
-                      )}
+                    <p className='truncate text-xs text-gray-400'>
+                      {[
+                        workOrder.purchase_order_code &&
+                          `PO ${workOrder.purchase_order_code}`,
+                        workOrder.agreement_number &&
+                          `Agreement ${workOrder.agreement_number.toUpperCase()}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "No purchase order"}
                     </p>
                   </TableCell>
                   <TableCell className={cn(CELL_CLASS, "max-w-56")}>
@@ -233,7 +225,7 @@ const OfficeWorkOrders = ({ details }: { details: OfficeDetails }) => {
         <FilterBar className='mb-3'>
           <SearchFilter
             label='Search work orders'
-            placeholder='Search by code, title, agreement or client...'
+            placeholder='Search by code, purchase order, agreement or client...'
             value={search}
             onChange={setSearch}
           />

@@ -6,7 +6,7 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { trpc } from "@/lib/trpc";
 import { ListSkeleton } from "@/components/skeleton/dialog-skeletons";
 import { Badge } from "@/components/ui/badge";
-import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
+import { capitalizeEachWord } from "@pkg/utils";
 import { Briefcase, Users } from "lucide-react";
 
 type Operator = { user_id: number; name: string | null; email: string | null };
@@ -14,7 +14,7 @@ type WoSiteRow = {
   work_order_site_id: number;
   work_order_id: number;
   wo_code: string;
-  wo_title: string;
+  wo_purchase_order_code: string | null;
   status: string;
   operators: Operator[];
 };
@@ -78,9 +78,11 @@ const SiteWorkOrdersDialog = () => {
                     <span className='text-sm font-semibold text-slate-800 break-words'>
                       {row.wo_code}
                     </span>
-                    <span className='text-xs text-slate-500 break-words'>
-                      {capitalFirstLetter(row.wo_title)}
-                    </span>
+                    {row.wo_purchase_order_code && (
+                      <span className='text-xs text-slate-500 break-words'>
+                        PO {row.wo_purchase_order_code}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <span

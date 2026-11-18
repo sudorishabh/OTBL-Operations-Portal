@@ -342,7 +342,7 @@ export default function DashboardPage() {
                     Code
                   </TableHead>
                   <TableHead className='h-8 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
-                    Title
+                    Purchase order
                   </TableHead>
                   <TableHead className='h-8 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
                     Client
@@ -371,9 +371,9 @@ export default function DashboardPage() {
                       </Link>
                     </TableCell>
                     <TableCell
-                      className='max-w-[220px] truncate px-3 py-1.5 font-medium text-gray-700'
-                      title={wo.title}>
-                      {capitalFirstLetter(wo.title)}
+                      className='max-w-[220px] truncate px-3 py-1.5 font-mono text-gray-700'
+                      title={wo.purchase_order_code ?? undefined}>
+                      {wo.purchase_order_code ?? <Empty />}
                     </TableCell>
                     <TableCell className='max-w-[140px] truncate px-3 py-1.5 text-gray-600'>
                       {wo.client_name ?? <Empty />}
