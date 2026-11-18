@@ -129,8 +129,12 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
 
   return (
     <PageWrapper
-      title={`${workOrderData.workOrder.code.toUpperCase()} - ${workOrderData.workOrder.title?.toUpperCase() || "Work Order"}`}
-      description='Work Order Details and Management'
+      title={workOrderData.workOrder.code}
+      description={
+        workOrderData.workOrder.purchase_order_code
+          ? `Purchase order ${workOrderData.workOrder.purchase_order_code}`
+          : "Work Order Details and Management"
+      }
       breadcrumbs={workOrderTrail({
         id: workOrderId,
         code: workOrderData.workOrder.code,

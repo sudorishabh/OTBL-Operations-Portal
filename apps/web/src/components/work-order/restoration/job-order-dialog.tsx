@@ -52,7 +52,7 @@ export interface JobOrder {
 
 // What the job order form takes from its work order.
 export interface JobOrderWorkOrder {
-  title: string;
+  code: string;
   start_date: string | Date;
   end_date: string | Date;
   client_name: string | null;

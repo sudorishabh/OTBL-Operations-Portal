@@ -76,8 +76,9 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
     ? capitalFirstLetter(siteDetails.site.name)
     : "Site";
   const description = [
-    siteDetails.work_order.code?.toUpperCase(),
-    siteDetails.work_order.title,
+    siteDetails.work_order.code,
+    siteDetails.work_order.purchase_order_code &&
+      `Purchase order ${siteDetails.work_order.purchase_order_code}`,
   ]
     .filter(Boolean)
     .join(" - ");

@@ -27,7 +27,6 @@ interface Props {
     id: number;
     code: string;
     purchase_order_code?: string | null;
-    title: string;
     description: string | null;
     start_date: string;
     end_date: string;
@@ -108,14 +107,15 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
             <FileText className='size-4' />
           </div>
           <div className='min-w-0'>
-            <h2
-              className='truncate text-base font-semibold text-gray-900'
-              title={workOrder.title}>
-              {capitalFirstLetter(workOrder.title)}
+            <h2 className='truncate font-mono text-base font-semibold text-gray-900'>
+              {workOrder.code}
             </h2>
             <div className='mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500'>
-              <span className='font-mono font-medium text-gray-700'>
-                {workOrder.code.toUpperCase()}
+              <span className='min-w-0 truncate'>
+                Purchase order{" "}
+                <span className='font-mono font-medium text-gray-700'>
+                  {workOrder.purchase_order_code || "not given"}
+                </span>
               </span>
               <span className='inline-flex min-w-0 items-center gap-1.5'>
                 <Building2 className='size-3.5 shrink-0 text-gray-400' />
@@ -225,11 +225,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       </div>
 
       {/* Details */}
-      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-4'>
-        <Field
-          label='Purchase order'
-          value={workOrder.purchase_order_code}
-        />
+      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-3'>
         <Field
           label='Agreement'
           value={workOrder.agreement_number?.toUpperCase()}

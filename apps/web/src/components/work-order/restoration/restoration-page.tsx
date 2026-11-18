@@ -99,7 +99,11 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
     );
   }
 
-  const description = [workOrder.code?.toUpperCase(), workOrder.title]
+  const description = [
+    workOrder.code,
+    workOrder.purchase_order_code &&
+      `Purchase order ${workOrder.purchase_order_code}`,
+  ]
     .filter(Boolean)
     .join(" - ");
   const breadcrumbs = workOrderChildTrail(
