@@ -5,6 +5,7 @@ import {
   countsTowardSor,
   type JobOrderActivityKey,
 } from "@pkg/utils";
+import { toDocuments } from "@/lib/documents";
 import type { JobOrder } from "./job-order-dialog";
 import type { JobOrderActivityRow } from "./job-order-activities-table";
 import type { RestorationRate } from "./restoration-rates-table";
@@ -58,6 +59,12 @@ export const jobOrderPlace = (jobOrder: {
   location?: string | null;
 }) =>
   [jobOrder.installation_name, jobOrder.location].filter(Boolean).join(" · ");
+
+// A job order closes once its completion certificate is uploaded: expenses
+// can then no longer be added to it, changed or deleted. Removing the
+// certificate reopens it.
+export const isJobOrderClosed = (jobOrder: { documents: unknown }) =>
+  toDocuments(jobOrder.documents).length > 0;
 
 // Every vendor the job orders give work to, once each.
 export const jobOrderVendorNames = (jobOrders: JobOrder[]) =>

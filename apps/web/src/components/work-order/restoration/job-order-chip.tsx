@@ -16,7 +16,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import type { JobOrder } from "./job-order-dialog";
-import { jobOrderPlace } from "./restoration-display";
+import { isJobOrderClosed, jobOrderPlace } from "./restoration-display";
 
 const { JOB_ORDER_ACTIVITIES } = constants;
 
@@ -45,12 +45,12 @@ const withUnit = (quantity: string | undefined, unit: string) => {
     : quantity;
 };
 
-// Where the job order stands: certified once a signed certificate is
-// uploaded, and its work done saved before that.
+// Where the job order stands: closed once a signed certificate is uploaded,
+// and its work done saved before that.
 const jobOrderStatus = (jobOrder: JobOrder) => {
-  if (toDocuments(jobOrder.documents).length > 0) {
+  if (isJobOrderClosed(jobOrder)) {
     return {
-      label: "Certified complete",
+      label: "Closed, certified complete",
       style: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     };
   }

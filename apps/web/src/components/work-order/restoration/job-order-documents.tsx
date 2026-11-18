@@ -32,6 +32,7 @@ const KINDS = {
       "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100",
     folder: "",
     stored: (jobOrder: JobOrder) => jobOrder.documents,
+    note: "Uploading a certificate closes the job order: its expenses can then no longer be added, changed or deleted. Removing every certificate reopens it.",
   },
   invoices: {
     Icon: ReceiptIndianRupee,
@@ -43,6 +44,7 @@ const KINDS = {
     filledStyle: "bg-sky-50 text-sky-700 ring-sky-200 hover:bg-sky-100",
     folder: "/Invoices",
     stored: (jobOrder: JobOrder) => jobOrder.invoices,
+    note: null,
   },
 } satisfies Record<
   string,
@@ -56,6 +58,8 @@ const KINDS = {
     filledStyle: string;
     folder: string;
     stored: (jobOrder: JobOrder) => unknown;
+    // Shown above the upload, to those who can upload.
+    note: string | null;
   }
 >;
 
@@ -87,6 +91,7 @@ const JobOrderDocuments = ({ restorationId, jobOrder, kind }: Props) => {
     filledStyle,
     folder,
     stored,
+    note,
   } = KINDS[kind];
   const documents = toDocuments(stored(jobOrder));
 
@@ -162,6 +167,11 @@ const JobOrderDocuments = ({ restorationId, jobOrder, kind }: Props) => {
           if (!next && !isSaving) setOpen(false);
         }}>
         <div className='space-y-4 py-2'>
+          {note && !isViewer && (
+            <p className='rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200'>
+              {note}
+            </p>
+          )}
           <DocumentsField
             label={uploadLabel}
             files={isViewer ? [] : files}
