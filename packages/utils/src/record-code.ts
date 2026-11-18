@@ -1,6 +1,7 @@
 // The codes records are known by, such as USR-0007 or VEN-0012: a prefix for
 // the kind of record, then its number, padded to four digits. They tell apart
-// records with similar names and make them quick to find.
+// records with similar names and make them quick to find. Purchase orders and
+// sub-contracts are numbered apart, as PO-0003 and SC-0003.
 export const CODE_PREFIX = {
   USER: "USR",
   OFFICE: "OFF",
@@ -8,6 +9,8 @@ export const CODE_PREFIX = {
   CLIENT: "CLT",
   MAIN_CLIENT: "MCL",
   VENDOR: "VEN",
+  PURCHASE_ORDER: "PO",
+  SUB_CONTRACT: "SC",
 } as const;
 
 export type CodePrefix = (typeof CODE_PREFIX)[keyof typeof CODE_PREFIX];
