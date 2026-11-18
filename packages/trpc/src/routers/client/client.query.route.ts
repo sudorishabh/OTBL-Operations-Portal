@@ -27,10 +27,14 @@ import { clientSchemas } from "@pkg/schema";
 import { notFound, fromDatabaseError, isAppError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { codeMatches } from "../../helper/record-code";
 import { buildPagination, pageOffset } from "../../helper/pagination";
 import { hasPhysicalSite } from "../../helper/restoration";
 import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
-import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
+import {
+  CODE_PREFIX,
+  effectiveWorkOrderStatusFromDbOnly,
+} from "@pkg/utils";
 
 const {
   parentClientTable,
@@ -70,8 +74,14 @@ const clientListWhere = (
         ? eq(clientTable.parent_client_id, parentClientId)
         : undefined,
     state ? eq(clientTable.state, state) : undefined,
-    term
+    term && searchQuery
       ? or(
+          codeMatches(clientTable.code, CODE_PREFIX.CLIENT, searchQuery),
+          codeMatches(
+            parentClientTable.code,
+            CODE_PREFIX.MAIN_CLIENT,
+            searchQuery,
+          ),
           like(clientTable.name, term),
           like(clientTable.email, term),
           like(clientTable.gst_number, term),
@@ -215,7 +225,11 @@ export const clientQueryRouter = router({
       try {
         if (scope.kind === "full") {
           return await ctx.db
-            .select({ id: parentClientTable.id, name: parentClientTable.name })
+            .select({
+              id: parentClientTable.id,
+              code: parentClientTable.code,
+              name: parentClientTable.name,
+            })
             .from(parentClientTable)
             .orderBy(asc(parentClientTable.name));
         }
@@ -225,6 +239,7 @@ export const clientQueryRouter = router({
         return await ctx.db
           .selectDistinct({
             id: parentClientTable.id,
+            code: parentClientTable.code,
             name: parentClientTable.name,
           })
           .from(parentClientTable)
@@ -297,6 +312,7 @@ export const clientQueryRouter = router({
         return await ctx.db
           .select({
             id: clientTable.id,
+            code: clientTable.code,
             name: clientTable.name,
             city: clientTable.city,
             state: clientTable.state,
