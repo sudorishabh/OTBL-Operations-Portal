@@ -81,7 +81,6 @@ export const workOrderMutationRouter = router({
           purchase_order_code: input.purchase_order_code,
           agreement_number: input.agreement_number,
           rate_contract_number: input.rate_contract_number,
-          title: input.title,
           proposal_id: input.proposal_id,
           client_id: input.client_id,
           office_id: officeId,

@@ -281,7 +281,6 @@ export const contractorQueryRouter = router({
               order_date: contractOrderTable.order_date,
               work_order_id: workOrderTable.id,
               work_order_code: workOrderTable.code,
-              work_order_title: workOrderTable.title,
               spent: sum(workOrderSiteExpenseTable.amount),
               expense_count: count(workOrderSiteExpenseTable.id),
             })
@@ -329,7 +328,6 @@ export const contractorQueryRouter = router({
               end_date: jobOrderTable.end_date,
               work_order_id: workOrderTable.id,
               work_order_code: workOrderTable.code,
-              work_order_title: workOrderTable.title,
               spent: sum(workOrderSiteExpenseTable.amount),
               expense_count: count(workOrderSiteExpenseTable.id),
             })

@@ -98,7 +98,6 @@ export const proposalQueryRouter = router({
                   like(proposalTable.title, search),
                   like(workOrderTable.code, search),
                   like(workOrderTable.purchase_order_code, search),
-                  like(workOrderTable.title, search),
                 )
               : undefined,
             input.proposalStatus !== "all"

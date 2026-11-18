@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  titleValidator,
   agreementNumberValidator,
   documentsValidator,
   positiveIntValidator,
@@ -127,7 +126,6 @@ export const baseWorkOrderSchema = z.object({
     .trim()
     .min(1, "Rate contract number is required")
     .max(255, "Rate contract number cannot exceed 255 characters"),
-  title: titleValidator,
   start_date: dateValidator,
   end_date: dateValidator,
   handing_over_date: dateValidator,
@@ -234,10 +232,8 @@ export const getAllWorkOrdersPaginatedSchema = z.object({
   process_type: z
     .enum(["bioremediation", "restoration", "bioremediation_restoration"])
     .optional(),
-  // asc and desc order by title; ending_soonest by end date.
-  workOrderOrder: z
-    .enum(["asc", "desc", "latest", "oldest", "ending_soonest"])
-    .optional(),
+  // ending_soonest orders by end date.
+  workOrderOrder: z.enum(["latest", "oldest", "ending_soonest"]).optional(),
 });
 
 // A site can be added to a work order before its dates are known.

@@ -108,7 +108,6 @@ export const workOrderQueryRouter = router({
               workOrderTable.purchase_order_code,
               `%${escapeLike(searchQuery)}%`,
             ),
-            like(workOrderTable.title, `%${escapeLike(searchQuery)}%`),
             like(
               workOrderTable.agreement_number,
               `%${escapeLike(searchQuery)}%`,
@@ -124,15 +123,11 @@ export const workOrderQueryRouter = router({
       // The id breaks ties so work orders never repeat or go missing across
       // pages.
       const orderBy = [
-        workOrderOrder === "asc"
-          ? asc(workOrderTable.title)
-          : workOrderOrder === "desc"
-            ? desc(workOrderTable.title)
-            : workOrderOrder === "latest"
-              ? desc(workOrderTable.created_at)
-              : workOrderOrder === "ending_soonest"
-                ? asc(workOrderTable.end_date)
-                : asc(workOrderTable.created_at),
+        workOrderOrder === "latest"
+          ? desc(workOrderTable.created_at)
+          : workOrderOrder === "ending_soonest"
+            ? asc(workOrderTable.end_date)
+            : asc(workOrderTable.created_at),
         workOrderOrder === "latest"
           ? desc(workOrderTable.id)
           : asc(workOrderTable.id),
@@ -145,7 +140,6 @@ export const workOrderQueryRouter = router({
               id: workOrderTable.id,
               code: workOrderTable.code,
               purchase_order_code: workOrderTable.purchase_order_code,
-              title: workOrderTable.title,
               client_id: workOrderTable.client_id,
               client_name: clientTable.name,
               office_id: workOrderTable.office_id,
@@ -235,7 +229,6 @@ export const workOrderQueryRouter = router({
             id: workOrderTable.id,
             code: workOrderTable.code,
             purchase_order_code: workOrderTable.purchase_order_code,
-            title: workOrderTable.title,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
             office_id: workOrderTable.office_id,
@@ -306,7 +299,6 @@ export const workOrderQueryRouter = router({
             id: workOrderTable.id,
             code: workOrderTable.code,
             purchase_order_code: workOrderTable.purchase_order_code,
-            title: workOrderTable.title,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
             office_id: workOrderTable.office_id,
@@ -347,7 +339,6 @@ export const workOrderQueryRouter = router({
             id: workOrderTable.id,
             code: workOrderTable.code,
             purchase_order_code: workOrderTable.purchase_order_code,
-            title: workOrderTable.title,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
             client_email: clientTable.email,
@@ -552,7 +543,6 @@ export const workOrderQueryRouter = router({
               id: workOrderTable.id,
               code: workOrderTable.code,
               purchase_order_code: workOrderTable.purchase_order_code,
-              title: workOrderTable.title,
               client_id: workOrderTable.client_id,
               client_name: clientTable.name,
               office_id: workOrderTable.office_id,
@@ -596,7 +586,6 @@ export const workOrderQueryRouter = router({
               id: workOrderTable.id,
               code: workOrderTable.code,
               purchase_order_code: workOrderTable.purchase_order_code,
-              title: workOrderTable.title,
               client_id: workOrderTable.client_id,
               office_id: workOrderTable.office_id,
               office_name: officeTable.name,
@@ -663,7 +652,6 @@ export const workOrderQueryRouter = router({
             id: workOrderTable.id,
             code: workOrderTable.code,
             purchase_order_code: workOrderTable.purchase_order_code,
-            title: workOrderTable.title,
             description: workOrderTable.description,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,

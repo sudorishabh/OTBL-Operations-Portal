@@ -242,7 +242,6 @@ export const workOrderTable = mysqlTable(
     rate_contract_number: varchar("rate_contract_number", {
       length: 255,
     }).notNull(),
-    title: varchar("title", { length: 255 }).notNull(),
     proposal_id: int("proposal_id")
       .notNull()
       .references(() => proposalTable.id, { onDelete: "cascade" }),
