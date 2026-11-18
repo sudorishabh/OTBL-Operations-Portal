@@ -84,8 +84,8 @@ interface Props {
   activities?: ActivityOption[];
   usedQtyByActivity?: Record<string, number>;
   // The vendors the site's work is ordered to, for a site that keeps its own;
-  // an expense is recorded under one of them. Without them any active vendor
-  // can be picked.
+  // an expense is recorded under one of them. Without them any vendor can be
+  // picked.
   contractors?: { id: number; name: string }[];
   // The contractor a new expense starts under.
   defaultContractorId?: number | null;
@@ -286,10 +286,7 @@ const AddExpenseDialog = ({
     {},
     { enabled: open && picksAnyVendor },
   );
-  // Inactive vendors can't take new expenses, but an edit keeps its own.
-  const vendors = (contractorsQuery.data?.contractors ?? []).filter(
-    (c: any) => c.status === "active" || String(c.id) === contractorId,
-  );
+  const vendors = contractorsQuery.data?.contractors ?? [];
 
   const createContractorMutation = trpc.contractorMutation.createContractor.useMutation({
     onSuccess: (data: any) => {

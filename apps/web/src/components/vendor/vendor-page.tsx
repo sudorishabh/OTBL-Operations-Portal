@@ -2,8 +2,6 @@
 import React, { useState } from "react";
 import {
   ArrowUpDown,
-  CircleCheck,
-  CircleOff,
   ExternalLink,
   FileStack,
   HardHat,
@@ -73,7 +71,6 @@ type Vendor = {
   state: string | null;
   gst_number: string | null;
   pan_number: string | null;
-  status: string;
 };
 
 type VendorsPage = {
@@ -88,12 +85,6 @@ type VendorsPage = {
 };
 
 const PAGE_SIZE = 20;
-
-const STATUS_OPTIONS = [
-  { label: "All statuses", value: ALL },
-  { label: "Active", value: "active" },
-  { label: "Inactive", value: "inactive" },
-];
 
 // Which orders, in work orders the user can see, a vendor is on.
 const USAGE_OPTIONS = [
@@ -124,7 +115,6 @@ const VendorPage = () => {
   const utils = trpc.useUtils();
 
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<string>(ALL);
   const [usage, setUsage] = useState<string>(ALL);
   const [sort, setSort] = useState<VendorSort>("name_asc");
   const debouncedSearch = useDebounce(search, 300);
@@ -133,7 +123,6 @@ const VendorPage = () => {
   const queryInput = {
     limit: PAGE_SIZE,
     search: debouncedSearch.trim() || undefined,
-    status: status === ALL ? undefined : (status as "active" | "inactive"),
     usage: usage === ALL ? undefined : (usage as VendorUsage),
     sort,
   };
@@ -151,7 +140,7 @@ const VendorPage = () => {
   const failedQuery = pageQueries.find((query) => query.isError);
   const isInitialLoading = !!pageQueries[0]?.isLoading;
   const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
-  const isFiltered = !!queryInput.search || status !== ALL || usage !== ALL;
+  const isFiltered = !!queryInput.search || usage !== ALL;
 
   const deleteVendor = trpc.contractorMutation.deleteContractor.useMutation({
     onSuccess: () => {
@@ -162,22 +151,9 @@ const VendorPage = () => {
     onSettled: () => setDeleting(null),
   });
 
-  const setVendorStatus = trpc.contractorMutation.updateContractor.useMutation({
-    onSuccess: (_data: unknown, variables: { status?: string }) => {
-      toast.success(
-        variables.status === "active"
-          ? "Vendor marked active"
-          : "Vendor marked inactive",
-      );
-      utils.contractorQuery.invalidate();
-    },
-    onError: (error: { message: string }) => toast.error(error.message),
-  });
-
   // Clearing the filters keeps the chosen order.
   const resetFilters = () => {
     setSearch("");
-    setStatus(ALL);
     setUsage(ALL);
   };
 
@@ -218,7 +194,6 @@ const VendorPage = () => {
               <TableHead className={headClass}>Contact</TableHead>
               <TableHead className={headClass}>State</TableHead>
               <TableHead className={headClass}>GST / PAN</TableHead>
-              <TableHead className={headClass}>Status</TableHead>
               <TableHead className={cn(headClass, "w-12")}>
                 <span className='sr-only'>Actions</span>
               </TableHead>
@@ -261,17 +236,6 @@ const VendorPage = () => {
                     <p className='text-xs text-gray-400'>{vendor.pan_number}</p>
                   )}
                 </TableCell>
-                <TableCell className={cellClass}>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-semibold",
-                      vendor.status === "active"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-gray-100 text-gray-500",
-                    )}>
-                    {capitalFirstLetter(vendor.status)}
-                  </span>
-                </TableCell>
                 <TableCell className={cn(cellClass, "text-right")}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -302,26 +266,6 @@ const VendorPage = () => {
                             }>
                             <Pencil className='mr-2 h-4 w-4' />
                             Edit vendor
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            disabled={setVendorStatus.isPending}
-                            onClick={() =>
-                              setVendorStatus.mutate({
-                                id: vendor.id,
-                                status:
-                                  vendor.status === "active"
-                                    ? "inactive"
-                                    : "active",
-                              })
-                            }>
-                            {vendor.status === "active" ? (
-                              <CircleOff className='mr-2 h-4 w-4' />
-                            ) : (
-                              <CircleCheck className='mr-2 h-4 w-4' />
-                            )}
-                            {vendor.status === "active"
-                              ? "Mark inactive"
-                              : "Mark active"}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -370,12 +314,6 @@ const VendorPage = () => {
           onChange={setSearch}
         />
         <SelectFilter
-          label='Status'
-          value={status}
-          onChange={setStatus}
-          options={STATUS_OPTIONS}
-        />
-        <SelectFilter
           label='Orders'
           Icon={FileStack}
           value={usage}
@@ -405,8 +343,7 @@ const VendorPage = () => {
             <AlertDialogTitle>Delete {deleting?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               Expenses and orders recorded with this vendor keep their amounts
-              but no longer name it. To keep its history, set it to inactive
-              instead.
+              but no longer name it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

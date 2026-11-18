@@ -186,11 +186,11 @@ const ContractOrderDialog = ({
     {},
     { enabled: open },
   );
-  // Inactive vendors can't take new orders, but an edit keeps its own.
-  const vendors = (vendorsQuery.data?.contractors ?? []).filter(
-    (vendor: any) =>
-      vendor.status === "active" || vendorIds.includes(vendor.id),
-  ) as { id: number; code: string; name: string }[];
+  const vendors = (vendorsQuery.data?.contractors ?? []) as {
+    id: number;
+    code: string;
+    name: string;
+  }[];
   const sites = (sitesQuery.data ?? []) as { id: number; name: string }[];
 
   const documentsUpload = useSharePointUpload({

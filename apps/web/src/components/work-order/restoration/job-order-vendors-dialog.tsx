@@ -18,7 +18,7 @@ export type VendorsJobOrder = {
   vendors: { id: number }[];
 };
 
-type Vendor = { id: number; code: string; name: string; status: string };
+type Vendor = { id: number; code: string; name: string };
 
 interface Props {
   // The work order's restoration row.
@@ -52,10 +52,7 @@ const JobOrderVendorsDialog = ({
     {},
     { enabled: open },
   );
-  // Inactive vendors can't take new work, but those already on it stay.
-  const vendors = ((vendorsQuery.data?.contractors ?? []) as Vendor[]).filter(
-    (vendor) => vendor.status === "active" || vendorIds.includes(vendor.id),
-  );
+  const vendors = (vendorsQuery.data?.contractors ?? []) as Vendor[];
   const term = search.trim().toLowerCase();
   const shown = term
     ? vendors.filter(

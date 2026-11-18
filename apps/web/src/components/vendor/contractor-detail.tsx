@@ -11,7 +11,6 @@ import {
 } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { VendorDetailSkeleton } from "@/components/skeleton/vendor/vendor-skeletons";
 import {
   Table,
@@ -131,17 +130,6 @@ const ContractorDetail = ({ contractorId }: Props) => {
                   .join(" · ") || "No contact details"}
               </p>
             </div>
-          </div>
-          <div className='flex items-center gap-2'>
-            <Badge
-              className={cn(
-                "border",
-                contractor.status === "active"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-gray-200 bg-gray-100 text-gray-600",
-              )}>
-              {capitalFirstLetter(contractor.status)}
-            </Badge>
           </div>
         </div>
         <div className='grid grid-cols-2 divide-x border-t bg-gray-50/60 sm:grid-cols-4'>
