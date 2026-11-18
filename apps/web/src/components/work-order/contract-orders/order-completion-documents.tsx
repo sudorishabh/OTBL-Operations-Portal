@@ -87,7 +87,7 @@ const OrderCompletionDocuments = ({ workOrderId, order }: Props) => {
       </button>
 
       <DialogWindow
-        title={`${order.order_number} Completion Documents`}
+        title={`${order.code} Completion Documents`}
         description='Uploaded once the order’s work is done'
         size='md'
         heightMode='auto'

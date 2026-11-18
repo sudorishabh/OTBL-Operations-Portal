@@ -39,7 +39,7 @@ type WorkRow = {
 };
 type ContractOrderRow = WorkRow & {
   type: string;
-  order_number: string;
+  code: string;
   order_date: string | Date;
 };
 type JobOrderRow = WorkRow & {
@@ -165,7 +165,7 @@ const ContractorDetail = ({ contractorId }: Props) => {
                 {contractOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className={cn(cellClass, "font-mono font-medium")}>
-                      {order.order_number}
+                      {order.code}
                     </TableCell>
                     <TableCell className={cellClass}>
                       <span className='inline-flex items-center gap-1.5 text-xs'>

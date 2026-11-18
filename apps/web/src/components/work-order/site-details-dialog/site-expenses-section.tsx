@@ -110,7 +110,7 @@ type SiteOrderItem = {
   quantity: string;
   unit: string;
   order_type: string;
-  order_number: string;
+  order_code: string;
   vendors: { id: number; name: string }[];
 };
 
@@ -128,7 +128,7 @@ const ORDER_GROUPS = [
 ] as const;
 
 const orderItemTitle = (item: SiteOrderItem) =>
-  `${item.order_number} · ${itemLabel(item.item, item.description)}`;
+  `${item.order_code} · ${itemLabel(item.item, item.description)}`;
 
 // Tighter than the table defaults, so a record takes one compact row.
 const headClass =
@@ -1142,7 +1142,7 @@ const SiteExpensesSection = ({
               emptyText: "No orders require anything at this site yet.",
               groups: items.map((item) => ({
                 key: `item-${item.id}`,
-                badge: item.order_number,
+                badge: item.order_code,
                 title: itemLabel(item.item, item.description),
                 meta: `${formatQty(Number(item.quantity))} ${item.unit}`,
                 total: orderItemTotal(item.id),

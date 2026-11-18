@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { AlertTriangle, MapPin, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
-import { constants } from "@pkg/utils";
+import { CODE_PREFIX, constants } from "@pkg/utils";
 import { contractOrderSchemas } from "@pkg/schema";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -167,7 +167,6 @@ const ContractOrderDialog = ({
   const [type, setType] = useState<OrderType>(
     CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
   );
-  const [orderNumber, setOrderNumber] = useState("");
   const [orderDate, setOrderDate] = useState("");
   const [description, setDescription] = useState("");
   const [vendorIds, setVendorIds] = useState<number[]>([]);
@@ -211,7 +210,6 @@ const ContractOrderDialog = ({
     if (!open) return;
     const startType = editing?.type ?? CONTRACT_ORDER_TYPE.PURCHASE_ORDER;
     setType(startType);
-    setOrderNumber(editing?.order_number ?? "");
     setOrderDate(
       format(editing ? new Date(editing.order_date) : new Date(), "yyyy-MM-dd"),
     );
@@ -344,7 +342,6 @@ const ContractOrderDialog = ({
   const save = async () => {
     const order = {
       type,
-      order_number: orderNumber,
       order_date: orderDate ? new Date(orderDate) : undefined,
       description,
       documents: savedDocuments,
@@ -521,14 +518,23 @@ const ContractOrderDialog = ({
               </SelectContent>
             </Select>
           </div>
+          {/* Given as the order is saved, and again if it changes type. */}
           <div>
-            <label className={fieldLabel}>Order number</label>
-            <Input
-              value={orderNumber}
-              onChange={(e) => setOrderNumber(e.target.value)}
-              placeholder={isPurchase ? "e.g. PO-2026-014" : "e.g. SC-2026-006"}
-              className='h-9'
-            />
+            <span className={fieldLabel}>Code</span>
+            <p className='flex h-9 items-center rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 text-sm text-gray-500'>
+              {editing && editing.type === type ? (
+                <span className='font-mono font-medium text-gray-900'>
+                  {editing.code}
+                </span>
+              ) : (
+                `A new ${isPurchase ? CODE_PREFIX.PURCHASE_ORDER : CODE_PREFIX.SUB_CONTRACT} code, given when saved`
+              )}
+            </p>
+            {editing?.order_number && (
+              <p className='mt-1 text-[11px] text-gray-400'>
+                Typed as {editing.order_number} before orders had codes
+              </p>
+            )}
           </div>
           <div>
             <label className={fieldLabel}>Order date</label>
