@@ -248,18 +248,21 @@ export const SiteDetailsSkeleton = ({
         </SkeletonCard>
 
         <SkeletonCard className='space-y-3 p-5'>
-          <div>
+          <div className='flex flex-wrap items-baseline gap-x-2'>
             <p className='text-sm font-semibold text-gray-900'>Availability</p>
             <p className='text-xs text-gray-500'>
               What is left for this site to draw on.
             </p>
           </div>
-          {["h-[68px]", "h-24", "h-28"].map((height, index) => (
-            <Skeleton
-              key={index}
-              className={`w-full rounded-lg bg-gray-100 ${height}`}
-            />
-          ))}
+          {/* Its cards, side by side as the page shows them. */}
+          <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3'>
+            {[0, 1, 2].map((card) => (
+              <Skeleton
+                key={card}
+                className='h-[116px] w-full rounded-lg bg-gray-100'
+              />
+            ))}
+          </div>
         </SkeletonCard>
 
         <SkeletonCard className='p-5'>

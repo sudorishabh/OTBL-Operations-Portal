@@ -59,7 +59,9 @@ const percentOf = (part: number, whole: number) =>
 const barTone = (usedPct: number) =>
   usedPct >= 100 ? "bg-rose-500" : usedPct >= 80 ? "bg-amber-500" : "bg-emerald-500";
 
-const Panel = ({
+// A compact card: its title and note, a status at the right, then its
+// figures. Its last child sits at the bottom, so cards side by side line up.
+const Card = ({
   title,
   note,
   aside,
@@ -71,104 +73,130 @@ const Panel = ({
   aside?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
-    <div className='flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2'>
-      <p className='flex min-w-0 flex-wrap items-baseline gap-x-2'>
-        <span className='text-xs font-medium text-gray-700'>{title}</span>
-        <span className='text-[11px] text-gray-400'>{note}</span>
-      </p>
+  <div className='@container flex min-w-0 flex-col gap-2.5 rounded-lg border border-gray-200 bg-white p-3 [&>*:last-child]:mt-auto'>
+    <div className='flex items-start justify-between gap-2'>
+      <div className='min-w-0'>
+        <p className='text-xs font-semibold text-gray-800'>{title}</p>
+        <p
+          className='truncate text-[11px] text-gray-400'
+          title={note}>
+          {note}
+        </p>
+      </div>
       {aside}
     </div>
     {children}
   </div>
 );
 
-// A panel's quantities side by side, on the same four columns in every panel
-// so the stacked panels line up.
+// A card's quantities side by side, four abreast once the card is wide enough.
 const Figures = ({ figures, unit }: { figures: Figure[]; unit: string }) => (
-  <dl className='grid grid-cols-2 gap-x-4 gap-y-2 px-3 py-2.5 sm:grid-cols-4'>
+  <dl
+    className={cn(
+      "grid gap-x-3 gap-y-1.5",
+      figures.length > 3 ? "grid-cols-2 @sm:grid-cols-4" : "grid-cols-3",
+    )}>
     {figures.map((figure) => (
       <div
         key={figure.label}
-        title={figure.title}>
+        title={figure.title}
+        className='min-w-0'>
         <dt className='text-[11px] text-gray-400'>{figure.label}</dt>
         <dd
           className={cn(
-            "text-sm font-semibold tabular-nums text-gray-900",
+            "truncate text-[13px] font-semibold tabular-nums text-gray-900",
             figure.tone,
           )}>
           {formatQty(figure.value)}{" "}
-          <span className='text-xs font-normal text-gray-400'>{unit}</span>
+          <span className='text-[11px] font-normal text-gray-400'>{unit}</span>
         </dd>
       </div>
     ))}
   </dl>
 );
 
-// Each activity's schedule of rates across the work order: used and left.
-const SorPanel = ({ activities }: { activities: SorActivity[] }) => (
-  <Panel
+// How much of something is used, as a bar with its figures beside it. The
+// bar warns as it runs out, unless given its own colour.
+const UsageBar = ({
+  used,
+  total,
+  caption,
+  barClassName,
+}: {
+  used: number;
+  total: number;
+  caption: string;
+  barClassName?: string;
+}) => {
+  const usedPct = percentOf(used, total);
+  return (
+    <div className='flex items-center gap-2'>
+      <div className='h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100'>
+        <div
+          className={cn("h-full rounded-full", barClassName ?? barTone(usedPct))}
+          style={{ width: `${usedPct}%` }}
+        />
+      </div>
+      <span className='shrink-0 text-[11px] tabular-nums text-gray-500'>
+        {caption}
+      </span>
+    </div>
+  );
+};
+
+// Each activity's schedule of rates across the work order: what is left,
+// over a bar of what is used.
+const SorCard = ({ activities }: { activities: SorActivity[] }) => (
+  <Card
     title='Schedule of rates'
-    note='used across the work order'>
+    note='Used across the work order'>
     <ul
       className={cn(
-        "divide-y divide-gray-100",
-        activities.length > 5 && "max-h-48 overflow-y-auto",
+        "space-y-2.5",
+        activities.length > 3 && "max-h-40 overflow-y-auto pr-1",
       )}>
       {activities.map((activity) => {
         const sorQty = parseFloat(activity.sor_estimated_quantity || "0");
         const used = parseFloat(activity.total_used_quantity || "0");
         const left = sorQty - used;
-        const usedPct = percentOf(used, sorQty);
+        const unit = activity.unit || "Nos";
 
         return (
           <li
             key={activity.id}
-            className='flex flex-wrap items-center gap-x-5 gap-y-1 px-3 py-2 text-xs'>
-            <span className='min-w-0 flex-1 truncate font-medium text-gray-800'>
-              {formatName(activity.activity)}
-            </span>
-            <span className='whitespace-nowrap tabular-nums text-gray-600'>
-              <span className='text-gray-400'>SOR </span>
-              {formatQty(sorQty)}{" "}
-              <span className='text-gray-400'>{activity.unit || "Nos"}</span>
-            </span>
-            <span className='whitespace-nowrap tabular-nums text-gray-600'>
-              <span className='text-gray-400'>Used </span>
-              {formatQty(used)}
-            </span>
-            <span
-              className={cn(
-                "whitespace-nowrap font-medium tabular-nums",
-                left < 0 ? "text-rose-600" : "text-gray-900",
-              )}>
-              <span className='font-normal text-gray-400'>Left </span>
-              {formatQty(left)}
-            </span>
-            <div className='flex w-24 items-center gap-1.5'>
-              <div className='h-1 flex-1 overflow-hidden rounded-full bg-gray-100'>
-                <div
-                  className={cn("h-full rounded-full", barTone(usedPct))}
-                  style={{ width: `${usedPct}%` }}
-                />
-              </div>
-              <span className='w-8 shrink-0 text-right text-[11px] tabular-nums text-gray-500'>
-                {usedPct.toFixed(0)}%
+            className='space-y-1'>
+            <div className='flex items-baseline justify-between gap-2 text-xs'>
+              <span className='min-w-0 truncate font-medium text-gray-800'>
+                {formatName(activity.activity)}
+              </span>
+              <span className='shrink-0 tabular-nums text-gray-500'>
+                <span
+                  className={cn(
+                    "text-[13px] font-semibold",
+                    left < 0 ? "text-rose-600" : "text-gray-900",
+                  )}>
+                  {formatQty(left)}
+                </span>{" "}
+                {unit} left
               </span>
             </div>
+            <UsageBar
+              used={used}
+              total={sorQty}
+              caption={`${formatQty(used)} of ${formatQty(sorQty)} used`}
+            />
           </li>
         );
       })}
     </ul>
-  </Panel>
+  </Card>
 );
 
 // The site's oil zapper: planned by its estimate, procured through its
 // expenses, used by its oil zapping, and what is left to apply.
-const StockPanel = ({ stock }: { stock: OilZapperStock & { estimated: number } }) => {
+const StockCard = ({ stock }: { stock: OilZapperStock & { estimated: number } }) => {
   const unit = OIL_ZAPPER.UNIT;
   const isOverProcured = stock.procured > stock.estimated;
-  const usedPct = percentOf(stock.used, stock.procured);
   const figures: Figure[] = [
     { label: "Estimated", value: stock.estimated },
     {
@@ -188,31 +216,25 @@ const StockPanel = ({ stock }: { stock: OilZapperStock & { estimated: number } }
   ];
 
   return (
-    <Panel
+    <Card
       title={`${OIL_ZAPPER.LABEL} stock`}
-      note='procured from expenses, used by oil zapping'>
+      note='Procured from expenses, used by oil zapping'>
       <Figures
         figures={figures}
         unit={unit}
       />
-      <div className='flex items-center gap-2 border-t border-gray-100 px-3 py-2'>
-        <div className='h-1 flex-1 overflow-hidden rounded-full bg-gray-100'>
-          <div
-            className={cn("h-full rounded-full", barTone(usedPct))}
-            style={{ width: `${usedPct}%` }}
-          />
-        </div>
-        <span className='shrink-0 text-[11px] tabular-nums text-gray-500'>
-          {formatQty(stock.used)} of {formatQty(stock.procured)} {unit} used
-        </span>
-      </div>
-    </Panel>
+      <UsageBar
+        used={stock.used}
+        total={stock.procured}
+        caption={`${formatQty(stock.used)} of ${formatQty(stock.procured)} ${unit} used`}
+      />
+    </Card>
   );
 };
 
 // The site's share of the schedule of rates. It is used in full once
 // treatment is achieved: the latest bio sample's TPH is below the target.
-const SorCompletionPanel = ({
+const SorCompletionCard = ({
   woSiteId,
   sorQuantity,
   isCompleted,
@@ -234,13 +256,13 @@ const SorCompletionPanel = ({
   const available = sorQuantity !== null ? sorQuantity - used : 0;
 
   return (
-    <Panel
+    <Card
       title='SOR completion'
-      note={`this site's share, used in full once the TPH is below ${TPH_TARGET}`}
+      note={`This site's share, used in full once the TPH is below ${TPH_TARGET}`}
       aside={
         <span
           className={cn(
-            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+            "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
             isCompleted
               ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
               : "bg-gray-50 text-gray-600 ring-gray-200",
@@ -252,25 +274,38 @@ const SorCompletionPanel = ({
         </span>
       }>
       {sorQuantity === null ? (
-        <p className='px-3 py-2.5 text-xs text-gray-400'>
+        <p className='text-xs text-gray-400'>
           Save the site&apos;s estimate to allocate its share of the schedule of
           rates.
         </p>
       ) : (
-        <Figures
-          unit={WO_UNITS.MT}
-          figures={[
-            { label: "Site's SOR", value: sorQuantity },
-            { label: "Used", value: used },
-            {
-              label: "Available",
-              value: available,
-              tone: available > 0 ? undefined : "text-emerald-700",
-            },
-          ]}
-        />
+        <>
+          <Figures
+            unit={WO_UNITS.MT}
+            figures={[
+              { label: "Site's SOR", value: sorQuantity },
+              { label: "Used", value: used },
+              {
+                label: "Available",
+                value: available,
+                tone: available > 0 ? undefined : "text-emerald-700",
+              },
+            ]}
+          />
+          {/* Using it all is the aim here, not running out. */}
+          <UsageBar
+            used={used}
+            total={sorQuantity}
+            barClassName='bg-emerald-500'
+            caption={
+              isCompleted
+                ? "Used in full"
+                : `Used in full once the TPH is below ${TPH_TARGET}`
+            }
+          />
+        </>
       )}
-    </Panel>
+    </Card>
   );
 };
 
@@ -310,25 +345,32 @@ const SiteAvailability = ({
 
   if (sorActivities.length === 0 && !hasSorShare) return null;
 
+  const cardCount =
+    (sorActivities.length > 0 ? 1 : 0) + (hasSorShare ? 1 : 0) + (stock ? 1 : 0);
+
   return (
     <section className={cn("space-y-3", className)}>
-      <div>
+      <div className='flex flex-wrap items-baseline gap-x-2'>
         <h3 className='text-sm font-semibold text-gray-900'>Availability</h3>
         <p className='text-xs text-gray-500'>
           What is left for this site to draw on.
         </p>
       </div>
-      {/* One above the other. */}
-      <div className='space-y-3'>
-        {sorActivities.length > 0 && <SorPanel activities={sorActivities} />}
+      {/* Side by side, as many abreast as there are cards and room. */}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-3 md:grid-cols-2",
+          cardCount >= 3 && "xl:grid-cols-3",
+        )}>
+        {sorActivities.length > 0 && <SorCard activities={sorActivities} />}
         {hasSorShare && (
-          <SorCompletionPanel
+          <SorCompletionCard
             woSiteId={woSiteId}
             sorQuantity={stockData.sorQuantity}
             isCompleted={isCompleted}
           />
         )}
-        {stock && <StockPanel stock={stock} />}
+        {stock && <StockCard stock={stock} />}
       </div>
     </section>
   );
