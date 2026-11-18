@@ -101,10 +101,11 @@ const Section = ({
 );
 
 // Everything on a job order: its form, contract, activities as ordered and as
-// done, vendors and certificates.
+// done, vendors, certificates and invoices.
 const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
   const status = jobOrderStatus(jobOrder);
   const certificateCount = toDocuments(jobOrder.documents).length;
+  const invoiceCount = toDocuments(jobOrder.invoices).length;
   const ordered = new Map(
     (jobOrder.activities ?? []).map((row) => [row.key, row.quantity]),
   );
@@ -232,7 +233,7 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
         )}
       </Section>
 
-      <Section title='Vendors and certificates'>
+      <Section title='Vendors and documents'>
         <Details>
           <Detail
             label='Vendors'
@@ -246,6 +247,12 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
               certificateCount > 0
                 ? `${certificateCount} uploaded`
                 : "None uploaded"
+            }
+          />
+          <Detail
+            label='Invoices'
+            value={
+              invoiceCount > 0 ? `${invoiceCount} uploaded` : "None uploaded"
             }
           />
         </Details>

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { Award, type LucideIcon } from "lucide-react";
+import { Award, ReceiptIndianRupee, type LucideIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
@@ -18,7 +18,8 @@ import DocumentsField from "@/components/shared/documents-field";
 import type { JobOrder } from "./job-order-dialog";
 import { jobOrderPlace } from "./restoration-display";
 
-// The kinds of document a job order keeps, each shown as its own badge.
+// The kinds of document a job order keeps, each shown as its own badge and
+// kept in its own folder.
 const KINDS = {
   certificates: {
     Icon: Award,
@@ -29,6 +30,19 @@ const KINDS = {
     saved: "Certificates saved",
     filledStyle:
       "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100",
+    folder: "",
+    stored: (jobOrder: JobOrder) => jobOrder.documents,
+  },
+  invoices: {
+    Icon: ReceiptIndianRupee,
+    title: "Invoices",
+    one: "invoice",
+    none: "No invoice",
+    uploadLabel: "Upload invoices",
+    saved: "Invoices saved",
+    filledStyle: "bg-sky-50 text-sky-700 ring-sky-200 hover:bg-sky-100",
+    folder: "/Invoices",
+    stored: (jobOrder: JobOrder) => jobOrder.invoices,
   },
 } satisfies Record<
   string,
@@ -40,6 +54,8 @@ const KINDS = {
     uploadLabel: string;
     saved: string;
     filledStyle: string;
+    folder: string;
+    stored: (jobOrder: JobOrder) => unknown;
   }
 >;
 
@@ -61,9 +77,18 @@ const JobOrderDocuments = ({ restorationId, jobOrder, kind }: Props) => {
   const [files, setFiles] = useState<File[]>([]);
   const [savedDocuments, setSavedDocuments] = useState<StoredDocument[]>([]);
 
-  const { Icon, title, one, none, uploadLabel, saved, filledStyle } =
-    KINDS[kind];
-  const documents = toDocuments(jobOrder.documents);
+  const {
+    Icon,
+    title,
+    one,
+    none,
+    uploadLabel,
+    saved,
+    filledStyle,
+    folder,
+    stored,
+  } = KINDS[kind];
+  const documents = toDocuments(stored(jobOrder));
 
   const {
     uploadFiles,
@@ -71,7 +96,7 @@ const JobOrderDocuments = ({ restorationId, jobOrder, kind }: Props) => {
     progress,
     reset: resetUpload,
   } = useSharePointUpload({
-    folderPath: `/WorkOrders/Restoration/${restorationId}/JobOrders/${jobOrder.id}`,
+    folderPath: `/WorkOrders/Restoration/${restorationId}/JobOrders/${jobOrder.id}${folder}`,
     conflictBehavior: "rename",
   });
 
@@ -87,17 +112,22 @@ const JobOrderDocuments = ({ restorationId, jobOrder, kind }: Props) => {
   };
   const saveCertificates =
     trpc.jobOrderMutation.setJobOrderCertificates.useMutation(onSaved);
+  const saveInvoices =
+    trpc.jobOrderMutation.setJobOrderInvoices.useMutation(onSaved);
 
   const save = async () => {
     const uploaded = files.length > 0 ? await uploadFiles(files) : [];
     if (!uploaded) return;
-    saveCertificates.mutate({
-      id: jobOrder.id,
-      documents: [...savedDocuments, ...uploaded.map(toStoredDocument)],
-    });
+    const next = [...savedDocuments, ...uploaded.map(toStoredDocument)];
+    if (kind === "invoices") {
+      saveInvoices.mutate({ id: jobOrder.id, invoices: next });
+    } else {
+      saveCertificates.mutate({ id: jobOrder.id, documents: next });
+    }
   };
 
-  const isSaving = isUploading || saveCertificates.isPending;
+  const isSaving =
+    isUploading || saveCertificates.isPending || saveInvoices.isPending;
 
   return (
     <>

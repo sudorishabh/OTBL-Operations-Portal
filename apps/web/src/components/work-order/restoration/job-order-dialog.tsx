@@ -45,7 +45,9 @@ export interface JobOrder {
   // The work as done, for the work completion certificate.
   completed_on?: string | Date | null;
   completion_activities?: JobOrderActivityRow[] | null;
+  // Its completion certificates and invoices.
   documents: unknown;
+  invoices?: unknown;
   vendors: { id: number; name: string }[];
 }
 

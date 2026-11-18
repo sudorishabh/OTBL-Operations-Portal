@@ -210,11 +210,18 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
               />
             }
             jobOrderStatus={(jobOrder) => (
-              <JobOrderDocuments
-                restorationId={restoration.id}
-                jobOrder={jobOrder}
-                kind='certificates'
-              />
+              <>
+                <JobOrderDocuments
+                  restorationId={restoration.id}
+                  jobOrder={jobOrder}
+                  kind='invoices'
+                />
+                <JobOrderDocuments
+                  restorationId={restoration.id}
+                  jobOrder={jobOrder}
+                  kind='certificates'
+                />
+              </>
             )}
             jobOrderActions={(jobOrder) => (
               <JobOrderActions
