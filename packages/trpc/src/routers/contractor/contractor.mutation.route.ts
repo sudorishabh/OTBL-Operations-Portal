@@ -38,6 +38,7 @@ export const contractorMutationRouter = router({
                 contact_number: optionalText(input.contact_number) ?? null,
                 email: optionalText(input.email) ?? null,
                 address: optionalText(input.address) ?? null,
+                state: optionalText(input.state) ?? null,
                 gst_number: optionalText(input.gst_number) ?? null,
                 pan_number: optionalText(input.pan_number) ?? null,
               })
@@ -85,6 +86,7 @@ export const contractorMutationRouter = router({
               contact_number: optionalText(input.contact_number),
               email: optionalText(input.email),
               address: optionalText(input.address),
+              state: optionalText(input.state),
               gst_number: optionalText(input.gst_number),
               pan_number: optionalText(input.pan_number),
             })

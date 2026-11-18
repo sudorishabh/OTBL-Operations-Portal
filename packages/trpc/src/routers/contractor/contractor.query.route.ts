@@ -46,6 +46,7 @@ const searchWhere = (search: string | undefined) => {
     like(contractorTable.contact_number, term),
     like(contractorTable.email, term),
     like(contractorTable.gst_number, term),
+    like(contractorTable.state, term),
   );
 };
 

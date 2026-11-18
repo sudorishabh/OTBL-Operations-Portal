@@ -38,6 +38,13 @@ const vendorFields = {
     .trim()
     .max(500, "Address cannot exceed 500 characters")
     .optional(),
+  // Lowercase, as offices' and sites' states are.
+  state: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(100, "State cannot exceed 100 characters")
+    .optional(),
   gst_number: optionalGstNumberValidator,
   pan_number: optionalPanNumberValidator,
 };
