@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { CheckCircle2, FileDown } from "lucide-react";
 import { jobOrderSchemas } from "@pkg/schema";
+import { isAssessedLater } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
 import { useIsViewer } from "@/contexts/AuthContext";
@@ -39,13 +40,15 @@ const formatDate = (value: string | Date | null | undefined) =>
   value ? format(new Date(value), "dd MMM yyyy") : null;
 
 // The work as done, until it is first saved, starts from the quantities the
-// job order gave out.
+// job order gave out. Its bioremediation rows start empty, as the job order
+// only says they are to be assessed.
 const startingEntries = (jobOrder: JobOrder): JobOrderActivityEntries =>
   jobOrder.completion_activities != null
     ? toActivityEntries(jobOrder.completion_activities)
     : toActivityEntries(
         (jobOrder.activities ?? []).map((row) => ({
           ...row,
+          quantity: isAssessedLater(row.key) ? "" : row.quantity,
           completion_date: null,
         })),
       );

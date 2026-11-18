@@ -457,7 +457,7 @@ const JobOrderDialog = ({
 
             <FormSection
               title='Activities'
-              description='Write each quantity as it should read on the form, such as 25 × 20 = 500, No, or To be assessed later. Rows left blank print empty. SOR left is what the completion certificates have left of the schedule of rates.'>
+              description='Write each quantity as it should read on the form, such as 25 × 20 = 500 or No. The bioremediation rows read To be assessed, as their soil is assessed later. Rows left blank print empty. SOR left is what the completion certificates have left of the schedule of rates.'>
               <JobOrderActivitiesTable
                 entries={activities}
                 sorLeft={sorLeft}
