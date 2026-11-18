@@ -189,26 +189,6 @@ export const SiteDetailsSkeleton = ({
             </div>
           </div>
           <OperatorsRowSkeleton />
-          <div className='border-t border-gray-100 px-5 py-4'>
-            <div className='flex items-center justify-between gap-3'>
-              <TextLine
-                line='h-5'
-                className='w-72 max-w-full'
-              />
-              <Skeleton className='h-8 w-16' />
-            </div>
-            <div className='mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]'>
-              <DocumentBoxSkeleton />
-              <div className='divide-y divide-gray-100 rounded-lg border border-gray-200'>
-                <div className='flex h-9 items-center px-3'>
-                  <Skeleton className='h-2.5 w-full' />
-                </div>
-                <div className='flex h-9 items-center px-3'>
-                  <Skeleton className='h-3 w-full' />
-                </div>
-              </div>
-            </div>
-          </div>
           <div className='grid grid-cols-1 border-t border-gray-100 lg:grid-cols-2 lg:divide-x lg:divide-gray-100'>
             {[0, 1].map((stage) => (
               <div
@@ -233,6 +213,32 @@ export const SiteDetailsSkeleton = ({
                 </div>
               </div>
             ))}
+          </div>
+          {/* The estimate, last in its own panel: its upload over its
+              activities table. */}
+          <div className='border-t border-gray-100 p-4'>
+            <div className='rounded-lg border border-blue-100 bg-blue-50/60 p-4'>
+              <div className='flex items-center justify-between gap-3'>
+                <TextLine
+                  line='h-5'
+                  className='w-72 max-w-full'
+                />
+                <Skeleton className='h-8 w-16' />
+              </div>
+              <div className='mt-3 space-y-3'>
+                <div className='rounded-lg bg-white'>
+                  <DocumentBoxSkeleton />
+                </div>
+                <div className='divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white'>
+                  <div className='flex h-9 items-center px-3'>
+                    <Skeleton className='h-2.5 w-full' />
+                  </div>
+                  <div className='flex h-9 items-center px-3'>
+                    <Skeleton className='h-3 w-full' />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </SkeletonCard>
 

@@ -173,16 +173,6 @@ const SiteDetailsCard = ({ siteDetails }: Props) => {
         />
       )}
 
-      {/* What the site is estimated to take, which sets its share of the
-          work order's schedule of rates. */}
-      {siteDetails?.id && (
-        <SiteEstimate
-          woSiteId={siteDetails.id}
-          processType={siteDetails.process_type}
-          className='border-t border-gray-100 px-5 py-4'
-        />
-      )}
-
       {/* The site's documents, stage by stage. For bioremediation, how it
           was set up first: the team moving on, and the baseline sample taken
           before treatment. Then the measurements behind its quantities, and
@@ -219,6 +209,18 @@ const SiteDetailsCard = ({ siteDetails }: Props) => {
               />
             )}
           </DocumentStage>
+        </div>
+      )}
+
+      {/* Last, in a panel of its own: what the site is estimated to take,
+          which sets its share of the work order's schedule of rates. */}
+      {siteDetails?.id && (
+        <div className='border-t border-gray-100 p-4'>
+          <SiteEstimate
+            woSiteId={siteDetails.id}
+            processType={siteDetails.process_type}
+            className='rounded-lg border border-blue-100 bg-blue-50/60 p-4'
+          />
         </div>
       )}
     </section>
