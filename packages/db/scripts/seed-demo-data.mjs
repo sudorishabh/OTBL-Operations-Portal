@@ -1643,6 +1643,71 @@ function finishBioSite(ctx, plan) {
   assignOperators(ctx, row, [...ops], activeEnd);
 }
 
+// Now and then one sub-contract hires a water pump or tractor for two of the
+// work order's sites, with each site's share billed there.
+function buildSharedSubContract(ctx, plans) {
+  const working = plans.filter((p) => p.state === "done" || p.state === "treating");
+  if (working.length < 2 || !chance(0.4)) return;
+  const pair = sample(working, 2);
+  const { wo, manager, staff, horizon } = ctx;
+  const activeEnd = earliest(horizon, NOW);
+  const from = latest(...pair.map((p) => p.mob));
+  if (from > activeEnd) return;
+
+  const orderDate = dayStart(randDate(from, earliest(addDays(from, 25), activeEnd)));
+  const vendor = pick(seededVendors);
+  const number = `SC/${yy(orderDate)}/${String(++scSeq).padStart(5, "0")}`;
+  const created = clampPast(atWorkHour(orderDate));
+  const order = add("contract_orders", {
+    work_order_id: wo.id,
+    type: "sub_contract",
+    order_number: number,
+    order_date: orderDate,
+    description: `Shared hire for ${pair.map((p) => p.site.name).join(" and ")}.`,
+    unit_rate: null,
+    gst_percentage: null,
+    invoice_number: null,
+    documents: [doc(`Sub-contract ${number}.pdf`)],
+    completion_documents: [],
+    created_by: manager.id,
+    ...stamp(created),
+  });
+  add("contract_order_contractors", {
+    contract_order_id: order.id,
+    contractor_id: vendor.id,
+    created_at: order.created_at,
+  });
+
+  const kind = pick(["water_pump", "tractor"]);
+  const spec = SC_ITEMS[kind];
+  for (const plan of pair) {
+    const qty = int(...spec.qty);
+    const item = add("contract_order_items", {
+      contract_order_id: order.id,
+      work_order_site_id: plan.row.id,
+      item: kind,
+      description: null,
+      quantity: dec(qty),
+      unit: spec.unit,
+      ...stamp(created),
+    });
+    for (let b = int(0, 2); b > 0; b--) {
+      const st = dayStart(randDate(orderDate, activeEnd));
+      const portion = Math.max(1, Math.round(qty * real(0.15, 0.45)));
+      addExpense({
+        site: plan.row,
+        contractor: vendor,
+        itemId: item.id,
+        title: `${spec.label} - ${number} (${portion} ${spec.unit})`,
+        amount: portion * real(...spec.cost),
+        start: st,
+        end: dayStart(earliest(addDays(st, int(0, 10)), activeEnd)),
+        createdBy: pick(staff).id,
+      });
+    }
+  }
+}
+
 function buildBioremediation(ctx) {
   const sites = sitesOf.get(ctx.office.id);
   const usable = sites.filter((s) => s.status === "active");
@@ -1660,6 +1725,7 @@ function buildBioremediation(ctx) {
 
   buildPurchaseOrders(ctx, plans);
   for (const plan of plans) finishBioSite(ctx, plan);
+  buildSharedSubContract(ctx, plans);
 }
 
 // The first few work orders belong to the demo manager's office, one of each
