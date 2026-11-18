@@ -112,6 +112,11 @@ const WorkOrderTable = ({
                 <TableRow key={workOrder.id}>
                   <TableCell className='text-xs font-medium pl-8'>
                     {workOrder.code}
+                    {workOrder.purchase_order_code && (
+                      <span className='block font-normal text-gray-500'>
+                        PO {workOrder.purchase_order_code}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className='text-xs font-medium'>
                     <Link

@@ -163,6 +163,12 @@ const OfficeWorkOrders = ({ details }: { details: OfficeDetails }) => {
                     </Link>
                     <p className='truncate font-mono text-xs text-gray-500'>
                       {workOrder.code.toUpperCase()}
+                      {workOrder.purchase_order_code && (
+                        <span className='font-sans text-gray-400'>
+                          {" · PO "}
+                          {workOrder.purchase_order_code}
+                        </span>
+                      )}
                       {workOrder.agreement_number && (
                         <span className='font-sans text-gray-400'>
                           {" · Agreement "}

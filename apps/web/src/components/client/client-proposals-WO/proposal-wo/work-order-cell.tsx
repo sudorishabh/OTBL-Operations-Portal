@@ -63,6 +63,7 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
   const note = scheduleNote(status, workOrder.start_date, workOrder.end_date);
   const processType = PROCESSES[workOrder.process_type];
   const handover = toDate(workOrder.handing_over_date);
+  const purchaseOrder = workOrder.purchase_order_code;
   const agreement = workOrder.agreement_number?.toUpperCase();
   const rateContract = workOrder.rate_contract_number?.toUpperCase();
 
@@ -83,8 +84,11 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
       }
       trailing={note && <span className={note.tone}>{note.text}</span>}
       details={
-        (handover || agreement || rateContract) && (
+        (handover || purchaseOrder || agreement || rateContract) && (
           <>
+            {purchaseOrder && (
+              <LabeledItem label='Purchase order'>{purchaseOrder}</LabeledItem>
+            )}
             {agreement && (
               <LabeledItem label='Agreement'>{agreement}</LabeledItem>
             )}

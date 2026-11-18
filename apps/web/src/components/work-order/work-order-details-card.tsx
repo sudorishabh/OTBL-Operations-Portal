@@ -26,6 +26,7 @@ interface Props {
   workOrder: {
     id: number;
     code: string;
+    purchase_order_code?: string | null;
     title: string;
     description: string | null;
     start_date: string;
@@ -224,7 +225,11 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       </div>
 
       {/* Details */}
-      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-3'>
+      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-4'>
+        <Field
+          label='Purchase order'
+          value={workOrder.purchase_order_code}
+        />
         <Field
           label='Agreement'
           value={workOrder.agreement_number?.toUpperCase()}
