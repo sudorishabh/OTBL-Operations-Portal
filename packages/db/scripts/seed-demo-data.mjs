@@ -990,7 +990,8 @@ function addExpense({
     title: title.slice(0, 500),
     amount: dec(amount),
     start_date: start,
-    end_date: end,
+    // A job order's expenses are each for one day.
+    end_date: jobOrderId ? start : end,
     invoice_number: invoiceNumber,
     activity_key: activityKey,
     quantity: quantity == null ? null : dec(quantity),
@@ -1073,8 +1074,9 @@ function jobOrderRows(shares, { from, to, completion, exSitu }) {
       quantity = anyTransport ? "Yes" : "No";
       done = anyTransport;
     } else if (r.bio) {
-      if (!exSitu) quantity = "No";
-      else if (!completion) quantity = "To be assessed later";
+      // The job order form's bioremediation rows always read To be assessed.
+      if (!completion) quantity = "To be assessed";
+      else if (!exSitu) quantity = "No";
       else quantity = qtyText(r.key === "bioremediation_volume" ? int(20, 400) : int(30, 640));
       done = exSitu;
     } else {
