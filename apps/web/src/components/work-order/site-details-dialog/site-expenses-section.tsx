@@ -54,7 +54,10 @@ import DocumentsMenu from "@/components/shared/documents-menu";
 import { itemLabel } from "../contract-orders/contract-orders-section";
 import type { JobOrder } from "../restoration/job-order-dialog";
 import JobOrderChip from "../restoration/job-order-chip";
-import { jobOrderSorActivities } from "../restoration/restoration-display";
+import {
+  jobOrderPlace,
+  jobOrderSorActivities,
+} from "../restoration/restoration-display";
 import {
   documentName,
   openDocument,
@@ -1175,7 +1178,7 @@ const SiteExpensesSection = ({
                 key: `job-order-${jobOrder.id}`,
                 badge: jobOrder.jo_number,
                 badgeNode: <JobOrderChip jobOrder={jobOrder} />,
-                title: jobOrder.title,
+                title: jobOrderPlace(jobOrder),
                 meta: formatDateRange(jobOrder.start_date, jobOrder.end_date),
                 total: summary?.byJobOrder?.[String(jobOrder.id)] ?? 0,
                 vendors: jobOrder.vendors,
@@ -1252,7 +1255,12 @@ const SiteExpensesSection = ({
           dialogJobOrder
             ? {
                 id: dialogJobOrder.id,
-                label: `${dialogJobOrder.jo_number} · ${dialogJobOrder.title}`,
+                label: [
+                  dialogJobOrder.jo_number,
+                  jobOrderPlace(dialogJobOrder),
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
               }
             : null
         }

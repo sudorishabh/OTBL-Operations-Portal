@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import VendorCode from "./vendor-code";
+import { jobOrderPlace } from "@/components/work-order/restoration/restoration-display";
 
 const { CONTRACT_ORDER_TYPE } = constants;
 
@@ -39,7 +40,8 @@ type ContractOrderRow = WorkRow & {
 };
 type JobOrderRow = WorkRow & {
   jo_number: string;
-  title: string;
+  installation_name: string | null;
+  location: string | null;
   start_date: string | Date;
   end_date: string | Date;
 };
@@ -229,7 +231,9 @@ const ContractorDetail = ({ contractorId }: Props) => {
                       <span className='font-mono font-medium'>
                         {jobOrder.jo_number}
                       </span>
-                      <span className='ml-2 text-gray-500'>{jobOrder.title}</span>
+                      <span className='ml-2 text-gray-500'>
+                        {jobOrderPlace(jobOrder)}
+                      </span>
                     </TableCell>
                     <TableCell className={cn(cellClass, "text-xs")}>
                       {formatDate(jobOrder.start_date)} –{" "}

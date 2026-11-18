@@ -17,7 +17,7 @@ import JobOrderActivitiesTable, {
 } from "./job-order-activities-table";
 import type { JobOrder, JobOrderWorkOrder } from "./job-order-dialog";
 import type { JobOrderFormContent } from "./job-order-form-pdf";
-import { sorLeftByRow } from "./restoration-display";
+import { jobOrderPlace, sorLeftByRow } from "./restoration-display";
 import type { RestorationRate } from "./restoration-rates-table";
 import useJobOrderFormDownload from "./use-job-order-form-download";
 
@@ -153,7 +153,7 @@ const JobOrderCompletionDialog = ({
           ? "Completion Saved"
           : `${jobOrder.jo_number} Work Completion Certificate`
       }
-      description={saved ? undefined : jobOrder.title}
+      description={saved ? undefined : jobOrderPlace(jobOrder) || undefined}
       size='lg'
       heightMode='auto'
       open={open}

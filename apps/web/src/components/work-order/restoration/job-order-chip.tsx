@@ -16,6 +16,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import type { JobOrder } from "./job-order-dialog";
+import { jobOrderPlace } from "./restoration-display";
 
 const { JOB_ORDER_ACTIVITIES } = constants;
 
@@ -135,9 +136,11 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
             {status.label}
           </span>
         </div>
-        <p className='mt-1 text-sm font-medium text-gray-900'>
-          {jobOrder.title}
-        </p>
+        {jobOrderPlace(jobOrder) && (
+          <p className='mt-1 text-sm font-medium text-gray-900'>
+            {jobOrderPlace(jobOrder)}
+          </p>
+        )}
         <p className='mt-0.5 flex items-center gap-1.5 text-xs text-gray-500'>
           <CalendarDays className='size-3.5 text-gray-400' />
           {formatDate(jobOrder.start_date)} – {formatDate(jobOrder.end_date)}

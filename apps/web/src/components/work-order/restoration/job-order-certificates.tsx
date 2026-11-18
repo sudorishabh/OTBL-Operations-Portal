@@ -16,6 +16,7 @@ import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
 import type { JobOrder } from "./job-order-dialog";
+import { jobOrderPlace } from "./restoration-display";
 
 interface Props {
   restorationId: number;
@@ -44,8 +45,8 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
     conflictBehavior: "rename",
   });
 
-  const saveCertificates = trpc.jobOrderMutation.setJobOrderCertificates.useMutation(
-    {
+  const saveCertificates =
+    trpc.jobOrderMutation.setJobOrderCertificates.useMutation({
       onSuccess: async () => {
         toast.success("Certificates saved");
         setOpen(false);
@@ -54,8 +55,7 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
         });
       },
       onError: (error: unknown) => handleError(error, { showToast: true }),
-    },
-  );
+    });
 
   const save = async () => {
     const uploaded = files.length > 0 ? await uploadFiles(files) : [];
@@ -93,7 +93,7 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
 
       <DialogWindow
         title={`${jobOrder.jo_number} Completion Certificates`}
-        description={jobOrder.title}
+        description={jobOrderPlace(jobOrder) || undefined}
         size='md'
         heightMode='auto'
         open={open}

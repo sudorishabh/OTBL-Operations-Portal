@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { JobOrder } from "./job-order-dialog";
+import { jobOrderPlace } from "./restoration-display";
 
 export const MONTHLY_EXPENSES_DIALOG = "monthly-expenses";
 
@@ -94,20 +95,23 @@ const RestorationMonthlyExpensesDialog = ({ restorationId }: Props) => {
                     <TableHead
                       key={jobOrder.id}
                       className={cn(headClass, "text-right")}
-                      title={jobOrder.title}>
+                      title={jobOrderPlace(jobOrder) || undefined}>
                       {jobOrder.jo_number}
                     </TableHead>
                   ))}
                   <TableHead className={cn(headClass, "text-right")}>
                     Miscellaneous
                   </TableHead>
-                  <TableHead className={cn(headClass, "text-right")}>Total</TableHead>
+                  <TableHead className={cn(headClass, "text-right")}>
+                    Total
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {months.map((row) => (
                   <TableRow key={row.month}>
-                    <TableCell className={cn(cellClass, "font-medium text-gray-800")}>
+                    <TableCell
+                      className={cn(cellClass, "font-medium text-gray-800")}>
                       {format(new Date(`${row.month}-01T00:00:00`), "MMM yyyy")}
                     </TableCell>
                     {jobOrders.map((jobOrder) => (
@@ -117,7 +121,10 @@ const RestorationMonthlyExpensesDialog = ({ restorationId }: Props) => {
                     ))}
                     {amountCell(amountOf(row, "none"))}
                     <TableCell
-                      className={cn(cellClass, "text-right font-semibold text-gray-900")}>
+                      className={cn(
+                        cellClass,
+                        "text-right font-semibold text-gray-900",
+                      )}>
                       {formatCurrency(row.total)}
                     </TableCell>
                   </TableRow>

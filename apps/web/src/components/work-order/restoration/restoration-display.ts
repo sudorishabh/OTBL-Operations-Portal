@@ -51,6 +51,14 @@ export const restorationStatus = (
   return { label: "Not started", style: STATUS_STYLES.notStarted };
 };
 
+// Where a job order's work is, as its form names it: the installation and the
+// location of the job. Empty for job orders saved before the form.
+export const jobOrderPlace = (jobOrder: {
+  installation_name?: string | null;
+  location?: string | null;
+}) =>
+  [jobOrder.installation_name, jobOrder.location].filter(Boolean).join(" · ");
+
 // Every vendor the job orders give work to, once each.
 export const jobOrderVendorNames = (jobOrders: JobOrder[]) =>
   [
