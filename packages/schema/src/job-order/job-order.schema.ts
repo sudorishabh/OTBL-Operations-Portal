@@ -2,7 +2,6 @@ import { z } from "zod";
 import { constants, withAssessedLater } from "@pkg/utils";
 import {
   dateValidator,
-  longDescriptionValidator,
   optionalDocumentsValidator,
   positiveIntValidator,
 } from "../validators";
@@ -49,7 +48,6 @@ export const baseJobOrderSchema = z
       .max(255, "Job order number cannot exceed 255 characters"),
     start_date: dateValidator,
     end_date: dateValidator,
-    description: longDescriptionValidator,
     // The client's job order form, as the installation manager issues it.
     issued_by: optionalText("Issuing office"),
     rc_noa_number: optionalText("RC NOA number"),
