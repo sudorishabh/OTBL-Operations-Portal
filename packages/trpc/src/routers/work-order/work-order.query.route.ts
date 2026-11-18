@@ -106,6 +106,10 @@ export const workOrderQueryRouter = router({
           conditions,
           or(
             like(workOrderTable.code, `%${escapeLike(searchQuery)}%`),
+            like(
+              workOrderTable.purchase_order_code,
+              `%${escapeLike(searchQuery)}%`,
+            ),
             like(workOrderTable.title, `%${escapeLike(searchQuery)}%`),
             like(
               workOrderTable.agreement_number,
@@ -142,6 +146,7 @@ export const workOrderQueryRouter = router({
             .select({
               id: workOrderTable.id,
               code: workOrderTable.code,
+              purchase_order_code: workOrderTable.purchase_order_code,
               title: workOrderTable.title,
               client_id: workOrderTable.client_id,
               client_name: clientTable.name,
@@ -231,6 +236,7 @@ export const workOrderQueryRouter = router({
           .select({
             id: workOrderTable.id,
             code: workOrderTable.code,
+            purchase_order_code: workOrderTable.purchase_order_code,
             title: workOrderTable.title,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
@@ -301,6 +307,7 @@ export const workOrderQueryRouter = router({
           .select({
             id: workOrderTable.id,
             code: workOrderTable.code,
+            purchase_order_code: workOrderTable.purchase_order_code,
             title: workOrderTable.title,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
@@ -351,6 +358,7 @@ export const workOrderQueryRouter = router({
           .select({
             id: workOrderTable.id,
             code: workOrderTable.code,
+            purchase_order_code: workOrderTable.purchase_order_code,
             title: workOrderTable.title,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
@@ -555,6 +563,7 @@ export const workOrderQueryRouter = router({
             .select({
               id: workOrderTable.id,
               code: workOrderTable.code,
+              purchase_order_code: workOrderTable.purchase_order_code,
               title: workOrderTable.title,
               client_id: workOrderTable.client_id,
               client_name: clientTable.name,
@@ -598,6 +607,7 @@ export const workOrderQueryRouter = router({
             .select({
               id: workOrderTable.id,
               code: workOrderTable.code,
+              purchase_order_code: workOrderTable.purchase_order_code,
               title: workOrderTable.title,
               client_id: workOrderTable.client_id,
               office_id: workOrderTable.office_id,
@@ -664,6 +674,7 @@ export const workOrderQueryRouter = router({
           .select({
             id: workOrderTable.id,
             code: workOrderTable.code,
+            purchase_order_code: workOrderTable.purchase_order_code,
             title: workOrderTable.title,
             description: workOrderTable.description,
             client_id: workOrderTable.client_id,

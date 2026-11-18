@@ -97,6 +97,7 @@ export const proposalQueryRouter = router({
                   like(proposalTable.code, search),
                   like(proposalTable.title, search),
                   like(workOrderTable.code, search),
+                  like(workOrderTable.purchase_order_code, search),
                   like(workOrderTable.title, search),
                 )
               : undefined,

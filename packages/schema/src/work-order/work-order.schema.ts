@@ -113,8 +113,14 @@ export const scheduleOfRateSchema = z
     }
   });
 
-// The code isn't typed: the server numbers each new work order.
+// The work order's own code isn't typed: the server numbers each new one.
+// The purchase order code is the client's, typed as issued.
 export const baseWorkOrderSchema = z.object({
+  purchase_order_code: z
+    .string({ message: "Purchase order code is required" })
+    .trim()
+    .min(1, "Purchase order code is required")
+    .max(255, "Purchase order code cannot exceed 255 characters"),
   agreement_number: agreementNumberValidator,
   rate_contract_number: z
     .string({ message: "Rate contract number is required" })

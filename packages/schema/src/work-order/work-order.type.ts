@@ -11,6 +11,7 @@ import type { StoredDocument } from "../validators";
 export type workOrderType = {
   id: number;
   code: string;
+  purchase_order_code: string | null;
   agreement_number: string;
   rate_contract_number: string;
   title: string;
