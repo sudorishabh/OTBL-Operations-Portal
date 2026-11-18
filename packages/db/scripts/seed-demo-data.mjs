@@ -402,7 +402,7 @@ const COLUMNS = {
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
   sites: ["id", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
-  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
+  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "purchase_order_code", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
   schedule_of_rates: ["id", "work_order_id", "activity", "unit", "estimated_quantity", "rc_unit_rate", "gst_percentage", "unit_rate_inc_gst", "total_cost", "transportation_km", "transportation_slabs", "created_at", "updated_at"],
   work_order_sites: ["id", "work_order_id", "client_id", "site_id", "date", "end_date", "process_type", "status", "isCompleted", "created_at", "updated_at"],
   site_activity_items: ["id", "work_order_site_id", "schedule_of_rates_id", "activity", "unit", "created_at", "updated_at"],
@@ -1702,6 +1702,7 @@ function buildWorkOrder(index) {
 
   const wo = add("work_orders", {
     ...workOrderCode(start),
+    purchase_order_code: `${int(4_100_000_000, 4_199_999_999)}`,
     agreement_number: `AGR/${client._short.replace(/\s+/g, "")}/${yy(start)}/${int(100, 999)}`,
     rate_contract_number: `RC-${int(8_000_000_000, 8_099_999_999)}`,
     title: PROCESS_TITLES[processType](client).slice(0, 255),
