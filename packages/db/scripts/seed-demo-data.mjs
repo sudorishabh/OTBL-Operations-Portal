@@ -408,7 +408,7 @@ const COLUMNS = {
   biorem_cont_soil: ["id", "site_activity_id", "work_order_site_id", "estimated_quantity", "amount", "transportation_km", "oil_zapper_quantity", "type", "created_at", "updated_at"],
   bio_samples: ["id", "site_activity_id", "work_order_site_id", "biorem_cont_soil_id", "tph_document_url", "documents", "tph_value", "application_month", "sampled_on", "created_at", "updated_at"],
   bio_oil_zapping: ["id", "site_activity_id", "work_order_site_id", "bio_sample_id", "document_url", "documents", "estimated_quantity", "applied_on", "created_at", "updated_at"],
-  job_orders: ["id", "work_order_site_id", "jo_number", "start_date", "end_date", "description", "issued_by", "rc_noa_number", "rc_noa_date", "ola_number", "po_number", "installation_name", "location", "mobilization_date", "activities", "completed_on", "completion_activities", "documents", "created_by", "created_at", "updated_at"],
+  job_orders: ["id", "work_order_site_id", "jo_number", "start_date", "end_date", "issued_by", "rc_noa_number", "rc_noa_date", "ola_number", "po_number", "installation_name", "location", "mobilization_date", "activities", "completed_on", "completion_activities", "documents", "invoices", "created_by", "created_at", "updated_at"],
   job_order_contractors: ["id", "job_order_id", "contractor_id", "created_at"],
   contract_orders: ["id", "work_order_id", "type", "order_number", "order_date", "description", "unit_rate", "gst_percentage", "invoice_number", "documents", "completion_documents", "created_by", "created_at", "updated_at"],
   contract_order_items: ["id", "contract_order_id", "work_order_site_id", "item", "description", "quantity", "unit", "created_at", "updated_at"],
@@ -1189,7 +1189,6 @@ function buildRestoration(ctx) {
       jo_number: number,
       start_date: joStart,
       end_date: joEnd,
-      description: chance(0.6) ? `Job order issued under ${wo.code} for restoration work at ${installation}.` : null,
       issued_by: `${personName()}, Installation Manager`,
       rc_noa_number: `RC/NOA/${int(1000, 9999)}/${yy(start)}`,
       rc_noa_date: dayStart(addDays(start, -int(30, 200))),
@@ -1204,6 +1203,7 @@ function buildRestoration(ctx) {
         ? jobOrderRows(joShares, { from: joStart, to: completedOn, completion: true, exSitu })
         : null,
       documents: completed ? [doc(`Work Completion Certificate ${number}.pdf`)] : [],
+      invoices: completed && chance(0.8) ? [doc(`Invoice ${number}.pdf`)] : [],
       created_by: manager.id,
       ...stamp(created),
     });
