@@ -59,6 +59,7 @@ export interface JobOrderWorkOrder {
   parent_client_name: string | null;
   rate_contract_number: string | null;
   agreement_number: string | null;
+  purchase_order_code?: string | null;
 }
 
 interface Props {
@@ -130,7 +131,7 @@ const formValues = (
     contractSource?.rc_noa_number ?? workOrder.rate_contract_number ?? "",
   rc_noa_date: toDateInput(contractSource?.rc_noa_date ?? workOrder.start_date),
   ola_number: contractSource?.ola_number ?? workOrder.agreement_number ?? "",
-  po_number: contractSource?.po_number ?? "",
+  po_number: contractSource?.po_number ?? workOrder.purchase_order_code ?? "",
 });
 
 const Field = ({
