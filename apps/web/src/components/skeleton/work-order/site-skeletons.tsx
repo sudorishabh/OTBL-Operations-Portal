@@ -189,34 +189,39 @@ export const SiteDetailsSkeleton = ({
             </div>
           </div>
           <OperatorsRowSkeleton />
-          <div className='grid grid-cols-1 border-t border-gray-100 lg:grid-cols-2 lg:divide-x lg:divide-gray-100'>
-            {[0, 1].map((stage) => (
-              <div
-                key={stage}
-                className='space-y-3 px-5 py-4'>
-                <TextLine
-                  line='h-5'
-                  className='w-64 max-w-full'
-                />
-                <div className='grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2'>
-                  {[0, 1].map((box) => (
-                    <div
-                      key={box}
-                      className='space-y-2'>
-                      <TextLine
-                        line='h-5'
-                        className='w-40'
-                      />
-                      <DocumentBoxSkeleton />
-                    </div>
-                  ))}
+          {/* The document stages, then the estimate, each in its tinted
+              panel. */}
+          <div className='space-y-4 border-t border-gray-100 p-4'>
+            <div className='grid grid-cols-1 gap-4 xl:grid-cols-2'>
+              {[
+                "border-amber-100 bg-amber-50/60",
+                "border-emerald-100 bg-emerald-50/60",
+              ].map((tone) => (
+                <div
+                  key={tone}
+                  className={`space-y-3 rounded-lg border p-4 ${tone}`}>
+                  <TextLine
+                    line='h-5'
+                    className='w-64 max-w-full'
+                  />
+                  <div className='grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2'>
+                    {[0, 1].map((box) => (
+                      <div
+                        key={box}
+                        className='space-y-2'>
+                        <TextLine
+                          line='h-5'
+                          className='w-40'
+                        />
+                        <div className='rounded-lg bg-white'>
+                          <DocumentBoxSkeleton />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          {/* The estimate, last in its own panel: its upload over its
-              activities table. */}
-          <div className='border-t border-gray-100 p-4'>
+              ))}
+            </div>
             <div className='rounded-lg border border-blue-100 bg-blue-50/60 p-4'>
               <div className='flex items-center justify-between gap-3'>
                 <TextLine
