@@ -360,11 +360,6 @@ const CANCEL_REASONS = [
   "Spill site cleaned up by the client's own team.",
   "Work order reissued under a revised agreement number.",
 ];
-const JO_TITLES = [
-  "Restoration of oil spill site", "Cleaning and restoration of spill area",
-  "Excavation and refilling of contaminated land", "Recovery of oil and restoration of land",
-  "Restoration of pipeline leak area",
-];
 const LOCATION_HINTS = [
   "Near well plinth", "Along the flow line", "Behind the GGS boundary wall", "Paddy field near the pipeline",
   "Village approach road", "Drain near the tank farm", "Low-lying area near the CTF",
@@ -402,7 +397,7 @@ const COLUMNS = {
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
   sites: ["id", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
-  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "purchase_order_code", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
+  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "purchase_order_code", "agreement_number", "rate_contract_number", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
   schedule_of_rates: ["id", "work_order_id", "activity", "unit", "estimated_quantity", "rc_unit_rate", "gst_percentage", "unit_rate_inc_gst", "total_cost", "transportation_km", "transportation_slabs", "created_at", "updated_at"],
   work_order_sites: ["id", "work_order_id", "client_id", "site_id", "date", "end_date", "process_type", "status", "isCompleted", "created_at", "updated_at"],
   site_activity_items: ["id", "work_order_site_id", "schedule_of_rates_id", "activity", "unit", "created_at", "updated_at"],
@@ -413,7 +408,7 @@ const COLUMNS = {
   biorem_cont_soil: ["id", "site_activity_id", "work_order_site_id", "estimated_quantity", "amount", "transportation_km", "oil_zapper_quantity", "type", "created_at", "updated_at"],
   bio_samples: ["id", "site_activity_id", "work_order_site_id", "biorem_cont_soil_id", "tph_document_url", "documents", "tph_value", "application_month", "sampled_on", "created_at", "updated_at"],
   bio_oil_zapping: ["id", "site_activity_id", "work_order_site_id", "bio_sample_id", "document_url", "documents", "estimated_quantity", "applied_on", "created_at", "updated_at"],
-  job_orders: ["id", "work_order_site_id", "jo_number", "title", "start_date", "end_date", "description", "issued_by", "rc_noa_number", "rc_noa_date", "ola_number", "po_number", "installation_name", "location", "mobilization_date", "activities", "completed_on", "completion_activities", "documents", "created_by", "created_at", "updated_at"],
+  job_orders: ["id", "work_order_site_id", "jo_number", "start_date", "end_date", "description", "issued_by", "rc_noa_number", "rc_noa_date", "ola_number", "po_number", "installation_name", "location", "mobilization_date", "activities", "completed_on", "completion_activities", "documents", "created_by", "created_at", "updated_at"],
   job_order_contractors: ["id", "job_order_id", "contractor_id", "created_at"],
   contract_orders: ["id", "work_order_id", "type", "order_number", "order_date", "description", "unit_rate", "gst_percentage", "invoice_number", "documents", "completion_documents", "created_by", "created_at", "updated_at"],
   contract_order_items: ["id", "contract_order_id", "work_order_site_id", "item", "description", "quantity", "unit", "created_at", "updated_at"],
@@ -1172,7 +1167,6 @@ function buildRestoration(ctx) {
     const jo = add("job_orders", {
       work_order_site_id: row.id,
       jo_number: number,
-      title: `${pick(JO_TITLES)} at ${installation}`,
       start_date: joStart,
       end_date: joEnd,
       description: chance(0.6) ? `Job order issued under ${wo.code} for restoration work at ${installation}.` : null,
@@ -1705,7 +1699,6 @@ function buildWorkOrder(index) {
     purchase_order_code: `${int(4_100_000_000, 4_199_999_999)}`,
     agreement_number: `AGR/${client._short.replace(/\s+/g, "")}/${yy(start)}/${int(100, 999)}`,
     rate_contract_number: `RC-${int(8_000_000_000, 8_099_999_999)}`,
-    title: PROCESS_TITLES[processType](client).slice(0, 255),
     proposal_id: proposal.id,
     client_id: client.id,
     office_id: office.id,
