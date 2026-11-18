@@ -52,7 +52,7 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
       <div className='flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5'>
         <span
           className='inline-flex shrink-0 items-center gap-2'
-          title={`Only the operators assigned here can upload documents to this ${subject}.`}>
+          title={`Only the operators assigned here can upload documents to this ${subject}. Their uploads are on the work order page.`}>
           <Users className='size-3.5 text-gray-400' />
           <span className='text-xs font-medium text-gray-700'>
             Site operators
@@ -64,7 +64,7 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
         ) : operators.length === 0 ? (
           <span className='text-xs text-gray-400'>
             None assigned yet. Only assigned operators can upload documents to
-            this {subject}.
+            this {subject}, which then appear on the work order page.
           </span>
         ) : (
           <div className='flex min-w-0 flex-wrap gap-1.5'>

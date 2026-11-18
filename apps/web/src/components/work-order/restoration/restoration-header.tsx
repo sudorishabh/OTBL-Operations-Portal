@@ -1,12 +1,6 @@
 "use client";
 import React from "react";
-import {
-  CalendarDays,
-  ChevronRight,
-  FolderOpen,
-  HardHat,
-  RotateCcw,
-} from "lucide-react";
+import { CalendarDays, HardHat, RotateCcw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatDateRange, scheduleNote } from "@/lib/wo-site-display";
@@ -22,18 +16,12 @@ interface Props {
     end_date: string | Date | null;
   };
   restoration: Restoration;
-  operatorUploadsCount: number;
-  onOpenOperatorUploads: () => void;
 }
 
 // Where the restoration stands, who its job orders give work to, and who can
-// upload to it. Laid out like a site's information card.
-const RestorationHeader = ({
-  workOrder,
-  restoration,
-  operatorUploadsCount,
-  onOpenOperatorUploads,
-}: Props) => {
+// upload to it; their uploads are on the work order page. Laid out like a
+// site's information card.
+const RestorationHeader = ({ workOrder, restoration }: Props) => {
   const summaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery({
     work_order_site_id: restoration.id,
   });
@@ -98,18 +86,6 @@ const RestorationHeader = ({
             </div>
           </div>
         </div>
-        {operatorUploadsCount > 0 && (
-          <button
-            type='button'
-            onClick={onOpenOperatorUploads}
-            title='View operator uploads'
-            className='group inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/30'>
-            <FolderOpen className='size-3.5 text-gray-400' />
-            {operatorUploadsCount} operator{" "}
-            {operatorUploadsCount === 1 ? "upload" : "uploads"}
-            <ChevronRight className='-mr-0.5 size-3.5 text-gray-400 transition-transform group-hover:translate-x-0.5' />
-          </button>
-        )}
       </div>
 
       <WoSiteOperatorsSection

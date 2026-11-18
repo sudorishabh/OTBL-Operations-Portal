@@ -3,7 +3,6 @@ import React from "react";
 import { MapPin } from "lucide-react";
 import { capitalFirstLetter } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
-import useHandleParams from "@/hooks/useHandleParams";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import { workOrderChildTrail } from "@/lib/breadcrumbs";
 import Error from "@/components/shared/error";
@@ -13,7 +12,6 @@ import type { WorkOrderFrom } from "../work-order-path";
 import SiteDetailsCard from "./site-details-card";
 import SiteExecution from "./site-execution";
 import SiteAvailability from "./site-availability";
-import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 
 interface Props {
   workOrderId: string;
@@ -25,7 +23,6 @@ interface Props {
 // A work order site's own page: its information, estimate and completion,
 // then the work carried out there.
 const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
-  const { setParam } = useHandleParams();
   const id = Number(woSiteId);
 
   const siteDetailsQuery =
@@ -34,12 +31,6 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
       { enabled: id > 0 },
     );
   const siteDetails = siteDetailsQuery.data;
-
-  const operatorUploadsQuery =
-    trpc.workOrderSiteQuery.getOperatorUploads.useQuery(
-      { work_order_site_id: id },
-      { enabled: id > 0 },
-    );
 
   if (siteDetailsQuery.isLoading) return <SiteDetailsSkeleton from={from} />;
 
@@ -101,13 +92,7 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
       description={description}
       breadcrumbs={breadcrumbs}>
       <div className='mt-4 space-y-4'>
-        <SiteDetailsCard
-          siteDetails={siteDetails}
-          operatorUploadsCount={operatorUploadsQuery.data?.length ?? 0}
-          onOpenOperatorUploads={() =>
-            setParam("site-dialog", "operator-uploads")
-          }
-        />
+        <SiteDetailsCard siteDetails={siteDetails} />
 
         {/* A panel of its own, absent until there is something to show. */}
         <SiteAvailability
@@ -124,12 +109,6 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
           />
         </section>
       </div>
-
-      <SiteOperatorUploadsDialog
-        siteName={siteDetails.site.name ?? undefined}
-        uploads={operatorUploadsQuery.data ?? []}
-        isLoading={operatorUploadsQuery.isLoading}
-      />
     </PageWrapper>
   );
 };

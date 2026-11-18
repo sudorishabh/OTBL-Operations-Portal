@@ -1,5 +1,5 @@
 import React from "react";
-import { CalendarDays, ChevronRight, FolderOpen, MapPin } from "lucide-react";
+import { CalendarDays, MapPin } from "lucide-react";
 
 import { constants } from "@pkg/utils";
 import { cn } from "@/lib/utils";
@@ -55,8 +55,6 @@ interface WorkOrderSiteDetails {
 
 interface Props {
   siteDetails: WorkOrderSiteDetails | undefined | null;
-  operatorUploadsCount?: number;
-  onOpenOperatorUploads?: () => void;
 }
 
 // One stage of the site's paperwork: a numbered heading, then its
@@ -109,11 +107,8 @@ const STATUS_STYLES: Record<
   },
 };
 
-const SiteDetailsCard = ({
-  siteDetails,
-  operatorUploadsCount = 0,
-  onOpenOperatorUploads,
-}: Props) => {
+// Its operators' uploads are on the work order page, with every site's.
+const SiteDetailsCard = ({ siteDetails }: Props) => {
   const isAdmin = useIsAdmin();
 
   const address = [
@@ -169,18 +164,6 @@ const SiteDetailsCard = ({
             </span>
           </div>
         </div>
-        {operatorUploadsCount > 0 && onOpenOperatorUploads && (
-          <button
-            type='button'
-            onClick={onOpenOperatorUploads}
-            title='View operator uploads'
-            className='group inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
-            <FolderOpen className='size-3.5 text-gray-400' />
-            {operatorUploadsCount} operator{" "}
-            {operatorUploadsCount === 1 ? "upload" : "uploads"}
-            <ChevronRight className='-mr-0.5 size-3.5 text-gray-400 transition-transform group-hover:translate-x-0.5' />
-          </button>
-        )}
       </div>
 
       {siteDetails?.id && (
