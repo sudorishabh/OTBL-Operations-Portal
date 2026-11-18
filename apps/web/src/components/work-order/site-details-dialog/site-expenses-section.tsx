@@ -133,8 +133,10 @@ const ORDER_GROUPS = [
 const orderItemTitle = (item: SiteOrderItem) =>
   `${item.order_code} · ${itemLabel(item.item, item.description)}`;
 
-// The tab of expenses under no vendor, when expenses are shown in tabs.
+// The tabs of expenses under no vendor, and of vendor expenses in no group,
+// when expenses are shown in tabs.
 const MISCELLANEOUS_TAB = "miscellaneous";
+const UNASSIGNED_TAB = "unassigned";
 
 // Tighter than the table defaults, so a record takes one compact row.
 const headClass =
@@ -884,11 +886,14 @@ const SiteExpensesSection = ({
 
   // The grouped sections, then vendor expenses in no group (recorded before
   // the groups were kept), then the miscellaneous ones under no vendor. As
-  // tabs, each section and the miscellaneous expenses are a tab of their own.
+  // tabs, each section and the miscellaneous expenses are a tab of their own;
+  // the vendor expenses in no group join the first, or get a tab of their own
+  // when it is named and they have any.
   const renderGroupedExpenses = ({
     sections,
     unassignedTitle,
     asTabs = false,
+    unassignedTab,
   }: {
     sections: {
       key: string;
@@ -901,6 +906,7 @@ const SiteExpensesSection = ({
     }[];
     unassignedTitle: string;
     asTabs?: boolean;
+    unassignedTab?: string;
   }) => {
     const groupedIds = new Set(
       sections.flatMap((section) =>
@@ -976,8 +982,6 @@ const SiteExpensesSection = ({
       );
 
     if (asTabs) {
-      // A tab for each section, the first with the vendor expenses in no
-      // group, then one for the miscellaneous expenses.
       const tabs = [
         ...sections.map((section, index) => ({
           key: section.key,
@@ -987,10 +991,21 @@ const SiteExpensesSection = ({
           content: (
             <div className='space-y-6'>
               {sectionNodes[index]}
-              {index === 0 && unassignedNode}
+              {index === 0 && !unassignedTab && unassignedNode}
             </div>
           ),
         })),
+        ...(unassignedTab && unassignedRecords.length > 0
+          ? [
+              {
+                key: UNASSIGNED_TAB,
+                Icon: HardHat,
+                label: unassignedTab,
+                count: unassignedRecords.length,
+                content: unassignedNode,
+              },
+            ]
+          : []),
         {
           key: MISCELLANEOUS_TAB,
           Icon: ReceiptIndianRupee,
@@ -1255,6 +1270,8 @@ const SiteExpensesSection = ({
             };
           }),
           unassignedTitle: "Vendor expenses not on an order",
+          asTabs: true,
+          unassignedTab: "Not on an order",
         })
       ) : isRestoration ? (
         renderGroupedExpenses({
