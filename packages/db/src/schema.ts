@@ -48,6 +48,8 @@ export const userTable = mysqlTable(
   "users",
   {
     id: int("id").autoincrement().primaryKey(),
+    // The user's own code, such as USR-0007, numbered as they are added.
+    code: varchar("code", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     email: varchar("email", { length: 320 }).notNull().unique(),
     password: varchar("password", { length: 255 }).notNull(),
@@ -85,6 +87,8 @@ export const userTable = mysqlTable(
 // none, so those columns are nullable here.
 export const parentClientTable = mysqlTable("parent_clients", {
   id: int("id").autoincrement().primaryKey(),
+  // The main client's own code, such as MCL-0002, numbered as it is added.
+  code: varchar("code", { length: 20 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   address: varchar("address", { length: 255 }),
   state: varchar("state", { length: 255 }),
@@ -105,6 +109,8 @@ export const parentClientTable = mysqlTable("parent_clients", {
 
 export const clientTable = mysqlTable("clients", {
   id: int("id").autoincrement().primaryKey(),
+  // The client's own code, such as CLT-0014, numbered as it is added.
+  code: varchar("code", { length: 20 }).notNull().unique(),
   parent_client_id: int("parent_client_id").references(
     () => parentClientTable.id,
     { onDelete: "set null" },
@@ -171,6 +177,8 @@ export const officeTable = mysqlTable(
   "offices",
   {
     id: int("id").autoincrement().primaryKey(),
+    // The office's own code, such as OFF-0003, numbered as it is added.
+    code: varchar("code", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     address: varchar("address", { length: 255 }).notNull(),
     state: varchar("state", { length: 255 }).notNull(),
@@ -198,6 +206,8 @@ export const siteTable = mysqlTable(
   "sites",
   {
     id: int("id").autoincrement().primaryKey(),
+    // The site's own code, such as SITE-0042, numbered as it is added.
+    code: varchar("code", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     address: varchar("address", { length: 255 }).notNull(),
     state: varchar("state", { length: 255 }).notNull(),

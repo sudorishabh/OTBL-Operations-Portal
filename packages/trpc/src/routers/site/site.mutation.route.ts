@@ -6,6 +6,8 @@ import { notFound, fromDatabaseError } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { assertOfficeManager } from "../../helper/office-permissions";
 import { siteSchemas } from "@pkg/schema";
+import { CODE_PREFIX } from "@pkg/utils";
+import { nextCode } from "../../helper/record-code";
 
 const { siteTable } = schema;
 
@@ -15,10 +17,13 @@ export const siteMutationRouter = router({
       await assertOfficeManager(ctx, input.office_id);
 
       try {
-        const [createdSite] = await ctx.db
-          .insert(siteTable)
-          .values(input)
-          .$returningId();
+        const [createdSite] = await ctx.db.transaction(async (tx) => {
+          const code = await nextCode(tx, siteTable, CODE_PREFIX.SITE);
+          return tx
+            .insert(siteTable)
+            .values({ ...input, code })
+            .$returningId();
+        });
 
         if (!createdSite) {
           throw notFound("Site", undefined, {

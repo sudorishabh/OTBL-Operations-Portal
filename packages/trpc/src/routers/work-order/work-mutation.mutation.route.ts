@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { schema } from "@pkg/db";
-import { constants } from "@pkg/utils";
+import { CODE_PREFIX, constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure, adminProcedure } from "../../middleware";
 import { workOrderSchemas } from "@pkg/schema";
@@ -13,6 +13,7 @@ import {
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { assertOfficeManager } from "../../helper/office-permissions";
+import { nextCode } from "../../helper/record-code";
 import {
   coversRestoration,
   createRestorationRow,
@@ -433,6 +434,7 @@ export const workOrderMutationRouter = router({
 
             const [siteResult] = await tx.insert(siteTable).values({
               ...input.new_site,
+              code: await nextCode(tx, siteTable, CODE_PREFIX.SITE),
               office_id: officeId,
             });
             siteId = siteResult.insertId;

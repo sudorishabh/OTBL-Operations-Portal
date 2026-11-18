@@ -3,8 +3,10 @@ import { schema, type Database } from "@pkg/db";
 import { router } from "../../trpc";
 import { adminProcedure } from "../../middleware";
 import { clientSchemas } from "@pkg/schema";
+import { CODE_PREFIX } from "@pkg/utils";
 import { notFound, alreadyExists, fromDatabaseError } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { nextCode } from "../../helper/record-code";
 
 const { parentClientTable, clientTable, clientContactTable } = schema;
 
@@ -59,9 +61,14 @@ export const clientMutationRouter = router({
 
         try {
           const parentClientId = await ctx.db.transaction(async (tx) => {
+            const code = await nextCode(
+              tx,
+              parentClientTable,
+              CODE_PREFIX.MAIN_CLIENT,
+            );
             const result = await tx
               .insert(parentClientTable)
-              .values(parentClient);
+              .values({ ...parentClient, code });
             const id = result[0].insertId;
 
             if (contacts && contacts.length > 0) {
@@ -172,11 +179,15 @@ export const clientMutationRouter = router({
       await assertParentClientExists(ctx.db, input.parent_client_id);
 
       try {
-        const result = await ctx.db.insert(clientTable).values(input);
+        const clientId = await ctx.db.transaction(async (tx) => {
+          const code = await nextCode(tx, clientTable, CODE_PREFIX.CLIENT);
+          const result = await tx.insert(clientTable).values({ ...input, code });
+          return result[0].insertId;
+        });
 
         return {
           success: true,
-          clientId: result[0].insertId,
+          clientId,
         };
       } catch (error) {
         throw fromDatabaseError(error, "Creating client");
@@ -191,21 +202,23 @@ export const clientMutationRouter = router({
         await assertParentClientExists(ctx.db, input.client.parent_client_id);
 
         try {
-          const clientResult = await ctx.db
-            .insert(clientTable)
-            .values(input.client);
-          const clientId = clientResult[0].insertId;
+          const clientId = await ctx.db.transaction(async (tx) => {
+            const code = await nextCode(tx, clientTable, CODE_PREFIX.CLIENT);
+            const clientResult = await tx
+              .insert(clientTable)
+              .values({ ...input.client, code });
+            const id = clientResult[0].insertId;
 
-          if (input.contacts && input.contacts.length > 0) {
-            const contactsWithClientId = input.contacts.map((contact) => ({
-              ...contact,
-              client_id: clientId,
-            }));
-
-            await ctx.db
-              .insert(clientContactTable)
-              .values(contactsWithClientId);
-          }
+            if (input.contacts && input.contacts.length > 0) {
+              await tx.insert(clientContactTable).values(
+                input.contacts.map((contact) => ({
+                  ...contact,
+                  client_id: id,
+                })),
+              );
+            }
+            return id;
+          });
 
           return {
             success: true,
