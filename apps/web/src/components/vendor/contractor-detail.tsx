@@ -3,7 +3,12 @@ import React from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ClipboardList, HardHat, ShoppingCart, Wrench } from "lucide-react";
-import { capitalFirstLetter, constants, formatCurrency } from "@pkg/utils";
+import {
+  capitalFirstLetter,
+  capitalizeEachWord,
+  constants,
+  formatCurrency,
+} from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -116,7 +121,12 @@ const ContractorDetail = ({ contractorId }: Props) => {
                 <RecordCode code={contractor.code} />
               </div>
               <p className='text-xs text-gray-500'>
-                {[contractor.contact_number, contractor.email, contractor.address]
+                {[
+                  contractor.contact_number,
+                  contractor.email,
+                  contractor.address,
+                  contractor.state && capitalizeEachWord(contractor.state),
+                ]
                   .filter(Boolean)
                   .join(" · ") || "No contact details"}
               </p>

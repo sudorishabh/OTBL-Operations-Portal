@@ -12,7 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -70,6 +70,7 @@ type Vendor = {
   contact_number: string | null;
   email: string | null;
   address: string | null;
+  state: string | null;
   gst_number: string | null;
   pan_number: string | null;
   status: string;
@@ -215,6 +216,7 @@ const VendorPage = () => {
             <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
               <TableHead className={headClass}>Vendor</TableHead>
               <TableHead className={headClass}>Contact</TableHead>
+              <TableHead className={headClass}>State</TableHead>
               <TableHead className={headClass}>GST / PAN</TableHead>
               <TableHead className={headClass}>Status</TableHead>
               <TableHead className={cn(headClass, "w-12")}>
@@ -249,6 +251,9 @@ const VendorPage = () => {
                   {vendor.email && (
                     <p className='text-xs text-gray-400'>{vendor.email}</p>
                   )}
+                </TableCell>
+                <TableCell className={cellClass}>
+                  {vendor.state ? capitalizeEachWord(vendor.state) : "—"}
                 </TableCell>
                 <TableCell className={cn(cellClass, "tabular-nums")}>
                   <p>{vendor.gst_number || "—"}</p>
@@ -360,7 +365,7 @@ const VendorPage = () => {
       <FilterBar>
         <SearchFilter
           label='Search vendors'
-          placeholder='Search by code, name, contact, email or GST'
+          placeholder='Search by code, name, contact, email, GST or state'
           value={search}
           onChange={setSearch}
         />

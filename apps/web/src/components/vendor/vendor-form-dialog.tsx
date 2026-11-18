@@ -28,6 +28,7 @@ const EMPTY_FORM: VendorFormInput = {
   contact_number: "",
   email: "",
   address: "",
+  state: "",
   gst_number: "",
   pan_number: "",
   status: STATUS.ACTIVE,
@@ -78,6 +79,7 @@ const VendorFormDialog = ({
             contact_number: vendor.contact_number ?? "",
             email: vendor.email ?? "",
             address: vendor.address ?? "",
+            state: vendor.state ?? "",
             gst_number: vendor.gst_number ?? "",
             pan_number: vendor.pan_number ?? "",
             status: vendor.status,
@@ -164,6 +166,13 @@ const VendorFormDialog = ({
                 fieldName='pan_number'
                 Label='PAN'
                 placeholder='e.g. ABCDE1234F'
+                optional
+              />
+              <CustomInput
+                control={form.control}
+                fieldName='state'
+                Label='State'
+                placeholder='e.g. Assam'
                 optional
               />
             </div>
