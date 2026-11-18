@@ -11,7 +11,7 @@ const ClientWorkOrderRestorationPage = ({ params }: PageProps) => {
   const { workOrderId } = React.use(params);
 
   return (
-    <React.Suspense fallback={<RestorationPageSkeleton />}>
+    <React.Suspense fallback={<RestorationPageSkeleton from='client' />}>
       <RestorationPage
         workOrderId={workOrderId}
         from='client'

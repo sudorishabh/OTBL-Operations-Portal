@@ -11,7 +11,7 @@ const ClientWorkOrderSitePage = ({ params }: PageProps) => {
   const { workOrderId, woSiteId } = React.use(params);
 
   return (
-    <React.Suspense fallback={<SiteDetailsSkeleton />}>
+    <React.Suspense fallback={<SiteDetailsSkeleton from='client' />}>
       <SiteDetailsPage
         workOrderId={workOrderId}
         woSiteId={woSiteId}

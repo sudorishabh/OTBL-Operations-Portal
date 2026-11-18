@@ -34,6 +34,7 @@ const {
   workOrderSiteUserTable,
   siteTable,
   workOrderTable,
+  clientTable,
   userTable,
   siteActivityTable,
   workOrderSiteDocsTable,
@@ -620,6 +621,8 @@ export const workOrderSiteQueryRouter = router({
               wo_title: workOrderTable.title,
               wo_process_type: workOrderTable.process_type,
               wo_office_id: workOrderTable.office_id,
+              wo_client_id: workOrderTable.client_id,
+              wo_client_name: clientTable.name,
               wo_job_number: workOrderTable.job_number,
               wo_area: workOrderTable.area,
               wo_installation_type: workOrderTable.installation_type,
@@ -633,6 +636,7 @@ export const workOrderSiteQueryRouter = router({
               workOrderTable,
               eq(workOrderSiteTable.work_order_id, workOrderTable.id),
             )
+            .leftJoin(clientTable, eq(workOrderTable.client_id, clientTable.id))
             .where(eq(workOrderSiteTable.id, work_order_site_id));
 
           if (woSites.length === 0) {
@@ -674,6 +678,8 @@ export const workOrderSiteQueryRouter = router({
               title: woSite.wo_title,
               process_type: woSite.wo_process_type,
               office_id: woSite.wo_office_id,
+              client_id: woSite.wo_client_id,
+              client_name: woSite.wo_client_name,
               job_number: woSite.wo_job_number,
               area: woSite.wo_area,
               installation_type: woSite.wo_installation_type,

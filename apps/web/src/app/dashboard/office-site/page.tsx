@@ -1,4 +1,5 @@
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { sectionTrail } from "@/lib/breadcrumbs";
 import React, { Suspense } from "react";
 import CreateOfficeButton from "@/components/office-site/create-office-btn";
 import OfficeSitePage from "@/components/office-site/office-site-page";
@@ -17,6 +18,7 @@ const page = () => {
         ROLES.VIEWER,
       ]}>
       <PageWrapper
+        breadcrumbs={sectionTrail("offices")}
         title='Offices & Sites'
         description='Manage your office locations and work sites'
         button={

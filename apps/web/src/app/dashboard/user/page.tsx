@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { sectionTrail } from "@/lib/breadcrumbs";
 import CreateUserButton from "@/components/user/create-user-button";
 import UserPageSkeleton from "@/components/skeleton/user/user-page-skeleton";
 import { AdminRoute } from "@/components/auth";
@@ -13,6 +14,7 @@ const page = () => {
   return (
     <AdminRoute>
       <PageWrapper
+        breadcrumbs={sectionTrail("users")}
         title='User Management'
         description='Manage users, assign them to offices, and track their work locations'
         button={

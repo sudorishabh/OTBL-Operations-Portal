@@ -30,7 +30,6 @@ import {
 import { capitalFirstLetter, constants } from "@pkg/utils";
 import { format } from "date-fns";
 import {
-  ArrowLeft,
   Camera,
   ExternalLink,
   FileText,
@@ -41,12 +40,12 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonRegion, TextLine } from "@/components/skeleton/parts";
+import PageBreadcrumbs from "@/components/shared/page-breadcrumbs";
 
 const { MAX_DOCUMENTS, PHOTO_EXTENSIONS } = constants;
 
@@ -196,16 +195,19 @@ export default function WoSiteOperatorUploadPage() {
     }
   };
 
+  // Named once the site loads.
+  const siteName = siteDetails?.site?.name;
+
   const shell = (children: React.ReactNode) => (
     <div className='min-h-svh bg-gray-100'>
       <header className='bg-cyan-900 px-4 py-3 sm:px-6'>
         <div className='mx-auto flex max-w-3xl items-center justify-between gap-3'>
-          <Link
-            href='/dashboard/wo-site'
-            className='inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-[13px] font-medium text-cyan-50 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'>
-            <ArrowLeft className='size-4' />
-            My sites
-          </Link>
+          <PageBreadcrumbs
+            tone='dark'
+            home={{ label: "My sites", href: "/dashboard/wo-site" }}
+            showHomeLabel
+            items={[{ label: siteName ? siteName.toUpperCase() : "Site" }]}
+          />
 
           <button
             type='button'

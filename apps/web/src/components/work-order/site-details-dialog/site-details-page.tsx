@@ -1,15 +1,15 @@
 "use client";
 import React from "react";
-import { useRouter } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { capitalFirstLetter } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { workOrderChildTrail } from "@/lib/breadcrumbs";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import { SiteDetailsSkeleton } from "@/components/skeleton/work-order/site-skeletons";
-import { workOrderPath, type WorkOrderFrom } from "../work-order-path";
+import type { WorkOrderFrom } from "../work-order-path";
 import SiteDetailsCard from "./site-details-card";
 import SiteExecution from "./site-execution";
 import SiteAvailability from "./site-availability";
@@ -18,14 +18,13 @@ import { SiteOperatorUploadsDialog } from "./site-operator-uploads-dialog";
 interface Props {
   workOrderId: string;
   woSiteId: string;
-  // Which work order page to go back to.
+  // Which work order page the trail leads back to.
   from: WorkOrderFrom;
 }
 
 // A work order site's own page: its information, estimate and completion,
 // then the work carried out there.
 const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
-  const router = useRouter();
   const { setParam } = useHandleParams();
   const id = Number(woSiteId);
 
@@ -42,9 +41,7 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
       { enabled: id > 0 },
     );
 
-  const goBack = () => router.push(workOrderPath(workOrderId, from));
-
-  if (siteDetailsQuery.isLoading) return <SiteDetailsSkeleton />;
+  if (siteDetailsQuery.isLoading) return <SiteDetailsSkeleton from={from} />;
 
   if (siteDetailsQuery.isError) {
     return (
@@ -65,7 +62,7 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
     return (
       <PageWrapper
         title='Site'
-        backClick={goBack}>
+        breadcrumbs={workOrderChildTrail({ id: workOrderId, from }, "Site")}>
         <NoFetchData
           title='Site Not Found'
           Icon={MapPin}
@@ -84,12 +81,24 @@ const SiteDetailsPage = ({ workOrderId, woSiteId, from }: Props) => {
   ]
     .filter(Boolean)
     .join(" - ");
+  const breadcrumbs = workOrderChildTrail(
+    {
+      id: workOrderId,
+      code: siteDetails.work_order.code,
+      from,
+      client: {
+        id: siteDetails.work_order.client_id,
+        name: siteDetails.work_order.client_name,
+      },
+    },
+    siteName,
+  );
 
   return (
     <PageWrapper
       title={siteName}
       description={description}
-      backClick={goBack}>
+      breadcrumbs={breadcrumbs}>
       <div className='mt-4 space-y-4'>
         <SiteDetailsCard
           siteDetails={siteDetails}

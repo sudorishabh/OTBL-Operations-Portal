@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CalendarRange,
   CheckCircle2,
@@ -12,13 +11,14 @@ import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { workOrderChildTrail } from "@/lib/breadcrumbs";
 import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import { RestorationPageSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
-import { workOrderPath, type WorkOrderFrom } from "../work-order-path";
+import type { WorkOrderFrom } from "../work-order-path";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
 import JobOrderCertificates from "./job-order-certificates";
@@ -40,13 +40,12 @@ const NO_RATES: any[] = [];
 
 interface Props {
   workOrderId: string;
-  // Which work order page to go back to.
+  // Which work order page the trail leads back to.
   from: WorkOrderFrom;
 }
 
 // The one place restoration work is managed, as it has no sites.
 const RestorationPage = ({ workOrderId, from }: Props) => {
-  const router = useRouter();
   const { setParam } = useHandleParams();
   const [jobOrderDialogOpen, setJobOrderDialogOpen] = useState(false);
   const [editingJobOrder, setEditingJobOrder] = useState<JobOrder | null>(null);
@@ -77,10 +76,8 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
     setJobOrderDialogOpen(true);
   };
 
-  const goBack = () => router.push(workOrderPath(workOrderId, from));
-
   if (workOrderQuery.isLoading || restorationQuery.isLoading) {
-    return <RestorationPageSkeleton />;
+    return <RestorationPageSkeleton from={from} />;
   }
 
   const error = workOrderQuery.error ?? restorationQuery.error;
@@ -106,6 +103,15 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
   const description = [workOrder.code?.toUpperCase(), workOrder.title]
     .filter(Boolean)
     .join(" - ");
+  const breadcrumbs = workOrderChildTrail(
+    {
+      id: workOrderId,
+      code: workOrder.code,
+      from,
+      client: { id: workOrder.client_id, name: workOrder.client_name },
+    },
+    "Restoration",
+  );
 
   if (!restoration) {
     const hasRestoration =
@@ -115,7 +121,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
       <PageWrapper
         title='Restoration'
         description={description}
-        backClick={goBack}>
+        breadcrumbs={breadcrumbs}>
         <NoFetchData
           title='No Restoration'
           Icon={File}
@@ -133,7 +139,7 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
     <PageWrapper
       title='Restoration'
       description={description}
-      backClick={goBack}>
+      breadcrumbs={breadcrumbs}>
       <div className='mt-4 space-y-4'>
         {/* Set on its own once completion certificates use up the schedule of
             rates. */}

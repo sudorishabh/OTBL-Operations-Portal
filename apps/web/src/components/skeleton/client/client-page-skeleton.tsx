@@ -9,7 +9,7 @@ import ClientProposalSkeleton from "./client-proposal-skeleton";
 const ClientPageSkeleton = () => (
   <PageWrapper>
     <PageHeaderSkeleton
-      back
+      trail={2}
       description='Manage Client Info and Work Orders'
       action
     />

@@ -1,6 +1,7 @@
 "use client";
 
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
+import { sectionTrail } from "@/lib/breadcrumbs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -134,6 +135,7 @@ export default function ProfilePage() {
   if (isLoading || !profile) {
     return (
       <PageWrapper
+        breadcrumbs={sectionTrail("profile")}
         title='Profile'
         description='View and update your account details'>
         <ProfileSkeleton />
@@ -145,6 +147,7 @@ export default function ProfilePage() {
 
   return (
     <PageWrapper
+      breadcrumbs={sectionTrail("profile")}
       title='Profile'
       description='View and update your account details'>
       <div className='mt-6 flex max-w-2xl flex-col gap-4'>
