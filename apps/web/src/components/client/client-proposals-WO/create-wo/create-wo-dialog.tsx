@@ -55,6 +55,7 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
   const form = useForm<WorkOrderFormInput, unknown, WorkOrderFormValues>({
     resolver: zodResolver(workOrderFormSchema),
     defaultValues: {
+      purchase_order_code: "",
       agreement_number: "",
       rate_contract_number: "",
       title: "",
@@ -94,6 +95,7 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
 
     setTimeout(() => {
       form.reset({
+        purchase_order_code: "",
         agreement_number: "",
         rate_contract_number: "",
         title: "",
@@ -120,6 +122,7 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
 
   const handleNextStep = async () => {
     const isValid = await form.trigger([
+      "purchase_order_code",
       "agreement_number",
       "rate_contract_number",
       "title",

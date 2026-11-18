@@ -35,6 +35,7 @@ interface Props {
 }
 
 const toFormValues = (workOrder: any): EditFormInput => ({
+  purchase_order_code: workOrder.purchase_order_code ?? "",
   agreement_number: workOrder.agreement_number,
   rate_contract_number: workOrder.rate_contract_number,
   title: workOrder.title,
@@ -146,7 +147,6 @@ const EditWorkOrderDialog = ({ workOrder }: Props) => {
             className='h-full flex flex-col'>
             <div className='flex-1 flex flex-col justify-between h-full'>
               <WorkOrderDetailsFields
-                code={workOrder.code}
                 showProcessType={false}
                 files={files}
                 onFilesChange={(next) => {
