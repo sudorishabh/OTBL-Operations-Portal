@@ -30,6 +30,25 @@ const SOR_ROWS = new Map<string, (typeof JOB_ORDER_ACTIVITIES)[number]>(
 
 export const countsTowardSor = (key: string) => SOR_ROWS.has(key);
 
+// What a job order form says of its bioremediation rows. Their soil is only
+// assessed once the work is under way, so they can't be filled in.
+export const TO_BE_ASSESSED = "To be assessed";
+
+const ASSESSED_LATER_ROWS = new Set<string>(
+  JOB_ORDER_ACTIVITIES.filter((activity) =>
+    BIOREMEDIATION_ACTIVITIES.has(activity.sorActivity),
+  ).map((activity) => activity.key),
+);
+
+export const isAssessedLater = (key: string) => ASSESSED_LATER_ROWS.has(key);
+
+// A job order form's rows, with the bioremediation ones reading "To be
+// assessed" whatever was written against them.
+export const withAssessedLater = <Row extends ActivityRow>(rows: Row[]) =>
+  rows.map((row) =>
+    isAssessedLater(row.key) ? { ...row, quantity: TO_BE_ASSESSED } : row,
+  );
+
 // The number a quantity written on a form stands for: a plain number, maybe
 // with its unit, or the result of a working such as "25 × 20 = 500". Anything
 // else, such as "No" or "To be assessed later", stands for none.

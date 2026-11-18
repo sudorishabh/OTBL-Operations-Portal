@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { constants } from "@pkg/utils";
+import { constants, withAssessedLater } from "@pkg/utils";
 import {
   dateValidator,
   longDescriptionValidator,
@@ -59,10 +59,12 @@ export const baseJobOrderSchema = z
     installation_name: requiredText("Installation name"),
     location: requiredText("Location of the job"),
     mobilization_date: dateValidator.nullable().optional(),
+    // The bioremediation rows always read "To be assessed".
     activities: z
       .array(jobOrderActivitySchema)
       .max(JOB_ORDER_ACTIVITIES.length)
-      .optional(),
+      .optional()
+      .transform((rows) => rows && withAssessedLater(rows)),
   })
   .refine((data) => data.end_date >= data.start_date, {
     message: "End date must be on or after the start date",

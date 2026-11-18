@@ -16,6 +16,9 @@ export {
 } from "./work-order-sor-status";
 export {
   countsTowardSor,
+  TO_BE_ASSESSED,
+  isAssessedLater,
+  withAssessedLater,
   jobOrderQuantity,
   certifiedQuantityByRow,
   certifiedQuantityByActivity,
