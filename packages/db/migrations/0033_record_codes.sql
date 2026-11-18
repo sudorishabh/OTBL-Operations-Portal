@@ -7,7 +7,7 @@ UPDATE `users` AS `t`
 JOIN (
   SELECT `id`, ROW_NUMBER() OVER (ORDER BY `id`) AS `serial` FROM `users`
 ) AS `numbered` ON `numbered`.`id` = `t`.`id`
-SET `t`.`code` = CONCAT('USR-', LPAD(`numbered`.`serial`, 4, '0'));--> statement-breakpoint
+SET `t`.`code` = CONCAT('USR-', IF(`numbered`.`serial` < 10000, LPAD(`numbered`.`serial`, 4, '0'), `numbered`.`serial`));--> statement-breakpoint
 ALTER TABLE `users` MODIFY COLUMN `code` varchar(20) NOT NULL;--> statement-breakpoint
 ALTER TABLE `users` ADD CONSTRAINT `users_code_unique` UNIQUE(`code`);--> statement-breakpoint
 ALTER TABLE `offices` ADD `code` varchar(20);--> statement-breakpoint
@@ -15,7 +15,7 @@ UPDATE `offices` AS `t`
 JOIN (
   SELECT `id`, ROW_NUMBER() OVER (ORDER BY `id`) AS `serial` FROM `offices`
 ) AS `numbered` ON `numbered`.`id` = `t`.`id`
-SET `t`.`code` = CONCAT('OFF-', LPAD(`numbered`.`serial`, 4, '0'));--> statement-breakpoint
+SET `t`.`code` = CONCAT('OFF-', IF(`numbered`.`serial` < 10000, LPAD(`numbered`.`serial`, 4, '0'), `numbered`.`serial`));--> statement-breakpoint
 ALTER TABLE `offices` MODIFY COLUMN `code` varchar(20) NOT NULL;--> statement-breakpoint
 ALTER TABLE `offices` ADD CONSTRAINT `offices_code_unique` UNIQUE(`code`);--> statement-breakpoint
 ALTER TABLE `sites` ADD `code` varchar(20);--> statement-breakpoint
@@ -23,7 +23,7 @@ UPDATE `sites` AS `t`
 JOIN (
   SELECT `id`, ROW_NUMBER() OVER (ORDER BY `id`) AS `serial` FROM `sites`
 ) AS `numbered` ON `numbered`.`id` = `t`.`id`
-SET `t`.`code` = CONCAT('SITE-', LPAD(`numbered`.`serial`, 4, '0'));--> statement-breakpoint
+SET `t`.`code` = CONCAT('SITE-', IF(`numbered`.`serial` < 10000, LPAD(`numbered`.`serial`, 4, '0'), `numbered`.`serial`));--> statement-breakpoint
 ALTER TABLE `sites` MODIFY COLUMN `code` varchar(20) NOT NULL;--> statement-breakpoint
 ALTER TABLE `sites` ADD CONSTRAINT `sites_code_unique` UNIQUE(`code`);--> statement-breakpoint
 ALTER TABLE `clients` ADD `code` varchar(20);--> statement-breakpoint
@@ -31,7 +31,7 @@ UPDATE `clients` AS `t`
 JOIN (
   SELECT `id`, ROW_NUMBER() OVER (ORDER BY `id`) AS `serial` FROM `clients`
 ) AS `numbered` ON `numbered`.`id` = `t`.`id`
-SET `t`.`code` = CONCAT('CLT-', LPAD(`numbered`.`serial`, 4, '0'));--> statement-breakpoint
+SET `t`.`code` = CONCAT('CLT-', IF(`numbered`.`serial` < 10000, LPAD(`numbered`.`serial`, 4, '0'), `numbered`.`serial`));--> statement-breakpoint
 ALTER TABLE `clients` MODIFY COLUMN `code` varchar(20) NOT NULL;--> statement-breakpoint
 ALTER TABLE `clients` ADD CONSTRAINT `clients_code_unique` UNIQUE(`code`);--> statement-breakpoint
 ALTER TABLE `parent_clients` ADD `code` varchar(20);--> statement-breakpoint
@@ -39,6 +39,6 @@ UPDATE `parent_clients` AS `t`
 JOIN (
   SELECT `id`, ROW_NUMBER() OVER (ORDER BY `id`) AS `serial` FROM `parent_clients`
 ) AS `numbered` ON `numbered`.`id` = `t`.`id`
-SET `t`.`code` = CONCAT('MCL-', LPAD(`numbered`.`serial`, 4, '0'));--> statement-breakpoint
+SET `t`.`code` = CONCAT('MCL-', IF(`numbered`.`serial` < 10000, LPAD(`numbered`.`serial`, 4, '0'), `numbered`.`serial`));--> statement-breakpoint
 ALTER TABLE `parent_clients` MODIFY COLUMN `code` varchar(20) NOT NULL;--> statement-breakpoint
 ALTER TABLE `parent_clients` ADD CONSTRAINT `parent_clients_code_unique` UNIQUE(`code`);
