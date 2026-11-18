@@ -388,14 +388,14 @@ const UPLOAD_DESCRIPTIONS = [
 // ---------------------------------------------------------------------------
 
 const COLUMNS = {
-  users: ["id", "name", "email", "password", "contact_number", "role", "created_by", "status", "created_at", "updated_at"],
-  offices: ["id", "name", "address", "state", "city", "gst_number", "pincode", "email", "status", "created_at", "updated_at"],
-  parent_clients: ["id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
-  clients: ["id", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
+  users: ["id", "code", "name", "email", "password", "contact_number", "role", "created_by", "status", "created_at", "updated_at"],
+  offices: ["id", "code", "name", "address", "state", "city", "gst_number", "pincode", "email", "status", "created_at", "updated_at"],
+  parent_clients: ["id", "code", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
+  clients: ["id", "code", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   client_contacts: ["id", "client_id", "parent_client_id", "name", "designation", "contact_number", "email", "contact_type", "created_at", "updated_at"],
   contractors: ["id", "code", "name", "contact_number", "email", "address", "gst_number", "pan_number", "status", "created_at", "updated_at"],
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
-  sites: ["id", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
+  sites: ["id", "code", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
   work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "purchase_order_code", "agreement_number", "rate_contract_number", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
   schedule_of_rates: ["id", "work_order_id", "activity", "unit", "estimated_quantity", "rc_unit_rate", "gst_percentage", "unit_rate_inc_gst", "total_cost", "transportation_km", "transportation_slabs", "created_at", "updated_at"],
@@ -447,8 +447,19 @@ const takenParentNames = new Set();
 const takenProposalCodes = new Set();
 // The last work order serials in use, overall and by financial year.
 const lastWorkOrderSerial = { overall: 0, byYear: new Map() };
-// The last vendor code number in use, as in VEN-0012.
-let lastVendorSerial = 0;
+// The tables whose rows are known by codes, such as USR-0007 or VEN-0012,
+// with each one's prefix and the last code number in use.
+const CODE_PREFIXES = {
+  users: "USR",
+  offices: "OFF",
+  sites: "SITE",
+  clients: "CLT",
+  parent_clients: "MCL",
+  contractors: "VEN",
+};
+const lastCodeSerial = Object.fromEntries(Object.keys(CODE_PREFIXES).map((table) => [table, 0]));
+const nextCode = (table) =>
+  `${CODE_PREFIXES[table]}-${String(++lastCodeSerial[table]).padStart(4, "0")}`;
 
 // ---------------------------------------------------------------------------
 // The database. It is read before anything is built: to check its schema, and
@@ -590,10 +601,12 @@ if (!DRY_RUN || APPEND) {
       "SELECT financial_year AS fy, MAX(fy_serial) AS n FROM work_orders GROUP BY financial_year",
     );
     for (const r of years) lastWorkOrderSerial.byYear.set(r.fy, Number(r.n));
-    const [[{ maxVendor }]] = await db.conn.query(
-      "SELECT COALESCE(MAX(CAST(SUBSTRING(code, 5) AS UNSIGNED)), 0) AS maxVendor FROM contractors",
-    );
-    lastVendorSerial = Number(maxVendor);
+    for (const [table, prefix] of Object.entries(CODE_PREFIXES)) {
+      const [[{ n }]] = await db.conn.query(
+        `SELECT COALESCE(MAX(CAST(SUBSTRING(code, ${prefix.length + 2}) AS UNSIGNED)), 0) AS n FROM \`${table}\``,
+      );
+      lastCodeSerial[table] = Number(n);
+    }
   } else {
     const filled = [];
     for (const table of Object.keys(COLUMNS)) {
@@ -642,6 +655,7 @@ const passwordHash = DRY_RUN
 
 function addUser(role, { name = personName(), email, createdBy = null, status } = {}) {
   return add("users", {
+    code: nextCode("users"),
     name,
     email: email ? uniqueEmail(email.split("@")[0], email.split("@")[1]) : uniqueEmail(name, "otbl.test"),
     password: passwordHash,
@@ -665,6 +679,7 @@ for (let i = 0; i < COUNT; i++) {
   for (let n = 2; usedOfficeNames.has(name); n++) name = `${loc.city} ${pick(OFFICE_KINDS)} ${n}`;
   usedOfficeNames.add(name);
   const office = add("offices", {
+    code: nextCode("offices"),
     name,
     address: address(loc),
     state: loc.state,
@@ -776,6 +791,7 @@ for (let i = 0; i < COUNT; i++) {
   const loc = pick(LOCATIONS);
   const domain = `${slug(base.short).replace(/-/g, "")}.test`;
   const parent = add("parent_clients", {
+    code: nextCode("parent_clients"),
     name,
     address: address(loc),
     state: loc.state,
@@ -808,6 +824,7 @@ const addBranch = (parent) => {
   const loc = pick(FIELD_LOCATIONS);
   const domain = `${slug(parent._short).replace(/-/g, "")}.test`;
   const client = add("clients", {
+    code: nextCode("clients"),
     parent_client_id: parent.id,
     name: `${parent._short} ${loc.city} ${pick(BRANCH_KINDS)}`,
     address: address(loc),
@@ -860,7 +877,7 @@ for (let i = 0; i < COUNT + 20; i++) {
   const name = pick(contractorNames)();
   const panNumber = pan(pick(["C", "F", "P"]), name);
   add("contractors", {
-    code: `VEN-${String(++lastVendorSerial).padStart(4, "0")}`,
+    code: nextCode("contractors"),
     name,
     contact_number: chance(0.9) ? phone() : null,
     email: chance(0.7) ? uniqueEmail("accounts", `${slug(name).replace(/-/g, "")}${i}.test`) : null,
@@ -895,6 +912,7 @@ for (const office of offices) {
     ])();
     list.push(
       add("sites", {
+        code: nextCode("sites"),
         name,
         address: address(loc),
         state: loc.state,
