@@ -22,6 +22,7 @@ export const LIST_SUBGRID = "lg:col-span-full lg:grid lg:grid-cols-subgrid";
 // have none.
 export interface ClientListItem {
   id: number;
+  code: string;
   name: string;
   address?: string | null;
   city?: string | null;

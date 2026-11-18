@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import RecordCode from "@/components/shared/record-code";
 import {
   ChevronDown,
   MoreVertical,
@@ -111,6 +112,7 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
                 className='min-w-0 cursor-pointer truncate text-left text-[15px] font-semibold tracking-tight text-gray-900 outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-emerald-500/30'>
                 {displayName}
               </button>
+              <RecordCode code={parentClient.code} />
               <ClientStatus status={parentClient.status} />
               <MainClientInfoChip
                 parentClient={parentClient}

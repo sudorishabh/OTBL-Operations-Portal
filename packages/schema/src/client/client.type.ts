@@ -21,6 +21,7 @@ export type updateParentClientWithContactsInput = z.infer<
 // Main clients added before they had details have none.
 export type parentClientType = {
   id: number;
+  code: string;
   name: string;
   address: string | null;
   state: string | null;
@@ -67,6 +68,7 @@ export type clientUsersType = {
 export type clientType = {
   address: string;
   id: number;
+  code: string;
   parent_client_id: number | null;
   name: string;
   status: "active" | "inactive";

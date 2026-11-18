@@ -70,7 +70,7 @@ const ClientSearchFilter = () => {
     <FilterBar>
       <SearchFilter
         label='Search clients'
-        placeholder='Search clients, GST, email, city...'
+        placeholder='Search clients by code, name, GST, email, city...'
         value={clientSearchQuery}
         onChange={setClientSearchQuery}
       />

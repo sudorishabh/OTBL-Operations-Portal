@@ -1,4 +1,5 @@
 import React from "react";
+import RecordCode from "@/components/shared/record-code";
 import { ChevronRight } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client }) => {
               title={name}>
               {client.name.toUpperCase()}
             </span>
+            <RecordCode code={client.code} />
             <ClientStatus status={client.status} />
           </div>
           <p
