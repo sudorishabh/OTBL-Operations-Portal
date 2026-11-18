@@ -5,9 +5,10 @@ import { protectedProcedure } from "../../core";
 import { fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { vendorSchemas } from "@pkg/schema";
+import { CODE_PREFIX } from "@pkg/utils";
 import { z } from "zod";
 import { assertCanManageVendors, assertCanUseVendors } from "./vendor-access";
-import { nextVendorCode } from "./vendor-code";
+import { nextCode } from "../../helper/record-code";
 
 const { contractorTable } = schema;
 
@@ -24,7 +25,11 @@ export const contractorMutationRouter = router({
 
         try {
           const created = await ctx.db.transaction(async (tx) => {
-            const code = await nextVendorCode(tx);
+            const code = await nextCode(
+              tx,
+              contractorTable,
+              CODE_PREFIX.VENDOR,
+            );
             const [row] = await tx
               .insert(contractorTable)
               .values({

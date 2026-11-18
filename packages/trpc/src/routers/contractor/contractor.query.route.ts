@@ -20,7 +20,8 @@ import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { z } from "zod";
 import { assertCanUseVendors, canUseVendors } from "./vendor-access";
-import { formatVendorCode } from "./vendor-code";
+import { codeMatches } from "../../helper/record-code";
+import { CODE_PREFIX } from "@pkg/utils";
 import { getAccessScope, workOrderScopeWhere } from "../../access-scope";
 
 const {
@@ -35,21 +36,12 @@ const {
   workOrderSiteExpenseTable,
 } = schema;
 
-// A vendor code typed short, such as "VEN-12", "ven12" or "12", for the
-// vendor whose code is VEN-0012.
-const typedVendorCode = (search: string) => {
-  const match = search.match(/^(?:ven)?[\s-]*0*(\d+)$/i);
-  return match ? formatVendorCode(Number(match[1])) : null;
-};
-
 const searchWhere = (search: string | undefined) => {
   const trimmed = search?.trim();
   if (!trimmed) return undefined;
   const term = `%${escapeLike(trimmed)}%`;
-  const code = typedVendorCode(trimmed);
   return or(
-    like(contractorTable.code, term),
-    code ? eq(contractorTable.code, code) : undefined,
+    codeMatches(contractorTable.code, CODE_PREFIX.VENDOR, trimmed),
     like(contractorTable.name, term),
     like(contractorTable.contact_number, term),
     like(contractorTable.email, term),

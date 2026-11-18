@@ -30,6 +30,12 @@ export {
   type WorkOrderCodeParts,
 } from "./work-order-code";
 export {
+  CODE_PREFIX,
+  formatCode,
+  typedCode,
+  type CodePrefix,
+} from "./record-code";
+export {
   constants,
   dateTimeUtils,
   capitalFirstLetter,
