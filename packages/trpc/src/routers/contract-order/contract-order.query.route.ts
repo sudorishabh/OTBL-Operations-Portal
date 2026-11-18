@@ -1,6 +1,6 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, like, or } from "drizzle-orm";
 import { schema } from "@pkg/db";
-import { constants } from "@pkg/utils";
+import { CODE_PREFIX, constants } from "@pkg/utils";
 import { contractOrderSchemas } from "@pkg/schema";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -11,6 +11,8 @@ import {
 } from "../../access-scope";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
+import { escapeLike } from "../../helper/escape-like";
+import { codeMatches } from "../../helper/record-code";
 import type { TrpcContext } from "../../context";
 
 const {
@@ -27,13 +29,17 @@ const accessScope = (ctx: TrpcContext) =>
 
 // The vendors of each of the given orders, by order.
 async function vendorsByOrder(ctx: TrpcContext, orderIds: number[]) {
-  const byOrder = new Map<number, { id: number; name: string }[]>();
+  const byOrder = new Map<
+    number,
+    { id: number; code: string; name: string }[]
+  >();
   if (orderIds.length === 0) return byOrder;
 
   const rows = await ctx.db
     .select({
       contract_order_id: contractOrderContractorTable.contract_order_id,
       id: contractorTable.id,
+      code: contractorTable.code,
       name: contractorTable.name,
     })
     .from(contractOrderContractorTable)
@@ -46,13 +52,79 @@ async function vendorsByOrder(ctx: TrpcContext, orderIds: number[]) {
 
   for (const row of rows) {
     const vendors = byOrder.get(row.contract_order_id) ?? [];
-    vendors.push({ id: row.id, name: row.name });
+    vendors.push({ id: row.id, code: row.code, name: row.name });
     byOrder.set(row.contract_order_id, vendors);
   }
   return byOrder;
 }
 
 export const contractOrderQueryRouter = router({
+  // A page of the work order's bioremediation sites an order can be for, by
+  // name, so an order form never loads them all at once.
+  findOrderableSites: protectedProcedure
+    .input(contractOrderSchemas.findOrderableSitesSchema)
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        await assertCanAccessWorkOrder(
+          ctx.db,
+          await accessScope(ctx),
+          input.work_order_id,
+        );
+
+        const { page, limit } = input;
+        const search = input.search?.trim();
+        const term = search ? `%${escapeLike(search)}%` : undefined;
+        const where = and(
+          eq(workOrderSiteTable.work_order_id, input.work_order_id),
+          eq(workOrderSiteTable.process_type, constants.WO_PROCESS.BIOREMEDIATION),
+          search && term
+            ? or(
+                codeMatches(siteTable.code, CODE_PREFIX.SITE, search),
+                like(siteTable.name, term),
+                like(siteTable.city, term),
+              )
+            : undefined,
+        );
+
+        try {
+          const [totalRow] = await ctx.db
+            .select({ total: count() })
+            .from(workOrderSiteTable)
+            .innerJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+            .where(where);
+          const total = totalRow?.total ?? 0;
+
+          const sites = await ctx.db
+            .select({
+              id: workOrderSiteTable.id,
+              code: siteTable.code,
+              name: siteTable.name,
+              city: siteTable.city,
+            })
+            .from(workOrderSiteTable)
+            .innerJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+            .where(where)
+            // The id breaks ties so sites never repeat or go missing across
+            // pages.
+            .orderBy(asc(siteTable.name), asc(workOrderSiteTable.id))
+            .limit(limit)
+            .offset((page - 1) * limit);
+
+          return {
+            sites,
+            pagination: {
+              page,
+              limit,
+              total,
+              totalPages: Math.ceil(total / limit),
+            },
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Finding orderable sites");
+        }
+      }),
+    ),
+
   // The work order's bioremediation sites an order can require things at.
   getOrderableSites: protectedProcedure
     .input(contractOrderSchemas.getContractOrdersSchema)
