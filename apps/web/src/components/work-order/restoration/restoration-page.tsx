@@ -20,7 +20,7 @@ import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import type { WorkOrderFrom } from "../work-order-path";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
-import JobOrderCertificates from "./job-order-certificates";
+import JobOrderDocuments from "./job-order-documents";
 import RestorationMonthlyExpensesDialog, {
   MONTHLY_EXPENSES_DIALOG,
 } from "./restoration-monthly-expenses-dialog";
@@ -210,9 +210,10 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
               />
             }
             jobOrderStatus={(jobOrder) => (
-              <JobOrderCertificates
+              <JobOrderDocuments
                 restorationId={restoration.id}
                 jobOrder={jobOrder}
+                kind='certificates'
               />
             )}
             jobOrderActions={(jobOrder) => (

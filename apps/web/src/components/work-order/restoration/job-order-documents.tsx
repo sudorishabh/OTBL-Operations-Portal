@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { Award } from "lucide-react";
+import { Award, type LucideIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
@@ -18,14 +18,42 @@ import DocumentsField from "@/components/shared/documents-field";
 import type { JobOrder } from "./job-order-dialog";
 import { jobOrderPlace } from "./restoration-display";
 
+// The kinds of document a job order keeps, each shown as its own badge.
+const KINDS = {
+  certificates: {
+    Icon: Award,
+    title: "Completion Certificates",
+    one: "certificate",
+    none: "No certificate",
+    uploadLabel: "Upload completion certificates",
+    saved: "Certificates saved",
+    filledStyle:
+      "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100",
+  },
+} satisfies Record<
+  string,
+  {
+    Icon: LucideIcon;
+    title: string;
+    one: string;
+    none: string;
+    uploadLabel: string;
+    saved: string;
+    filledStyle: string;
+  }
+>;
+
+export type JobOrderDocumentKind = keyof typeof KINDS;
+
 interface Props {
   restorationId: number;
   jobOrder: JobOrder;
+  kind: JobOrderDocumentKind;
 }
 
-// A job order's completion certificates, shown as a badge on its row that
-// opens them for viewing or uploading.
-const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
+// One kind of a job order's documents, shown as a badge on its row that opens
+// them for viewing or uploading.
+const JobOrderDocuments = ({ restorationId, jobOrder, kind }: Props) => {
   const isViewer = useIsViewer();
   const { handleError } = useApiError();
   const utils = trpc.useUtils();
@@ -33,7 +61,9 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
   const [files, setFiles] = useState<File[]>([]);
   const [savedDocuments, setSavedDocuments] = useState<StoredDocument[]>([]);
 
-  const certificates = toDocuments(jobOrder.documents);
+  const { Icon, title, one, none, uploadLabel, saved, filledStyle } =
+    KINDS[kind];
+  const documents = toDocuments(jobOrder.documents);
 
   const {
     uploadFiles,
@@ -45,17 +75,18 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
     conflictBehavior: "rename",
   });
 
+  const onSaved = {
+    onSuccess: async () => {
+      toast.success(saved);
+      setOpen(false);
+      await utils.jobOrderQuery.getJobOrders.invalidate({
+        work_order_site_id: restorationId,
+      });
+    },
+    onError: (error: unknown) => handleError(error, { showToast: true }),
+  };
   const saveCertificates =
-    trpc.jobOrderMutation.setJobOrderCertificates.useMutation({
-      onSuccess: async () => {
-        toast.success("Certificates saved");
-        setOpen(false);
-        await utils.jobOrderQuery.getJobOrders.invalidate({
-          work_order_site_id: restorationId,
-        });
-      },
-      onError: (error: unknown) => handleError(error, { showToast: true }),
-    });
+    trpc.jobOrderMutation.setJobOrderCertificates.useMutation(onSaved);
 
   const save = async () => {
     const uploaded = files.length > 0 ? await uploadFiles(files) : [];
@@ -72,27 +103,27 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
     <>
       <button
         type='button'
-        title='Completion certificates'
+        title={title}
         onClick={() => {
           setFiles([]);
-          setSavedDocuments(certificates);
+          setSavedDocuments(documents);
           resetUpload();
           setOpen(true);
         }}
         className={cn(
           "mr-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset transition-colors",
-          certificates.length > 0
-            ? "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100"
+          documents.length > 0
+            ? filledStyle
             : "bg-gray-50 text-gray-500 ring-gray-200 hover:bg-gray-100",
         )}>
-        <Award className='size-3' />
-        {certificates.length > 0
-          ? `${certificates.length} certificate${certificates.length !== 1 ? "s" : ""}`
-          : "No certificate"}
+        <Icon className='size-3' />
+        {documents.length > 0
+          ? `${documents.length} ${one}${documents.length !== 1 ? "s" : ""}`
+          : none}
       </button>
 
       <DialogWindow
-        title={`${jobOrder.jo_number} Completion Certificates`}
+        title={`${jobOrder.jo_number} ${title}`}
         description={jobOrderPlace(jobOrder) || undefined}
         size='md'
         heightMode='auto'
@@ -102,7 +133,7 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
         }}>
         <div className='space-y-4 py-2'>
           <DocumentsField
-            label='Upload completion certificates'
+            label={uploadLabel}
             files={isViewer ? [] : files}
             onFilesChange={setFiles}
             existing={savedDocuments}
@@ -129,7 +160,7 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
               <CustomButton
                 type='button'
                 variant='primary'
-                text='Save certificates'
+                text={`Save ${one}s`}
                 loading={isSaving}
                 disabled={isSaving}
                 onClick={save}
@@ -142,4 +173,4 @@ const JobOrderCertificates = ({ restorationId, jobOrder }: Props) => {
   );
 };
 
-export default JobOrderCertificates;
+export default JobOrderDocuments;
