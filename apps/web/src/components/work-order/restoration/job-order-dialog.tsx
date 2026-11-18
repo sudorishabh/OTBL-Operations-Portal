@@ -30,7 +30,6 @@ import JobOrderVendorsDialog, {
 export interface JobOrder {
   id: number;
   jo_number: string;
-  title: string;
   start_date: string | Date;
   end_date: string | Date;
   description: string | null;
@@ -77,7 +76,6 @@ interface Props {
 // The form's text and date fields, dates as yyyy-MM-dd.
 interface FormValues {
   jo_number: string;
-  title: string;
   start_date: string;
   end_date: string;
   installation_name: string;
@@ -115,7 +113,6 @@ const formValues = (
   workOrder: JobOrderWorkOrder,
 ): FormValues => ({
   jo_number: jobOrder?.jo_number ?? "",
-  title: jobOrder?.title ?? "",
   start_date: toDateInput(jobOrder?.start_date ?? new Date()),
   end_date: toDateInput(jobOrder?.end_date ?? new Date()),
   installation_name: jobOrder?.installation_name ?? "",
@@ -347,7 +344,7 @@ const JobOrderDialog = ({
             <FormSection
               title='Job order'
               description='As the installation manager issues it.'>
-              <div className='grid grid-cols-1 gap-4 sm:grid-cols-[14rem_1fr]'>
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
                 <Field label='Job order number'>
                   <Input
                     value={values.jo_number}
@@ -356,17 +353,6 @@ const JobOrderDialog = ({
                     className='h-9'
                   />
                 </Field>
-                <Field label='Title'>
-                  <Input
-                    value={values.title}
-                    onChange={setValue("title")}
-                    placeholder='What the job order covers'
-                    className='h-9'
-                  />
-                </Field>
-              </div>
-
-              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                 <Field label='Installation name'>
                   <Input
                     value={values.installation_name}
