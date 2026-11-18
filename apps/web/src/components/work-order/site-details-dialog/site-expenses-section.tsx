@@ -27,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Pencil,
@@ -132,6 +133,9 @@ const ORDER_GROUPS = [
 const orderItemTitle = (item: SiteOrderItem) =>
   `${item.order_code} · ${itemLabel(item.item, item.description)}`;
 
+// The tab of expenses under no vendor, when expenses are shown in tabs.
+const MISCELLANEOUS_TAB = "miscellaneous";
+
 // Tighter than the table defaults, so a record takes one compact row.
 const headClass =
   "h-8 px-3 sm:h-8 sm:px-3 text-[11px] font-medium text-gray-400 whitespace-nowrap";
@@ -210,6 +214,9 @@ const SiteExpensesSection = ({
   // The groups opened or folded away from how each starts: open, or folded
   // for a closed job order.
   const [toggledGroups, setToggledGroups] = useState<Set<string>>(new Set());
+  // The tab open when expenses are shown in tabs; the first until one is
+  // chosen.
+  const [groupedTab, setGroupedTab] = useState<string | null>(null);
 
   const [expensePage, setExpensePage] = useState(1);
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
@@ -876,10 +883,12 @@ const SiteExpensesSection = ({
   };
 
   // The grouped sections, then vendor expenses in no group (recorded before
-  // the groups were kept), then the miscellaneous ones under no vendor.
+  // the groups were kept), then the miscellaneous ones under no vendor. As
+  // tabs, each section and the miscellaneous expenses are a tab of their own.
   const renderGroupedExpenses = ({
     sections,
     unassignedTitle,
+    asTabs = false,
   }: {
     sections: {
       key: string;
@@ -891,6 +900,7 @@ const SiteExpensesSection = ({
       groups: ExpenseGroup[];
     }[];
     unassignedTitle: string;
+    asTabs?: boolean;
   }) => {
     const groupedIds = new Set(
       sections.flatMap((section) =>
@@ -910,59 +920,117 @@ const SiteExpensesSection = ({
     );
     const miscellaneousTotal = summary?.byContractor?.none ?? 0;
 
+    const sectionNodes = sections.map((section) => (
+      <section
+        key={section.key}
+        className='space-y-2'>
+        {renderSectionHeader({
+          Icon: section.Icon,
+          title: section.title,
+          meta: section.meta,
+          total: section.groups.reduce((sum, group) => sum + group.total, 0),
+          action: section.action,
+        })}
+        {section.groups.length === 0
+          ? emptyGroupText(section.emptyText)
+          : section.groups.map((group) => renderGroupCard(group))}
+      </section>
+    ));
+
+    const unassignedNode = unassignedRecords.length > 0 && (
+      <section className='space-y-2'>
+        {renderSectionHeader({
+          Icon: HardHat,
+          title: unassignedTitle,
+          meta: `${unassignedRecords.length} expense${unassignedRecords.length !== 1 ? "s" : ""}`,
+          total: expenseTotal - miscellaneousTotal - groupedTotal,
+        })}
+        {renderRecordsBox(unassignedRecords)}
+      </section>
+    );
+
+    const miscellaneousNode = (
+      <section className='space-y-2'>
+        {renderSectionHeader({
+          Icon: ReceiptIndianRupee,
+          title: "Miscellaneous",
+          meta:
+            miscellaneousRecords.length === 0
+              ? "None yet"
+              : `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
+          total: miscellaneousTotal,
+          action: renderAddExpenseButton("Add a miscellaneous expense", () =>
+            openAddExpense("miscellaneous"),
+          ),
+        })}
+        {miscellaneousRecords.length > 0 &&
+          renderRecordsBox(miscellaneousRecords)}
+      </section>
+    );
+
+    const pageNote = expensesPagination &&
+      expensesPagination.total > expenses.length && (
+        <p className='text-xs text-gray-400'>
+          Showing {expenses.length} of {expensesPagination.total} entries
+        </p>
+      );
+
+    if (asTabs) {
+      // A tab for each section, the first with the vendor expenses in no
+      // group, then one for the miscellaneous expenses.
+      const tabs = [
+        ...sections.map((section, index) => ({
+          key: section.key,
+          Icon: section.Icon,
+          label: section.title,
+          count: section.groups.length,
+          content: (
+            <div className='space-y-6'>
+              {sectionNodes[index]}
+              {index === 0 && unassignedNode}
+            </div>
+          ),
+        })),
+        {
+          key: MISCELLANEOUS_TAB,
+          Icon: ReceiptIndianRupee,
+          label: "Miscellaneous",
+          count: miscellaneousRecords.length,
+          content: miscellaneousNode,
+        },
+      ];
+      const active = tabs.find((tab) => tab.key === groupedTab) ?? tabs[0]!;
+
+      return (
+        <div className='space-y-4'>
+          <Tabs
+            value={active.key}
+            onValueChange={setGroupedTab}>
+            <TabsList className='h-8'>
+              {tabs.map(({ key, Icon, label, count }) => (
+                <TabsTrigger
+                  key={key}
+                  value={key}
+                  className='gap-1.5 px-2.5 text-xs text-gray-800'>
+                  <Icon className='size-3.5 text-gray-500' />
+                  {label}
+                  <span className='tabular-nums text-gray-400'>{count}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          {active.content}
+          {pageNote}
+        </div>
+      );
+    }
+
     return (
       <div className='space-y-6'>
-        {sections.map((section) => (
-          <section
-            key={section.key}
-            className='space-y-2'>
-            {renderSectionHeader({
-              Icon: section.Icon,
-              title: section.title,
-              meta: section.meta,
-              total: section.groups.reduce((sum, group) => sum + group.total, 0),
-              action: section.action,
-            })}
-            {section.groups.length === 0
-              ? emptyGroupText(section.emptyText)
-              : section.groups.map((group) => renderGroupCard(group))}
-          </section>
-        ))}
-
-        {unassignedRecords.length > 0 && (
-          <section className='space-y-2'>
-            {renderSectionHeader({
-              Icon: HardHat,
-              title: unassignedTitle,
-              meta: `${unassignedRecords.length} expense${unassignedRecords.length !== 1 ? "s" : ""}`,
-              total: expenseTotal - miscellaneousTotal - groupedTotal,
-            })}
-            {renderRecordsBox(unassignedRecords)}
-          </section>
-        )}
-
-        <section className='space-y-2'>
-          {renderSectionHeader({
-            Icon: ReceiptIndianRupee,
-            title: "Miscellaneous",
-            meta:
-              miscellaneousRecords.length === 0
-                ? "None yet"
-                : `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
-            total: miscellaneousTotal,
-            action: renderAddExpenseButton("Add a miscellaneous expense", () =>
-              openAddExpense("miscellaneous"),
-            ),
-          })}
-          {miscellaneousRecords.length > 0 &&
-            renderRecordsBox(miscellaneousRecords)}
-        </section>
-
-        {expensesPagination && expensesPagination.total > expenses.length && (
-          <p className='text-xs text-gray-400'>
-            Showing {expenses.length} of {expensesPagination.total} entries
-          </p>
-        )}
+        {sectionNodes}
+        {unassignedNode}
+        {miscellaneousNode}
+        {pageNote}
       </div>
     );
   };
@@ -1218,6 +1286,7 @@ const SiteExpensesSection = ({
             },
           ],
           unassignedTitle: "Vendor expenses not on a job order",
+          asTabs: true,
         })
       ) : records.length === 0 ? (
         <div className='text-center py-10 border border-dashed rounded-xl bg-gray-50/30'>
