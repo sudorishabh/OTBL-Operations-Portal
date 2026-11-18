@@ -5,10 +5,13 @@ import DocumentsField from "@/components/shared/documents-field";
 import type { StoredDocument } from "@/lib/documents";
 import { constants } from "@pkg/utils";
 import { useFormContext } from "react-hook-form";
+import WorkOrderCodeField from "./work-order-code-field";
 
 const { processTypeOptions } = constants;
 
 interface Props {
+  // A saved work order's code; a new one's is shown as it will be numbered.
+  code?: string;
   // The process type is fixed once the work order exists.
   showProcessType?: boolean;
   files: File[];
@@ -23,6 +26,7 @@ interface Props {
 // The work order's own details and documents, shared by the create and edit
 // forms. Reads the form from context.
 const WorkOrderDetailsFields = ({
+  code,
   showProcessType = true,
   files,
   onFilesChange,
@@ -45,12 +49,7 @@ const WorkOrderDetailsFields = ({
             placeholder='Enter title'
           />
         </div>
-        <Input
-          control={form.control}
-          fieldName='code'
-          Label='Work Order Code'
-          placeholder='Enter work order code'
-        />
+        <WorkOrderCodeField code={code} />
 
         {showProcessType && (
           <Input
@@ -96,37 +95,9 @@ const WorkOrderDetailsFields = ({
 
         <Input
           control={form.control}
-          fieldName='job_number'
-          Label='Job Number'
-          placeholder='Enter job number'
-        />
-        <Input
-          control={form.control}
-          fieldName='joint_estimate_number'
-          Label='Joint Estimate Number'
-          placeholder='Enter joint estimate number'
-        />
-        <Input
-          control={form.control}
           fieldName='area'
           Label='Area'
           placeholder='Enter area'
-        />
-      </div>
-
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-        <Input
-          control={form.control}
-          fieldName='installation_type'
-          Label='Installation Type'
-          placeholder='Enter installation type'
-        />
-
-        <Input
-          control={form.control}
-          fieldName='land_owner_name'
-          Label='Land Owner Name'
-          placeholder='Enter land owner name'
         />
       </div>
 

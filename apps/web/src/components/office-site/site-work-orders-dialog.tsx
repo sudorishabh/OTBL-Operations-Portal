@@ -15,7 +15,6 @@ type WoSiteRow = {
   work_order_id: number;
   wo_code: string;
   wo_title: string;
-  job_number: string;
   status: string;
   operators: Operator[];
 };
@@ -83,11 +82,6 @@ const SiteWorkOrdersDialog = () => {
                       {capitalFirstLetter(row.wo_title)}
                     </span>
                   </div>
-                  {row.job_number ? (
-                    <p className='mt-0.5 text-[11px] text-slate-400'>
-                      Job no. {row.job_number}
-                    </p>
-                  ) : null}
                 </div>
                 <span
                   className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusClasses(

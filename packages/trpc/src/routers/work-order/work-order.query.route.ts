@@ -14,6 +14,7 @@ import { workOrderSchemas } from "@pkg/schema";
 
 const {
   getWorkOrderSchema,
+  getNextWorkOrderCodeSchema,
   getWorkOrdersByOfficeSchema,
   getWorkOrdersByClientSchema,
   getAllWorkOrdersPaginatedSchema,
@@ -27,6 +28,7 @@ import { hasPhysicalSite, siteNameOrRestoration } from "../../helper/restoration
 import { USER_ROLES } from "../../authorization";
 import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
+import { nextWorkOrderCode } from "./work-order-code";
 
 const {
   workOrderTable,
@@ -324,6 +326,16 @@ export const workOrderQueryRouter = router({
     }),
   ),
 
+  // Shown on the create form; the code itself is numbered when it is saved.
+  getNextWorkOrderCode: protectedProcedure
+    .input(getNextWorkOrderCodeSchema)
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const { code } = await nextWorkOrderCode(ctx.db, input.start_date);
+        return { code };
+      }),
+    ),
+
   getWorkOrder: protectedProcedure.input(getWorkOrderSchema).query(
     handleQuery(async ({ input, ctx }) => {
       const { id } = input;
@@ -356,11 +368,7 @@ export const workOrderQueryRouter = router({
             process_type: workOrderTable.process_type,
             proposal_id: workOrderTable.proposal_id,
             description: workOrderTable.description,
-            job_number: workOrderTable.job_number,
             area: workOrderTable.area,
-            installation_type: workOrderTable.installation_type,
-            joint_estimate_number: workOrderTable.joint_estimate_number,
-            land_owner_name: workOrderTable.land_owner_name,
             remarks: workOrderTable.remarks,
             status: workOrderTable.status,
             cancellation_reason: workOrderTable.cancellation_reason,
@@ -671,11 +679,7 @@ export const workOrderQueryRouter = router({
             documents: workOrderTable.documents,
             process_type: workOrderTable.process_type,
             proposal_id: workOrderTable.proposal_id,
-            job_number: workOrderTable.job_number,
             area: workOrderTable.area,
-            installation_type: workOrderTable.installation_type,
-            joint_estimate_number: workOrderTable.joint_estimate_number,
-            land_owner_name: workOrderTable.land_owner_name,
             remarks: workOrderTable.remarks,
             status: workOrderTable.status,
             cancellation_reason: workOrderTable.cancellation_reason,

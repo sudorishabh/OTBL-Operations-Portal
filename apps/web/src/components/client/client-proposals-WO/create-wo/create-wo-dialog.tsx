@@ -55,7 +55,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
   const form = useForm<WorkOrderFormInput, unknown, WorkOrderFormValues>({
     resolver: zodResolver(workOrderFormSchema),
     defaultValues: {
-      code: "",
       agreement_number: "",
       rate_contract_number: "",
       title: "",
@@ -73,11 +72,12 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
   const utils = trpc.useUtils();
 
   const createWorkOrder = trpc.workOrderMutation.createWorkOrder.useMutation({
-    onSuccess: () => {
+    onSuccess: (data: { code: string }) => {
       utils.proposalQuery.getProposalsByClient.invalidate({
         client_id: clientId,
       });
-      toast.success("Work order created successfully!");
+      utils.workOrderQuery.getNextWorkOrderCode.invalidate();
+      toast.success(`Work order ${data.code} created`);
     },
     onError: (error: any) => {
       console.error("Error creating work order:", error.flatten().fieldErrors);
@@ -94,7 +94,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
 
     setTimeout(() => {
       form.reset({
-        code: "",
         agreement_number: "",
         rate_contract_number: "",
         title: "",
@@ -103,11 +102,7 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
         handing_over_date: undefined,
         process_type: undefined,
         description: "",
-        job_number: "",
-        joint_estimate_number: "",
         area: "",
-        installation_type: "",
-        land_owner_name: "",
         remarks: "",
         schedule_of_rates: [],
       });
@@ -125,7 +120,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
 
   const handleNextStep = async () => {
     const isValid = await form.trigger([
-      "code",
       "agreement_number",
       "rate_contract_number",
       "title",
@@ -133,11 +127,7 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
       "end_date",
       "handing_over_date",
       "process_type",
-      "job_number",
-      "joint_estimate_number",
       "area",
-      "installation_type",
-      "land_owner_name",
       "remarks",
     ]);
     if (files.length === 0) {

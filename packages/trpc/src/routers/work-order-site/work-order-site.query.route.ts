@@ -127,7 +127,6 @@ export const workOrderSiteQueryRouter = router({
             site_address: siteTable.address,
             site_city: siteTable.city,
             site_state: siteTable.state,
-            job_number: workOrderTable.job_number,
             area: workOrderTable.area,
             process_type: workOrderSiteTable.process_type,
             start_date: workOrderSiteTable.date,
@@ -442,7 +441,6 @@ export const workOrderSiteQueryRouter = router({
               work_order_id: workOrderTable.id,
               wo_code: workOrderTable.code,
               wo_title: workOrderTable.title,
-              job_number: workOrderTable.job_number,
               status: workOrderSiteTable.status,
             })
             .from(workOrderSiteTable)
@@ -623,11 +621,7 @@ export const workOrderSiteQueryRouter = router({
               wo_office_id: workOrderTable.office_id,
               wo_client_id: workOrderTable.client_id,
               wo_client_name: clientTable.name,
-              wo_job_number: workOrderTable.job_number,
               wo_area: workOrderTable.area,
-              wo_installation_type: workOrderTable.installation_type,
-              wo_joint_estimate_number: workOrderTable.joint_estimate_number,
-              wo_land_owner_name: workOrderTable.land_owner_name,
               wo_remarks: workOrderTable.remarks,
             })
             .from(workOrderSiteTable)
@@ -680,11 +674,7 @@ export const workOrderSiteQueryRouter = router({
               office_id: woSite.wo_office_id,
               client_id: woSite.wo_client_id,
               client_name: woSite.wo_client_name,
-              job_number: woSite.wo_job_number,
               area: woSite.wo_area,
-              installation_type: woSite.wo_installation_type,
-              joint_estimate_number: woSite.wo_joint_estimate_number,
-              land_owner_name: woSite.wo_land_owner_name,
               remarks: woSite.wo_remarks,
             },
             activities,

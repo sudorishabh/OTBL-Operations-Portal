@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   titleValidator,
-  codeValidator,
   agreementNumberValidator,
   documentsValidator,
   positiveIntValidator,
@@ -114,8 +113,8 @@ export const scheduleOfRateSchema = z
     }
   });
 
+// The code isn't typed: the server numbers each new work order.
 export const baseWorkOrderSchema = z.object({
-  code: codeValidator,
   agreement_number: agreementNumberValidator,
   rate_contract_number: z
     .string({ message: "Rate contract number is required" })
@@ -129,31 +128,11 @@ export const baseWorkOrderSchema = z.object({
   documents: documentsValidator,
   process_type: processTypeEnum,
   description: longDescriptionValidator,
-  job_number: z
-    .string()
-    .trim()
-    .min(1, "Job number is required")
-    .max(255, "Job number cannot exceed 255 characters"),
-  joint_estimate_number: z
-    .string()
-    .trim()
-    .min(1, "Joint estimate number is required")
-    .max(255, "Joint estimate number cannot exceed 255 characters"),
   area: z
     .string()
     .trim()
     .min(1, "Area is required")
     .max(255, "Area cannot exceed 255 characters"),
-  installation_type: z
-    .string()
-    .trim()
-    .min(1, "Installation type is required")
-    .max(255, "Installation type cannot exceed 255 characters"),
-  land_owner_name: z
-    .string()
-    .trim()
-    .min(1, "Land owner name is required")
-    .max(255, "Land owner name cannot exceed 255 characters"),
   remarks: z
     .string()
     .trim()
@@ -228,6 +207,11 @@ export const getWorkOrdersByClientSchema = z.object({
 
 export const getWorkOrdersByOfficeSchema = z.object({
   office_id: positiveIntValidator,
+});
+
+// The code a new work order starting on this date would get.
+export const getNextWorkOrderCodeSchema = z.object({
+  start_date: dateValidator,
 });
 
 export const getWorkOrderSchema = z.object({

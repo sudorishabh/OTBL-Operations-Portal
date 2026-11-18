@@ -34,11 +34,7 @@ interface Props {
     rate_contract_number?: string | null;
     documents?: unknown;
     agreement_number?: string | null;
-    job_number?: string | null;
-    joint_estimate_number?: string | null;
     area?: string | null;
-    installation_type?: string | null;
-    land_owner_name?: string | null;
     remarks?: string | null;
     status: "pending" | "completed" | "cancelled";
     cancellation_reason: string | null;
@@ -228,7 +224,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       </div>
 
       {/* Details */}
-      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-4 xl:grid-cols-7'>
+      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-3'>
         <Field
           label='Agreement'
           value={workOrder.agreement_number?.toUpperCase()}
@@ -238,30 +234,8 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
           value={workOrder.rate_contract_number?.toUpperCase()}
         />
         <Field
-          label='Job no.'
-          value={workOrder.job_number?.toUpperCase()}
-        />
-        <Field
-          label='Joint estimate'
-          value={workOrder.joint_estimate_number?.toUpperCase()}
-        />
-        <Field
           label='Area'
           value={workOrder.area && capitalFirstLetter(workOrder.area)}
-        />
-        <Field
-          label='Installation'
-          value={
-            workOrder.installation_type &&
-            capitalFirstLetter(workOrder.installation_type)
-          }
-        />
-        <Field
-          label='Land owner'
-          value={
-            workOrder.land_owner_name &&
-            capitalFirstLetter(workOrder.land_owner_name)
-          }
         />
       </div>
 

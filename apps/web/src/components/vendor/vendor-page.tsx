@@ -61,9 +61,11 @@ import {
 import Link from "next/link";
 import VendorDialog from "./vendor-dialog";
 import { VENDOR_DESCRIPTION } from "./vendor-labels";
+import VendorCode from "./vendor-code";
 
 type Vendor = {
   id: number;
+  code: string;
   name: string;
   contact_number: string | null;
   email: string | null;
@@ -226,10 +228,11 @@ const VendorPage = () => {
                 key={vendor.id}
                 className='border-gray-100'>
                 <TableCell className={cellClass}>
-                  <p className='font-medium text-gray-900'>
+                  <p className='flex items-center gap-2 font-medium text-gray-900'>
+                    <VendorCode code={vendor.code} />
                     <Link
                       href={`/dashboard/vendor/${vendor.id}`}
-                      className='hover:text-emerald-700 hover:underline'>
+                      className='min-w-0 truncate hover:text-emerald-700 hover:underline'>
                       {capitalFirstLetter(vendor.name)}
                     </Link>
                   </p>
@@ -357,7 +360,7 @@ const VendorPage = () => {
       <FilterBar>
         <SearchFilter
           label='Search vendors'
-          placeholder='Search by name, contact, email or GST'
+          placeholder='Search by code, name, contact, email or GST'
           value={search}
           onChange={setSearch}
         />

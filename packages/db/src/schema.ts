@@ -229,6 +229,12 @@ export const workOrderTable = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     code: varchar("code", { length: 255 }).notNull().unique(),
+    // What the code is made of: the financial year the work order starts in,
+    // such as "2025-26", its serial number within that year, and its serial
+    // number across all work orders.
+    financial_year: varchar("financial_year", { length: 7 }).notNull(),
+    fy_serial: int("fy_serial").notNull(),
+    serial: int("serial").notNull().unique(),
     agreement_number: varchar("agreement_number", { length: 255 }).notNull(),
     rate_contract_number: varchar("rate_contract_number", {
       length: 255,
@@ -252,13 +258,7 @@ export const workOrderTable = mysqlTable(
       length: 50,
     }).notNull(),
     description: text("description"),
-    job_number: varchar("job_number", { length: 255 }).notNull(),
     area: varchar("area", { length: 255 }).notNull(),
-    installation_type: varchar("installation", { length: 255 }).notNull(),
-    joint_estimate_number: varchar("joint_estimate_number", {
-      length: 255,
-    }).notNull(),
-    land_owner_name: varchar("land_owner_name", { length: 255 }).notNull(),
     remarks: varchar("remarks", { length: 255 }).notNull(),
     status: varchar("status", {
       length: 50,
@@ -287,6 +287,7 @@ export const workOrderTable = mysqlTable(
     index("wo_status_idx").on(table.status),
     index("wo_dates_idx").on(table.start_date, table.end_date),
     index("wo_approved_at_idx").on(table.approved_at),
+    uniqueIndex("wo_fy_serial_idx").on(table.financial_year, table.fy_serial),
   ],
 );
 
@@ -591,6 +592,9 @@ export const contractorTable = mysqlTable(
   "contractors",
   {
     id: int("id").autoincrement().primaryKey(),
+    // The vendor's own code, such as VEN-0012, so vendors with similar names
+    // can be told apart and found.
+    code: varchar("code", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     contact_number: varchar("contact_number", { length: 15 }),
     email: varchar("email", { length: 320 }),

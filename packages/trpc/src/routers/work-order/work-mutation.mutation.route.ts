@@ -19,6 +19,7 @@ import {
   restorationRowWhere,
   syncRestorationCompletion,
 } from "../restoration/restoration-row";
+import { nextWorkOrderCode } from "./work-order-code";
 
 // Allowance for decimal rounding when checking transport slab totals.
 const SLAB_EPSILON = 0.005;
@@ -77,7 +78,6 @@ export const workOrderMutationRouter = router({
         const officeId = proposal.office_id;
 
         const workOrderData = {
-          code: input.code,
           agreement_number: input.agreement_number,
           rate_contract_number: input.rate_contract_number,
           title: input.title,
@@ -92,11 +92,7 @@ export const workOrderMutationRouter = router({
           document_key: input.documents[0]!.url,
           process_type: input.process_type,
           description: input.description || null,
-          job_number: input.job_number,
           area: input.area,
-          installation_type: input.installation_type,
-          joint_estimate_number: input.joint_estimate_number,
-          land_owner_name: input.land_owner_name,
           remarks: input.remarks || "",
           status: constants.WORK_ORDER_STATUS.PENDING,
           created_by: parseInt(ctx.user!.sub),
@@ -104,10 +100,15 @@ export const workOrderMutationRouter = router({
 
         try {
           // One transaction, so a failed SOR insert leaves no work order behind.
-          const workOrderId = await ctx.db.transaction(async (tx) => {
+          const { workOrderId, code } = await ctx.db.transaction(async (tx) => {
+            // The code is numbered here, holding the last numbers until the
+            // work order is saved.
+            const codeParts = await nextWorkOrderCode(tx, input.start_date, {
+              lock: true,
+            });
             const workOrderResult = await tx
               .insert(workOrderTable)
-              .values(workOrderData);
+              .values({ ...workOrderData, ...codeParts });
 
             const workOrderId = workOrderResult[0].insertId;
 
@@ -139,12 +140,13 @@ export const workOrderMutationRouter = router({
               });
             }
 
-            return workOrderId;
+            return { workOrderId, code: codeParts.code };
           });
 
           return {
             success: true,
             workOrderId,
+            code,
             clientId: input.client_id,
           };
         } catch (error) {

@@ -347,9 +347,6 @@ const DEITIES = [
 const INSTALLATIONS = [
   "Well", "GGS", "GCS", "CTF", "EPS", "Pipeline", "Drill Site", "Tank Farm", "Oil Collecting Station",
 ];
-const LAND_TITLES = [
-  "Govt. land (Revenue Dept.)", "Acquired land of the client", "Panchayat land", "Forest Dept. land",
-];
 const REMARKS = [
   "", "", "Work to be executed as per OISD guidelines.", "Joint measurement with the client before billing.",
   "Site access through the client's approach road only.", "Monsoon break to be accounted in the schedule.",
@@ -401,11 +398,11 @@ const COLUMNS = {
   parent_clients: ["id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   clients: ["id", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   client_contacts: ["id", "client_id", "parent_client_id", "name", "designation", "contact_number", "email", "contact_type", "created_at", "updated_at"],
-  contractors: ["id", "name", "contact_number", "email", "address", "gst_number", "pan_number", "status", "created_at", "updated_at"],
+  contractors: ["id", "code", "name", "contact_number", "email", "address", "gst_number", "pan_number", "status", "created_at", "updated_at"],
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
   sites: ["id", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
-  work_orders: ["id", "code", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "job_number", "area", "installation", "joint_estimate_number", "land_owner_name", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
+  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
   schedule_of_rates: ["id", "work_order_id", "activity", "unit", "estimated_quantity", "rc_unit_rate", "gst_percentage", "unit_rate_inc_gst", "total_cost", "transportation_km", "transportation_slabs", "created_at", "updated_at"],
   work_order_sites: ["id", "work_order_id", "client_id", "site_id", "date", "end_date", "process_type", "status", "isCompleted", "created_at", "updated_at"],
   site_activity_items: ["id", "work_order_site_id", "schedule_of_rates_id", "activity", "unit", "created_at", "updated_at"],
@@ -453,7 +450,10 @@ const doc = (name) => ({
 const usedEmails = new Set();
 const takenParentNames = new Set();
 const takenProposalCodes = new Set();
-const takenWorkOrderCodes = new Set();
+// The last work order serials in use, overall and by financial year.
+const lastWorkOrderSerial = { overall: 0, byYear: new Map() };
+// The last vendor code number in use, as in VEN-0012.
+let lastVendorSerial = 0;
 
 // ---------------------------------------------------------------------------
 // The database. It is read before anything is built: to check its schema, and
@@ -589,7 +589,16 @@ if (!DRY_RUN || APPEND) {
     await lowerSet("SELECT email AS v FROM users", usedEmails);
     await lowerSet("SELECT name AS v FROM parent_clients", takenParentNames);
     await lowerSet("SELECT code AS v FROM proposals", takenProposalCodes);
-    await lowerSet("SELECT code AS v FROM work_orders", takenWorkOrderCodes);
+    const [[{ maxSerial }]] = await db.conn.query("SELECT COALESCE(MAX(serial), 0) AS maxSerial FROM work_orders");
+    lastWorkOrderSerial.overall = Number(maxSerial);
+    const [years] = await db.conn.query(
+      "SELECT financial_year AS fy, MAX(fy_serial) AS n FROM work_orders GROUP BY financial_year",
+    );
+    for (const r of years) lastWorkOrderSerial.byYear.set(r.fy, Number(r.n));
+    const [[{ maxVendor }]] = await db.conn.query(
+      "SELECT COALESCE(MAX(CAST(SUBSTRING(code, 5) AS UNSIGNED)), 0) AS maxVendor FROM contractors",
+    );
+    lastVendorSerial = Number(maxVendor);
   } else {
     const filled = [];
     for (const table of Object.keys(COLUMNS)) {
@@ -856,6 +865,7 @@ for (let i = 0; i < COUNT + 20; i++) {
   const name = pick(contractorNames)();
   const panNumber = pan(pick(["C", "F", "P"]), name);
   add("contractors", {
+    code: `VEN-${String(++lastVendorSerial).padStart(4, "0")}`,
     name,
     contact_number: chance(0.9) ? phone() : null,
     email: chance(0.7) ? uniqueEmail("accounts", `${slug(name).replace(/-/g, "")}${i}.test`) : null,
@@ -939,12 +949,20 @@ function addProposal({ client, office, processType, date, status }) {
 
 // Every expense's planned quantity, by site and activity, for its is_exceeded flag.
 const estimates = new Map();
-let woSeq = 0;
+// Work orders are numbered as the app numbers them: by the financial year they
+// start in, April to March in India time, and overall, such as
+// 2025-26(10)OTBL163. With --append, the numbers carry on from those in use.
+const financialYearOf = (d) => {
+  const inIndia = new Date(d.getTime() + 330 * 60 * 1000);
+  const year = inIndia.getUTCMonth() >= 3 ? inIndia.getUTCFullYear() : inIndia.getUTCFullYear() - 1;
+  return `${year}-${String((year + 1) % 100).padStart(2, "0")}`;
+};
 const workOrderCode = (start) => {
-  let code;
-  do code = `OTBL/WO/${yy(start)}/${String(++woSeq).padStart(4, "0")}`;
-  while (takenWorkOrderCodes.has(code.toLowerCase()));
-  return code;
+  const financial_year = financialYearOf(start);
+  const fy_serial = (lastWorkOrderSerial.byYear.get(financial_year) ?? 0) + 1;
+  const serial = ++lastWorkOrderSerial.overall;
+  lastWorkOrderSerial.byYear.set(financial_year, fy_serial);
+  return { code: `${financial_year}(${fy_serial})OTBL${serial}`, financial_year, fy_serial, serial };
 };
 let joSeq = 0;
 let poSeq = 0;
@@ -1683,7 +1701,7 @@ function buildWorkOrder(index) {
   if (chance(0.4)) documents.push(doc(`Rate Contract ${index + 1}.pdf`));
 
   const wo = add("work_orders", {
-    code: workOrderCode(start),
+    ...workOrderCode(start),
     agreement_number: `AGR/${client._short.replace(/\s+/g, "")}/${yy(start)}/${int(100, 999)}`,
     rate_contract_number: `RC-${int(8_000_000_000, 8_099_999_999)}`,
     title: PROCESS_TITLES[processType](client).slice(0, 255),
@@ -1697,11 +1715,7 @@ function buildWorkOrder(index) {
     documents,
     process_type: processType,
     description: chance(0.7) ? `Work order against ${proposal.code} for ${client.name}.` : null,
-    job_number: `JOB-${int(10000, 99999)}`,
     area: `${client.city} ${pick(["North", "South", "East", "West", "Central"])} Area`,
-    installation: pick(INSTALLATIONS),
-    joint_estimate_number: `JE/${yy(start)}/${int(100, 9999)}`,
-    land_owner_name: chance(0.3) ? pick(LAND_TITLES) : personName(),
     remarks: pick(REMARKS),
     status: phase === "cancelled" ? "cancelled" : "pending",
     cancellation_reason: phase === "cancelled" ? pick(CANCEL_REASONS) : null,

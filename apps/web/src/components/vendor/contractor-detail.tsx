@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import VendorCode from "./vendor-code";
 
 const { CONTRACT_ORDER_TYPE } = constants;
 
@@ -106,9 +107,12 @@ const ContractorDetail = ({ contractorId }: Props) => {
               <HardHat className='size-4 text-purple-600' />
             </div>
             <div className='min-w-0'>
-              <h2 className='truncate text-base font-semibold text-gray-900'>
-                {capitalFirstLetter(contractor.name)}
-              </h2>
+              <div className='flex min-w-0 items-center gap-2'>
+                <h2 className='truncate text-base font-semibold text-gray-900'>
+                  {capitalFirstLetter(contractor.name)}
+                </h2>
+                <VendorCode code={contractor.code} />
+              </div>
               <p className='text-xs text-gray-500'>
                 {[contractor.contact_number, contractor.email, contractor.address]
                   .filter(Boolean)

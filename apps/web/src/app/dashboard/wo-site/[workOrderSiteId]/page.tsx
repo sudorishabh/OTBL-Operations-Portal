@@ -322,9 +322,6 @@ export default function WoSiteOperatorUploadPage() {
     siteDetails.process_type
       ? { label: "Process", value: siteDetails.process_type }
       : null,
-    workOrder?.installation_type
-      ? { label: "Installation", value: workOrder.installation_type }
-      : null,
   ].filter(Boolean) as { label: string; value: string }[];
 
   const isBusy = uploadingIndex !== null || operatorUpload.isUploading;
@@ -361,13 +358,6 @@ export default function WoSiteOperatorUploadPage() {
         <div className='mt-1 flex items-center gap-2 text-[12.5px] text-gray-500'>
           <span className='truncate font-medium tabular-nums'>
             {workOrder?.code ?? "—"}
-          </span>
-          <span
-            aria-hidden
-            className='h-3 w-px shrink-0 bg-gray-200'
-          />
-          <span className='shrink-0 tabular-nums'>
-            Job {workOrder?.job_number ?? "—"}
           </span>
         </div>
 
