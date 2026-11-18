@@ -235,6 +235,9 @@ export const workOrderTable = mysqlTable(
     financial_year: varchar("financial_year", { length: 7 }).notNull(),
     fy_serial: int("fy_serial").notNull(),
     serial: int("serial").notNull().unique(),
+    // The client's purchase order code, typed in when the work order is
+    // created. Work orders numbered before it was asked for may have none.
+    purchase_order_code: varchar("purchase_order_code", { length: 255 }),
     agreement_number: varchar("agreement_number", { length: 255 }).notNull(),
     rate_contract_number: varchar("rate_contract_number", {
       length: 255,
@@ -288,6 +291,7 @@ export const workOrderTable = mysqlTable(
     index("wo_dates_idx").on(table.start_date, table.end_date),
     index("wo_approved_at_idx").on(table.approved_at),
     uniqueIndex("wo_fy_serial_idx").on(table.financial_year, table.fy_serial),
+    index("wo_po_code_idx").on(table.purchase_order_code),
   ],
 );
 
