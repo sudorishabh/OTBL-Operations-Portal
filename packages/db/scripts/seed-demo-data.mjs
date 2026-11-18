@@ -412,7 +412,7 @@ const COLUMNS = {
   bio_oil_zapping: ["id", "site_activity_id", "work_order_site_id", "bio_sample_id", "document_url", "documents", "estimated_quantity", "applied_on", "created_at", "updated_at"],
   job_orders: ["id", "work_order_site_id", "jo_number", "start_date", "end_date", "issued_by", "rc_noa_number", "rc_noa_date", "ola_number", "po_number", "installation_name", "location", "mobilization_date", "activities", "completed_on", "completion_activities", "documents", "invoices", "created_by", "created_at", "updated_at"],
   job_order_contractors: ["id", "job_order_id", "contractor_id", "created_at"],
-  contract_orders: ["id", "work_order_id", "type", "order_number", "order_date", "description", "unit_rate", "gst_percentage", "invoice_number", "documents", "completion_documents", "created_by", "created_at", "updated_at"],
+  contract_orders: ["id", "work_order_id", "type", "code", "order_date", "description", "unit_rate", "gst_percentage", "invoice_number", "documents", "completion_documents", "created_by", "created_at", "updated_at"],
   contract_order_items: ["id", "contract_order_id", "work_order_site_id", "item", "description", "quantity", "unit", "created_at", "updated_at"],
   contract_order_contractors: ["id", "contract_order_id", "contractor_id", "created_at"],
   wo_site_expenses: ["id", "work_order_site_id", "contractor_id", "contract_order_item_id", "from_order", "job_order_id", "title", "amount", "start_date", "end_date", "invoice_number", "activity_key", "quantity", "is_exceeded", "document_url", "document_id", "documents", "created_by", "created_at", "updated_at"],
@@ -462,6 +462,11 @@ const CODE_PREFIXES = {
 const lastCodeSerial = Object.fromEntries(Object.keys(CODE_PREFIXES).map((table) => [table, 0]));
 const nextCode = (table) =>
   `${CODE_PREFIXES[table]}-${String(++lastCodeSerial[table]).padStart(4, "0")}`;
+// Purchase orders and sub-contracts share a table but are numbered apart.
+const ORDER_CODE_PREFIXES = { purchase_order: "PO", sub_contract: "SC" };
+const lastOrderSerial = { purchase_order: 0, sub_contract: 0 };
+const orderCode = (type) =>
+  `${ORDER_CODE_PREFIXES[type]}-${String(++lastOrderSerial[type]).padStart(4, "0")}`;
 
 // ---------------------------------------------------------------------------
 // The database. It is read before anything is built: to check its schema, and
@@ -608,6 +613,12 @@ if (!DRY_RUN || APPEND) {
         `SELECT COALESCE(MAX(CAST(SUBSTRING(code, ${prefix.length + 2}) AS UNSIGNED)), 0) AS n FROM \`${table}\``,
       );
       lastCodeSerial[table] = Number(n);
+    }
+    for (const [type, prefix] of Object.entries(ORDER_CODE_PREFIXES)) {
+      const [[{ n }]] = await db.conn.query(
+        `SELECT COALESCE(MAX(CAST(SUBSTRING(code, ${prefix.length + 2}) AS UNSIGNED)), 0) AS n FROM contract_orders WHERE code LIKE '${prefix}-%'`,
+      );
+      lastOrderSerial[type] = Number(n);
     }
   } else {
     const filled = [];
@@ -981,8 +992,6 @@ const workOrderCode = (start) => {
   return { code: `${financial_year}(${fy_serial})OTBL${serial}`, financial_year, fy_serial, serial };
 };
 let joSeq = 0;
-let poSeq = 0;
-let scSeq = 0;
 
 function addSiteDoc(row, type, when) {
   return add("work_order_site_docs", {
@@ -1384,7 +1393,7 @@ function planBioSite(ctx, site) {
 
 function addPurchaseOrder(ctx, date, entries) {
   const vendor = pick(seededVendors);
-  const number = `PO/${yy(date)}/${String(++poSeq).padStart(5, "0")}`;
+  const number = orderCode("purchase_order");
   const rate = round2(real(380, 560));
   const invoice = chance(0.85) ? `INV/${yy(date)}/${int(1000, 99999)}` : null;
   const delivered = entries.every(([plan]) => plan.state === "done");
@@ -1392,7 +1401,7 @@ function addPurchaseOrder(ctx, date, entries) {
   const order = add("contract_orders", {
     work_order_id: ctx.wo.id,
     type: "purchase_order",
-    order_number: number,
+    code: number,
     order_date: date,
     description: chance(0.7) ? `Supply of Oilzapper for ${entries.length} site(s) under ${ctx.wo.code}.` : null,
     unit_rate: dec(rate),
@@ -1545,12 +1554,12 @@ function finishBioSite(ctx, plan) {
   for (let s = 0; s < subContracts; s++) {
     const orderDate = dayStart(randDate(row.date, earliest(addDays(row.date, 25), activeEnd)));
     const vendors = sample(seededVendors, chance(0.7) ? 1 : 2);
-    const number = `SC/${yy(orderDate)}/${String(++scSeq).padStart(5, "0")}`;
+    const number = orderCode("sub_contract");
     const created = clampPast(atWorkHour(orderDate));
     const order = add("contract_orders", {
       work_order_id: wo.id,
       type: "sub_contract",
-      order_number: number,
+      code: number,
       order_date: orderDate,
       description: chance(0.7) ? `Site works at ${plan.site.name}.` : null,
       unit_rate: null,
@@ -1656,12 +1665,12 @@ function buildSharedSubContract(ctx, plans) {
 
   const orderDate = dayStart(randDate(from, earliest(addDays(from, 25), activeEnd)));
   const vendor = pick(seededVendors);
-  const number = `SC/${yy(orderDate)}/${String(++scSeq).padStart(5, "0")}`;
+  const number = orderCode("sub_contract");
   const created = clampPast(atWorkHour(orderDate));
   const order = add("contract_orders", {
     work_order_id: wo.id,
     type: "sub_contract",
-    order_number: number,
+    code: number,
     order_date: orderDate,
     description: `Shared hire for ${pair.map((p) => p.site.name).join(" and ")}.`,
     unit_rate: null,
@@ -1882,7 +1891,7 @@ function verify() {
   unique("wo_site_contractors", (r) => `${r.work_order_site_id}:${r.contractor_id}`, "vendor");
   unique("job_orders", (r) => `${r.work_order_site_id}:${r.jo_number}`, "job order number");
   unique("job_order_contractors", (r) => `${r.job_order_id}:${r.contractor_id}`, "vendor");
-  unique("contract_orders", (r) => `${r.work_order_id}:${r.type}:${r.order_number}`, "order number");
+  unique("contract_orders", (r) => r.code, "code");
   unique("contract_order_contractors", (r) => `${r.contract_order_id}:${r.contractor_id}`, "vendor");
 
   const users = new Map(data.users.map((u) => [u.id, u]));
