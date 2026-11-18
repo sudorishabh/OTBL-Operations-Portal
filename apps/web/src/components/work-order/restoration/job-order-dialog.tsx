@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import JobOrderActivitiesTable, {
   toActivityEntries,
   toActivityRows,
@@ -26,7 +25,8 @@ import JobOrderVendorsDialog, {
 } from "./job-order-vendors-dialog";
 
 // A restoration job order as getJobOrders returns it. Job orders saved before
-// the client's forms were added have none of their fields.
+// the client's forms were added have none of their fields; only older ones
+// have a description.
 export interface JobOrder {
   id: number;
   jo_number: string;
@@ -81,7 +81,6 @@ interface FormValues {
   installation_name: string;
   location: string;
   mobilization_date: string;
-  description: string;
   issued_by: string;
   rc_noa_number: string;
   rc_noa_date: string;
@@ -118,7 +117,6 @@ const formValues = (
   installation_name: jobOrder?.installation_name ?? "",
   location: jobOrder?.location ?? "",
   mobilization_date: toDateInput(jobOrder?.mobilization_date),
-  description: jobOrder?.description ?? "",
   issued_by:
     contractSource?.issued_by ??
     [workOrder.parent_client_name, workOrder.client_name]
@@ -220,8 +218,7 @@ const JobOrderDialog = ({
   }, [open, editing]);
 
   const setValue =
-    (field: keyof FormValues) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    (field: keyof FormValues) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setValues((prev) => ({ ...prev, [field]: e.target.value }));
 
   // Stays open on the saved job order, so its form can be downloaded.
@@ -400,15 +397,6 @@ const JobOrderDialog = ({
                   />
                 </Field>
               </div>
-
-              <Field label='Description'>
-                <Textarea
-                  value={values.description}
-                  onChange={setValue("description")}
-                  placeholder='Optional, not printed on the form'
-                  rows={2}
-                />
-              </Field>
             </FormSection>
 
             <FormSection
