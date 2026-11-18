@@ -113,7 +113,7 @@ export async function recordPurchaseOrderExpenses(
   const [order] = await tx
     .select({
       type: contractOrderTable.type,
-      order_number: contractOrderTable.order_number,
+      code: contractOrderTable.code,
       order_date: contractOrderTable.order_date,
       unit_rate: contractOrderTable.unit_rate,
       gst_percentage: contractOrderTable.gst_percentage,
@@ -152,7 +152,7 @@ export async function recordPurchaseOrderExpenses(
       contractor_id: vendor.contractor_id,
       contract_order_item_id: item.id,
       from_order: 1,
-      title: `${order.order_number}: ${OIL_ZAPPER.LABEL}`,
+      title: `${order.code}: ${OIL_ZAPPER.LABEL}`,
       amount: purchaseOrderAmount(
         Number(item.quantity),
         unitRate,

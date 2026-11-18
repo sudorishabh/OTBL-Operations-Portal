@@ -268,6 +268,7 @@ export const contractorQueryRouter = router({
             .select({
               id: contractOrderTable.id,
               type: contractOrderTable.type,
+              code: contractOrderTable.code,
               order_number: contractOrderTable.order_number,
               order_date: contractOrderTable.order_date,
               work_order_id: workOrderTable.id,
