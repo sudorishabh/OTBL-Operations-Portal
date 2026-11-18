@@ -80,7 +80,7 @@ const orderFields = z.object({
 
 // What each kind of order may hold. A purchase order buys oil zapper from one
 // vendor, once per site, at its rate. A sub-contract gives out the rest at one
-// site.
+// or more sites.
 const checkOrderRules = (
   order: z.infer<typeof orderFields>,
   ctx: z.RefinementCtx,
@@ -126,12 +126,6 @@ const checkOrderRules = (
         message: `Enter the rate per ${OIL_ZAPPER.UNIT} of oil zapper`,
       });
     }
-  } else if (new Set(siteIds).size > 1) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["items"],
-      message: "A sub-contract is for one site",
-    });
   }
 };
 

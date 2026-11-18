@@ -726,8 +726,8 @@ export const jobOrderContractorTable = mysqlTable(
 
 // A purchase order or sub-contract that bioremediation work is given out
 // through. A purchase order buys oil zapper from one vendor for one or more
-// sites, at its own rate; a sub-contract gives out work at one site, whose
-// expenses are recorded there.
+// sites, at its own rate; a sub-contract gives out work at one or more sites,
+// whose expenses are recorded at each.
 export const contractOrderTable = mysqlTable(
   "contract_orders",
   {
