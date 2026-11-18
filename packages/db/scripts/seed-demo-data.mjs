@@ -225,6 +225,8 @@ const SC_ITEMS = {
   jcb: { label: "JCB hire", unit: "hours", qty: [20, 320], cost: [900, 1600] },
   labour: { label: "Labour", unit: "man-days", qty: [30, 650], cost: [450, 720] },
   transport: { label: "Transport", unit: "trips", qty: [4, 140], cost: [2500, 9000] },
+  water_pump: { label: "Water pump hire", unit: "hours", qty: [24, 400], cost: [150, 400] },
+  tractor: { label: "Tractor hire", unit: "hours", qty: [16, 240], cost: [700, 1300] },
   other: { label: "Other", unit: "Nos", qty: [1, 60], cost: [500, 20000] },
 };
 
