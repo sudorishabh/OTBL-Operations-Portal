@@ -690,6 +690,8 @@ export const jobOrderTable = mysqlTable(
     >(),
     // The job order's completion certificates.
     documents: json("documents").$type<StoredDocumentRow[]>(),
+    // The invoices raised for the job order's work.
+    invoices: json("invoices").$type<StoredDocumentRow[]>(),
     created_by: int("created_by").references(() => userTable.id, {
       onDelete: "set null",
     }),
