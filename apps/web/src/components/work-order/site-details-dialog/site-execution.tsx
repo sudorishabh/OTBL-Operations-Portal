@@ -17,9 +17,9 @@ interface Props {
 
 type SiteTab = "activities" | "expenses";
 
-// The work carried out at a site and what it cost. A bioremediation site
-// shows them as two tabs: its bio samples and oil zapping, then its expenses,
-// which open first.
+// What a site cost and the work carried out there. A bioremediation site
+// shows them as two tabs: its expenses, first and open, then its bio samples
+// and oil zapping.
 const SiteExecution = ({ woSiteId, processType }: Props) => {
   const isBioremediation = processType === WO_PROCESS.BIOREMEDIATION;
   const [tab, setTab] = useState<SiteTab>("expenses");
@@ -56,16 +56,16 @@ const SiteExecution = ({ woSiteId, processType }: Props) => {
 
   const tabs = [
     {
-      value: "activities",
-      label: "Bioremediation activities",
-      Icon: FlaskConical,
-      count: activityCount,
-    },
-    {
       value: "expenses",
       label: "Expenses",
       Icon: ReceiptIndianRupee,
       count: expenseCount,
+    },
+    {
+      value: "activities",
+      label: "Bioremediation activities",
+      Icon: FlaskConical,
+      count: activityCount,
     },
   ] as const;
 
@@ -91,14 +91,14 @@ const SiteExecution = ({ woSiteId, processType }: Props) => {
       </Tabs>
 
       {/* Both stay mounted, so a tab keeps its filters and loaded pages. */}
-      <div className={cn(tab !== "activities" && "hidden")}>
-        <BioremediationSections woSiteId={woSiteId} />
-      </div>
       <div className={cn(tab !== "expenses" && "hidden")}>
         <SiteExpensesSection
           woSiteId={woSiteId}
           processType={processType}
         />
+      </div>
+      <div className={cn(tab !== "activities" && "hidden")}>
+        <BioremediationSections woSiteId={woSiteId} />
       </div>
     </div>
   );
