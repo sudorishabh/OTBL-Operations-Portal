@@ -46,6 +46,8 @@ const {
 } = schema;
 
 export const workOrderSiteQueryRouter = router({
+  // Everything field operators uploaded across a work order, newest first,
+  // each with the restoration or site it was uploaded to.
   getOperatorUploadsByWorkOrder: protectedProcedure
     .input(z.object({ work_order_id: z.number().positive() }))
     .query(
@@ -66,6 +68,9 @@ export const workOrderSiteQueryRouter = router({
               work_order_site_id:
                 workOrderSiteOperatorUploadTable.work_order_site_id,
               site_name: siteNameOrRestoration,
+              // None for the restoration, which isn't a site.
+              site_code: siteTable.code,
+              process_type: workOrderSiteTable.process_type,
               description: workOrderSiteOperatorUploadTable.description,
               file_name: workOrderSiteOperatorUploadTable.file_name,
               document_url: workOrderSiteOperatorUploadTable.document_url,
