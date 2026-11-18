@@ -578,7 +578,7 @@ const ContractOrderDialog = ({
                     ))}
                   </SelectContent>
                 </Select>
-                <NewVendorButton onAdded={chooseNewVendor} />
+                <NewVendorButton onAdded={(vendor) => chooseNewVendor(vendor.id)} />
               </div>
               {vendorIds.length > 1 && (
                 <p className='flex items-center gap-1.5 text-xs text-amber-700'>
@@ -762,7 +762,7 @@ const ContractOrderDialog = ({
                 <div>
                   <div className='mb-1 flex items-center justify-between gap-2'>
                     <label className={cn(fieldLabel, "mb-0")}>Vendors</label>
-                    <NewVendorButton onAdded={chooseNewVendor} />
+                    <NewVendorButton onAdded={(vendor) => chooseNewVendor(vendor.id)} />
                   </div>
                   <div className='max-h-32 overflow-y-auto rounded-lg border bg-white p-2'>
                     {vendors.length === 0 ? (

@@ -33,8 +33,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   // Edits this vendor; without it the dialog adds one.
   vendorId?: number;
-  onSaved?: (vendorId: number) => void;
+  // Handed the vendor as saved, with its code once it has one.
+  onSaved?: (vendor: SavedVendor) => void;
 }
+
+export type SavedVendor = { id: number; code?: string; name: string };
 
 // Adds or edits a vendor, which every office shares.
 const VendorFormDialog = ({
@@ -78,21 +81,26 @@ const VendorFormDialog = ({
 
   const handleClose = () => onOpenChange(false);
 
-  const handleSaved = (message: string, savedId: number) => {
+  const handleSaved = (message: string, saved: SavedVendor) => {
     toast.success(message);
     utils.contractorQuery.invalidate();
-    onSaved?.(savedId);
+    onSaved?.(saved);
     handleClose();
   };
 
   const createVendor = trpc.contractorMutation.createContractor.useMutation({
-    onSuccess: (data: { id: number }) =>
-      handleSaved("Vendor added", data.id),
+    onSuccess: (data: { id: number; code: string }, input: { name: string }) =>
+      handleSaved("Vendor added", {
+        id: data.id,
+        code: data.code,
+        name: input.name,
+      }),
     onError: (error: any) => handleError(error, { showToast: true }),
   });
 
   const updateVendor = trpc.contractorMutation.updateContractor.useMutation({
-    onSuccess: () => handleSaved("Vendor updated", vendorId!),
+    onSuccess: (_data: unknown, input: { name?: string }) =>
+      handleSaved("Vendor updated", { id: vendorId!, name: input.name ?? "" }),
     onError: (error: any) => handleError(error, { showToast: true }),
   });
 

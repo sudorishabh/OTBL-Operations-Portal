@@ -111,7 +111,7 @@ const JobOrderVendorsDialog = ({
               className='h-9 pl-8'
             />
           </div>
-          <NewVendorButton onAdded={chooseNewVendor} />
+          <NewVendorButton onAdded={(vendor) => chooseNewVendor(vendor.id)} />
         </div>
 
         <div className='max-h-72 overflow-y-auto rounded-lg border bg-white p-1.5'>

@@ -2,11 +2,12 @@
 import React, { useState } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import VendorFormDialog from "./vendor-form-dialog";
+import VendorFormDialog, { type SavedVendor } from "./vendor-form-dialog";
 
 interface Props {
-  // Handed the new vendor's id, so the form can choose them.
-  onAdded: (vendorId: number) => void;
+  // Handed the new vendor, with its code and name, so the form can choose
+  // them.
+  onAdded: (vendor: SavedVendor) => void;
   className?: string;
 }
 
