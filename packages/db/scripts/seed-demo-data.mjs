@@ -393,7 +393,7 @@ const COLUMNS = {
   parent_clients: ["id", "code", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   clients: ["id", "code", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   client_contacts: ["id", "client_id", "parent_client_id", "name", "designation", "contact_number", "email", "contact_type", "created_at", "updated_at"],
-  contractors: ["id", "code", "name", "contact_number", "email", "address", "gst_number", "pan_number", "status", "created_at", "updated_at"],
+  contractors: ["id", "code", "name", "contact_number", "email", "address", "state", "gst_number", "pan_number", "created_at", "updated_at"],
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
   sites: ["id", "code", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
@@ -882,13 +882,14 @@ for (let i = 0; i < COUNT + 20; i++) {
     contact_number: chance(0.9) ? phone() : null,
     email: chance(0.7) ? uniqueEmail("accounts", `${slug(name).replace(/-/g, "")}${i}.test`) : null,
     address: chance(0.85) ? `${address(loc)}, ${loc.state} ${pincode(loc)}` : null,
+    state: chance(0.9) ? loc.state.toLowerCase() : null,
     gst_number: chance(0.85) ? gstin(loc.state, panNumber) : null,
     pan_number: chance(0.9) ? panNumber : null,
-    status: chance(0.05) ? "inactive" : "active",
     ...stamp(atWorkHour(addDays(BASE, int(0, 200)))),
   });
 }
-const activeContractors = data.contractors.filter((c) => c.status === "active");
+// Vendors aren't marked active or inactive, so any can be given work.
+const seededVendors = data.contractors;
 
 // Each office's sites.
 const sitesOf = new Map();
@@ -1213,7 +1214,7 @@ function buildRestoration(ctx) {
     }
     jobOrders.push(jo);
 
-    const vendors = sample(activeContractors, chance(0.65) ? 1 : 2);
+    const vendors = sample(seededVendors, chance(0.65) ? 1 : 2);
     for (const v of vendors) {
       add("job_order_contractors", { job_order_id: jo.id, contractor_id: v.id, created_at: jo.created_at });
       vendorsOnRow.add(v);
@@ -1380,7 +1381,7 @@ function planBioSite(ctx, site) {
 }
 
 function addPurchaseOrder(ctx, date, entries) {
-  const vendor = pick(activeContractors);
+  const vendor = pick(seededVendors);
   const number = `PO/${yy(date)}/${String(++poSeq).padStart(5, "0")}`;
   const rate = round2(real(380, 560));
   const invoice = chance(0.85) ? `INV/${yy(date)}/${int(1000, 99999)}` : null;
@@ -1541,7 +1542,7 @@ function finishBioSite(ctx, plan) {
     state === "done" || state === "treating" ? int(1, 2) : estimate && chance(0.3) ? 1 : 0;
   for (let s = 0; s < subContracts; s++) {
     const orderDate = dayStart(randDate(row.date, earliest(addDays(row.date, 25), activeEnd)));
-    const vendors = sample(activeContractors, chance(0.7) ? 1 : 2);
+    const vendors = sample(seededVendors, chance(0.7) ? 1 : 2);
     const number = `SC/${yy(orderDate)}/${String(++scSeq).padStart(5, "0")}`;
     const created = clampPast(atWorkHour(orderDate));
     const order = add("contract_orders", {
@@ -1593,7 +1594,7 @@ function finishBioSite(ctx, plan) {
     }
   }
 
-  if (chance(0.5)) plan.vendors.add(pick(activeContractors));
+  if (chance(0.5)) plan.vendors.add(pick(seededVendors));
   for (const v of plan.vendors) {
     add("wo_site_contractors", {
       work_order_site_id: row.id,
