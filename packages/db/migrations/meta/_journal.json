@@ -253,6 +253,13 @@
       "when": 1794981698237,
       "tag": "0035_vendor_state",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1794982103621,
+      "tag": "0036_drop_vendor_status",
+      "breakpoints": true
     }
   ]
 }

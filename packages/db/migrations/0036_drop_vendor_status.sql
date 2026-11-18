@@ -1,0 +1,1 @@
+ALTER TABLE `contractors` DROP COLUMN `status`;

@@ -617,12 +617,6 @@ export const contractorTable = mysqlTable(
     state: varchar("state", { length: 100 }),
     gst_number: varchar("gst_number", { length: 15 }),
     pan_number: varchar("pan_number", { length: 10 }),
-    status: varchar("status", {
-      length: 50,
-      enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-    })
-      .notNull()
-      .default(STATUS.ACTIVE),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
