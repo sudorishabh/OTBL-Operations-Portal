@@ -61,7 +61,7 @@ import {
 import Link from "next/link";
 import VendorDialog from "./vendor-dialog";
 import { VENDOR_DESCRIPTION } from "./vendor-labels";
-import VendorCode from "./vendor-code";
+import RecordCode from "@/components/shared/record-code";
 
 type Vendor = {
   id: number;
@@ -229,7 +229,7 @@ const VendorPage = () => {
                 className='border-gray-100'>
                 <TableCell className={cellClass}>
                   <p className='flex items-center gap-2 font-medium text-gray-900'>
-                    <VendorCode code={vendor.code} />
+                    <RecordCode code={vendor.code} />
                     <Link
                       href={`/dashboard/vendor/${vendor.id}`}
                       className='min-w-0 truncate hover:text-emerald-700 hover:underline'>

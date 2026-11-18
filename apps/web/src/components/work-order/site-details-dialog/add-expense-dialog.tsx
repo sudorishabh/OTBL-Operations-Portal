@@ -39,7 +39,7 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { capitalFirstLetter } from "@pkg/utils";
 import { cn } from "@/lib/utils";
-import VendorCode from "@/components/vendor/vendor-code";
+import RecordCode from "@/components/shared/record-code";
 
 export interface ActivityOption {
   key: string;
@@ -695,7 +695,7 @@ const AddExpenseDialog = ({
                       )}
                       {vendors.map((c: any) => (
                         <SelectItem key={c.id} value={String(c.id)} className='text-sm'>
-                          <VendorCode code={c.code} />
+                          <RecordCode code={c.code} />
                           {c.name}
                           {c.gst_number && <span className='text-gray-400 ml-1'>· {c.gst_number}</span>}
                         </SelectItem>

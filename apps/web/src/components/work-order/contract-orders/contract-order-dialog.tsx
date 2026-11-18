@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { itemLabel, type ContractOrder } from "./contract-orders-section";
-import VendorCode from "@/components/vendor/vendor-code";
+import RecordCode from "@/components/shared/record-code";
 
 const {
   CONTRACT_ORDER_TYPE,
@@ -492,7 +492,7 @@ const ContractOrderDialog = ({
                       <SelectItem
                         key={vendor.id}
                         value={String(vendor.id)}>
-                        <VendorCode code={vendor.code} />
+                        <RecordCode code={vendor.code} />
                         {vendor.name}
                       </SelectItem>
                     ))}
@@ -683,7 +683,7 @@ const ContractOrderDialog = ({
                                 toggleVendor(vendor.id, checked === true)
                               }
                             />
-                            <VendorCode code={vendor.code} />
+                            <RecordCode code={vendor.code} />
                             <span className='truncate'>{vendor.name}</span>
                           </label>
                         ))}

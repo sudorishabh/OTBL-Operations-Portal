@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import VendorCode from "./vendor-code";
+import RecordCode from "@/components/shared/record-code";
 import { jobOrderPlace } from "@/components/work-order/restoration/restoration-display";
 
 const { CONTRACT_ORDER_TYPE } = constants;
@@ -113,7 +113,7 @@ const ContractorDetail = ({ contractorId }: Props) => {
                 <h2 className='truncate text-base font-semibold text-gray-900'>
                   {capitalFirstLetter(contractor.name)}
                 </h2>
-                <VendorCode code={contractor.code} />
+                <RecordCode code={contractor.code} />
               </div>
               <p className='text-xs text-gray-500'>
                 {[contractor.contact_number, contractor.email, contractor.address]

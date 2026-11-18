@@ -8,7 +8,7 @@ import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import VendorCode from "@/components/vendor/vendor-code";
+import RecordCode from "@/components/shared/record-code";
 import NewVendorButton from "@/components/vendor/new-vendor-button";
 
 // The job order whose vendors are being chosen, and those it has.
@@ -135,7 +135,7 @@ const JobOrderVendorsDialog = ({
                     toggle(vendor.id, checked === true)
                   }
                 />
-                <VendorCode code={vendor.code} />
+                <RecordCode code={vendor.code} />
                 <span className='truncate'>{vendor.name}</span>
               </label>
             ))
