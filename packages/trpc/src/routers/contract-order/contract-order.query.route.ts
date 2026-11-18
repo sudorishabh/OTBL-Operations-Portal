@@ -125,38 +125,6 @@ export const contractOrderQueryRouter = router({
       }),
     ),
 
-  // The work order's bioremediation sites an order can require things at.
-  getOrderableSites: protectedProcedure
-    .input(contractOrderSchemas.getContractOrdersSchema)
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        await assertCanAccessWorkOrder(
-          ctx.db,
-          await accessScope(ctx),
-          input.work_order_id,
-        );
-
-        try {
-          return await ctx.db
-            .select({ id: workOrderSiteTable.id, name: siteTable.name })
-            .from(workOrderSiteTable)
-            .innerJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
-            .where(
-              and(
-                eq(workOrderSiteTable.work_order_id, input.work_order_id),
-                eq(
-                  workOrderSiteTable.process_type,
-                  constants.WO_PROCESS.BIOREMEDIATION,
-                ),
-              ),
-            )
-            .orderBy(asc(siteTable.name));
-        } catch (error) {
-          throw fromDatabaseError(error, "Fetching orderable sites");
-        }
-      }),
-    ),
-
   // A work order's purchase orders and sub-contracts, newest first, with the
   // requirement at each site and the vendors given the order.
   getContractOrders: protectedProcedure
