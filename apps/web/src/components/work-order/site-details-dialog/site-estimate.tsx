@@ -378,113 +378,112 @@ const EstimateForm = ({
     <div className='space-y-3'>
       <EstimateHeader actions={actions} />
 
-      <div className='grid grid-cols-1 gap-3 lg:grid-cols-3'>
-        <DocumentsField
-          isLoading={documentsLoading}
-          label='Doc upload'
-          files={pendingDocs}
-          onFilesChange={setPendingDocs}
-          existing={savedDocs.map((doc, index) => ({
-            url: doc.document_url,
-            id: doc.document_id ?? null,
-            name: `Estimate document ${index + 1}`,
-          }))}
-          onRemoveExisting={(index) => {
-            const doc = savedDocs[index];
-            if (doc && confirm("Delete this document?")) {
-              deleteDocumentMutation.mutate({ id: doc.id });
-            }
-          }}
-          isUploading={isFileUploading}
-          progress={progress}
-          className='self-start'
-        />
+      {/* The estimate document first, then the quantities it sets. */}
+      <DocumentsField
+        isLoading={documentsLoading}
+        label='Doc upload'
+        files={pendingDocs}
+        onFilesChange={setPendingDocs}
+        existing={savedDocs.map((doc, index) => ({
+          url: doc.document_url,
+          id: doc.document_id ?? null,
+          name: `Estimate document ${index + 1}`,
+        }))}
+        onRemoveExisting={(index) => {
+          const doc = savedDocs[index];
+          if (doc && confirm("Delete this document?")) {
+            deleteDocumentMutation.mutate({ id: doc.id });
+          }
+        }}
+        isUploading={isFileUploading}
+        progress={progress}
+        className='rounded-lg bg-white'
+      />
 
-        <div className='self-start overflow-hidden rounded-lg border border-gray-200 bg-white lg:col-span-2'>
-          <Table>
-            <TableHeader>
-              <TableRow className='border-gray-100 hover:bg-transparent'>
-                <TableHead className={headClass}>Activity</TableHead>
-                <TableHead className={cn(headClass, "text-right")}>Rate</TableHead>
+      <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
+        <Table>
+          <TableHeader>
+            <TableRow className='border-gray-100 hover:bg-transparent'>
+              <TableHead className={headClass}>Activity</TableHead>
+              <TableHead className={cn(headClass, "text-right")}>Rate</TableHead>
+              <TableHead className={cn(headClass, "text-right")}>
+                Est. quantity
+              </TableHead>
+              {showOilZapper && (
                 <TableHead className={cn(headClass, "text-right")}>
-                  Est. quantity
+                  {/* Named as the change request (M6) asks. */}
+                  {`Tot. Est. ${constants.OIL_ZAPPER.LABEL} Qty (${constants.OIL_ZAPPER.UNIT})`}
                 </TableHead>
-                {showOilZapper && (
-                  <TableHead className={cn(headClass, "text-right")}>
-                    {/* Named as the change request (M6) asks. */}
-                    {`Tot. Est. ${constants.OIL_ZAPPER.LABEL} Qty (${constants.OIL_ZAPPER.UNIT})`}
-                  </TableHead>
-                )}
-                <TableHead className={cn(headClass, "text-right")}>Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activities.map((activity) => {
-                const currentData = formData[activity.activity] || {
-                  estimated_quantity: "",
-                  amount: "",
-                  transportation_km: "",
-                  oil_zapper_quantity: "",
-                };
-                const isBioremActivity =
-                  isBioremediation && isBioremActivityKey(activity.activity);
-                const unit = activity.unit || "Nos";
-                const amount = Number(currentData.amount) || 0;
+              )}
+              <TableHead className={cn(headClass, "text-right")}>Amount</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {activities.map((activity) => {
+              const currentData = formData[activity.activity] || {
+                estimated_quantity: "",
+                amount: "",
+                transportation_km: "",
+                oil_zapper_quantity: "",
+              };
+              const isBioremActivity =
+                isBioremediation && isBioremActivityKey(activity.activity);
+              const unit = activity.unit || "Nos";
+              const amount = Number(currentData.amount) || 0;
 
-                return (
-                  <TableRow
-                    key={activity.id}
-                    className='border-gray-100 hover:bg-transparent'>
-                    <TableCell
-                      className={cn(
-                        cellClass,
-                        "min-w-44 whitespace-normal font-medium text-gray-800",
-                      )}>
-                      {formatName(activity.activity)}
-                    </TableCell>
+              return (
+                <TableRow
+                  key={activity.id}
+                  className='border-gray-100 hover:bg-transparent'>
+                  <TableCell
+                    className={cn(
+                      cellClass,
+                      "min-w-44 whitespace-normal font-medium text-gray-800",
+                    )}>
+                    {formatName(activity.activity)}
+                  </TableCell>
+                  <TableCell className={numberClass}>
+                    {formatCurrency(Number(activity.rate) || 0)}
+                    <span className='text-xs text-gray-400'> / {unit}</span>
+                  </TableCell>
+                  <TableCell className={numberClass}>
+                    {renderQuantity(
+                      currentData.estimated_quantity,
+                      unit,
+                      "estimated_quantity",
+                      activity.activity,
+                      activity.sor_estimated_quantity
+                        ? `Max ${formatQty(activity.sor_estimated_quantity)}`
+                        : "0",
+                    )}
+                  </TableCell>
+                  {showOilZapper && (
                     <TableCell className={numberClass}>
-                      {formatCurrency(Number(activity.rate) || 0)}
-                      <span className='text-xs text-gray-400'> / {unit}</span>
-                    </TableCell>
-                    <TableCell className={numberClass}>
-                      {renderQuantity(
-                        currentData.estimated_quantity,
-                        unit,
-                        "estimated_quantity",
-                        activity.activity,
-                        activity.sor_estimated_quantity
-                          ? `Max ${formatQty(activity.sor_estimated_quantity)}`
-                          : "0",
+                      {isBioremActivity ? (
+                        renderQuantity(
+                          currentData.oil_zapper_quantity,
+                          constants.OIL_ZAPPER.UNIT,
+                          "oil_zapper_quantity",
+                          activity.activity,
+                          "0",
+                        )
+                      ) : (
+                        <span className='text-gray-300'>—</span>
                       )}
                     </TableCell>
-                    {showOilZapper && (
-                      <TableCell className={numberClass}>
-                        {isBioremActivity ? (
-                          renderQuantity(
-                            currentData.oil_zapper_quantity,
-                            constants.OIL_ZAPPER.UNIT,
-                            "oil_zapper_quantity",
-                            activity.activity,
-                            "0",
-                          )
-                        ) : (
-                          <span className='text-gray-300'>—</span>
-                        )}
-                      </TableCell>
-                    )}
-                    <TableCell
-                      className={cn(
-                        numberClass,
-                        amount > 0 ? "font-semibold text-gray-900" : "text-gray-300",
-                      )}>
-                      {amount > 0 ? formatCurrency(amount) : "—"}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                  )}
+                  <TableCell
+                    className={cn(
+                      numberClass,
+                      amount > 0 ? "font-semibold text-gray-900" : "text-gray-300",
+                    )}>
+                    {amount > 0 ? formatCurrency(amount) : "—"}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
