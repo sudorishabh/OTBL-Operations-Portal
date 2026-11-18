@@ -613,6 +613,8 @@ export const contractorTable = mysqlTable(
     contact_number: varchar("contact_number", { length: 15 }),
     email: varchar("email", { length: 320 }),
     address: varchar("address", { length: 500 }),
+    // Lowercase, as offices' and sites' states are.
+    state: varchar("state", { length: 100 }),
     gst_number: varchar("gst_number", { length: 15 }),
     pan_number: varchar("pan_number", { length: 10 }),
     status: varchar("status", {
