@@ -254,14 +254,24 @@ export const SiteDetailsSkeleton = ({
               What is left for this site to draw on.
             </p>
           </div>
-          {/* Its cards, side by side as the page shows them. */}
-          <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3'>
-            {[0, 1, 2].map((card) => (
-              <Skeleton
-                key={card}
-                className='h-[116px] w-full rounded-lg bg-gray-100'
-              />
-            ))}
+          {/* The work order's card, then the site's two, each group in its
+              tint as the page shows them. */}
+          <div className='flex flex-col gap-3 xl:flex-row'>
+            <div className='space-y-2 rounded-xl bg-gray-50 p-2.5 ring-1 ring-inset ring-gray-200 xl:w-1/3'>
+              <Skeleton className='h-3.5 w-48' />
+              <Skeleton className='h-[116px] w-full rounded-lg bg-white' />
+            </div>
+            <div className='flex-1 space-y-2 rounded-xl bg-blue-50/60 p-2.5 ring-1 ring-inset ring-blue-100'>
+              <Skeleton className='h-3.5 w-48' />
+              <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+                {[0, 1].map((card) => (
+                  <Skeleton
+                    key={card}
+                    className='h-[116px] w-full rounded-lg bg-white'
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </SkeletonCard>
 
