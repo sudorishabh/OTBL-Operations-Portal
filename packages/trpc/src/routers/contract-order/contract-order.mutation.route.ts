@@ -1,12 +1,13 @@
 import { and, count, eq, inArray, notInArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
-import { constants } from "@pkg/utils";
+import { CODE_PREFIX, constants } from "@pkg/utils";
 import { contractOrderSchemas } from "@pkg/schema";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import { assertOfficeManager } from "../../helper/office-permissions";
 import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { nextCode } from "../../helper/record-code";
 import type { TrpcContext } from "../../context";
 import {
   assertOilZapperCovered,
@@ -50,6 +51,12 @@ type OrderInput = {
 
 const isPurchaseOrder = (order: { type: string }) =>
   order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER;
+
+// Purchase orders and sub-contracts are numbered apart.
+const codePrefix = (order: { type: string }) =>
+  isPurchaseOrder(order)
+    ? CODE_PREFIX.PURCHASE_ORDER
+    : CODE_PREFIX.SUB_CONTRACT;
 
 const itemUnit = (item: string) =>
   CONTRACT_ORDER_ITEMS.find((option) => option.key === item)?.unit ?? "Nos";
@@ -226,9 +233,15 @@ export const contractOrderMutationRouter = router({
 
         try {
           const id = await ctx.db.transaction(async (tx) => {
+            const code = await nextCode(
+              tx,
+              contractOrderTable,
+              codePrefix(input),
+            );
             const [result] = await tx.insert(contractOrderTable).values({
               work_order_id: input.work_order_id,
               type: input.type,
+              code,
               order_number: input.order_number,
               order_date: input.order_date,
               description: input.description || null,

@@ -742,7 +742,10 @@ export const contractOrderTable = mysqlTable(
         CONTRACT_ORDER_TYPE.SUB_CONTRACT,
       ],
     }).notNull(),
-    order_number: varchar("order_number", { length: 255 }).notNull(),
+    // The order's code, PO-0003 or SC-0003, numbered by type as it is added.
+    code: varchar("code", { length: 20 }).notNull().unique(),
+    // The number typed for an order added before orders had codes.
+    order_number: varchar("order_number", { length: 255 }),
     order_date: timestamp("order_date").notNull(),
     description: text("description"),
     // A purchase order's cost: its rate per unit of oil zapper before GST,
