@@ -159,7 +159,6 @@ const filledActivities = (
 // nothing.
 const jobOrderValues = (input: jobOrderTypes.JobOrderValues) => ({
   jo_number: input.jo_number,
-  title: input.title,
   start_date: input.start_date,
   end_date: input.end_date,
   description: input.description || null,

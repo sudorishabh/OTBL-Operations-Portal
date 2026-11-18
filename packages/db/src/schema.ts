@@ -657,7 +657,6 @@ export const jobOrderTable = mysqlTable(
       .notNull()
       .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
     jo_number: varchar("jo_number", { length: 255 }).notNull(),
-    title: varchar("title", { length: 255 }).notNull(),
     start_date: timestamp("start_date").notNull(),
     end_date: timestamp("end_date").notNull(),
     description: text("description"),

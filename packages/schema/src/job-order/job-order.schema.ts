@@ -47,11 +47,6 @@ export const baseJobOrderSchema = z
       .trim()
       .min(1, "Job order number is required")
       .max(255, "Job order number cannot exceed 255 characters"),
-    title: z
-      .string({ message: "Title is required" })
-      .trim()
-      .min(1, "Title is required")
-      .max(255, "Title cannot exceed 255 characters"),
     start_date: dateValidator,
     end_date: dateValidator,
     description: longDescriptionValidator,

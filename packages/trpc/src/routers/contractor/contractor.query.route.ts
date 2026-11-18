@@ -323,7 +323,8 @@ export const contractorQueryRouter = router({
             .select({
               id: jobOrderTable.id,
               jo_number: jobOrderTable.jo_number,
-              title: jobOrderTable.title,
+              installation_name: jobOrderTable.installation_name,
+              location: jobOrderTable.location,
               start_date: jobOrderTable.start_date,
               end_date: jobOrderTable.end_date,
               work_order_id: workOrderTable.id,
