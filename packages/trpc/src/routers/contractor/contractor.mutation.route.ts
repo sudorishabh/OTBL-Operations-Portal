@@ -65,7 +65,7 @@ export const contractorMutationRouter = router({
     .input(vendorSchemas.updateVendorSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const { id, name, status } = input;
+        const { id, name } = input;
         assertCanManageVendors(ctx);
 
         const existing = await ctx.db
@@ -82,7 +82,6 @@ export const contractorMutationRouter = router({
             .update(contractorTable)
             .set({
               name: name?.trim(),
-              status,
               contact_number: optionalText(input.contact_number),
               email: optionalText(input.email),
               address: optionalText(input.address),

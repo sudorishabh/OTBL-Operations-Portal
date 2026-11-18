@@ -5,9 +5,6 @@ import {
   optionalContactNumberValidator,
   positiveIntValidator,
 } from "../validators";
-import { constants } from "@pkg/utils";
-
-const { STATUS } = constants;
 
 // Vendors are stored in the contractors table: everyone material and work
 // are ordered from, through purchase orders, sub-contracts and job orders.
@@ -49,8 +46,6 @@ const vendorFields = {
   pan_number: optionalPanNumberValidator,
 };
 
-export const vendorStatusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
-
 export const createVendorSchema = z.object(vendorFields);
 
 // Fields left out keep their value.
@@ -59,5 +54,4 @@ export const updateVendorSchema = z
   .partial()
   .extend({
     id: positiveIntValidator,
-    status: vendorStatusEnum.optional(),
   });

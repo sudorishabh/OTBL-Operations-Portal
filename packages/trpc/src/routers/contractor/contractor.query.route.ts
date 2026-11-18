@@ -79,7 +79,6 @@ export const contractorQueryRouter = router({
         page: z.number().min(1).default(1),
         limit: z.number().min(1).max(100).default(20),
         search: z.string().optional(),
-        status: z.enum(["active", "inactive"]).optional(),
         usage: vendorUsageEnum.optional(),
         sort: z
           .enum(["name_asc", "name_desc", "newest", "oldest"])
@@ -88,7 +87,7 @@ export const contractorQueryRouter = router({
     )
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { page, limit, search, status, usage, sort } = input;
+        const { page, limit, search, usage, sort } = input;
 
         if (!(await canUseVendors(ctx))) {
           return {
@@ -169,7 +168,6 @@ export const contractorQueryRouter = router({
         };
 
         const where = and(
-          status ? eq(contractorTable.status, status) : undefined,
           searchWhere(search),
           usage ? usageWhere[usage]() : undefined,
         );

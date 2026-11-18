@@ -1,6 +1,5 @@
 import { and, count, eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
-import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import { assertOfficeManager } from "../../helper/office-permissions";
@@ -17,7 +16,6 @@ const {
   workOrderSiteExpenseTable,
   contractorTable,
 } = schema;
-const { STATUS } = constants;
 
 // Only the office manager of the work order's office changes who a site's
 // work is ordered to.
@@ -47,17 +45,14 @@ async function assertManagesSiteContractors(
   await assertOfficeManager(ctx, site.office_id);
 }
 
-async function assertActiveVendor(ctx: TrpcContext, contractorId: number) {
+async function assertVendorExists(ctx: TrpcContext, contractorId: number) {
   const [vendor] = await ctx.db
-    .select({ status: contractorTable.status })
+    .select({ id: contractorTable.id })
     .from(contractorTable)
     .where(eq(contractorTable.id, contractorId));
 
   if (!vendor) {
     throw notFound("Vendor", contractorId);
-  }
-  if (vendor.status !== STATUS.ACTIVE) {
-    throw businessRule("This vendor is inactive.");
   }
 }
 
@@ -80,7 +75,7 @@ export const siteContractorMutationRouter = router({
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         await assertManagesSiteContractors(ctx, input.work_order_site_id);
-        await assertActiveVendor(ctx, input.contractor_id);
+        await assertVendorExists(ctx, input.contractor_id);
 
         const [existing] = await ctx.db
           .select({ id: workOrderSiteContractorTable.id })
