@@ -18,10 +18,11 @@ interface Props {
 type SiteTab = "activities" | "expenses";
 
 // The work carried out at a site and what it cost. A bioremediation site
-// shows them as two tabs: its bio samples and oil zapping, then its expenses.
+// shows them as two tabs: its bio samples and oil zapping, then its expenses,
+// which open first.
 const SiteExecution = ({ woSiteId, processType }: Props) => {
   const isBioremediation = processType === WO_PROCESS.BIOREMEDIATION;
-  const [tab, setTab] = useState<SiteTab>("activities");
+  const [tab, setTab] = useState<SiteTab>("expenses");
 
   // The same queries the tabs make, so their counts come from the cache.
   const bioremediationDataQuery =

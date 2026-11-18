@@ -275,10 +275,23 @@ export const SiteDetailsSkeleton = ({
           </div>
         </SkeletonCard>
 
-        {/* The activities and expenses tabs, the activities open. */}
+        {/* The activities and expenses tabs, the expenses open. */}
         <SkeletonCard className='space-y-4 p-5'>
           <Skeleton className='h-8 w-80 max-w-full rounded-lg' />
-          <ActivitiesSkeleton />
+          <div className='flex flex-wrap items-start justify-between gap-3'>
+            <div className='space-y-1'>
+              <TextLine
+                line='h-5'
+                className='h-3.5 w-24'
+              />
+              <TextLine
+                line='h-4'
+                className='w-56'
+              />
+            </div>
+            <Skeleton className='h-8 w-48' />
+          </div>
+          <ExpenseGroupsSkeleton />
         </SkeletonCard>
       </div>
     </SkeletonRegion>
