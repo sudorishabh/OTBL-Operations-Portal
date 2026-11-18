@@ -1,4 +1,5 @@
 import React from "react";
+import RecordCode from "@/components/shared/record-code";
 import Link from "next/link";
 import { differenceInCalendarDays, format } from "date-fns";
 import {
@@ -232,6 +233,7 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
                   {office.name.toUpperCase()}
                 </Link>
               </h3>
+              <RecordCode code={office.code} />
               <Pill
                 className={cn(
                   "shrink-0",

@@ -1,4 +1,5 @@
 import React from "react";
+import RecordCode from "@/components/shared/record-code";
 import { format } from "date-fns";
 import { Building2, CalendarDays, MapPin } from "lucide-react";
 import {
@@ -64,6 +65,7 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
               {office.name.toUpperCase()}
             </h2>
             <div className='mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500'>
+              <RecordCode code={office.code} />
               {location && (
                 <span className='inline-flex min-w-0 items-center gap-1.5'>
                   <MapPin className='size-3.5 shrink-0 text-gray-400' />

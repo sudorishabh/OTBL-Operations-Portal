@@ -76,7 +76,7 @@ const OfficeSites = ({ details }: { details: OfficeDetails }) => {
         <FilterBar className='mb-3'>
           <SearchFilter
             label='Search sites'
-            placeholder='Search sites by name, address or city...'
+            placeholder='Search sites by code, name, address or city...'
             value={search}
             onChange={setSearch}
           />
