@@ -186,6 +186,7 @@ export const contractOrderQueryRouter = router({
               id: contractOrderItemTable.id,
               contract_order_id: contractOrderItemTable.contract_order_id,
               work_order_site_id: contractOrderItemTable.work_order_site_id,
+              site_code: siteTable.code,
               site_name: siteTable.name,
               item: contractOrderItemTable.item,
               description: contractOrderItemTable.description,
