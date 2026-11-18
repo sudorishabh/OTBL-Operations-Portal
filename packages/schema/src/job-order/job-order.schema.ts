@@ -105,6 +105,12 @@ export const setJobOrderCertificatesSchema = z.object({
   documents: optionalDocumentsValidator,
 });
 
+// The invoices raised for the job order's work, replacing those saved before.
+export const setJobOrderInvoicesSchema = z.object({
+  id: positiveIntValidator,
+  invoices: optionalDocumentsValidator,
+});
+
 export const getJobOrdersSchema = z.object({
   work_order_site_id: positiveIntValidator,
 });

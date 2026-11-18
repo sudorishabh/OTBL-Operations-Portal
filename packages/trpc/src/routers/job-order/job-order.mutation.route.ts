@@ -186,6 +186,7 @@ export const jobOrderMutationRouter = router({
             ...jobOrderValues(input),
             work_order_site_id: input.work_order_site_id,
             documents: [],
+            invoices: [],
             created_by: Number(ctx.user!.sub),
           });
 
@@ -284,6 +285,25 @@ export const jobOrderMutationRouter = router({
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Saving job order certificates");
+        }
+      }),
+    ),
+
+  setJobOrderInvoices: protectedProcedure
+    .input(jobOrderSchemas.setJobOrderInvoicesSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const jobOrder = await getJobOrder(ctx, input.id);
+        await assertManagesRestoration(ctx, jobOrder.work_order_site_id);
+
+        try {
+          await ctx.db
+            .update(jobOrderTable)
+            .set({ invoices: input.invoices })
+            .where(eq(jobOrderTable.id, input.id));
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Saving job order invoices");
         }
       }),
     ),
