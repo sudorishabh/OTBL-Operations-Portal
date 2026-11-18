@@ -24,6 +24,7 @@ import CreateWorkOrderSiteDialog from "../create-wo-site/create-wo-site-dialog";
 import SitesTable from "./wo-sites-table";
 import WOSitesCard from "./wo-sites-card";
 import ContractOrdersSection from "../contract-orders/contract-orders-section";
+import { toDate } from "@/lib/wo-site-display";
 
 interface Props {
   workOrder: any;
@@ -105,14 +106,9 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
         city: s.site_city,
         state: s.site_state,
         pincode: s.site_pincode,
-        start_date:
-          s.start_date && !isNaN(new Date(s.start_date).getTime())
-            ? new Date(s.start_date).toISOString()
-            : new Date().toISOString(),
-        end_date:
-          s.end_date && !isNaN(new Date(s.end_date).getTime())
-            ? new Date(s.end_date).toISOString()
-            : new Date().toISOString(),
+        // A site can be added before its dates are known.
+        start_date: toDate(s.start_date)?.toISOString() ?? null,
+        end_date: toDate(s.end_date)?.toISOString() ?? null,
         status:
           s.is_completed === true ? "completed" : normalizeSiteStatus(s.status),
         client_id: workOrder.client_id,

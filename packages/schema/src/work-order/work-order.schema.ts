@@ -239,15 +239,24 @@ export const getAllWorkOrdersPaginatedSchema = z.object({
     .optional(),
 });
 
-export const createWorkOrderSiteSchema = z.object({
-  work_order_id: positiveIntValidator,
-  client_id: positiveIntValidator,
-  site_id: positiveIntValidator.optional(),
-  date: dateValidator,
-  end_date: dateValidator,
-  selected_activities: z.array(woActivitySchemaWithId).optional(),
-  new_site: createSiteSchema.optional(),
-});
+// A site can be added to a work order before its dates are known.
+export const createWorkOrderSiteSchema = z
+  .object({
+    work_order_id: positiveIntValidator,
+    client_id: positiveIntValidator,
+    site_id: positiveIntValidator.optional(),
+    date: dateValidator.nullable().optional(),
+    end_date: dateValidator.nullable().optional(),
+    selected_activities: z.array(woActivitySchemaWithId).optional(),
+    new_site: createSiteSchema.optional(),
+  })
+  .refine(
+    (data) => !data.date || !data.end_date || data.end_date >= data.date,
+    {
+      message: "End date must be on or after start date",
+      path: ["end_date"],
+    },
+  );
 
 // An admin's correction to the dates a work order site runs over.
 export const updateWorkOrderSiteDatesSchema = z

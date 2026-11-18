@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, notInArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { jobOrderSchemas, type jobOrderTypes } from "@pkg/schema";
@@ -93,6 +93,63 @@ async function countJobOrderExpenses(
 
 const unique = (ids: number[]) => [...new Set(ids)];
 
+type Transaction = Parameters<
+  Parameters<TrpcContext["db"]["transaction"]>[0]
+>[0];
+
+// Works out how to give a job order exactly these vendors, checking each
+// still exists and that none with expenses on it is being taken off.
+async function planVendorChange(
+  ctx: TrpcContext,
+  jobOrderId: number,
+  contractorIds: number[],
+) {
+  if (contractorIds.length > 0) await assertVendorsExist(ctx, contractorIds);
+
+  const current = await ctx.db
+    .select({ contractor_id: jobOrderContractorTable.contractor_id })
+    .from(jobOrderContractorTable)
+    .where(eq(jobOrderContractorTable.job_order_id, jobOrderId));
+  const currentIds = current.map((vendor) => vendor.contractor_id);
+  const dropped = currentIds.filter((id) => !contractorIds.includes(id));
+  const added = contractorIds.filter((id) => !currentIds.includes(id));
+
+  if (
+    dropped.length > 0 &&
+    (await countJobOrderExpenses(ctx, jobOrderId, dropped)) > 0
+  ) {
+    throw businessRule(
+      "A vendor with expenses on this job order can't be removed.",
+    );
+  }
+  return { added, dropped };
+}
+
+async function applyVendorChange(
+  tx: Transaction,
+  jobOrderId: number,
+  { added, dropped }: { added: number[]; dropped: number[] },
+) {
+  if (dropped.length > 0) {
+    await tx
+      .delete(jobOrderContractorTable)
+      .where(
+        and(
+          eq(jobOrderContractorTable.job_order_id, jobOrderId),
+          inArray(jobOrderContractorTable.contractor_id, dropped),
+        ),
+      );
+  }
+  if (added.length > 0) {
+    await tx.insert(jobOrderContractorTable).values(
+      added.map((contractorId) => ({
+        job_order_id: jobOrderId,
+        contractor_id: contractorId,
+      })),
+    );
+  }
+}
+
 // Activity rows with nothing written against them aren't saved.
 const filledActivities = (
   activities: jobOrderTypes.JobOrderValues["activities"],
@@ -123,91 +180,65 @@ export const jobOrderMutationRouter = router({
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         await assertManagesRestoration(ctx, input.work_order_site_id);
-        const contractorIds = unique(input.contractor_ids);
-        await assertVendorsExist(ctx, contractorIds);
 
+        // Its vendors are chosen once it exists, with setJobOrderVendors.
         try {
-          const id = await ctx.db.transaction(async (tx) => {
-            const [result] = await tx.insert(jobOrderTable).values({
-              ...jobOrderValues(input),
-              work_order_site_id: input.work_order_site_id,
-              documents: [],
-              created_by: Number(ctx.user!.sub),
-            });
-            const jobOrderId = Number(result.insertId);
-
-            await tx.insert(jobOrderContractorTable).values(
-              contractorIds.map((contractorId) => ({
-                job_order_id: jobOrderId,
-                contractor_id: contractorId,
-              })),
-            );
-            return jobOrderId;
+          const [result] = await ctx.db.insert(jobOrderTable).values({
+            ...jobOrderValues(input),
+            work_order_site_id: input.work_order_site_id,
+            documents: [],
+            created_by: Number(ctx.user!.sub),
           });
 
-          return { success: true, id };
+          return { success: true, id: Number(result.insertId) };
         } catch (error) {
           throw fromDatabaseError(error, "Creating job order");
         }
       }),
     ),
 
-  // A vendor with expenses on the job order can't be taken off it.
+  // The job order form only; its vendors are set with setJobOrderVendors.
   updateJobOrder: protectedProcedure
     .input(jobOrderSchemas.updateJobOrderSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const jobOrder = await getJobOrder(ctx, input.id);
         await assertManagesRestoration(ctx, jobOrder.work_order_site_id);
-        const contractorIds = unique(input.contractor_ids);
-        await assertVendorsExist(ctx, contractorIds);
-
-        const current = await ctx.db
-          .select({ contractor_id: jobOrderContractorTable.contractor_id })
-          .from(jobOrderContractorTable)
-          .where(eq(jobOrderContractorTable.job_order_id, input.id));
-        const currentIds = current.map((vendor) => vendor.contractor_id);
-        const droppedIds = currentIds.filter(
-          (id) => !contractorIds.includes(id),
-        );
-        if (
-          droppedIds.length > 0 &&
-          (await countJobOrderExpenses(ctx, input.id, droppedIds)) > 0
-        ) {
-          throw businessRule(
-            "A vendor with expenses on this job order can't be removed.",
-          );
-        }
 
         try {
-          await ctx.db.transaction(async (tx) => {
-            await tx
-              .update(jobOrderTable)
-              .set(jobOrderValues(input))
-              .where(eq(jobOrderTable.id, input.id));
-
-            await tx
-              .delete(jobOrderContractorTable)
-              .where(
-                and(
-                  eq(jobOrderContractorTable.job_order_id, input.id),
-                  notInArray(jobOrderContractorTable.contractor_id, contractorIds),
-                ),
-              );
-            const added = contractorIds.filter((id) => !currentIds.includes(id));
-            if (added.length > 0) {
-              await tx.insert(jobOrderContractorTable).values(
-                added.map((contractorId) => ({
-                  job_order_id: input.id,
-                  contractor_id: contractorId,
-                })),
-              );
-            }
-          });
+          await ctx.db
+            .update(jobOrderTable)
+            .set(jobOrderValues(input))
+            .where(eq(jobOrderTable.id, input.id));
 
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Updating job order");
+        }
+      }),
+    ),
+
+  // Gives a job order its vendors, chosen once it exists. A vendor with
+  // expenses on the job order can't be taken off it.
+  setJobOrderVendors: protectedProcedure
+    .input(jobOrderSchemas.setJobOrderVendorsSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const jobOrder = await getJobOrder(ctx, input.id);
+        await assertManagesRestoration(ctx, jobOrder.work_order_site_id);
+        const vendorChange = await planVendorChange(
+          ctx,
+          input.id,
+          unique(input.contractor_ids),
+        );
+
+        try {
+          await ctx.db.transaction((tx) =>
+            applyVendorChange(tx, input.id, vendorChange),
+          );
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Updating job order vendors");
         }
       }),
     ),

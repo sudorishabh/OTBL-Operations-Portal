@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   FileDown,
+  HardHat,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -20,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import JobOrderCompletionDialog from "./job-order-completion-dialog";
+import JobOrderVendorsDialog from "./job-order-vendors-dialog";
 import type { JobOrder, JobOrderWorkOrder } from "./job-order-dialog";
 import type { RestorationRate } from "./restoration-rates-table";
 import useJobOrderFormDownload from "./use-job-order-form-download";
@@ -33,8 +35,9 @@ interface Props {
   onEdit: () => void;
 }
 
-// A job order's menu: its forms, then edit and delete. Anyone can download
-// its forms. A job order with expenses can't be deleted; the server says so.
+// A job order's menu: its forms, then its vendors, edit and delete. Anyone
+// can download its forms. A job order with expenses can't be deleted; the
+// server says so.
 const JobOrderActions = ({
   restorationId,
   jobOrder,
@@ -45,6 +48,7 @@ const JobOrderActions = ({
   const isViewer = useIsViewer();
   const { download, isDownloading } = useJobOrderFormDownload(workOrder);
   const [completionOpen, setCompletionOpen] = useState(false);
+  const [vendorsOpen, setVendorsOpen] = useState(false);
   const hasCompletion = jobOrder.completion_activities != null;
   const { handleError } = useApiError();
   const utils = trpc.useUtils();
@@ -97,6 +101,13 @@ const JobOrderActions = ({
           {!isViewer && (
             <>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setVendorsOpen(true)}>
+                <HardHat className='size-4 text-gray-500' />
+                Vendors
+                <span className='ml-auto text-xs tabular-nums text-gray-400'>
+                  {jobOrder.vendors.length || "None yet"}
+                </span>
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={onEdit}>
                 <Pencil className='size-4 text-gray-500' />
                 Edit job order
@@ -124,6 +135,13 @@ const JobOrderActions = ({
         rates={rates}
         open={completionOpen}
         onClose={() => setCompletionOpen(false)}
+      />
+
+      <JobOrderVendorsDialog
+        restorationId={restorationId}
+        jobOrder={jobOrder}
+        open={vendorsOpen}
+        onClose={() => setVendorsOpen(false)}
       />
     </>
   );

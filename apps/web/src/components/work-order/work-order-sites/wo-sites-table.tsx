@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { MapPin, Calendar, ArrowRight, Clock, FileText } from "lucide-react";
 import { capitalFirstLetter } from "@pkg/utils";
+import { formatDateRange } from "@/lib/wo-site-display";
 
 interface Site {
   id: number;
@@ -20,8 +21,9 @@ interface Site {
   city: string;
   state: string;
   status: "pending" | "completed" | "cancelled";
-  start_date: string;
-  end_date: string;
+  // Unset for a site added before its dates are known.
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
   users: { user_id: number; user_name: string }[];
   measurement_sheets?: { id: number; document_url: string }[];
@@ -98,9 +100,9 @@ const WOSitesTable = ({ sites, onSiteClick }: Props) => {
                 <div className='flex flex-col gap-1'>
                   <div className='flex items-center gap-1.5 text-xs text-gray-600'>
                     <Calendar className='w-3 h-3 text-orange-500' />
-                    <span>{format(new Date(site.start_date), "dd/MM/yy")}</span>
-                    <span className='text-gray-300'>-</span>
-                    <span>{format(new Date(site.end_date), "dd/MM/yy")}</span>
+                    <span>
+                      {formatDateRange(site.start_date, site.end_date)}
+                    </span>
                   </div>
                 </div>
               </TableCell>

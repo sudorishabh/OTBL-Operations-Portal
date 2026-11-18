@@ -68,9 +68,6 @@ export const baseJobOrderSchema = z
       .array(jobOrderActivitySchema)
       .max(JOB_ORDER_ACTIVITIES.length)
       .optional(),
-    contractor_ids: z
-      .array(positiveIntValidator)
-      .min(1, "Choose at least one vendor"),
   })
   .refine((data) => data.end_date >= data.start_date, {
     message: "End date must be on or after the start date",
@@ -89,6 +86,12 @@ export const updateJobOrderSchema = z.intersection(
   baseJobOrderSchema,
   z.object({ id: positiveIntValidator }),
 );
+
+// A job order's vendors, chosen once it exists. None is allowed.
+export const setJobOrderVendorsSchema = z.object({
+  id: positiveIntValidator,
+  contractor_ids: z.array(positiveIntValidator),
+});
 
 export const jobOrderIdSchema = z.object({
   id: positiveIntValidator,
