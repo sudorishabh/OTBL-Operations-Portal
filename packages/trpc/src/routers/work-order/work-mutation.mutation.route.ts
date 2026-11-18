@@ -104,9 +104,7 @@ export const workOrderMutationRouter = router({
           const { workOrderId, code } = await ctx.db.transaction(async (tx) => {
             // The code is numbered here, holding the last numbers until the
             // work order is saved.
-            const codeParts = await nextWorkOrderCode(tx, input.start_date, {
-              lock: true,
-            });
+            const codeParts = await nextWorkOrderCode(tx, input.start_date);
             const workOrderResult = await tx
               .insert(workOrderTable)
               .values({ ...workOrderData, ...codeParts });

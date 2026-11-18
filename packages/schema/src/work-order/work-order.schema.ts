@@ -215,11 +215,6 @@ export const getWorkOrdersByOfficeSchema = z.object({
   office_id: positiveIntValidator,
 });
 
-// The code a new work order starting on this date would get.
-export const getNextWorkOrderCodeSchema = z.object({
-  start_date: dateValidator,
-});
-
 export const getWorkOrderSchema = z.object({
   id: positiveIntValidator,
   limit: z.number().min(1).max(100).default(10),

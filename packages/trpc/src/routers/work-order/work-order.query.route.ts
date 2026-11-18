@@ -14,7 +14,6 @@ import { workOrderSchemas } from "@pkg/schema";
 
 const {
   getWorkOrderSchema,
-  getNextWorkOrderCodeSchema,
   getWorkOrdersByOfficeSchema,
   getWorkOrdersByClientSchema,
   getAllWorkOrdersPaginatedSchema,
@@ -28,7 +27,6 @@ import { hasPhysicalSite, siteNameOrRestoration } from "../../helper/restoration
 import { USER_ROLES } from "../../authorization";
 import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
-import { nextWorkOrderCode } from "./work-order-code";
 
 const {
   workOrderTable,
@@ -332,16 +330,6 @@ export const workOrderQueryRouter = router({
       }
     }),
   ),
-
-  // Shown on the create form; the code itself is numbered when it is saved.
-  getNextWorkOrderCode: protectedProcedure
-    .input(getNextWorkOrderCodeSchema)
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        const { code } = await nextWorkOrderCode(ctx.db, input.start_date);
-        return { code };
-      }),
-    ),
 
   getWorkOrder: protectedProcedure.input(getWorkOrderSchema).query(
     handleQuery(async ({ input, ctx }) => {

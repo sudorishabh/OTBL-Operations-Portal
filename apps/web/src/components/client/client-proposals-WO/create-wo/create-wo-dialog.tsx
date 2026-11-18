@@ -77,7 +77,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
       utils.proposalQuery.getProposalsByClient.invalidate({
         client_id: clientId,
       });
-      utils.workOrderQuery.getNextWorkOrderCode.invalidate();
       toast.success(`Work order ${data.code} created`);
     },
     onError: (error: any) => {
