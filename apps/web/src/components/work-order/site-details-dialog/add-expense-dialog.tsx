@@ -136,6 +136,8 @@ const AddExpenseDialog = ({
 }: Props) => {
   // What the expense is spent on, when it is on an order or job order.
   const spentOn = orderItem ?? jobOrder;
+  // A job order's expenses are each for one day, so they take a single date.
+  const isOneDay = !!jobOrder || editingExpense?.job_order_id != null;
   const utils = trpc.useUtils();
 
   const [amount, setAmount] = useState("");
@@ -344,11 +346,14 @@ const AddExpenseDialog = ({
       return;
     }
     if (!title.trim()) { toast.error("Title is required"); return; }
-    if (!startDate || !endDate) {
-      toast.error("Start and end dates are required");
+    const lastDate = isOneDay ? startDate : endDate;
+    if (!startDate || !lastDate) {
+      toast.error(
+        isOneDay ? "Date is required" : "Start and end dates are required",
+      );
       return;
     }
-    if (endDate < startDate) {
+    if (lastDate < startDate) {
       toast.error("End date can't be before the start date");
       return;
     }
@@ -376,7 +381,7 @@ const AddExpenseDialog = ({
       title: title.trim(),
       amount,
       start_date: new Date(startDate).toISOString(),
-      end_date: new Date(endDate).toISOString(),
+      end_date: new Date(lastDate).toISOString(),
       invoice_number: invoiceNumber.trim() || null,
       documents,
     };
@@ -783,33 +788,46 @@ const AddExpenseDialog = ({
             </div>
           </div>
 
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-            <div className='space-y-1.5'>
+          {isOneDay ? (
+            <div className='space-y-1.5 sm:w-1/2 sm:pr-1.5'>
               <Label className='text-xs font-medium text-gray-700'>
-                Start date <span className='text-red-500'>*</span>
+                Date <span className='text-red-500'>*</span>
               </Label>
               <Input
                 type='date' value={startDate}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setStartDate(next);
-                  // A later start takes the end with it, so the range stays valid.
-                  if (next && endDate < next) setEndDate(next);
-                }}
+                onChange={(e) => setStartDate(e.target.value)}
                 className='h-9 text-sm'
               />
             </div>
-            <div className='space-y-1.5'>
-              <Label className='text-xs font-medium text-gray-700'>
-                End date <span className='text-red-500'>*</span>
-              </Label>
-              <Input
-                type='date' value={endDate} min={startDate || undefined}
-                onChange={(e) => setEndDate(e.target.value)}
-                className='h-9 text-sm'
-              />
+          ) : (
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+              <div className='space-y-1.5'>
+                <Label className='text-xs font-medium text-gray-700'>
+                  Start date <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  type='date' value={startDate}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setStartDate(next);
+                    // A later start takes the end with it, so the range stays valid.
+                    if (next && endDate < next) setEndDate(next);
+                  }}
+                  className='h-9 text-sm'
+                />
+              </div>
+              <div className='space-y-1.5'>
+                <Label className='text-xs font-medium text-gray-700'>
+                  End date <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  type='date' value={endDate} min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className='h-9 text-sm'
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className='space-y-1.5'>
             <Label className='text-xs font-medium text-gray-700 flex items-center gap-1.5'>
