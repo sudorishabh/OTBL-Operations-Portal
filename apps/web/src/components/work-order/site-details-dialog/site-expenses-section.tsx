@@ -40,6 +40,7 @@ import {
   ShoppingCart,
   Wrench,
   ClipboardList,
+  Lock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
@@ -55,6 +56,7 @@ import { itemLabel } from "../contract-orders/contract-orders-section";
 import type { JobOrder } from "../restoration/job-order-dialog";
 import JobOrderChip from "../restoration/job-order-chip";
 import {
+  isJobOrderClosed,
   jobOrderPlace,
   jobOrderSorActivities,
 } from "../restoration/restoration-display";
@@ -205,7 +207,9 @@ const SiteExpensesSection = ({
   // the job order a restoration one is.
   const [dialogOrderItemId, setDialogOrderItemId] = useState<number | null>(null);
   const [dialogJobOrderId, setDialogJobOrderId] = useState<number | null>(null);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  // The groups opened or folded away from how each starts: open, or folded
+  // for a closed job order.
+  const [toggledGroups, setToggledGroups] = useState<Set<string>>(new Set());
 
   const [expensePage, setExpensePage] = useState(1);
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
@@ -408,10 +412,13 @@ const SiteExpensesSection = ({
     return all.filter((r) => r.activityKey === filterKey);
   }, [expenses, activityOptions, activityFilter]);
 
+  // An expense row. Its edit and delete are off when it is locked, such as on
+  // a closed job order, saying why.
   const renderRecordRow = (
     record: ExpenseRecord,
     showVendor: boolean,
     showQty: boolean,
+    lockedNote?: string,
   ) => {
     const { isExceeded } = record;
     const expense = expenses.find((e) => e.id === record.id);
@@ -518,29 +525,29 @@ const SiteExpensesSection = ({
               title={
                 record.fromOrder
                   ? "Recorded by its purchase order. Edit the order to change it."
-                  : undefined
+                  : lockedNote
               }>
               <button
                 type='button'
                 aria-label='Edit expense'
-                title={record.fromOrder ? undefined : "Edit"}
+                title={record.fromOrder || lockedNote ? undefined : "Edit"}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (expense) handleEdit(expense);
                 }}
-                disabled={isViewer || !expense || record.fromOrder}
+                disabled={isViewer || !expense || record.fromOrder || !!lockedNote}
                 className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30'>
                 <Pencil className='size-3.5' />
               </button>
               <button
                 type='button'
                 aria-label='Delete expense'
-                title={record.fromOrder ? undefined : "Delete"}
+                title={record.fromOrder || lockedNote ? undefined : "Delete"}
                 onClick={(e) => {
                   e.stopPropagation();
                   setDeletingId(record.id);
                 }}
-                disabled={isViewer || record.fromOrder}
+                disabled={isViewer || record.fromOrder || !!lockedNote}
                 className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30'>
                 <Trash2 className='size-3.5' />
               </button>
@@ -618,7 +625,11 @@ const SiteExpensesSection = ({
   };
 
   // Quantity only shows once one of the rows records one.
-  const renderRecordsTable = (rows: ExpenseRecord[], showVendor = true) => {
+  const renderRecordsTable = (
+    rows: ExpenseRecord[],
+    showVendor = true,
+    lockedNote?: string,
+  ) => {
     const showQty = rows.some((r) => r.quantity);
     return (
       <Table>
@@ -642,7 +653,7 @@ const SiteExpensesSection = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((r) => renderRecordRow(r, showVendor, showQty))}
+          {rows.map((r) => renderRecordRow(r, showVendor, showQty, lockedNote))}
         </TableBody>
       </Table>
     );
@@ -662,7 +673,7 @@ const SiteExpensesSection = ({
     summary?.byOrderItemVendor?.[`${itemId}:${vendorId}`] ?? 0;
 
   const toggleGroup = (key: string) =>
-    setCollapsedGroups((prev) => {
+    setToggledGroups((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -741,6 +752,9 @@ const SiteExpensesSection = ({
     // Where it stands, such as a job order's certificates.
     status?: React.ReactNode;
     menu?: React.ReactNode;
+    // Why its expenses are locked, such as a job order closed by its
+    // certificate. It then takes no more and starts folded.
+    closedNote?: string;
   };
 
   // In the colour of the process, as on the work order page.
@@ -784,7 +798,7 @@ const SiteExpensesSection = ({
   // A job order or order requirement, as a card: its vendors, then its
   // expenses.
   const renderGroupCard = (group: ExpenseGroup) => {
-    const isOpen = !collapsedGroups.has(group.key);
+    const isOpen = toggledGroups.has(group.key) === !!group.closedNote;
 
     return (
       <div
@@ -829,8 +843,17 @@ const SiteExpensesSection = ({
             </div>
           </div>
           {group.status}
-          {group.onAdd &&
-            renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)}
+          {group.closedNote ? (
+            <span
+              title={group.closedNote}
+              className='inline-flex h-7 shrink-0 items-center gap-1 rounded-md bg-gray-100 px-2 text-xs font-medium text-gray-600'>
+              <Lock className='size-3.5' />
+              Closed
+            </span>
+          ) : (
+            group.onAdd &&
+            renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)
+          )}
           {renderTotal(group.total, "min-w-24 text-sm")}
           <div className={menuSlotClass}>{group.menu}</div>
         </div>
@@ -839,7 +862,7 @@ const SiteExpensesSection = ({
             {renderVendorStrip(group)}
             {group.records.length > 0 ? (
               <div className='border-t border-gray-100'>
-                {renderRecordsTable(group.records)}
+                {renderRecordsTable(group.records, true, group.closedNote)}
               </div>
             ) : (
               <p className='border-t border-gray-100 py-2.5 pl-9 pr-3 text-xs text-gray-400'>
@@ -1186,6 +1209,9 @@ const SiteExpensesSection = ({
                 vendorTotal: (vendorId: number) =>
                   summary?.byJobOrderVendor?.[`${jobOrder.id}:${vendorId}`] ?? 0,
                 onAdd: () => openAddExpense(null, null, jobOrder.id),
+                closedNote: isJobOrderClosed(jobOrder)
+                  ? `Closed, as ${jobOrder.jo_number}'s completion certificate is uploaded. Remove the certificate to reopen it.`
+                  : undefined,
                 status: jobOrderStatus?.(jobOrder),
                 menu: jobOrderActions?.(jobOrder),
               })),
