@@ -355,6 +355,39 @@ const createExpenseSchema = z.object({
   documents: validators.optionalDocumentsValidator.optional(),
 }).refine(endsOnOrAfterStart, endDateIssue);
 
+// Several of a job order's activities recorded at once, under one of its
+// vendors: one expense for each activity, sharing the rest.
+const createJobOrderExpensesSchema = z
+  .object({
+    work_order_site_id: z.number().positive(),
+    job_order_id: z.number().positive(),
+    contractor_id: z.number().positive(),
+    title: z.string().min(1, "Title is required").max(500),
+    start_date: z.string().min(1, "Start date is required"),
+    end_date: z.string().min(1, "End date is required"),
+    invoice_number: z.string().max(100).optional().nullable(),
+    documents: validators.optionalDocumentsValidator.optional(),
+    lines: z
+      .array(
+        z.object({
+          activity_key: z.string().min(1, "Choose each line's activity").max(100),
+          quantity: z.string().optional().nullable(),
+          amount: amountValidator,
+          // For an activity whose quantity is already used up.
+          is_exceeded: z.boolean().optional().default(false),
+        }),
+      )
+      .min(1, "Add at least one activity")
+      .max(50),
+  })
+  .refine(endsOnOrAfterStart, endDateIssue)
+  .refine(
+    (value) =>
+      new Set(value.lines.map((line) => line.activity_key)).size ===
+      value.lines.length,
+    { message: "Give each activity one line", path: ["lines"] },
+  );
+
 const updateExpenseSchema = z.object({
   id: z.number().positive(),
   contractor_id: z.number().positive().optional().nullable(),
@@ -428,6 +461,54 @@ export const expenseMutationRouter = router({
         } catch (error) {
           if (error && typeof error === "object" && "errorCode" in error) throw error;
           throw fromDatabaseError(error, "Creating expense");
+        }
+      }),
+    ),
+
+  createJobOrderExpenses: protectedProcedure
+    .input(createJobOrderExpensesSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        await assertJobOrderAllowed(
+          ctx,
+          input.work_order_site_id,
+          input.job_order_id,
+          input.contractor_id,
+        );
+
+        try {
+          const userId = ctx.user ? Number(ctx.user.sub) : null;
+          const { lines, ...shared } = input;
+
+          // All of them or none.
+          const ids = await ctx.db.transaction(async (tx) => {
+            const created: number[] = [];
+            for (const line of lines) {
+              const autoExceeded = await computeIsExceeded(
+                { ...ctx, db: tx },
+                input.work_order_site_id,
+                line.activity_key,
+                line.quantity,
+              );
+              const [row] = await tx
+                .insert(workOrderSiteExpenseTable)
+                .values(
+                  newExpenseRow(
+                    { ...shared, quantity: line.quantity, amount: line.amount },
+                    line.activity_key,
+                    autoExceeded !== null ? autoExceeded : line.is_exceeded,
+                    userId,
+                  ),
+                )
+                .$returningId();
+              if (row) created.push(row.id);
+            }
+            return created;
+          });
+
+          return { success: true, ids };
+        } catch (error) {
+          throw fromDatabaseError(error, "Recording job order expenses");
         }
       }),
     ),
