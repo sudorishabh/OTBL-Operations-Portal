@@ -283,6 +283,29 @@ async function assertJobOrderAllowed(
   }
 }
 
+// A job order closes once its completion certificate is uploaded: expenses
+// can then no longer be added to it, changed or deleted. Removing the
+// certificate reopens it.
+async function assertJobOrderOpen(
+  ctx: any,
+  jobOrderId: number | null | undefined,
+) {
+  if (!jobOrderId) return;
+
+  const [jobOrder] = await ctx.db
+    .select({
+      jo_number: jobOrderTable.jo_number,
+      documents: jobOrderTable.documents,
+    })
+    .from(jobOrderTable)
+    .where(eq(jobOrderTable.id, jobOrderId));
+  if (jobOrder && (jobOrder.documents?.length ?? 0) > 0) {
+    throw businessRule(
+      `Job order ${jobOrder.jo_number} is closed, as its completion certificate is uploaded. Remove the certificate to reopen it.`,
+    );
+  }
+}
+
 // An expense can't end before it starts.
 const endsOnOrAfterStart = (value: { start_date?: string; end_date?: string }) =>
   !value.start_date ||
@@ -433,6 +456,7 @@ export const expenseMutationRouter = router({
           input.job_order_id,
           input.contractor_id,
         );
+        await assertJobOrderOpen(ctx, input.job_order_id);
 
         try {
           const userId = ctx.user ? Number(ctx.user.sub) : null;
@@ -475,6 +499,7 @@ export const expenseMutationRouter = router({
           input.job_order_id,
           input.contractor_id,
         );
+        await assertJobOrderOpen(ctx, input.job_order_id);
 
         try {
           const userId = ctx.user ? Number(ctx.user.sub) : null;
@@ -530,6 +555,10 @@ export const expenseMutationRouter = router({
 
         const prev = existing[0]!;
         assertNotFromOrder(prev);
+        await assertJobOrderOpen(ctx, prev.job_order_id);
+        if (updateData.job_order_id !== prev.job_order_id) {
+          await assertJobOrderOpen(ctx, updateData.job_order_id);
+        }
         const effectiveQuantity =
           updateData.quantity !== undefined ? updateData.quantity : prev.quantity;
         const effectiveItemId =
@@ -639,6 +668,7 @@ export const expenseMutationRouter = router({
 
         const expense = existing[0]!;
         assertNotFromOrder(expense);
+        await assertJobOrderOpen(ctx, expense.job_order_id);
         await assertProcuredCoversUsed(
           ctx,
           expense.work_order_site_id,
