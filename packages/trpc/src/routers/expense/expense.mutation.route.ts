@@ -294,6 +294,51 @@ const endDateIssue = {
   path: ["end_date"],
 };
 
+const amountValidator = z
+  .string()
+  .min(1, "Amount is required")
+  .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
+    message: "Amount must be a positive number",
+  });
+
+// A new expense's row. Its documents also fill the legacy single-document
+// columns, kept until they are dropped.
+const newExpenseRow = (
+  expense: {
+    work_order_site_id: number;
+    contractor_id?: number | null;
+    contract_order_item_id?: number | null;
+    job_order_id?: number | null;
+    quantity?: string | null;
+    title: string;
+    amount: string;
+    start_date: string;
+    end_date: string;
+    invoice_number?: string | null;
+    documents?: { url: string; id?: string | null; name?: string | null }[];
+  },
+  activityKey: string | null,
+  isExceeded: boolean,
+  userId: number | null,
+) => ({
+  work_order_site_id: expense.work_order_site_id,
+  contractor_id: expense.contractor_id ?? null,
+  contract_order_item_id: expense.contract_order_item_id ?? null,
+  job_order_id: expense.job_order_id ?? null,
+  activity_key: activityKey,
+  quantity: expense.quantity ?? null,
+  is_exceeded: isExceeded ? 1 : 0,
+  title: expense.title,
+  amount: expense.amount,
+  start_date: new Date(expense.start_date),
+  end_date: new Date(expense.end_date),
+  invoice_number: expense.invoice_number ?? null,
+  documents: expense.documents ?? [],
+  document_url: expense.documents?.[0]?.url ?? null,
+  document_id: expense.documents?.[0]?.id ?? null,
+  created_by: userId,
+});
+
 const createExpenseSchema = z.object({
   work_order_site_id: z.number().positive(),
   contractor_id: z.number().positive().optional().nullable(),
@@ -303,12 +348,7 @@ const createExpenseSchema = z.object({
   quantity: z.string().optional().nullable(),
   is_exceeded: z.boolean().optional().default(false),
   title: z.string().min(1, "Title is required").max(500),
-  amount: z
-    .string()
-    .min(1, "Amount is required")
-    .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
-      message: "Amount must be a positive number",
-    }),
+  amount: amountValidator,
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().min(1, "End date is required"),
   invoice_number: z.string().max(100).optional().nullable(),
@@ -375,25 +415,7 @@ export const expenseMutationRouter = router({
 
           const [created] = await ctx.db
             .insert(workOrderSiteExpenseTable)
-            .values({
-              work_order_site_id: input.work_order_site_id,
-              contractor_id: input.contractor_id ?? null,
-              contract_order_item_id: input.contract_order_item_id ?? null,
-              job_order_id: input.job_order_id ?? null,
-              activity_key: activityKey,
-              quantity: input.quantity ?? null,
-              is_exceeded: finalExceeded ? 1 : 0,
-              title: input.title,
-              amount: input.amount,
-              start_date: new Date(input.start_date),
-              end_date: new Date(input.end_date),
-              invoice_number: input.invoice_number ?? null,
-              documents: input.documents ?? [],
-              // Legacy single-document columns, kept until they are dropped.
-              document_url: input.documents?.[0]?.url ?? null,
-              document_id: input.documents?.[0]?.id ?? null,
-              created_by: userId,
-            })
+            .values(newExpenseRow(input, activityKey, finalExceeded, userId))
             .$returningId();
 
           if (!created) {
