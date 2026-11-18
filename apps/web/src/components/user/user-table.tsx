@@ -30,6 +30,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import PaginationSummary from "@/components/shared/pagination-summary";
 import StatusIndicator from "../shared/status-indicator";
+import RecordCode from "@/components/shared/record-code";
 import { userTypes } from "@pkg/schema";
 import UserTabSkeleton from "../skeleton/user/user-tab-skeleton";
 import { toast } from "react-hot-toast";
@@ -146,7 +147,12 @@ const UserTable = () => {
                 />
               </TableCell>
               <TableCell className='text-xs font-medium'>
-                {capitalizeEachWord(user.name)}
+                <div className='flex items-center gap-2'>
+                  <RecordCode code={user.code} />
+                  <span className='truncate'>
+                    {capitalizeEachWord(user.name)}
+                  </span>
+                </div>
               </TableCell>
               <TableCell className='text-xs'>{user.email}</TableCell>
               <TableCell className='text-xs'>

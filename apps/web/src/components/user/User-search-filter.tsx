@@ -81,7 +81,7 @@ const UserSearchFilter = () => {
     <FilterBar>
       <SearchFilter
         label='Search users'
-        placeholder='Search users by name, email, or contact...'
+        placeholder='Search users by code, name, email, or contact...'
         value={searchQuery}
         onChange={setSearchQuery}
       />

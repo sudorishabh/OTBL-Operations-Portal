@@ -11,6 +11,7 @@ export type UpdateUserPasswordType = z.infer<
 
 export type UserBaseType = {
   id: number;
+  code: string;
   name: string;
   email: string;
   contact_number: string;
