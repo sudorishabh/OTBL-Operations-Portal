@@ -85,10 +85,10 @@ export const SkeletonCard = ({
 export const BreadcrumbSkeleton = ({ steps }: { steps: number }) => (
   <div className='mb-3 flex items-center gap-2'>
     {steps > 1 && (
-      <Skeleton className='size-7 shrink-0 rounded-full bg-white/80' />
+      <Skeleton className='size-8 shrink-0 rounded-full bg-white/80' />
     )}
-    <div className='inline-flex h-7 items-center gap-1.5 rounded-full bg-white/75 px-2.5 shadow-sm ring-1 ring-gray-300/60'>
-      <House className='size-3.5 text-gray-300' />
+    <div className='inline-flex h-8 items-center gap-1.5 rounded-full bg-white/75 px-3 shadow-sm ring-1 ring-gray-300/60'>
+      <House className='size-4 text-gray-300' />
       {Array.from({ length: steps }, (_, index) => (
         <span
           key={index}
@@ -96,10 +96,10 @@ export const BreadcrumbSkeleton = ({ steps }: { steps: number }) => (
             "inline-flex items-center gap-1.5",
             index < steps - 2 && "hidden sm:inline-flex",
           )}>
-          <ChevronRight className='size-3.5 text-gray-300' />
+          <ChevronRight className='size-4 text-gray-300' />
           <Skeleton
             className={cn(
-              "h-2.5 rounded-full",
+              "h-3 rounded-full",
               index === steps - 1 ? "w-24" : "w-16",
             )}
           />
