@@ -2,7 +2,6 @@
 import { useState, useRef, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import {
   httpLink,
   httpBatchLink,
@@ -126,7 +125,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
           <UserManagementProvider>
             <WorkOrderManagementProvider>
               <OfficeManagementProvider>
-                <SidebarProvider>{children}</SidebarProvider>
+                {children}
               </OfficeManagementProvider>
             </WorkOrderManagementProvider>
           </UserManagementProvider>

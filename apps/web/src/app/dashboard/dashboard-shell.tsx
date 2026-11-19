@@ -1,13 +1,24 @@
 "use client";
 
 import AppSidebar from "@/components/app-sidebar";
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { trpc } from "@/lib/trpc";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({
+  children,
+  sidebarOpen,
+}: {
+  children: React.ReactNode;
+  // Whether the sidebar starts expanded, as it was last left.
+  sidebarOpen: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -77,12 +88,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     }
   }, [isSuccess, layout, pathname, router]);
 
-  const insetClass = hideSidebar ? "md:pl-0" : "md:pl-56";
-
   return (
-    <>
+    <SidebarProvider defaultOpen={sidebarOpen}>
       {!hideSidebar && <AppSidebar />}
-      <SidebarInset className={insetClass}>
+      <SidebarInset className='min-w-0'>
         {!hideSidebar && (
           <header className='sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-gray-200 bg-cyan-900 px-3 md:hidden'>
             <SidebarTrigger className='text-gray-100 hover:bg-emerald-600/65 hover:text-gray-100' />
@@ -98,6 +107,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         )}
         {children}
       </SidebarInset>
-    </>
+    </SidebarProvider>
   );
 }

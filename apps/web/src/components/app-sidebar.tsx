@@ -1,242 +1,243 @@
 "use client";
-import {
-  Sidebar,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-  SidebarContent,
-  SidebarHeader,
-} from "@/components/ui/sidebar";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import {
-  HardHat,
-  LayoutDashboard,
-  User,
-  Settings,
-  ReceiptIndianRupee,
-  Tent,
-  Users,
-  Webhook,
-  LogOut,
-} from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarSeparator,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
+import {
+  isLinkActive,
+  NAV_GROUPS,
+  navGroupsForRole,
+  navHref,
+  type NavItem,
+} from "@/components/sidebar/nav-links";
+import { QuickSearch } from "@/components/sidebar/quick-search";
+import { UserMenu } from "@/components/sidebar/user-menu";
+import { usePendingWorkOrderCount } from "@/components/sidebar/use-pending-work-order-count";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { constants } from "@pkg/utils";
+import { cn } from "@/lib/utils";
 
-const { ROLES } = constants;
+// Every row of the sidebar shares one look: the page you're on in emerald,
+// the rest lighting up on hover.
+const ROW_CLASS =
+  "h-8 gap-3 px-2.5 text-[13px] text-sidebar-foreground/85 data-[active=true]:bg-sidebar-primary data-[active=true]:font-semibold data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-sm data-[active=true]:hover:bg-sidebar-primary";
 
-type NavItem = {
-  title: string;
-  link: string;
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  hideForRoles?: readonly string[];
-};
+// Folded to icons, a heading slides up out of sight by its own height.
+const GROUP_LABEL_CLASS =
+  "h-6 px-2.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/55 group-data-[collapsible=icon]:-mt-6";
 
-const sidebarLinks: NavItem[] = [
-  {
-    title: "Overview",
-    link: "/",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "User Management",
-    link: "/user",
-    icon: Users,
-    hideForRoles: [
-      ROLES.MANAGER,
-      ROLES.OFFICE_OPERATOR,
-      ROLES.SITE_OPERATOR,
-      ROLES.VIEWER,
-    ],
-  },
+// A count beside a link, such as the work orders still pending.
+type NavBadge = { count: number; label: string };
 
-  {
-    title: "Offices & Sites",
-    link: "/office-site",
-    icon: Tent,
-  },
-  {
-    title: "Clients",
-    link: "/client",
-    icon: Webhook,
-  },
-  {
-    title: "Work Orders",
-    link: "/work-order",
-    icon: ReceiptIndianRupee,
-  },
-  {
-    title: "Vendors",
-    link: "/vendor",
-    icon: HardHat,
-    hideForRoles: [ROLES.SITE_OPERATOR],
-  },
-];
-
-const footerLinks = [
-  {
-    title: "Profile",
-    link: "/profile",
-    icon: User,
-  },
-  {
-    title: "Logout",
-    icon: LogOut,
-  },
-];
-
-interface SidebarMenuListProps {
-  item: {
-    title: string;
-    link?: string;
-    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  };
+const NavLink = ({
+  item,
+  isActive,
+  badge,
+}: {
+  item: NavItem;
   isActive: boolean;
-}
+  badge?: NavBadge;
+}) => {
+  const { setOpenMobile } = useSidebar();
+  const badgeText =
+    badge && badge.count > 0 ? `${badge.count} ${badge.label}` : undefined;
 
-const SidebarMenuList = ({ item, isActive }: SidebarMenuListProps) => {
   return (
-    <SidebarMenuItem key={item.title}>
+    <SidebarMenuItem>
       <SidebarMenuButton
         asChild
         isActive={isActive}
-        tooltip={item.title}
-        className={cn(
-          "h-7 pl-3 ",
-          isActive
-            ? "bg-emerald-600! text-gray-100! shadow"
-            : "text-gray-300! hover:bg-emerald-600/65 focus:bg-transparent!",
-        )}>
+        tooltip={badgeText ? `${item.title} · ${badgeText}` : item.title}
+        className={cn(ROW_CLASS, badgeText && "pr-10")}>
         <Link
-          href={`/dashboard${item.link}`}
-          className='flex items-center gap-3'>
-          <item.icon className={cn("h-4 w-4")} />
-          <span className={cn("text-xs", isActive ? "font-semibold" : "")}>
+          href={navHref(item.link)}
+          aria-current={isActive ? "page" : undefined}
+          // Tapping the page already open changes no route, so close the
+          // phone drawer here too.
+          onClick={() => setOpenMobile(false)}>
+          <item.icon />
+          <span>
             {item.title}
+            {badgeText && <span className='sr-only'> ({badgeText})</span>}
           </span>
         </Link>
+      </SidebarMenuButton>
+
+      {badge && badgeText && (
+        <>
+          <SidebarMenuBadge
+            aria-hidden='true'
+            className='right-2 h-5 min-w-5 rounded-full bg-amber-400 px-1.5 text-[10.5px] font-semibold text-amber-950 peer-hover/menu-button:text-amber-950 peer-data-[active=true]/menu-button:text-amber-950'>
+            {badge.count > 99 ? "99+" : badge.count}
+          </SidebarMenuBadge>
+          {/* Folded to icons, a dot marks the link instead. */}
+          <span
+            aria-hidden='true'
+            className='pointer-events-none absolute top-0.5 right-0.5 hidden size-2 rounded-full bg-amber-400 ring-2 ring-sidebar group-data-[collapsible=icon]:block'
+          />
+        </>
+      )}
+    </SidebarMenuItem>
+  );
+};
+
+// Holds a link's place while the user, and so which links they get, loads.
+const NavLinkSkeleton = () => (
+  <SidebarMenuItem
+    aria-hidden='true'
+    className='flex h-8 items-center gap-3 px-2.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0'>
+    <Skeleton className='size-4 shrink-0 bg-white/15' />
+    <Skeleton className='h-3 w-24 bg-white/15 group-data-[collapsible=icon]:hidden' />
+  </SidebarMenuItem>
+);
+
+// Folds the sidebar down to its icons, or opens it back out. Ctrl/⌘ + B and
+// the sidebar's edge do the same. Phones open the sidebar from the top bar.
+const CollapseToggle = () => {
+  const { state, isMobile, toggleSidebar } = useSidebar();
+  if (isMobile) return null;
+
+  const collapsed = state === "collapsed";
+  const label = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        tooltip={`${label} (Ctrl+B)`}
+        onClick={toggleSidebar}
+        className={cn(ROW_CLASS, "text-sidebar-foreground/65")}>
+        <Icon />
+        <span>{label}</span>
+        <kbd className='ml-auto rounded border border-sidebar-border px-1 font-sans text-[10px] text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden'>
+          Ctrl B
+        </kbd>
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
 };
 
 function AppSidebar() {
-  let pathname = usePathname();
-  const { state } = useSidebar();
-  const { user, logout, isUserLoading } = useAuthContext();
+  const pathname = usePathname();
+  const { user, isUserLoading } = useAuthContext();
+  const { setOpenMobile } = useSidebar();
+  const pendingWorkOrders = usePendingWorkOrderCount();
 
-  const visibleNavLinks = useMemo(() => {
-    if (isUserLoading) return [];
-    return sidebarLinks.filter((item) => {
-      if (!item.hideForRoles?.length) return true;
-      if (!user?.role) return false;
-      return !item.hideForRoles.includes(user.role);
-    });
-  }, [isUserLoading, user?.role]);
+  // On phones the sidebar is a drawer over the page: close it once the user
+  // has gone somewhere, from a link, the user menu or the back button.
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
-  if (!pathname.startsWith("/dashboard")) {
-    return null;
-  } else {
-    pathname = pathname.replace("/dashboard", "") || "/";
-  }
+  // The groups this user gets, each holding only the links their role sees.
+  const visibleGroups = useMemo(
+    () => (isUserLoading ? [] : navGroupsForRole(user?.role)),
+    [isUserLoading, user?.role],
+  );
+  // Every page the user can open, for the search to find by name.
+  const pages = useMemo(
+    () => visibleGroups.flatMap((group) => group.items),
+    [visibleGroups],
+  );
+
+  if (!pathname.startsWith("/dashboard")) return null;
+  const page = pathname.replace("/dashboard", "") || "/";
+
+  // Which links show depends on the role, so hold every link's place until
+  // the user is known rather than adding some later.
+  const groups = isUserLoading ? NAV_GROUPS : visibleGroups;
+
+  // Counts beside the links they belong to, hidden while zero.
+  const badges: Record<string, NavBadge | undefined> = {
+    "/work-order": { count: pendingWorkOrders ?? 0, label: "pending" },
+  };
 
   return (
     <Sidebar
       collapsible='icon'
-      className='border-0 w-56'>
-      <SidebarHeader className='p-6 bg-cyan-900'>
-        <div className='flex flex-col justify-center items-center gap-2'>
+      className='border-0'>
+      <SidebarHeader className='items-center px-4 pt-5 pb-4 transition-[padding] group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-4'>
+        <Link
+          href='/dashboard'
+          title='Go to overview'
+          className='flex flex-col items-center gap-1.5 rounded-md outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring'>
           <Image
             src='/Otbl-logo_transparent.png'
-            alt='OTBL Logo'
+            alt='OTBL'
             width={112}
             height={64}
-            className='h-16 w-28 object-contain'
+            className='h-16 w-28 object-contain transition-[width,height] duration-200 group-data-[collapsible=icon]:h-5 group-data-[collapsible=icon]:w-8'
             loading='eager'
           />
-          {state !== "collapsed" && (
-            <span className='text-xs text-gray-100'>Management System</span>
-          )}
-        </div>
+          <span className='text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden'>
+            Operations Portal
+          </span>
+        </Link>
       </SidebarHeader>
 
-      <SidebarContent className='px-3 bg-cyan-900'>
-        <Separator className='bg-gray-400' />
-        <SidebarGroup>
-          <SidebarGroupLabel className='text-[11px] font-medium text-gray-300 uppercase tracking-wider'>
-            Navigation
-          </SidebarGroupLabel>
-          <SidebarMenu className='mt-2'>
-            {/* Which links show depends on the role, so hold every link's
-                place until the user is known rather than adding some later. */}
-            {isUserLoading &&
-              sidebarLinks.map((item) => (
-                <SidebarMenuItem
-                  key={item.title}
-                  aria-hidden='true'
-                  className='flex h-7 items-center gap-3 pl-3'>
-                  <Skeleton className='size-4 shrink-0 bg-white/15' />
-                  <Skeleton className='h-3 w-24 bg-white/15' />
-                </SidebarMenuItem>
-              ))}
-            {visibleNavLinks.map((item) => {
-              const isActive =
-                item.link === "/"
-                  ? pathname === item.link
-                  : pathname.startsWith(item.link);
+      <SidebarSeparator />
 
-              return (
-                <SidebarMenuList
-                  key={item.title}
-                  item={item}
-                  isActive={isActive}
-                />
-              );
-            })}
+      <SidebarContent className='gap-0 px-1.5 py-1 group-data-[collapsible=icon]:px-0'>
+        <SidebarGroup className='py-1.5'>
+          <SidebarMenu>
+            <QuickSearch
+              pages={pages}
+              className={ROW_CLASS}
+            />
           </SidebarMenu>
         </SidebarGroup>
-
-        <Separator className='bg-gray-400' />
-
-        <SidebarGroup>
-          <SidebarGroupLabel className='text-[11px] font-medium text-gray-300 uppercase tracking-wider'>
-            Account
-          </SidebarGroupLabel>
-          <SidebarMenu className='mt-2'>
-            {footerLinks.map((item) => {
-              const isActive = pathname === item.link;
-              if (item.title === "Logout") {
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      tooltip={item.title}
-                      onClick={() => logout()}
-                      className='h-7 pl-3 text-gray-300! hover:bg-emerald-600/65 focus:bg-transparent!'>
-                      <item.icon className='h-4 w-4' />
-                      <span className='text-xs'>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              }
-              return (
-                <SidebarMenuList
-                  key={item.title}
-                  item={item}
-                  isActive={isActive}
-                />
-              );
-            })}
-          </SidebarMenu>
-        </SidebarGroup>
+        {groups.map((group, index) => (
+          <SidebarGroup
+            key={group.label ?? index}
+            className='py-1.5'>
+            {group.label && (
+              <SidebarGroupLabel className={GROUP_LABEL_CLASS}>
+                {group.label}
+              </SidebarGroupLabel>
+            )}
+            <SidebarMenu>
+              {group.items.map((item) =>
+                isUserLoading ? (
+                  <NavLinkSkeleton key={item.title} />
+                ) : (
+                  <NavLink
+                    key={item.title}
+                    item={item}
+                    isActive={isLinkActive(item.link, page)}
+                    badge={badges[item.link]}
+                  />
+                ),
+              )}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
+
+      <SidebarSeparator />
+
+      <SidebarFooter className='px-3.5 pt-2 pb-3 group-data-[collapsible=icon]:px-2'>
+        <SidebarMenu>
+          <CollapseToggle />
+          <UserMenu />
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }
