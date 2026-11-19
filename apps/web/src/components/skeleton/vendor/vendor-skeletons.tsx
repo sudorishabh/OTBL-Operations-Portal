@@ -32,7 +32,7 @@ const LIST_COLUMNS: SkeletonColumn[] = [
   cellClassName: LIST_CELL,
 })) as SkeletonColumn[];
 
-// The vendor list; managers get a column for the row menu.
+// The vendor list; admins get a column for the row menu.
 export const VendorsTableSkeleton = ({
   withActions,
 }: {

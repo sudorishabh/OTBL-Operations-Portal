@@ -240,7 +240,6 @@ export const userQueryRouter = router({
           userId: number;
           id: number;
           name: string;
-          officeRole: string | null;
         }[] = [];
         let allSites: { userId: number; id: number; name: string }[] = [];
 
@@ -251,7 +250,6 @@ export const userQueryRouter = router({
               id: officeTable.id,
               code: officeTable.code,
               name: officeTable.name,
-              officeRole: officeUserTable.role,
             })
             .from(officeUserTable)
             .innerJoin(
@@ -348,7 +346,6 @@ export const userQueryRouter = router({
     .use(
       hasAnyRole([
         ROLES.ADMIN,
-        ROLES.MANAGER,
         ROLES.OFFICE_OPERATOR,
         ROLES.SITE_OPERATOR,
       ]),
@@ -379,12 +376,12 @@ export const userQueryRouter = router({
     ),
 
   getUsersByRole: protectedProcedure
-    .use(hasAnyRole([ROLES.ADMIN, ROLES.MANAGER]))
+    // For the office dialogs, which only admins open.
+    .use(hasRole(ROLES.ADMIN))
     .input(
       z.object({
         role: z.enum([
           ROLES.ADMIN,
-          ROLES.MANAGER,
           ROLES.OFFICE_OPERATOR,
           ROLES.SITE_OPERATOR,
         ]),

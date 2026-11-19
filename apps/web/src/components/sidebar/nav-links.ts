@@ -52,7 +52,6 @@ export const NAV_GROUPS: NavGroup[] = [
         link: "/user",
         icon: Users,
         hideForRoles: [
-          ROLES.MANAGER,
           ROLES.OFFICE_OPERATOR,
           ROLES.SITE_OPERATOR,
           ROLES.VIEWER,

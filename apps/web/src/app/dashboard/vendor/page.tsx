@@ -15,7 +15,6 @@ const page = () => {
     <MultiRoleProtectedRoute
       allowedRoles={[
         ROLES.ADMIN,
-        ROLES.MANAGER,
         ROLES.OFFICE_OPERATOR,
         ROLES.VIEWER,
       ]}>

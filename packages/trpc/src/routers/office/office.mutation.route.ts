@@ -2,18 +2,16 @@ import { and, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { CODE_PREFIX, constants } from "@pkg/utils";
 import { router } from "../../trpc";
-import { adminProcedure, protectedProcedure } from "../../middleware";
+import { adminProcedure } from "../../middleware";
 import { officeSchemas } from "@pkg/schema";
 import {
   notFound,
-  alreadyExists,
   forbidden,
   validationError,
   fromDatabaseError,
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { nextCode } from "../../helper/record-code";
-import { assertOfficeManager } from "../../helper/office-permissions";
 
 const { officeTable, officeUserTable, userTable } = schema;
 const { ROLES } = constants;
@@ -21,7 +19,7 @@ const { ROLES } = constants;
 export const officeMutationRouter = router({
   createOffice: adminProcedure.input(officeSchemas.createOfficeSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
-      const { manager_id, operator_ids, ...officeData } = input;
+      const { operator_ids, ...officeData } = input;
       const userId = parseInt(ctx.user!.sub);
 
       try {
@@ -36,25 +34,6 @@ export const officeMutationRouter = router({
             email: officeData.email.trim().toLowerCase(),
           });
           const officeId = result[0].insertId;
-
-          if (manager_id) {
-            const [user] = await tx
-              .select()
-              .from(userTable)
-              .where(eq(userTable.id, manager_id));
-
-            if (!user) {
-              throw notFound("Manager", manager_id, {
-                userMessage: "The selected manager doesn't exist.",
-              });
-            }
-            await tx.insert(officeUserTable).values({
-              user_id: manager_id,
-              office_id: officeId,
-              role: ROLES.MANAGER as "office_manager",
-              assigned_by: userId,
-            });
-          }
 
           if (operator_ids && operator_ids.length > 0) {
             const users = await tx
@@ -88,7 +67,6 @@ export const officeMutationRouter = router({
             const operatorValues = operator_ids.map((operatorId: number) => ({
               user_id: operatorId,
               office_id: officeId,
-              role: "operator" as const,
               assigned_by: userId,
             }));
 
@@ -111,7 +89,8 @@ export const officeMutationRouter = router({
     }),
   ),
 
-  updateOffice: protectedProcedure
+  // Only admins change an office's details and who works there.
+  updateOffice: adminProcedure
     .input(officeSchemas.updateOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -126,9 +105,6 @@ export const officeMutationRouter = router({
           throw notFound("Office", id);
         }
 
-        // global managerProcedure let any manager update any office.
-        await assertOfficeManager(ctx, id);
-
         try {
           await ctx.db
             .update(officeTable)
@@ -141,21 +117,12 @@ export const officeMutationRouter = router({
       }),
     ),
 
-  assignUserToOffice: protectedProcedure
+  assignUserToOffice: adminProcedure
     .input(officeSchemas.assignUserToOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const { office_id, user_id, role } = input;
+        const { office_id, user_id } = input;
         const userId = parseInt(ctx.user!.sub);
-
-        await assertOfficeManager(ctx, office_id);
-
-        if (role === ROLES.MANAGER && ctx.user!.role !== ROLES.ADMIN) {
-          throw forbidden("assign a manager to this office", {
-            userMessage:
-              "Only an admin can assign an office's manager. Office managers can only add or remove office operators.",
-          });
-        }
 
         const [office] = await ctx.db
           .select()
@@ -177,30 +144,11 @@ export const officeMutationRouter = router({
           });
         }
 
-        if (role === "operator" && user.role !== ROLES.OFFICE_OPERATOR) {
+        if (user.role !== ROLES.OFFICE_OPERATOR) {
           throw forbidden("add this user to the office as an operator", {
             userMessage:
               "Only Office Operators can be added to an office. This user isn't an Office Operator.",
           });
-        }
-
-        if (role === ROLES.MANAGER) {
-          const existingManagers = await ctx.db
-            .select()
-            .from(officeUserTable)
-            .where(
-              and(
-                eq(officeUserTable.office_id, office_id),
-                eq(officeUserTable.role, ROLES.MANAGER),
-              ),
-            );
-
-          if (existingManagers.length > 0) {
-            throw alreadyExists("Manager", undefined, {
-              userMessage:
-                "This office already has a manager. Please remove the existing manager first.",
-            });
-          }
         }
 
         try {
@@ -215,16 +163,11 @@ export const officeMutationRouter = router({
             )
             .limit(1);
 
-          if (existingAssignments) {
-            await ctx.db
-              .update(officeUserTable)
-              .set({ role })
-              .where(eq(officeUserTable.id, existingAssignments.id));
-          } else {
+          // Already seated, there's nothing to change.
+          if (!existingAssignments) {
             await ctx.db.insert(officeUserTable).values({
               user_id,
               office_id,
-              role,
               assigned_by: userId,
             });
           }
@@ -236,13 +179,11 @@ export const officeMutationRouter = router({
       }),
     ),
 
-  removeUserFromOffice: protectedProcedure
+  removeUserFromOffice: adminProcedure
     .input(officeSchemas.expelUserFromOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { office_id, user_id } = input;
-
-        await assertOfficeManager(ctx, office_id);
 
         const assignments = await ctx.db
           .select()
@@ -257,13 +198,6 @@ export const officeMutationRouter = router({
         if (!assignments[0]) {
           throw notFound("User assignment", undefined, {
             userMessage: "This user is not assigned to this office.",
-          });
-        }
-
-        if (assignments[0].role === ROLES.MANAGER && ctx.user!.role !== ROLES.ADMIN) {
-          throw forbidden("remove the manager from this office", {
-            userMessage:
-              "Only an admin can remove an office's manager. Office managers can only add or remove office operators.",
           });
         }
 

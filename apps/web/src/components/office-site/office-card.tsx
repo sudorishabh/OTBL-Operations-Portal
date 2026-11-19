@@ -12,7 +12,6 @@ import {
   MoreVertical,
   Pencil,
   Plus,
-  UserCog,
   Users,
 } from "lucide-react";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
@@ -153,7 +152,8 @@ const NewestSites = ({ office }: { office: OfficeListItem }) => {
   );
 };
 
-// Changes to an office, for its manager and admins.
+// Changes to an office: its sites for its operators and admins, its details
+// and members for admins alone.
 const OfficeActions = ({ office }: { office: OfficeListItem }) => {
   const { setParams } = useHandleParams();
   const officeParams = {
@@ -181,20 +181,27 @@ const OfficeActions = ({ office }: { office: OfficeListItem }) => {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() =>
-            setParams({ dialog: "edit-office", officeId: String(office.id) })
-          }>
-          <Pencil className='mr-2 size-4' />
-          Edit office
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() =>
-            setParams({ dialog: "manage-office-members", ...officeParams })
-          }>
-          <Users className='mr-2 size-4' />
-          Manage members
-        </DropdownMenuItem>
+        {office.canManage && (
+          <>
+            <DropdownMenuItem
+              onClick={() =>
+                setParams({
+                  dialog: "edit-office",
+                  officeId: String(office.id),
+                })
+              }>
+              <Pencil className='mr-2 size-4' />
+              Edit office
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                setParams({ dialog: "manage-office-members", ...officeParams })
+              }>
+              <Users className='mr-2 size-4' />
+              Manage members
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuItem
           onClick={() => setParams({ dialog: "create-site", ...officeParams })}>
           <Plus className='mr-2 size-4' />
@@ -205,7 +212,7 @@ const OfficeActions = ({ office }: { office: OfficeListItem }) => {
   );
 };
 
-// One office in the list, a full row wide: who it is and who runs it, its
+// One office in the list, a full row wide: who it is and where, its
 // totals in aligned columns, and a log of its newest sites. The whole card
 // opens the office's page, which lists every site and work order.
 const OfficeCard = ({ office }: { office: OfficeListItem }) => {
@@ -250,19 +257,6 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
                   {location}
                 </span>
               )}
-              <span className='inline-flex items-center gap-1.5'>
-                <UserCog className='size-3.5 shrink-0 text-gray-400' />
-                {office.manager ? (
-                  <span>
-                    Managed by{" "}
-                    <span className='font-medium text-gray-700'>
-                      {capitalizeEachWord(office.manager.name)}
-                    </span>
-                  </span>
-                ) : (
-                  "No manager yet"
-                )}
-              </span>
             </div>
             <div className='mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500'>
               <span
@@ -279,7 +273,7 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
           </div>
           {/* Until the figures fit beside the name, the menu stays by it. */}
           <div className='lg:hidden'>
-            {office.canManage && <OfficeActions office={office} />}
+            {office.canEditSites && <OfficeActions office={office} />}
           </div>
         </div>
 
@@ -306,7 +300,7 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
 
         <div className='hidden shrink-0 items-start gap-1 py-4 pl-6 pr-3 lg:flex'>
           {/* An empty slot without the menu keeps the figures in line. */}
-          {office.canManage ? (
+          {office.canEditSites ? (
             <OfficeActions office={office} />
           ) : (
             <span className='size-8' />

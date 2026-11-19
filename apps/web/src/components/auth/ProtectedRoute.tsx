@@ -141,17 +141,6 @@ export const AdminRoute = ({
   </RoleProtectedRoute>
 );
 
-export const ManagerRoute = ({
-  children,
-  ...props
-}: Omit<RoleProtectedRouteProps, "requiredRole">) => (
-  <RoleProtectedRoute
-    requiredRole='office_manager'
-    {...props}>
-    {children}
-  </RoleProtectedRoute>
-);
-
 // The page's backdrop and shape rather than a spinner on a blank screen.
 const DefaultLoading = () => <RouteSkeleton />;
 

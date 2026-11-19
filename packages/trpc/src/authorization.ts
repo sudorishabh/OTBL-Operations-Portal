@@ -120,10 +120,4 @@ export const denyViewerWrites = t.middleware(({ ctx, type, path, next }) => {
 });
 
 export const isAdmin = hasRole(USER_ROLES.ADMIN);
-export const isManager = hasRole(USER_ROLES.MANAGER);
 export const isOperator = hasRole(USER_ROLES.OFFICE_OPERATOR);
-
-export const isAdminOrManager = hasAnyRole([
-  USER_ROLES.ADMIN,
-  USER_ROLES.MANAGER,
-]);

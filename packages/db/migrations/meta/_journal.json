@@ -281,6 +281,13 @@
       "when": 1795079533007,
       "tag": "0039_drop_user_status",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1795082047445,
+      "tag": "0040_drop_office_manager_role",
+      "breakpoints": true
     }
   ]
 }

@@ -58,7 +58,6 @@ export const userTable = mysqlTable(
       length: 50,
       enum: [
         ROLES.ADMIN,
-        ROLES.MANAGER,
         ROLES.OFFICE_OPERATOR,
         ROLES.SITE_OPERATOR,
         ROLES.VIEWER,
@@ -375,10 +374,6 @@ export const officeUserTable = mysqlTable(
     assigned_by: int("assigned_by").references(() => userTable.id, {
       onDelete: "set null",
     }),
-    role: varchar("role", {
-      length: 50,
-      enum: ["office_manager", "operator"],
-    }).notNull(),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },

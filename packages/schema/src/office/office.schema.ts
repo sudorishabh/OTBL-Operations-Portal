@@ -9,7 +9,6 @@ import {
   pincodeValidator,
   gstNumberValidator,
   positiveIntValidator,
-  optionalPositiveIntValidator,
   searchQueryValidator,
   pageValidator,
   limitValidator,
@@ -18,7 +17,6 @@ import {
 const { STATUS } = constants;
 
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
-const officeRoleEnum = z.enum(["office_manager", "operator"]);
 const officeNamesOrderEnum = z.enum(["asc", "desc", "latest", "oldest"]);
 
 const officeBaseSchema = z.object({
@@ -32,7 +30,6 @@ const officeBaseSchema = z.object({
 });
 
 export const createOfficeSchema = officeBaseSchema.extend({
-  manager_id: optionalPositiveIntValidator,
   operator_ids: z.array(positiveIntValidator).optional(),
   status: statusEnum.optional(),
 });
@@ -45,7 +42,6 @@ export const updateOfficeSchema = officeBaseSchema.extend({
 export const assignUserToOfficeSchema = z.object({
   office_id: positiveIntValidator,
   user_id: positiveIntValidator,
-  role: officeRoleEnum,
 });
 
 export const expelUserFromOfficeSchema = z.object({

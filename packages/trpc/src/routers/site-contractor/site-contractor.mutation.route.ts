@@ -2,7 +2,7 @@ import { and, count, eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { assertOfficeManager } from "../../helper/office-permissions";
+import { assertOfficeMember } from "../../helper/office-permissions";
 import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import type { TrpcContext } from "../../context";
@@ -17,7 +17,7 @@ const {
   contractorTable,
 } = schema;
 
-// Only the office manager of the work order's office changes who a site's
+// Only the work order's office operators and admins change who a site's
 // work is ordered to.
 async function assertManagesSiteContractors(
   ctx: TrpcContext,
@@ -42,7 +42,7 @@ async function assertManagesSiteContractors(
     throw businessRule("This site doesn't keep its own vendors.");
   }
 
-  await assertOfficeManager(ctx, site.office_id);
+  await assertOfficeMember(ctx, site.office_id);
 }
 
 async function assertVendorExists(ctx: TrpcContext, contractorId: number) {

@@ -4,8 +4,8 @@ The operations portal for **ONGC TERI Biotech Limited (OTBL)**. It tracks remedi
 
 **client → proposal → work order → sites → field uploads → expenses → completion**
 
-- **Admins** create offices, users, clients, proposals and work orders, and approve or cancel them.
-- **Office Managers and Office Operators** run their assigned offices: sites, activity quantities, expenses and documents.
+- **Admins** create offices and users and choose who works at each office; they also create clients, proposals and work orders, and approve or cancel them.
+- **Office Operators** run their assigned offices: sites, orders, activity quantities, expenses and documents.
 - **Site Operators** use the app on a phone to upload photos, measurement sheets and bills from their assigned sites.
 - **Viewers** get read-only access to everything.
 

@@ -9,7 +9,7 @@ import {
   assertCanAccessWorkOrderSite,
   getAccessScope,
 } from "../../access-scope";
-import { assertOfficeManager } from "../../helper/office-permissions";
+import { assertOfficeMember } from "../../helper/office-permissions";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { siteNameOrRestoration } from "../../helper/restoration";
@@ -204,7 +204,7 @@ export const workOrderSiteQueryRouter = router({
         if (!woSite) {
           throw notFound("Work order site", work_order_site_id);
         }
-        await assertOfficeManager(ctx, woSite.office_id);
+        await assertOfficeMember(ctx, woSite.office_id);
 
         try {
           const siteOperators = await ctx.db
@@ -293,7 +293,7 @@ export const workOrderSiteQueryRouter = router({
         if (!woSite) {
           throw notFound("Work order site", work_order_site_id);
         }
-        await assertOfficeManager(ctx, woSite.office_id);
+        await assertOfficeMember(ctx, woSite.office_id);
 
         try {
           const offset = (page - 1) * limit;
@@ -390,7 +390,7 @@ export const workOrderSiteQueryRouter = router({
         if (!woSite) {
           throw notFound("Work order site", work_order_site_id);
         }
-        await assertOfficeManager(ctx, woSite.office_id);
+        await assertOfficeMember(ctx, woSite.office_id);
 
         try {
           const assigned = await ctx.db

@@ -98,7 +98,6 @@ export {
   publicProcedure,
   protectedProcedure,
   adminProcedure,
-  managerProcedure,
   operatorProcedure,
   createRoleProtectedProcedure,
   createMultiRoleProcedure,

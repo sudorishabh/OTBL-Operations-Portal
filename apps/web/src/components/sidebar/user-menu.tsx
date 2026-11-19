@@ -27,7 +27,7 @@ const initialsOf = (name: string) => {
   return `${first}${last}`.toUpperCase() || "?";
 };
 
-// "office_manager" reads "Office Manager".
+// "office_operator" reads "Office Operator".
 const roleLabel = (role: string) => capitalizeEachWord(role.replace(/_/g, " "));
 
 const Avatar = ({ name, className }: { name: string; className?: string }) => (

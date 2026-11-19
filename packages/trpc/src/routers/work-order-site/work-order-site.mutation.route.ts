@@ -7,7 +7,7 @@ import {
   assertCanAccessWorkOrderSite,
   getAccessScope,
 } from "../../access-scope";
-import { assertOfficeManager } from "../../helper/office-permissions";
+import { assertOfficeMember } from "../../helper/office-permissions";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
 import {
@@ -155,7 +155,7 @@ export const workOrderSiteMutationRouter = router({
         if (!woSite) {
           throw notFound("Work order site", work_order_site_id);
         }
-        await assertOfficeManager(ctx, woSite.office_id);
+        await assertOfficeMember(ctx, woSite.office_id);
 
         if (user_ids.length > 0) {
           const siteOperators = await ctx.db

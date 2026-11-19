@@ -23,7 +23,7 @@ const Count = ({ value }: { value: number }) => (
 // The office's sites and work orders, one tab each. The open tab is kept in
 // the address, so coming back from a work order reopens its tab.
 const OfficeTabs = ({ details }: { details: OfficeDetails }) => {
-  const { office, sites, workOrders, canManage } = details;
+  const { office, sites, workOrders, canEditSites } = details;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -69,7 +69,7 @@ const OfficeTabs = ({ details }: { details: OfficeDetails }) => {
             </TabsTrigger>
           </TabsList>
 
-          {tab === "sites" && canManage && (
+          {tab === "sites" && canEditSites && (
             <div className='py-2'>
               <CustomButton
                 text='Create Site'
