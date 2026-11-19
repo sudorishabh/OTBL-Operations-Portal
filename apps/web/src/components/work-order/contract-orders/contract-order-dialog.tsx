@@ -180,18 +180,12 @@ const ContractOrderDialog = ({
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [savedDocuments, setSavedDocuments] = useState<StoredDocument[]>([]);
-  const [completionFiles, setCompletionFiles] = useState<File[]>([]);
-  const [savedCompletion, setSavedCompletion] = useState<StoredDocument[]>([]);
 
   const isPurchase = type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER;
   const typeLabel = isPurchase ? "Purchase order" : "Sub-contract";
 
   const documentsUpload = useSharePointUpload({
     folderPath: `/WorkOrders/${workOrderId}/ContractOrders`,
-    conflictBehavior: "rename",
-  });
-  const completionUpload = useSharePointUpload({
-    folderPath: `/WorkOrders/${workOrderId}/ContractOrders/Completion`,
     conflictBehavior: "rename",
   });
 
@@ -243,10 +237,7 @@ const ContractOrderDialog = ({
     setInvoiceNumber(editing?.invoice_number ?? "");
     setFiles([]);
     setSavedDocuments(toDocuments(editing?.documents));
-    setCompletionFiles([]);
-    setSavedCompletion(toDocuments(editing?.completion_documents));
     documentsUpload.reset();
-    completionUpload.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
 
@@ -358,7 +349,6 @@ const ContractOrderDialog = ({
       order_date: orderDate ? new Date(orderDate) : undefined,
       description,
       documents: savedDocuments,
-      completion_documents: savedCompletion,
       contractor_ids: vendors.map((vendor) => vendor.id),
       items: rows.map((row) => ({
         id: row.id,
@@ -386,19 +376,12 @@ const ContractOrderDialog = ({
     const uploaded =
       files.length > 0 ? await documentsUpload.uploadFiles(files) : [];
     if (!uploaded) return;
-    const uploadedCompletion =
-      completionFiles.length > 0
-        ? await completionUpload.uploadFiles(completionFiles)
-        : [];
-    if (!uploadedCompletion) return;
 
+    // Its completion documents are uploaded from its row once the work is
+    // done; leaving them out keeps those already saved.
     const values = {
       ...parsed.data,
       documents: [...savedDocuments, ...uploaded.map(toStoredDocument)],
-      completion_documents: [
-        ...savedCompletion,
-        ...uploadedCompletion.map(toStoredDocument),
-      ],
     };
     if (editing) {
       updateOrder.mutate({ ...values, id: editing.id });
@@ -409,7 +392,6 @@ const ContractOrderDialog = ({
 
   const isSaving =
     documentsUpload.isUploading ||
-    completionUpload.isUploading ||
     createOrder.isPending ||
     updateOrder.isPending;
 
@@ -752,34 +734,17 @@ const ContractOrderDialog = ({
               rows={2}
             />
           </div>
-          <div className='grid grid-cols-1 gap-3 lg:grid-cols-2'>
-            <DocumentsField
-              label={`${typeLabel} documents (optional)`}
-              files={files}
-              onFilesChange={setFiles}
-              existing={savedDocuments}
-              onRemoveExisting={(index) =>
-                setSavedDocuments((prev) => prev.filter((_, i) => i !== index))
-              }
-              isUploading={documentsUpload.isUploading}
-              progress={documentsUpload.progress}
-            />
-            <DocumentsField
-              label='Completion documents (later)'
-              files={completionFiles}
-              onFilesChange={setCompletionFiles}
-              existing={savedCompletion}
-              onRemoveExisting={(index) =>
-                setSavedCompletion((prev) => prev.filter((_, i) => i !== index))
-              }
-              isUploading={completionUpload.isUploading}
-              progress={completionUpload.progress}
-            />
-          </div>
-          <p className='text-[11px] text-gray-400'>
-            Completion documents can be uploaded now or once the work is done,
-            from the order&apos;s row.
-          </p>
+          <DocumentsField
+            label={`${typeLabel} documents (optional)`}
+            files={files}
+            onFilesChange={setFiles}
+            existing={savedDocuments}
+            onRemoveExisting={(index) =>
+              setSavedDocuments((prev) => prev.filter((_, i) => i !== index))
+            }
+            isUploading={documentsUpload.isUploading}
+            progress={documentsUpload.progress}
+          />
         </section>
 
         <div className='flex justify-end gap-2 border-t border-gray-100 pt-4'>
