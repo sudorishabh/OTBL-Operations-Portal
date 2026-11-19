@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -9,11 +9,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Edit, UserIcon } from "lucide-react";
+import { Edit, UserCheck, UserIcon, UserX } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -35,12 +36,15 @@ import { userTypes } from "@pkg/schema";
 import UserTabSkeleton from "../skeleton/user/user-tab-skeleton";
 import { toast } from "react-hot-toast";
 import Error from "@/components/shared/error";
+import UserStatusDialog, { type StatusTarget } from "./user-status-dialog";
 
 const ALL_USERS_PAGE_SIZE = 50;
 
 const UserTable = () => {
   const { setParams } = useHandleParams();
   const isViewer = useIsViewer();
+  // The user whose account is being turned off or on.
+  const [statusTarget, setStatusTarget] = useState<StatusTarget | null>(null);
 
   const { userNamesOrder, searchQuery, filters } = useUserManagementContext();
   const debouncedSearch = useDebounce(searchQuery.trim(), 300);
@@ -211,6 +215,23 @@ const UserTable = () => {
                       <Edit className='mr-2 h-4 w-4' />
                       Edit User
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {user.status === "active" ? (
+                      <DropdownMenuItem
+                        variant='destructive'
+                        disabled={isViewer}
+                        onClick={() => setStatusTarget(user)}>
+                        <UserX className='mr-2 h-4 w-4' />
+                        Deactivate User
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        disabled={isViewer}
+                        onClick={() => setStatusTarget(user)}>
+                        <UserCheck className='mr-2 h-4 w-4' />
+                        Reactivate User
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
@@ -239,6 +260,11 @@ const UserTable = () => {
         totalPages={pagination?.totalPages}
         noun='users'
         className='border-t'
+      />
+
+      <UserStatusDialog
+        user={statusTarget}
+        onClose={() => setStatusTarget(null)}
       />
     </div>
   );

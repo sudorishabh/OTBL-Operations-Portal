@@ -37,6 +37,12 @@ export const updateUserSchema = createUserSchema.extend({
   password: z.union([passwordValidator, z.literal("")]).optional(),
 });
 
+// Turning an account off stops its sign-in but keeps its records.
+export const setUserStatusSchema = z.object({
+  id: positiveIntValidator,
+  status: statusEnum,
+});
+
 export const updateUserPasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
@@ -68,4 +74,12 @@ export const getAllUsersSchema = z.object({
   // Viewers see everything, so they count as neither.
   assignment: z.enum(["assigned", "unassigned"]).optional(),
   userNamesOrder: sortOrderValidator,
+});
+
+// The list's filters other than role, for counting the users in each role.
+export const getUserCountsSchema = getAllUsersSchema.pick({
+  searchQuery: true,
+  status: true,
+  officeId: true,
+  assignment: true,
 });
