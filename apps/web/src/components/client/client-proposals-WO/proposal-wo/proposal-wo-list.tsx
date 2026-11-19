@@ -6,7 +6,7 @@ import ProposalCell from "./proposal-cell";
 import WorkOrderCell from "./work-order-cell";
 
 // Proposal on the left, an arrow, then the work order made from it.
-const ROW_GRID = "md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)]";
+const ROW_GRID = "md:grid-cols-[minmax(0,1fr)_1.75rem_minmax(0,1fr)]";
 
 interface Props {
   rows: proposalTypes.getProposalsByClientReturnType[];
@@ -19,7 +19,7 @@ const ProposalWOList = ({ rows, footer }: Props) => (
   <div className='overflow-hidden rounded-lg border border-gray-200'>
     <div
       className={cn(
-        "hidden gap-2 border-b border-gray-200 bg-gray-50/60 px-2 py-2 text-xs font-medium text-gray-500 md:grid",
+        "hidden gap-3 border-b border-gray-200 bg-gray-50/60 px-3 py-2 text-xs font-medium text-gray-500 md:grid",
         ROW_GRID,
       )}>
       <span className='px-3'>Proposal</span>
@@ -31,23 +31,23 @@ const ProposalWOList = ({ rows, footer }: Props) => (
       {rows.map(({ proposal, workOrder }) => (
         <li
           key={proposal.id}
-          className={cn(
-            "grid grid-cols-1 items-center gap-1 p-2 md:gap-2",
-            ROW_GRID,
-          )}>
+          className={cn("grid grid-cols-1 gap-2 p-3 md:gap-3", ROW_GRID)}>
           <ProposalCell proposal={proposal} />
-          <ArrowRight
+          <span
             aria-hidden='true'
             className={cn(
-              "hidden size-4 justify-self-center md:block",
-              workOrder ? "text-emerald-500" : "text-gray-300",
-            )}
-          />
-          {/* Stacked on small screens, indented under its proposal. */}
-          <div className='ml-3 border-l-2 border-gray-100 pl-1 md:ml-0 md:border-0 md:pl-0'>
+              "hidden size-7 place-items-center self-center rounded-full ring-1 md:grid",
+              workOrder
+                ? "bg-emerald-50 text-emerald-600 ring-emerald-100"
+                : "bg-gray-50 text-gray-300 ring-gray-100",
+            )}>
+            <ArrowRight className='size-3.5' />
+          </span>
+          {/* Under its proposal on small screens; as tall as it beside it. */}
+          <div className='min-w-0'>
             <WorkOrderCell
               workOrder={workOrder}
-              proposalId={proposal.id}
+              proposal={proposal}
             />
           </div>
         </li>
