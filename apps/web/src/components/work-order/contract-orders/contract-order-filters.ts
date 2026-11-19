@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { ALL, type FilterOption } from "@/components/filters/list-filters";
 import { toDocuments } from "@/lib/documents";
-import { itemLabel, type ContractOrder } from "./contract-orders-section";
+import { itemLabel, type ContractOrder } from "./contract-order-display";
 
 // How a work order's purchase orders and sub-contracts are narrowed and
 // ordered. Every order is loaded at once, so this runs in the browser.

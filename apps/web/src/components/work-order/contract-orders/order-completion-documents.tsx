@@ -15,7 +15,7 @@ import {
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
-import type { ContractOrder } from "./contract-orders-section";
+import type { ContractOrder } from "./contract-order-display";
 
 interface Props {
   workOrderId: number;

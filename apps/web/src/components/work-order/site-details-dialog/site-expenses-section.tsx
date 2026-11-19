@@ -54,7 +54,7 @@ import DocumentsMenu from "@/components/shared/documents-menu";
 import {
   itemLabel,
   rateLabel,
-} from "../contract-orders/contract-orders-section";
+} from "../contract-orders/contract-order-display";
 import type { JobOrder } from "../restoration/job-order-dialog";
 import JobOrderChip from "../restoration/job-order-chip";
 import {

@@ -40,7 +40,7 @@ import { format } from "date-fns";
 import { capitalFirstLetter } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import RecordCode from "@/components/shared/record-code";
-import { rateLabel } from "../contract-orders/contract-orders-section";
+import { rateLabel } from "../contract-orders/contract-order-display";
 import ExpenseActivityLines, {
   formatQty,
   newActivityLine,

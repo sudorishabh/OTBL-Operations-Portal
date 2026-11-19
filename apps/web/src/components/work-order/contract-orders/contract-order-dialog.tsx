@@ -33,7 +33,7 @@ import {
   itemLabel,
   singleUnit,
   type ContractOrder,
-} from "./contract-orders-section";
+} from "./contract-order-display";
 import RecordCode from "@/components/shared/record-code";
 import OrderSitePicker from "./order-site-picker";
 
