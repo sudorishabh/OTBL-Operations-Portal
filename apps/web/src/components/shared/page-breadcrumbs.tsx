@@ -76,22 +76,24 @@ const PageBreadcrumbs = ({
   const foldedCount = Math.max(items.length - 2, 0);
 
   const separator = (className?: string) => (
-    <BreadcrumbSeparator className={cn(styles.separator, className)} />
+    <BreadcrumbSeparator
+      className={cn("[&>svg]:size-4", styles.separator, className)}
+    />
   );
 
   return (
     <Breadcrumb
       className={cn(
-        "inline-flex min-w-0 max-w-full items-center rounded-full px-2.5 py-1.5 ring-1 backdrop-blur-sm",
+        "inline-flex min-w-0 max-w-full items-center rounded-full px-3 py-1.5 ring-1 backdrop-blur-sm",
         styles.trail,
         className,
       )}>
-      <BreadcrumbList>
+      <BreadcrumbList className='text-sm'>
         <BreadcrumbItem className='shrink-0'>
           {isHomePage ? (
             <BreadcrumbPage
               className={cn("inline-flex items-center gap-1.5", styles.page)}>
-              <House className='size-3.5' />
+              <House className='size-4' />
               {home.label}
             </BreadcrumbPage>
           ) : (
@@ -101,7 +103,7 @@ const PageBreadcrumbs = ({
               <Link
                 href={home.href}
                 title={home.label}>
-                <House className='size-3.5' />
+                <House className='size-4' />
                 <span className={cn(!showHomeLabel && "sr-only")}>
                   {home.label}
                 </span>
@@ -114,7 +116,7 @@ const PageBreadcrumbs = ({
           <>
             {separator("sm:hidden")}
             <BreadcrumbItem className={cn("sm:hidden", styles.muted)}>
-              <BreadcrumbEllipsis />
+              <BreadcrumbEllipsis className='size-5 [&>svg]:size-4' />
             </BreadcrumbItem>
           </>
         )}
@@ -129,8 +131,8 @@ const PageBreadcrumbs = ({
               <BreadcrumbItem
                 className={cn(
                   isLast
-                    ? "max-w-[16rem] sm:max-w-sm"
-                    : "max-w-[10rem] sm:max-w-[14rem]",
+                    ? "max-w-[18rem] sm:max-w-md"
+                    : "max-w-[11rem] sm:max-w-[16rem]",
                   isFolded && "hidden sm:inline-flex",
                 )}>
                 {isLast ? (

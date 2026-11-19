@@ -38,8 +38,8 @@ export const PageWrapper = ({
               href={parent.href}
               aria-label={`Back to ${parent.label}`}
               title={`Back to ${parent.label}`}
-              className='flex size-7 shrink-0 items-center justify-center rounded-full bg-white/75 text-gray-600 shadow-sm ring-1 ring-gray-300/60 backdrop-blur-sm transition-colors hover:bg-white hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40'>
-              <ArrowLeft className='size-3.5' />
+              className='flex size-8 shrink-0 items-center justify-center rounded-full bg-white/75 text-gray-600 shadow-sm ring-1 ring-gray-300/60 backdrop-blur-sm transition-colors hover:bg-white hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40'>
+              <ArrowLeft className='size-4' />
             </Link>
           )}
           <PageBreadcrumbs items={breadcrumbs} />
