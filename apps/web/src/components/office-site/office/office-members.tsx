@@ -2,7 +2,6 @@ import React from "react";
 import { Mail, Phone, UserCog, Users } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
 import CustomButton from "@/components/shared/btn";
-import { Pill } from "@/components/shared/detail-card-parts";
 import ProcessSectionHeader from "@/components/work-order/process-section-header";
 import useHandleParams from "@/hooks/useHandleParams";
 import { cn } from "@/lib/utils";
@@ -47,11 +46,6 @@ const MemberCard = ({
             title={name}>
             {name}
           </p>
-          {member.status !== "active" && (
-            <Pill className='shrink-0 bg-gray-50 text-gray-600 ring-gray-200'>
-              Inactive
-            </Pill>
-          )}
         </div>
         <p className='text-xs text-gray-500'>
           {isManager ? "Office manager" : "Office operator"}

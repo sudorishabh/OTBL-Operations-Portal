@@ -12,7 +12,6 @@ export type UserSort = "asc" | "desc" | "latest" | "oldest";
 
 export type UserFilters = {
   role: UserRoleFilter;
-  status: "all" | "active" | "inactive";
   /** "all" or an office's id. */
   officeId: string;
   assignment: "all" | "assigned" | "unassigned";
@@ -20,7 +19,6 @@ export type UserFilters = {
 
 const defaultUserFilters: UserFilters = {
   role: "all",
-  status: "all",
   officeId: "all",
   assignment: "all",
 };

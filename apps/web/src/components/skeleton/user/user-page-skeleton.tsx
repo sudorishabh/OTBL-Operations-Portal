@@ -9,7 +9,7 @@ const UserPageSkeleton = () => (
     className='mt-8'>
     <FilterBarSkeleton
       search='sm:w-72'
-      selects={["w-28", "w-28", "w-28", "w-32", "w-28"]}
+      selects={["w-28", "w-28", "w-32", "w-28"]}
       className='mb-4'
     />
     <UsersTableSkeleton />

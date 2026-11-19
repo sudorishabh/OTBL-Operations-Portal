@@ -143,8 +143,6 @@ export default function ProfilePage() {
     );
   }
 
-  const isActive = profile.status === "active";
-
   return (
     <PageWrapper
       breadcrumbs={sectionTrail("profile")}
@@ -167,14 +165,6 @@ export default function ProfilePage() {
                     variant='outline'
                     className='h-5 px-1.5 text-[10px] capitalize font-medium border-cyan-900/20 text-cyan-800'>
                     {profile.role}
-                  </Badge>
-                  <Badge
-                    variant={isActive ? "default" : "secondary"}
-                    className={cn(
-                      "h-5 px-1.5 text-[10px] font-medium",
-                      isActive && "bg-green-600 hover:bg-green-700 border-transparent",
-                    )}>
-                    {profile.status}
                   </Badge>
                 </div>
               </div>
@@ -265,7 +255,7 @@ export default function ProfilePage() {
                       optional
                     />
                     <p className='text-xs text-muted-foreground'>
-                      Role and account status can only be changed by an administrator.
+                      Your role can only be changed by an administrator.
                     </p>
                     <div className='flex justify-end gap-2 pt-1'>
                       <CustomButton

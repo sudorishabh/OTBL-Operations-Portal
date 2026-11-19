@@ -10,7 +10,6 @@ import {
 // Same columns as UserTable.
 export const USER_COLUMNS: SkeletonColumn[] = (
   [
-    { label: "Status", shape: "dot" },
     { label: "Name", bar: ["w-24", "w-28", "w-20", "w-32"] },
     { label: "Email", bar: ["w-36", "w-40", "w-32"] },
     { label: "Contact", bar: "w-20" },

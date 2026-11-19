@@ -26,12 +26,6 @@ const ROLE_OPTIONS = [
   { label: "Viewer", value: "viewer" },
 ];
 
-const STATUS_OPTIONS = [
-  { label: "All statuses", value: ALL },
-  { label: "Active", value: "active" },
-  { label: "Inactive", value: "inactive" },
-];
-
 // Viewers see everything, so they are never assigned.
 const ASSIGNMENT_OPTIONS = [
   { label: "Any assignment", value: ALL },
@@ -73,7 +67,6 @@ const UserSearchFilter = () => {
   const hasActiveFilters =
     searchQuery !== "" ||
     filters.role !== ALL ||
-    filters.status !== ALL ||
     filters.officeId !== ALL ||
     filters.assignment !== ALL;
 
@@ -90,14 +83,6 @@ const UserSearchFilter = () => {
         value={filters.role}
         onChange={(role) => setFilter({ role: role as UserFilters["role"] })}
         options={ROLE_OPTIONS}
-      />
-      <SelectFilter
-        label='Status'
-        value={filters.status}
-        onChange={(status) =>
-          setFilter({ status: status as UserFilters["status"] })
-        }
-        options={STATUS_OPTIONS}
       />
       <ComboboxFilter
         label='Office'

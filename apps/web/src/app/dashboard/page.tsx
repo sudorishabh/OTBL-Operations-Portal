@@ -218,13 +218,6 @@ export default function DashboardPage() {
                   {user.email}
                 </span>
               )}
-              {user?.status && (
-                <Badge
-                  variant='outline'
-                  className='h-5 px-1.5 text-[11px] font-normal capitalize'>
-                  {user.status}
-                </Badge>
-              )}
             </div>
           </div>
 
