@@ -53,7 +53,10 @@ import AddExpenseDialog, {
   Expense,
 } from "./add-expense-dialog";
 import DocumentsMenu from "@/components/shared/documents-menu";
-import { itemLabel } from "../contract-orders/contract-orders-section";
+import {
+  itemLabel,
+  rateLabel,
+} from "../contract-orders/contract-orders-section";
 import type { JobOrder } from "../restoration/job-order-dialog";
 import JobOrderChip from "../restoration/job-order-chip";
 import {
@@ -105,15 +108,20 @@ const formatQty = (value: number) =>
   new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
 
 // What a contract order requires at the site, as getSiteContractOrderItems
-// returns it.
+// returns it: a purchase order's oil zapper, or a sub-contract's rate.
 type SiteOrderItem = {
   id: number;
   item: string;
   description: string | null;
-  quantity: string;
+  quantity: string | null;
   unit: string;
+  unit_rate: string | null;
   order_type: string;
   order_code: string;
+  // Its sub-contract takes one expense per requirement.
+  single_expense: boolean;
+  // The expenses recorded against it at the site.
+  expense_count: number;
   vendors: { id: number; name: string }[];
 };
 
@@ -132,6 +140,17 @@ const ORDER_GROUPS = [
 
 const orderItemTitle = (item: SiteOrderItem) =>
   `${item.order_code} · ${itemLabel(item.item, item.description)}`;
+
+// What an order asks of the site: a purchase order's oil zapper, or a
+// sub-contract's rate, taken in one expense or as many as needed.
+const orderItemTerms = (item: SiteOrderItem) => {
+  if (item.order_type === constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER) {
+    return `${formatQty(Number(item.quantity ?? 0))} ${item.unit}`;
+  }
+  if (!item.unit_rate) return "No rate";
+  const rate = rateLabel(item.unit_rate, item.unit);
+  return item.single_expense ? `${rate} · one expense` : rate;
+};
 
 // The tabs of expenses under no vendor, and of vendor expenses in no group,
 // when expenses are shown in tabs.
@@ -372,6 +391,8 @@ const SiteExpensesSection = ({
       utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: woSiteId });
       utils.workOrderQuery.getWorkOrderDetails.invalidate();
       utils.workOrderSiteQuery.getOilZapperStock.invalidate({ work_order_site_id: woSiteId });
+      // A single-expense requirement takes one again once its one is gone.
+      utils.contractOrderQuery.getSiteContractOrderItems.invalidate({ work_order_site_id: woSiteId });
       toast.success("Expense deleted");
     } catch (e: any) {
       toast.error(e?.message || "Failed to delete expense");
@@ -386,12 +407,19 @@ const SiteExpensesSection = ({
     for (const a of activityOptions) {
       activityMetaByKey[a.key] = { label: a.label, unit: a.unit ?? null };
     }
+    const orderItemById = new Map(orderItems.map((item) => [item.id, item]));
 
     const all = expenses.map((exp): ExpenseRecord => {
       const activityKey = exp.activity_key ?? null;
+      // A sub-contract expense is named, and measured, by its requirement.
+      const orderItem = exp.contract_order_item_id
+        ? orderItemById.get(exp.contract_order_item_id)
+        : undefined;
       const activityMeta = activityKey
         ? (activityMetaByKey[activityKey] ?? { label: formatActivityLabel(activityKey), unit: null })
-        : { label: "Other / Unlinked Expenses", unit: null };
+        : orderItem
+          ? { label: itemLabel(orderItem.item, orderItem.description), unit: orderItem.unit }
+          : { label: "Other / Unlinked Expenses", unit: null };
       return {
         id: exp.id,
         activityKey,
@@ -419,7 +447,7 @@ const SiteExpensesSection = ({
     if (activityFilter === "__all__") return all;
     const filterKey = activityFilter === "__none__" ? null : activityFilter;
     return all.filter((r) => r.activityKey === filterKey);
-  }, [expenses, activityOptions, activityFilter]);
+  }, [expenses, activityOptions, activityFilter, orderItems]);
 
   // An expense row. Its edit and delete are off when it is locked, such as on
   // a closed job order, saying why.
@@ -764,6 +792,28 @@ const SiteExpensesSection = ({
     // Why its expenses are locked, such as a job order closed by its
     // certificate. It then takes no more and starts folded.
     closedNote?: string;
+  };
+
+  // A sub-contract requirement takes expenses at the site; a single-expense
+  // one only until it has its one, which holds the total quantity.
+  const subContractItemParts = (
+    item: SiteOrderItem,
+  ): Pick<ExpenseGroup, "status" | "onAdd"> => {
+    const isRecorded = item.single_expense && item.expense_count > 0;
+    return {
+      status: item.single_expense && (
+        <span
+          className={cn(
+            "shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+            isRecorded
+              ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+              : "bg-gray-50 text-gray-600 ring-gray-200",
+          )}>
+          {isRecorded ? "Total recorded" : "One expense"}
+        </span>
+      ),
+      onAdd: isRecorded ? undefined : () => openAddExpense(null, item.id),
+    };
   };
 
   // In the colour of the process, as on the work order page.
@@ -1250,7 +1300,7 @@ const SiteExpensesSection = ({
                 key: `item-${item.id}`,
                 badge: item.order_code,
                 title: itemLabel(item.item, item.description),
-                meta: `${formatQty(Number(item.quantity))} ${item.unit}`,
+                meta: orderItemTerms(item),
                 total: orderItemTotal(item.id),
                 vendors: item.vendors,
                 records: records.filter((r) => r.contractOrderItemId === item.id),
@@ -1265,7 +1315,7 @@ const SiteExpensesSection = ({
                         </span>
                       ),
                     }
-                  : { onAdd: () => openAddExpense(null, item.id) }),
+                  : subContractItemParts(item)),
               })),
             };
           }),
@@ -1360,7 +1410,15 @@ const SiteExpensesSection = ({
         activitiesNote={dialogActivitiesNote}
         orderItem={
           dialogOrderItem
-            ? { id: dialogOrderItem.id, label: orderItemTitle(dialogOrderItem) }
+            ? {
+                id: dialogOrderItem.id,
+                label: orderItemTitle(dialogOrderItem),
+                unitRate: dialogOrderItem.unit_rate
+                  ? Number(dialogOrderItem.unit_rate)
+                  : null,
+                unit: dialogOrderItem.unit,
+                singleExpense: dialogOrderItem.single_expense,
+              }
             : null
         }
         jobOrder={
