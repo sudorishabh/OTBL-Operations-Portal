@@ -2,17 +2,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, type ComponentType, type SVGProps } from "react";
-import {
-  HardHat,
-  LayoutDashboard,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ReceiptIndianRupee,
-  Tent,
-  Users,
-  Webhook,
-} from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -29,63 +20,16 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  isLinkActive,
+  NAV_GROUPS,
+  navGroupsForRole,
+  type NavItem,
+} from "@/components/sidebar/nav-links";
 import { UserMenu } from "@/components/sidebar/user-menu";
 import { usePendingWorkOrderCount } from "@/components/sidebar/use-pending-work-order-count";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { constants } from "@pkg/utils";
-
-const { ROLES } = constants;
-
-type NavItem = {
-  title: string;
-  // The page's path under /dashboard.
-  link: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-  hideForRoles?: readonly string[];
-};
-
-type NavGroup = {
-  // Unnamed groups sit above the named ones without a heading.
-  label?: string;
-  items: NavItem[];
-};
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    items: [{ title: "Overview", link: "/", icon: LayoutDashboard }],
-  },
-  {
-    label: "Operations",
-    items: [
-      { title: "Work Orders", link: "/work-order", icon: ReceiptIndianRupee },
-      { title: "Clients", link: "/client", icon: Webhook },
-      { title: "Offices & Sites", link: "/office-site", icon: Tent },
-      {
-        title: "Vendors",
-        link: "/vendor",
-        icon: HardHat,
-        hideForRoles: [ROLES.SITE_OPERATOR],
-      },
-    ],
-  },
-  {
-    label: "Administration",
-    items: [
-      {
-        title: "User Management",
-        link: "/user",
-        icon: Users,
-        hideForRoles: [
-          ROLES.MANAGER,
-          ROLES.OFFICE_OPERATOR,
-          ROLES.SITE_OPERATOR,
-          ROLES.VIEWER,
-        ],
-      },
-    ],
-  },
-];
 
 // Every row of the sidebar shares one look: the page you're on in emerald,
 // the rest lighting up on hover.
@@ -95,12 +39,6 @@ const ROW_CLASS =
 // Folded to icons, a heading slides up out of sight by its own height.
 const GROUP_LABEL_CLASS =
   "h-6 px-2.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/55 group-data-[collapsible=icon]:-mt-6";
-
-// Whether a link leads to the page being viewed, or to a page above it.
-const isLinkActive = (link: string, pathname: string) =>
-  link === "/"
-    ? pathname === "/"
-    : pathname === link || pathname.startsWith(`${link}/`);
 
 // A count beside a link, such as the work orders still pending.
 type NavBadge = { count: number; label: string };
@@ -206,17 +144,10 @@ function AppSidebar() {
   }, [pathname, setOpenMobile]);
 
   // The groups this user gets, each holding only the links their role sees.
-  const visibleGroups = useMemo(() => {
-    if (isUserLoading) return [];
-    return NAV_GROUPS.map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (item) =>
-          !item.hideForRoles?.length ||
-          (!!user?.role && !item.hideForRoles.includes(user.role)),
-      ),
-    })).filter((group) => group.items.length > 0);
-  }, [isUserLoading, user?.role]);
+  const visibleGroups = useMemo(
+    () => (isUserLoading ? [] : navGroupsForRole(user?.role)),
+    [isUserLoading, user?.role],
+  );
 
   if (!pathname.startsWith("/dashboard")) return null;
   const page = pathname.replace("/dashboard", "") || "/";
