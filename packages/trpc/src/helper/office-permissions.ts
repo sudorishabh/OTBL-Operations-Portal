@@ -10,7 +10,7 @@ import {
 
 const { officeUserTable } = schema;
 
-export type OfficeRole = "office_manager" | "operator";
+export type OfficeRole = "operator";
 
 export async function getOfficeRole(
   db: Database,

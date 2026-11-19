@@ -6,7 +6,6 @@ import { adminProcedure } from "../../middleware";
 import { officeSchemas } from "@pkg/schema";
 import {
   notFound,
-  alreadyExists,
   forbidden,
   validationError,
   fromDatabaseError,
@@ -20,7 +19,7 @@ const { ROLES } = constants;
 export const officeMutationRouter = router({
   createOffice: adminProcedure.input(officeSchemas.createOfficeSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
-      const { manager_id, operator_ids, ...officeData } = input;
+      const { operator_ids, ...officeData } = input;
       const userId = parseInt(ctx.user!.sub);
 
       try {
@@ -35,25 +34,6 @@ export const officeMutationRouter = router({
             email: officeData.email.trim().toLowerCase(),
           });
           const officeId = result[0].insertId;
-
-          if (manager_id) {
-            const [user] = await tx
-              .select()
-              .from(userTable)
-              .where(eq(userTable.id, manager_id));
-
-            if (!user) {
-              throw notFound("Manager", manager_id, {
-                userMessage: "The selected manager doesn't exist.",
-              });
-            }
-            await tx.insert(officeUserTable).values({
-              user_id: manager_id,
-              office_id: officeId,
-              role: ROLES.MANAGER as "office_manager",
-              assigned_by: userId,
-            });
-          }
 
           if (operator_ids && operator_ids.length > 0) {
             const users = await tx
@@ -170,25 +150,6 @@ export const officeMutationRouter = router({
             userMessage:
               "Only Office Operators can be added to an office. This user isn't an Office Operator.",
           });
-        }
-
-        if (role === ROLES.MANAGER) {
-          const existingManagers = await ctx.db
-            .select()
-            .from(officeUserTable)
-            .where(
-              and(
-                eq(officeUserTable.office_id, office_id),
-                eq(officeUserTable.role, ROLES.MANAGER),
-              ),
-            );
-
-          if (existingManagers.length > 0) {
-            throw alreadyExists("Manager", undefined, {
-              userMessage:
-                "This office already has a manager. Please remove the existing manager first.",
-            });
-          }
         }
 
         try {

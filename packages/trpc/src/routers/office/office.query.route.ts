@@ -225,13 +225,11 @@ export const officeQueryRouter = router({
           const users = members.filter(
             (member) => member.office_id === office.id,
           );
-          const manager = users.find((user) => user.role === ROLES.MANAGER);
           const operators = users.filter((user) => user.role === "operator");
           const sites = siteCounts.filter((row) => row.office_id === office.id);
 
           return {
             ...office,
-            manager,
             operators,
             siteCount: sites.reduce((sum, row) => sum + row.count, 0),
             activeSiteCount: sites
@@ -295,7 +293,7 @@ export const officeQueryRouter = router({
     }),
   ),
 
-  // One office for its own page: its details, manager and office operators,
+  // One office for its own page: its details and office operators,
   // and totals across its sites and work orders.
   getOffice: protectedProcedure.input(officeSchemas.getOfficeSchema).query(
     handleQuery(async ({ input, ctx }) => {
@@ -332,8 +330,6 @@ export const officeQueryRouter = router({
           .where(eq(officeUserTable.office_id, officeId))
           .orderBy(asc(userTable.name), asc(userTable.id));
 
-        const manager =
-          members.find((member) => member.role === ROLES.MANAGER) ?? null;
         const operators = members.filter(
           (member) => member.role === "operator",
         );
@@ -429,7 +425,6 @@ export const officeQueryRouter = router({
 
         return {
           office,
-          manager,
           operators,
           canManage: isAdmin,
           canEditSites:
@@ -472,11 +467,9 @@ export const officeQueryRouter = router({
             .innerJoin(userTable, eq(officeUserTable.user_id, userTable.id))
             .where(eq(officeUserTable.office_id, input.office_id));
 
-          const manager = users.find((u: any) => u.role === "office_manager");
           const operators = users.filter((u: any) => u.role === "operator");
 
           return {
-            manager,
             operators,
             allUsers: users,
           };

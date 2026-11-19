@@ -16,7 +16,6 @@ const { ROLES } = constants;
 
 const userRoleEnum = z.enum([
   ROLES.ADMIN,
-  ROLES.MANAGER,
   ROLES.OFFICE_OPERATOR,
   ROLES.SITE_OPERATOR,
   ROLES.VIEWER,
@@ -53,7 +52,6 @@ export const getAllUsersSchema = z.object({
   role: z
     .enum([
       "all",
-      ROLES.MANAGER,
       ROLES.OFFICE_OPERATOR,
       ROLES.SITE_OPERATOR,
       ROLES.VIEWER,

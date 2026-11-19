@@ -6,9 +6,7 @@ import {
   hasRole,
   hasAnyRole,
   isAdmin,
-  isManager,
   isOperator,
-  isAdminOrManager,
   denyViewerWrites,
   USER_ROLES,
   type UserRole,
@@ -23,9 +21,7 @@ export {
   hasRole,
   hasAnyRole,
   isAdmin,
-  isManager,
   isOperator,
-  isAdminOrManager,
   USER_ROLES,
   type UserRole,
 };
@@ -46,8 +42,6 @@ export const publicProcedure = t.procedure
 export const protectedProcedure = publicProcedure.use(isAuthenticated);
 
 export const adminProcedure = publicProcedure.use(isAdmin);
-
-export const managerProcedure = publicProcedure.use(isManager);
 
 export const operatorProcedure = publicProcedure.use(isOperator);
 

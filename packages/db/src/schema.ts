@@ -58,7 +58,6 @@ export const userTable = mysqlTable(
       length: 50,
       enum: [
         ROLES.ADMIN,
-        ROLES.MANAGER,
         ROLES.OFFICE_OPERATOR,
         ROLES.SITE_OPERATOR,
         ROLES.VIEWER,

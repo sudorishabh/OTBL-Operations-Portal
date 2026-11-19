@@ -348,7 +348,6 @@ export const userQueryRouter = router({
     .use(
       hasAnyRole([
         ROLES.ADMIN,
-        ROLES.MANAGER,
         ROLES.OFFICE_OPERATOR,
         ROLES.SITE_OPERATOR,
       ]),
@@ -379,12 +378,12 @@ export const userQueryRouter = router({
     ),
 
   getUsersByRole: protectedProcedure
-    .use(hasAnyRole([ROLES.ADMIN, ROLES.MANAGER]))
+    // For the office dialogs, which only admins open.
+    .use(hasRole(ROLES.ADMIN))
     .input(
       z.object({
         role: z.enum([
           ROLES.ADMIN,
-          ROLES.MANAGER,
           ROLES.OFFICE_OPERATOR,
           ROLES.SITE_OPERATOR,
         ]),
