@@ -772,24 +772,35 @@ export const workOrderQueryRouter = router({
 
         const woSiteIds = woSites.map((s: any) => s.wo_site_id);
 
-        // Only bioremediation records completion quantities and income;
-        // restoration tracks its expenses alone.
+        // Only bioremediation records soil quantities; restoration tracks its
+        // expenses alone. A site's estimate is its share of the schedule of
+        // rates; older sites may also have a completion entry.
         let allCompletions: any[] = [];
+        const estimateBySite = new Map<
+          number,
+          { quantity: number; amount: number }
+        >();
         if (woSiteIds.length > 0) {
-          const bioremSoilExp = await ctx.db
+          const bioremSoil = await ctx.db
             .select()
             .from(bioremediationContSoilTable)
             .where(
-              and(
-                inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
-                eq(bioremediationContSoilTable.type, "completion" as any),
-              ),
+              inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
             );
 
-          allCompletions = bioremSoilExp.map((item: any) => ({
-            ...item,
-            activity_name: "biorem_cont_soil",
-          }));
+          allCompletions = bioremSoil
+            .filter((item) => item.type === "completion")
+            .map((item: any) => ({
+              ...item,
+              activity_name: "biorem_cont_soil",
+            }));
+          for (const item of bioremSoil) {
+            if (item.type !== "estimate_sub-wo") continue;
+            estimateBySite.set(item.work_order_site_id, {
+              quantity: Number(item.estimated_quantity) || 0,
+              amount: Number(item.amount) || 0,
+            });
+          }
         }
 
         type SiteExpenseAgg = {
@@ -882,6 +893,7 @@ export const workOrderQueryRouter = router({
             total_expenses: expAgg.total.toString(),
             total_exceeded_expenses: expAgg.exceededTotal.toString(),
             expense_entry_count: expAgg.count,
+            estimate: estimateBySite.get(woSite.wo_site_id) ?? null,
             created_at: woSite.created_at,
             users: sitesUsers[index],
             measurement_sheets: sitesSheets[index],
