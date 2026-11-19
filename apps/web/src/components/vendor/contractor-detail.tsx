@@ -3,10 +3,14 @@ import React from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ClipboardList, HardHat, ShoppingCart, Wrench } from "lucide-react";
-import { capitalFirstLetter, constants, formatCurrency } from "@pkg/utils";
+import {
+  capitalFirstLetter,
+  capitalizeEachWord,
+  constants,
+  formatCurrency,
+} from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { VendorDetailSkeleton } from "@/components/skeleton/vendor/vendor-skeletons";
 import {
   Table,
@@ -16,7 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import VendorCode from "./vendor-code";
+import RecordCode from "@/components/shared/record-code";
+import { jobOrderPlace } from "@/components/work-order/restoration/restoration-display";
 
 const { CONTRACT_ORDER_TYPE } = constants;
 
@@ -34,12 +39,13 @@ type WorkRow = {
 };
 type ContractOrderRow = WorkRow & {
   type: string;
-  order_number: string;
+  code: string;
   order_date: string | Date;
 };
 type JobOrderRow = WorkRow & {
   jo_number: string;
-  title: string;
+  installation_name: string | null;
+  location: string | null;
   start_date: string | Date;
   end_date: string | Date;
 };
@@ -111,25 +117,19 @@ const ContractorDetail = ({ contractorId }: Props) => {
                 <h2 className='truncate text-base font-semibold text-gray-900'>
                   {capitalFirstLetter(contractor.name)}
                 </h2>
-                <VendorCode code={contractor.code} />
+                <RecordCode code={contractor.code} />
               </div>
               <p className='text-xs text-gray-500'>
-                {[contractor.contact_number, contractor.email, contractor.address]
+                {[
+                  contractor.contact_number,
+                  contractor.email,
+                  contractor.address,
+                  contractor.state && capitalizeEachWord(contractor.state),
+                ]
                   .filter(Boolean)
                   .join(" · ") || "No contact details"}
               </p>
             </div>
-          </div>
-          <div className='flex items-center gap-2'>
-            <Badge
-              className={cn(
-                "border",
-                contractor.status === "active"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-gray-200 bg-gray-100 text-gray-600",
-              )}>
-              {capitalFirstLetter(contractor.status)}
-            </Badge>
           </div>
         </div>
         <div className='grid grid-cols-2 divide-x border-t bg-gray-50/60 sm:grid-cols-4'>
@@ -165,7 +165,7 @@ const ContractorDetail = ({ contractorId }: Props) => {
                 {contractOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className={cn(cellClass, "font-mono font-medium")}>
-                      {order.order_number}
+                      {order.code}
                     </TableCell>
                     <TableCell className={cellClass}>
                       <span className='inline-flex items-center gap-1.5 text-xs'>
@@ -229,7 +229,9 @@ const ContractorDetail = ({ contractorId }: Props) => {
                       <span className='font-mono font-medium'>
                         {jobOrder.jo_number}
                       </span>
-                      <span className='ml-2 text-gray-500'>{jobOrder.title}</span>
+                      <span className='ml-2 text-gray-500'>
+                        {jobOrderPlace(jobOrder)}
+                      </span>
                     </TableCell>
                     <TableCell className={cn(cellClass, "text-xs")}>
                       {formatDate(jobOrder.start_date)} –{" "}

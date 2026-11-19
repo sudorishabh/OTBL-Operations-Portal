@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  titleValidator,
   agreementNumberValidator,
   documentsValidator,
   positiveIntValidator,
@@ -113,15 +112,20 @@ export const scheduleOfRateSchema = z
     }
   });
 
-// The code isn't typed: the server numbers each new work order.
+// The work order's own code isn't typed: the server numbers each new one.
+// The purchase order code is the client's, typed as issued.
 export const baseWorkOrderSchema = z.object({
+  purchase_order_code: z
+    .string({ message: "Purchase order code is required" })
+    .trim()
+    .min(1, "Purchase order code is required")
+    .max(255, "Purchase order code cannot exceed 255 characters"),
   agreement_number: agreementNumberValidator,
   rate_contract_number: z
     .string({ message: "Rate contract number is required" })
     .trim()
     .min(1, "Rate contract number is required")
     .max(255, "Rate contract number cannot exceed 255 characters"),
-  title: titleValidator,
   start_date: dateValidator,
   end_date: dateValidator,
   handing_over_date: dateValidator,
@@ -209,11 +213,6 @@ export const getWorkOrdersByOfficeSchema = z.object({
   office_id: positiveIntValidator,
 });
 
-// The code a new work order starting on this date would get.
-export const getNextWorkOrderCodeSchema = z.object({
-  start_date: dateValidator,
-});
-
 export const getWorkOrderSchema = z.object({
   id: positiveIntValidator,
   limit: z.number().min(1).max(100).default(10),
@@ -233,10 +232,8 @@ export const getAllWorkOrdersPaginatedSchema = z.object({
   process_type: z
     .enum(["bioremediation", "restoration", "bioremediation_restoration"])
     .optional(),
-  // asc and desc order by title; ending_soonest by end date.
-  workOrderOrder: z
-    .enum(["asc", "desc", "latest", "oldest", "ending_soonest"])
-    .optional(),
+  // ending_soonest orders by end date.
+  workOrderOrder: z.enum(["latest", "oldest", "ending_soonest"]).optional(),
 });
 
 // A site can be added to a work order before its dates are known.

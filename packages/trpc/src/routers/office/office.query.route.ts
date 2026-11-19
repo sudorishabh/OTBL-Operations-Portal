@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
 import {
+  CODE_PREFIX,
   constants,
   effectiveWorkOrderStatusFromDbOnly,
   type EffectiveWorkOrderStatus,
@@ -30,6 +31,7 @@ import { officeSchemas } from "@pkg/schema";
 import { fromDatabaseError, isAppError, notFound } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { codeMatches } from "../../helper/record-code";
 import { buildPagination, pageOffset } from "../../helper/pagination";
 import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
 
@@ -53,6 +55,7 @@ const sitesRankedByNewest = (db: Database, officeIds: number[]) =>
   db
     .select({
       id: siteTable.id,
+      code: siteTable.code,
       office_id: siteTable.office_id,
       name: siteTable.name,
       city: siteTable.city,
@@ -101,6 +104,7 @@ export const officeQueryRouter = router({
         officeQuery = and(
           officeQuery,
           or(
+            codeMatches(officeTable.code, CODE_PREFIX.OFFICE, searchQuery),
             like(officeTable.name, term),
             like(officeTable.address, term),
             like(officeTable.city, term),
@@ -164,6 +168,7 @@ export const officeQueryRouter = router({
                   .select({
                     office_id: officeUserTable.office_id,
                     id: userTable.id,
+                    code: userTable.code,
                     name: userTable.name,
                     email: userTable.email,
                     role: officeUserTable.role,
@@ -272,6 +277,7 @@ export const officeQueryRouter = router({
         return await ctx.db
           .select({
             id: officeTable.id,
+            code: officeTable.code,
             name: officeTable.name,
             city: officeTable.city,
             state: officeTable.state,
@@ -310,6 +316,7 @@ export const officeQueryRouter = router({
         const members = await ctx.db
           .select({
             id: userTable.id,
+            code: userTable.code,
             name: userTable.name,
             email: userTable.email,
             contact_number: userTable.contact_number,
@@ -449,6 +456,7 @@ export const officeQueryRouter = router({
           const users = await ctx.db
             .select({
               id: userTable.id,
+              code: userTable.code,
               name: userTable.name,
               email: userTable.email,
               contact_number: userTable.contact_number,

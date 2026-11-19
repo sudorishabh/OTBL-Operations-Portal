@@ -15,12 +15,11 @@ import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import { RestorationPageSkeleton } from "@/components/skeleton/work-order/site-skeletons";
-import { SiteOperatorUploadsDialog } from "../site-details-dialog/site-operator-uploads-dialog";
 import SiteExpensesSection from "../site-details-dialog/site-expenses-section";
 import type { WorkOrderFrom } from "../work-order-path";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
-import JobOrderCertificates from "./job-order-certificates";
+import JobOrderDocuments from "./job-order-documents";
 import RestorationMonthlyExpensesDialog, {
   MONTHLY_EXPENSES_DIALOG,
 } from "./restoration-monthly-expenses-dialog";
@@ -64,12 +63,6 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
     workOrderQuery.data?.scheduleOfRates ?? NO_RATES,
   );
 
-  const operatorUploadsQuery =
-    trpc.workOrderSiteQuery.getOperatorUploads.useQuery(
-      { work_order_site_id: restoration?.id ?? 0 },
-      { enabled: !!restoration },
-    );
-
   const openJobOrderDialog = (jobOrder: JobOrder | null) => {
     setEditingJobOrder(jobOrder);
     setJobOrderDialogOpen(true);
@@ -99,7 +92,11 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
     );
   }
 
-  const description = [workOrder.code?.toUpperCase(), workOrder.title]
+  const description = [
+    workOrder.code,
+    workOrder.purchase_order_code &&
+      `Purchase order ${workOrder.purchase_order_code}`,
+  ]
     .filter(Boolean)
     .join(" - ");
   const breadcrumbs = workOrderChildTrail(
@@ -158,10 +155,6 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
         <RestorationHeader
           workOrder={workOrder}
           restoration={restoration}
-          operatorUploadsCount={operatorUploadsQuery.data?.length ?? 0}
-          onOpenOperatorUploads={() =>
-            setParam("site-dialog", "operator-uploads")
-          }
         />
 
         <div className='flex flex-wrap justify-end gap-2'>
@@ -206,10 +199,18 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
               />
             }
             jobOrderStatus={(jobOrder) => (
-              <JobOrderCertificates
-                restorationId={restoration.id}
-                jobOrder={jobOrder}
-              />
+              <>
+                <JobOrderDocuments
+                  restorationId={restoration.id}
+                  jobOrder={jobOrder}
+                  kind='invoices'
+                />
+                <JobOrderDocuments
+                  restorationId={restoration.id}
+                  jobOrder={jobOrder}
+                  kind='certificates'
+                />
+              </>
             )}
             jobOrderActions={(jobOrder) => (
               <JobOrderActions
@@ -233,12 +234,6 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
         open={jobOrderDialogOpen}
         onClose={() => setJobOrderDialogOpen(false)}
         editing={editingJobOrder}
-      />
-
-      <SiteOperatorUploadsDialog
-        siteName='Restoration'
-        uploads={operatorUploadsQuery.data ?? []}
-        isLoading={operatorUploadsQuery.isLoading}
       />
     </PageWrapper>
   );

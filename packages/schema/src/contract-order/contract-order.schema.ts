@@ -39,13 +39,10 @@ export const contractOrderItemSchema = z
     path: ["description"],
   });
 
+// An order's code, PO-0003 or SC-0003, is given as it is added, so it isn't
+// typed.
 const orderFields = z.object({
   type: contractOrderTypeEnum,
-  order_number: z
-    .string({ message: "Order number is required" })
-    .trim()
-    .min(1, "Order number is required")
-    .max(255, "Order number cannot exceed 255 characters"),
   order_date: dateValidator,
   description: longDescriptionValidator,
   // The order's own paperwork, and its completion documents, uploaded once
@@ -80,7 +77,7 @@ const orderFields = z.object({
 
 // What each kind of order may hold. A purchase order buys oil zapper from one
 // vendor, once per site, at its rate. A sub-contract gives out the rest at one
-// site.
+// or more sites.
 const checkOrderRules = (
   order: z.infer<typeof orderFields>,
   ctx: z.RefinementCtx,
@@ -126,12 +123,6 @@ const checkOrderRules = (
         message: `Enter the rate per ${OIL_ZAPPER.UNIT} of oil zapper`,
       });
     }
-  } else if (new Set(siteIds).size > 1) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["items"],
-      message: "A sub-contract is for one site",
-    });
   }
 };
 

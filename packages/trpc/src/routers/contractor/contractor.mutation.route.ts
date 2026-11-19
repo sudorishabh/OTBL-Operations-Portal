@@ -5,9 +5,10 @@ import { protectedProcedure } from "../../core";
 import { fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { vendorSchemas } from "@pkg/schema";
+import { CODE_PREFIX } from "@pkg/utils";
 import { z } from "zod";
 import { assertCanManageVendors, assertCanUseVendors } from "./vendor-access";
-import { nextVendorCode } from "./vendor-code";
+import { nextCode } from "../../helper/record-code";
 
 const { contractorTable } = schema;
 
@@ -24,7 +25,11 @@ export const contractorMutationRouter = router({
 
         try {
           const created = await ctx.db.transaction(async (tx) => {
-            const code = await nextVendorCode(tx);
+            const code = await nextCode(
+              tx,
+              contractorTable,
+              CODE_PREFIX.VENDOR,
+            );
             const [row] = await tx
               .insert(contractorTable)
               .values({
@@ -33,6 +38,7 @@ export const contractorMutationRouter = router({
                 contact_number: optionalText(input.contact_number) ?? null,
                 email: optionalText(input.email) ?? null,
                 address: optionalText(input.address) ?? null,
+                state: optionalText(input.state) ?? null,
                 gst_number: optionalText(input.gst_number) ?? null,
                 pan_number: optionalText(input.pan_number) ?? null,
               })
@@ -59,7 +65,7 @@ export const contractorMutationRouter = router({
     .input(vendorSchemas.updateVendorSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const { id, name, status } = input;
+        const { id, name } = input;
         assertCanManageVendors(ctx);
 
         const existing = await ctx.db
@@ -76,10 +82,10 @@ export const contractorMutationRouter = router({
             .update(contractorTable)
             .set({
               name: name?.trim(),
-              status,
               contact_number: optionalText(input.contact_number),
               email: optionalText(input.email),
               address: optionalText(input.address),
+              state: optionalText(input.state),
               gst_number: optionalText(input.gst_number),
               pan_number: optionalText(input.pan_number),
             })

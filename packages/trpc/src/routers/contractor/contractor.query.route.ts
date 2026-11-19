@@ -20,7 +20,8 @@ import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { z } from "zod";
 import { assertCanUseVendors, canUseVendors } from "./vendor-access";
-import { formatVendorCode } from "./vendor-code";
+import { codeMatches } from "../../helper/record-code";
+import { CODE_PREFIX } from "@pkg/utils";
 import { getAccessScope, workOrderScopeWhere } from "../../access-scope";
 
 const {
@@ -35,25 +36,17 @@ const {
   workOrderSiteExpenseTable,
 } = schema;
 
-// A vendor code typed short, such as "VEN-12", "ven12" or "12", for the
-// vendor whose code is VEN-0012.
-const typedVendorCode = (search: string) => {
-  const match = search.match(/^(?:ven)?[\s-]*0*(\d+)$/i);
-  return match ? formatVendorCode(Number(match[1])) : null;
-};
-
 const searchWhere = (search: string | undefined) => {
   const trimmed = search?.trim();
   if (!trimmed) return undefined;
   const term = `%${escapeLike(trimmed)}%`;
-  const code = typedVendorCode(trimmed);
   return or(
-    like(contractorTable.code, term),
-    code ? eq(contractorTable.code, code) : undefined,
+    codeMatches(contractorTable.code, CODE_PREFIX.VENDOR, trimmed),
     like(contractorTable.name, term),
     like(contractorTable.contact_number, term),
     like(contractorTable.email, term),
     like(contractorTable.gst_number, term),
+    like(contractorTable.state, term),
   );
 };
 
@@ -86,7 +79,6 @@ export const contractorQueryRouter = router({
         page: z.number().min(1).default(1),
         limit: z.number().min(1).max(100).default(20),
         search: z.string().optional(),
-        status: z.enum(["active", "inactive"]).optional(),
         usage: vendorUsageEnum.optional(),
         sort: z
           .enum(["name_asc", "name_desc", "newest", "oldest"])
@@ -95,7 +87,7 @@ export const contractorQueryRouter = router({
     )
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { page, limit, search, status, usage, sort } = input;
+        const { page, limit, search, usage, sort } = input;
 
         if (!(await canUseVendors(ctx))) {
           return {
@@ -176,7 +168,6 @@ export const contractorQueryRouter = router({
         };
 
         const where = and(
-          status ? eq(contractorTable.status, status) : undefined,
           searchWhere(search),
           usage ? usageWhere[usage]() : undefined,
         );
@@ -277,11 +268,11 @@ export const contractorQueryRouter = router({
             .select({
               id: contractOrderTable.id,
               type: contractOrderTable.type,
+              code: contractOrderTable.code,
               order_number: contractOrderTable.order_number,
               order_date: contractOrderTable.order_date,
               work_order_id: workOrderTable.id,
               work_order_code: workOrderTable.code,
-              work_order_title: workOrderTable.title,
               spent: sum(workOrderSiteExpenseTable.amount),
               expense_count: count(workOrderSiteExpenseTable.id),
             })
@@ -324,12 +315,12 @@ export const contractorQueryRouter = router({
             .select({
               id: jobOrderTable.id,
               jo_number: jobOrderTable.jo_number,
-              title: jobOrderTable.title,
+              installation_name: jobOrderTable.installation_name,
+              location: jobOrderTable.location,
               start_date: jobOrderTable.start_date,
               end_date: jobOrderTable.end_date,
               work_order_id: workOrderTable.id,
               work_order_code: workOrderTable.code,
-              work_order_title: workOrderTable.title,
               spent: sum(workOrderSiteExpenseTable.amount),
               expense_count: count(workOrderSiteExpenseTable.id),
             })

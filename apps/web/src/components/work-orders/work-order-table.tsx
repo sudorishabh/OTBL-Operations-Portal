@@ -87,7 +87,7 @@ const WorkOrderTable = ({
         <TableHeader>
           <TableRow>
             <TableHead className='pl-8 text-xs'>Code</TableHead>
-            <TableHead className='text-xs'>Title</TableHead>
+            <TableHead className='text-xs'>Purchase Order</TableHead>
             <TableHead className='text-xs'>Client</TableHead>
             <TableHead className='text-xs'>Office</TableHead>
             <TableHead className='text-xs'>Start Date</TableHead>
@@ -110,15 +110,15 @@ const WorkOrderTable = ({
             <>
               {workOrders?.map((workOrder) => (
                 <TableRow key={workOrder.id}>
-                  <TableCell className='text-xs font-medium pl-8'>
-                    {workOrder.code}
-                  </TableCell>
-                  <TableCell className='text-xs font-medium'>
+                  <TableCell className='text-xs font-medium font-mono pl-8'>
                     <Link
                       href={`/dashboard/work-order/${workOrder.id}`}
                       className='hover:text-emerald-700 hover:underline'>
-                      {capitalFirstLetter(workOrder.title)}
+                      {workOrder.code}
                     </Link>
+                  </TableCell>
+                  <TableCell className='text-xs font-mono text-gray-600'>
+                    {workOrder.purchase_order_code || "-"}
                   </TableCell>
                   <TableCell className='text-xs'>
                     {workOrder.client_name ? (

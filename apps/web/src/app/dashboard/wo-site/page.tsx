@@ -94,11 +94,9 @@ const SiteCard = ({ site }: { site: AssignedSite }) => {
           </span>
         </div>
 
-        {site.wo_title && (
-          <p
-            className='mt-1.5 truncate text-[14px] text-gray-500'
-            title={site.wo_title}>
-            {site.wo_title}
+        {site.wo_purchase_order_code && (
+          <p className='mt-1.5 truncate text-[14px] text-gray-500'>
+            Purchase order {site.wo_purchase_order_code}
           </p>
         )}
 
@@ -243,7 +241,7 @@ export default function OperatorAssignedSitesPage() {
       return [
         site.site_name,
         site.wo_code,
-        site.wo_title,
+        site.wo_purchase_order_code,
         site.site_city,
         site.site_state,
       ].some((field) => field?.toLowerCase().includes(term));

@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import JobOrderActivitiesTable, {
   toActivityEntries,
   toActivityRows,
@@ -26,11 +25,11 @@ import JobOrderVendorsDialog, {
 } from "./job-order-vendors-dialog";
 
 // A restoration job order as getJobOrders returns it. Job orders saved before
-// the client's forms were added have none of their fields.
+// the client's forms were added have none of their fields; only older ones
+// have a description.
 export interface JobOrder {
   id: number;
   jo_number: string;
-  title: string;
   start_date: string | Date;
   end_date: string | Date;
   description: string | null;
@@ -46,19 +45,22 @@ export interface JobOrder {
   // The work as done, for the work completion certificate.
   completed_on?: string | Date | null;
   completion_activities?: JobOrderActivityRow[] | null;
+  // Its completion certificates and invoices.
   documents: unknown;
+  invoices?: unknown;
   vendors: { id: number; name: string }[];
 }
 
 // What the job order form takes from its work order.
 export interface JobOrderWorkOrder {
-  title: string;
+  code: string;
   start_date: string | Date;
   end_date: string | Date;
   client_name: string | null;
   parent_client_name: string | null;
   rate_contract_number: string | null;
   agreement_number: string | null;
+  purchase_order_code?: string | null;
 }
 
 interface Props {
@@ -76,13 +78,11 @@ interface Props {
 // The form's text and date fields, dates as yyyy-MM-dd.
 interface FormValues {
   jo_number: string;
-  title: string;
   start_date: string;
   end_date: string;
   installation_name: string;
   location: string;
   mobilization_date: string;
-  description: string;
   issued_by: string;
   rc_noa_number: string;
   rc_noa_date: string;
@@ -114,13 +114,11 @@ const formValues = (
   workOrder: JobOrderWorkOrder,
 ): FormValues => ({
   jo_number: jobOrder?.jo_number ?? "",
-  title: jobOrder?.title ?? "",
   start_date: toDateInput(jobOrder?.start_date ?? new Date()),
   end_date: toDateInput(jobOrder?.end_date ?? new Date()),
   installation_name: jobOrder?.installation_name ?? "",
   location: jobOrder?.location ?? "",
   mobilization_date: toDateInput(jobOrder?.mobilization_date),
-  description: jobOrder?.description ?? "",
   issued_by:
     contractSource?.issued_by ??
     [workOrder.parent_client_name, workOrder.client_name]
@@ -130,7 +128,7 @@ const formValues = (
     contractSource?.rc_noa_number ?? workOrder.rate_contract_number ?? "",
   rc_noa_date: toDateInput(contractSource?.rc_noa_date ?? workOrder.start_date),
   ola_number: contractSource?.ola_number ?? workOrder.agreement_number ?? "",
-  po_number: contractSource?.po_number ?? "",
+  po_number: contractSource?.po_number ?? workOrder.purchase_order_code ?? "",
 });
 
 const Field = ({
@@ -222,8 +220,7 @@ const JobOrderDialog = ({
   }, [open, editing]);
 
   const setValue =
-    (field: keyof FormValues) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    (field: keyof FormValues) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setValues((prev) => ({ ...prev, [field]: e.target.value }));
 
   // Stays open on the saved job order, so its form can be downloaded.
@@ -346,7 +343,7 @@ const JobOrderDialog = ({
             <FormSection
               title='Job order'
               description='As the installation manager issues it.'>
-              <div className='grid grid-cols-1 gap-4 sm:grid-cols-[14rem_1fr]'>
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
                 <Field label='Job order number'>
                   <Input
                     value={values.jo_number}
@@ -355,17 +352,6 @@ const JobOrderDialog = ({
                     className='h-9'
                   />
                 </Field>
-                <Field label='Title'>
-                  <Input
-                    value={values.title}
-                    onChange={setValue("title")}
-                    placeholder='What the job order covers'
-                    className='h-9'
-                  />
-                </Field>
-              </div>
-
-              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                 <Field label='Installation name'>
                   <Input
                     value={values.installation_name}
@@ -413,15 +399,6 @@ const JobOrderDialog = ({
                   />
                 </Field>
               </div>
-
-              <Field label='Description'>
-                <Textarea
-                  value={values.description}
-                  onChange={setValue("description")}
-                  placeholder='Optional, not printed on the form'
-                  rows={2}
-                />
-              </Field>
             </FormSection>
 
             <FormSection
@@ -470,7 +447,7 @@ const JobOrderDialog = ({
 
             <FormSection
               title='Activities'
-              description='Write each quantity as it should read on the form, such as 25 × 20 = 500, No, or To be assessed later. Rows left blank print empty. SOR left is what the completion certificates have left of the schedule of rates.'>
+              description='Write each quantity as it should read on the form, such as 25 × 20 = 500 or No. The bioremediation rows read To be assessed, as their soil is assessed later. Rows left blank print empty. SOR left is what the completion certificates have left of the schedule of rates.'>
               <JobOrderActivitiesTable
                 entries={activities}
                 sorLeft={sorLeft}

@@ -1,6 +1,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { hashPassword, USER_ROLES, verifyPassword } from "@pkg/utils/auth";
+import { CODE_PREFIX } from "@pkg/utils";
 import { adminProcedure, protectedProcedure } from "../../middleware";
 import { router } from "../../trpc";
 import {
@@ -11,6 +12,7 @@ import {
   fromDatabaseError,
 } from "../../errors";
 import { handleProtectedMutation } from "../../helper/typed-handler";
+import { nextCode } from "../../helper/record-code";
 import { userSchemas } from "@pkg/schema";
 
 const { userTable, officeUserTable, workOrderSiteUserTable } = schema;
@@ -34,9 +36,13 @@ export const userMutationRouter = router({
         const hashedPassword = await hashPassword(input.password);
 
         try {
-          await ctx.db.insert(userTable).values({
-            ...input,
-            password: hashedPassword,
+          await ctx.db.transaction(async (tx) => {
+            const code = await nextCode(tx, userTable, CODE_PREFIX.USER);
+            await tx.insert(userTable).values({
+              ...input,
+              code,
+              password: hashedPassword,
+            });
           });
         } catch (error) {
           throw fromDatabaseError(error, "Creating user");

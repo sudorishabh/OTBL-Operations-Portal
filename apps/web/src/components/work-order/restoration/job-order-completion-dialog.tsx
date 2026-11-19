@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { CheckCircle2, FileDown } from "lucide-react";
 import { jobOrderSchemas } from "@pkg/schema";
+import { isAssessedLater } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
 import { useIsViewer } from "@/contexts/AuthContext";
@@ -17,7 +18,7 @@ import JobOrderActivitiesTable, {
 } from "./job-order-activities-table";
 import type { JobOrder, JobOrderWorkOrder } from "./job-order-dialog";
 import type { JobOrderFormContent } from "./job-order-form-pdf";
-import { sorLeftByRow } from "./restoration-display";
+import { jobOrderPlace, sorLeftByRow } from "./restoration-display";
 import type { RestorationRate } from "./restoration-rates-table";
 import useJobOrderFormDownload from "./use-job-order-form-download";
 
@@ -39,13 +40,15 @@ const formatDate = (value: string | Date | null | undefined) =>
   value ? format(new Date(value), "dd MMM yyyy") : null;
 
 // The work as done, until it is first saved, starts from the quantities the
-// job order gave out.
+// job order gave out. Its bioremediation rows start empty, as the job order
+// only says they are to be assessed.
 const startingEntries = (jobOrder: JobOrder): JobOrderActivityEntries =>
   jobOrder.completion_activities != null
     ? toActivityEntries(jobOrder.completion_activities)
     : toActivityEntries(
         (jobOrder.activities ?? []).map((row) => ({
           ...row,
+          quantity: isAssessedLater(row.key) ? "" : row.quantity,
           completion_date: null,
         })),
       );
@@ -153,7 +156,7 @@ const JobOrderCompletionDialog = ({
           ? "Completion Saved"
           : `${jobOrder.jo_number} Work Completion Certificate`
       }
-      description={saved ? undefined : jobOrder.title}
+      description={saved ? undefined : jobOrderPlace(jobOrder) || undefined}
       size='lg'
       heightMode='auto'
       open={open}

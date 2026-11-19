@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import RecordCode from "@/components/shared/record-code";
 import { ChevronRight } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
 import { cn } from "@/lib/utils";
@@ -73,6 +74,7 @@ const BranchRow = ({ branch, parentName, isLast }: Props) => {
               title={capitalizeEachWord(branch.name)}>
               {label}
             </span>
+            <RecordCode code={branch.code} />
             <ClientStatus status={branch.status} />
           </div>
           <p

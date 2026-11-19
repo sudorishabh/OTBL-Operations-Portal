@@ -22,8 +22,8 @@ const LIST_COLUMNS: SkeletonColumn[] = [
     sub: ["w-56", "w-48", "w-64"],
   },
   { label: "Contact", bar: "w-24", sub: ["w-48", "w-44", "w-52"] },
+  { label: "State", bar: ["w-16", "w-20", "w-14"] },
   { label: "GST / PAN", bar: "w-32", sub: "w-20" },
-  { label: "Status", shape: "pill", bar: "w-14" },
 ].map((column) => ({
   ...column,
   headClassName: LIST_HEAD,

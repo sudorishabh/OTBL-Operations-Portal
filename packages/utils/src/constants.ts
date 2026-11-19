@@ -267,6 +267,18 @@ export const CONTRACT_ORDER_ITEMS = [
     orderType: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
   },
   {
+    key: "water_pump",
+    label: "Water pump",
+    unit: "hours",
+    orderType: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
+  },
+  {
+    key: "tractor",
+    label: "Tractor",
+    unit: "hours",
+    orderType: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
+  },
+  {
     key: "other",
     label: "Other",
     unit: "Nos",

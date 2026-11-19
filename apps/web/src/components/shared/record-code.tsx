@@ -1,9 +1,9 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-// A vendor's code, such as VEN-0012, set apart from their name so vendors
-// with similar names can be told apart at a glance.
-const VendorCode = ({
+// A record's code, such as VEN-0012 or USR-0007, set apart from its name so
+// records with similar names can be told apart at a glance.
+const RecordCode = ({
   code,
   className,
 }: {
@@ -19,4 +19,4 @@ const VendorCode = ({
   </span>
 );
 
-export default VendorCode;
+export default RecordCode;

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import RecordCode from "@/components/shared/record-code";
 import { format } from "date-fns";
 import {
   Building2,
@@ -111,6 +112,7 @@ const ClientDetailsCard = ({ clientId }: Props) => {
                 {client.name.toUpperCase()}
               </h2>
               <div className='mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500'>
+                <RecordCode code={client.code} />
                 {client.parent_client_name && (
                   <span className='inline-flex min-w-0 items-center gap-1.5'>
                     <Network className='size-3.5 shrink-0 text-gray-400' />

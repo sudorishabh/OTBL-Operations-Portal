@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { z } from "zod";
-import { constants } from "@pkg/utils";
 import { vendorSchemas } from "@pkg/schema";
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
@@ -15,11 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { useApiError } from "@/hooks/useApiError";
 import { VENDOR_DESCRIPTION } from "./vendor-labels";
 
-const { STATUS } = constants;
-
-const vendorFormSchema = vendorSchemas.createVendorSchema.extend({
-  status: vendorSchemas.vendorStatusEnum,
-});
+const vendorFormSchema = vendorSchemas.createVendorSchema;
 type VendorFormInput = z.input<typeof vendorFormSchema>;
 type VendorFormValues = z.output<typeof vendorFormSchema>;
 
@@ -28,15 +23,10 @@ const EMPTY_FORM: VendorFormInput = {
   contact_number: "",
   email: "",
   address: "",
+  state: "",
   gst_number: "",
   pan_number: "",
-  status: STATUS.ACTIVE,
 };
-
-const statusOptions = [
-  { value: STATUS.ACTIVE, label: "Active" },
-  { value: STATUS.INACTIVE, label: "Inactive" },
-];
 
 interface Props {
   open: boolean;
@@ -78,9 +68,9 @@ const VendorFormDialog = ({
             contact_number: vendor.contact_number ?? "",
             email: vendor.email ?? "",
             address: vendor.address ?? "",
+            state: vendor.state ?? "",
             gst_number: vendor.gst_number ?? "",
             pan_number: vendor.pan_number ?? "",
-            status: vendor.status,
           }
         : EMPTY_FORM,
     );
@@ -106,9 +96,9 @@ const VendorFormDialog = ({
     onError: (error: any) => handleError(error, { showToast: true }),
   });
 
-  function onSubmit({ status, ...fields }: VendorFormValues) {
+  function onSubmit(fields: VendorFormValues) {
     if (isEdit) {
-      updateVendor.mutate({ id: vendorId!, status, ...fields });
+      updateVendor.mutate({ id: vendorId!, ...fields });
     } else {
       createVendor.mutate(fields);
     }
@@ -166,6 +156,13 @@ const VendorFormDialog = ({
                 placeholder='e.g. ABCDE1234F'
                 optional
               />
+              <CustomInput
+                control={form.control}
+                fieldName='state'
+                Label='State'
+                placeholder='e.g. Assam'
+                optional
+              />
             </div>
 
             <CustomInput
@@ -176,16 +173,6 @@ const VendorFormDialog = ({
               isTextArea
               optional
             />
-
-            {isEdit && (
-              <CustomInput
-                control={form.control}
-                fieldName='status'
-                Label='Status'
-                isSelect
-                selectOptions={statusOptions}
-              />
-            )}
 
             <div className='flex justify-end gap-4 border-t pt-4'>
               <CustomButton

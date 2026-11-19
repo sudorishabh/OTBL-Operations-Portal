@@ -16,6 +16,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import type { JobOrder } from "./job-order-dialog";
+import { isJobOrderClosed, jobOrderPlace } from "./restoration-display";
 
 const { JOB_ORDER_ACTIVITIES } = constants;
 
@@ -44,12 +45,12 @@ const withUnit = (quantity: string | undefined, unit: string) => {
     : quantity;
 };
 
-// Where the job order stands: certified once a signed certificate is
-// uploaded, and its work done saved before that.
+// Where the job order stands: closed once a signed certificate is uploaded,
+// and its work done saved before that.
 const jobOrderStatus = (jobOrder: JobOrder) => {
-  if (toDocuments(jobOrder.documents).length > 0) {
+  if (isJobOrderClosed(jobOrder)) {
     return {
-      label: "Certified complete",
+      label: "Closed, certified complete",
       style: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     };
   }
@@ -100,10 +101,11 @@ const Section = ({
 );
 
 // Everything on a job order: its form, contract, activities as ordered and as
-// done, vendors and certificates.
+// done, vendors, certificates and invoices.
 const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
   const status = jobOrderStatus(jobOrder);
   const certificateCount = toDocuments(jobOrder.documents).length;
+  const invoiceCount = toDocuments(jobOrder.invoices).length;
   const ordered = new Map(
     (jobOrder.activities ?? []).map((row) => [row.key, row.quantity]),
   );
@@ -135,9 +137,11 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
             {status.label}
           </span>
         </div>
-        <p className='mt-1 text-sm font-medium text-gray-900'>
-          {jobOrder.title}
-        </p>
+        {jobOrderPlace(jobOrder) && (
+          <p className='mt-1 text-sm font-medium text-gray-900'>
+            {jobOrderPlace(jobOrder)}
+          </p>
+        )}
         <p className='mt-0.5 flex items-center gap-1.5 text-xs text-gray-500'>
           <CalendarDays className='size-3.5 text-gray-400' />
           {formatDate(jobOrder.start_date)} – {formatDate(jobOrder.end_date)}
@@ -229,7 +233,7 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
         )}
       </Section>
 
-      <Section title='Vendors and certificates'>
+      <Section title='Vendors and documents'>
         <Details>
           <Detail
             label='Vendors'
@@ -243,6 +247,12 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
               certificateCount > 0
                 ? `${certificateCount} uploaded`
                 : "None uploaded"
+            }
+          />
+          <Detail
+            label='Invoices'
+            value={
+              invoiceCount > 0 ? `${invoiceCount} uploaded` : "None uploaded"
             }
           />
         </Details>

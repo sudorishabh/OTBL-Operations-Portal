@@ -27,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Pencil,
@@ -40,6 +41,7 @@ import {
   ShoppingCart,
   Wrench,
   ClipboardList,
+  Lock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
@@ -54,7 +56,11 @@ import DocumentsMenu from "@/components/shared/documents-menu";
 import { itemLabel } from "../contract-orders/contract-orders-section";
 import type { JobOrder } from "../restoration/job-order-dialog";
 import JobOrderChip from "../restoration/job-order-chip";
-import { jobOrderSorActivities } from "../restoration/restoration-display";
+import {
+  isJobOrderClosed,
+  jobOrderPlace,
+  jobOrderSorActivities,
+} from "../restoration/restoration-display";
 import {
   documentName,
   openDocument,
@@ -107,7 +113,7 @@ type SiteOrderItem = {
   quantity: string;
   unit: string;
   order_type: string;
-  order_number: string;
+  order_code: string;
   vendors: { id: number; name: string }[];
 };
 
@@ -125,7 +131,10 @@ const ORDER_GROUPS = [
 ] as const;
 
 const orderItemTitle = (item: SiteOrderItem) =>
-  `${item.order_number} · ${itemLabel(item.item, item.description)}`;
+  `${item.order_code} · ${itemLabel(item.item, item.description)}`;
+
+// The tab of expenses under no vendor, when expenses are shown in tabs.
+const MISCELLANEOUS_TAB = "miscellaneous";
 
 // Tighter than the table defaults, so a record takes one compact row.
 const headClass =
@@ -202,7 +211,12 @@ const SiteExpensesSection = ({
   // the job order a restoration one is.
   const [dialogOrderItemId, setDialogOrderItemId] = useState<number | null>(null);
   const [dialogJobOrderId, setDialogJobOrderId] = useState<number | null>(null);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  // The groups opened or folded away from how each starts: open, or folded
+  // for a closed job order.
+  const [toggledGroups, setToggledGroups] = useState<Set<string>>(new Set());
+  // The tab open when expenses are shown in tabs; the first until one is
+  // chosen.
+  const [groupedTab, setGroupedTab] = useState<string | null>(null);
 
   const [expensePage, setExpensePage] = useState(1);
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
@@ -405,10 +419,13 @@ const SiteExpensesSection = ({
     return all.filter((r) => r.activityKey === filterKey);
   }, [expenses, activityOptions, activityFilter]);
 
+  // An expense row. Its edit and delete are off when it is locked, such as on
+  // a closed job order, saying why.
   const renderRecordRow = (
     record: ExpenseRecord,
     showVendor: boolean,
     showQty: boolean,
+    lockedNote?: string,
   ) => {
     const { isExceeded } = record;
     const expense = expenses.find((e) => e.id === record.id);
@@ -515,29 +532,29 @@ const SiteExpensesSection = ({
               title={
                 record.fromOrder
                   ? "Recorded by its purchase order. Edit the order to change it."
-                  : undefined
+                  : lockedNote
               }>
               <button
                 type='button'
                 aria-label='Edit expense'
-                title={record.fromOrder ? undefined : "Edit"}
+                title={record.fromOrder || lockedNote ? undefined : "Edit"}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (expense) handleEdit(expense);
                 }}
-                disabled={isViewer || !expense || record.fromOrder}
+                disabled={isViewer || !expense || record.fromOrder || !!lockedNote}
                 className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30'>
                 <Pencil className='size-3.5' />
               </button>
               <button
                 type='button'
                 aria-label='Delete expense'
-                title={record.fromOrder ? undefined : "Delete"}
+                title={record.fromOrder || lockedNote ? undefined : "Delete"}
                 onClick={(e) => {
                   e.stopPropagation();
                   setDeletingId(record.id);
                 }}
-                disabled={isViewer || record.fromOrder}
+                disabled={isViewer || record.fromOrder || !!lockedNote}
                 className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30'>
                 <Trash2 className='size-3.5' />
               </button>
@@ -615,7 +632,11 @@ const SiteExpensesSection = ({
   };
 
   // Quantity only shows once one of the rows records one.
-  const renderRecordsTable = (rows: ExpenseRecord[], showVendor = true) => {
+  const renderRecordsTable = (
+    rows: ExpenseRecord[],
+    showVendor = true,
+    lockedNote?: string,
+  ) => {
     const showQty = rows.some((r) => r.quantity);
     return (
       <Table>
@@ -639,7 +660,7 @@ const SiteExpensesSection = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((r) => renderRecordRow(r, showVendor, showQty))}
+          {rows.map((r) => renderRecordRow(r, showVendor, showQty, lockedNote))}
         </TableBody>
       </Table>
     );
@@ -659,7 +680,7 @@ const SiteExpensesSection = ({
     summary?.byOrderItemVendor?.[`${itemId}:${vendorId}`] ?? 0;
 
   const toggleGroup = (key: string) =>
-    setCollapsedGroups((prev) => {
+    setToggledGroups((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -738,6 +759,9 @@ const SiteExpensesSection = ({
     // Where it stands, such as a job order's certificates.
     status?: React.ReactNode;
     menu?: React.ReactNode;
+    // Why its expenses are locked, such as a job order closed by its
+    // certificate. It then takes no more and starts folded.
+    closedNote?: string;
   };
 
   // In the colour of the process, as on the work order page.
@@ -781,7 +805,7 @@ const SiteExpensesSection = ({
   // A job order or order requirement, as a card: its vendors, then its
   // expenses.
   const renderGroupCard = (group: ExpenseGroup) => {
-    const isOpen = !collapsedGroups.has(group.key);
+    const isOpen = toggledGroups.has(group.key) === !!group.closedNote;
 
     return (
       <div
@@ -826,8 +850,17 @@ const SiteExpensesSection = ({
             </div>
           </div>
           {group.status}
-          {group.onAdd &&
-            renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)}
+          {group.closedNote ? (
+            <span
+              title={group.closedNote}
+              className='inline-flex h-7 shrink-0 items-center gap-1 rounded-md bg-gray-100 px-2 text-xs font-medium text-gray-600'>
+              <Lock className='size-3.5' />
+              Closed
+            </span>
+          ) : (
+            group.onAdd &&
+            renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)
+          )}
           {renderTotal(group.total, "min-w-24 text-sm")}
           <div className={menuSlotClass}>{group.menu}</div>
         </div>
@@ -836,7 +869,7 @@ const SiteExpensesSection = ({
             {renderVendorStrip(group)}
             {group.records.length > 0 ? (
               <div className='border-t border-gray-100'>
-                {renderRecordsTable(group.records)}
+                {renderRecordsTable(group.records, true, group.closedNote)}
               </div>
             ) : (
               <p className='border-t border-gray-100 py-2.5 pl-9 pr-3 text-xs text-gray-400'>
@@ -850,10 +883,12 @@ const SiteExpensesSection = ({
   };
 
   // The grouped sections, then vendor expenses in no group (recorded before
-  // the groups were kept), then the miscellaneous ones under no vendor.
+  // the groups were kept), then the miscellaneous ones under no vendor. As
+  // tabs, each section and the miscellaneous expenses are a tab of their own.
   const renderGroupedExpenses = ({
     sections,
     unassignedTitle,
+    asTabs = false,
   }: {
     sections: {
       key: string;
@@ -865,6 +900,7 @@ const SiteExpensesSection = ({
       groups: ExpenseGroup[];
     }[];
     unassignedTitle: string;
+    asTabs?: boolean;
   }) => {
     const groupedIds = new Set(
       sections.flatMap((section) =>
@@ -884,59 +920,117 @@ const SiteExpensesSection = ({
     );
     const miscellaneousTotal = summary?.byContractor?.none ?? 0;
 
+    const sectionNodes = sections.map((section) => (
+      <section
+        key={section.key}
+        className='space-y-2'>
+        {renderSectionHeader({
+          Icon: section.Icon,
+          title: section.title,
+          meta: section.meta,
+          total: section.groups.reduce((sum, group) => sum + group.total, 0),
+          action: section.action,
+        })}
+        {section.groups.length === 0
+          ? emptyGroupText(section.emptyText)
+          : section.groups.map((group) => renderGroupCard(group))}
+      </section>
+    ));
+
+    const unassignedNode = unassignedRecords.length > 0 && (
+      <section className='space-y-2'>
+        {renderSectionHeader({
+          Icon: HardHat,
+          title: unassignedTitle,
+          meta: `${unassignedRecords.length} expense${unassignedRecords.length !== 1 ? "s" : ""}`,
+          total: expenseTotal - miscellaneousTotal - groupedTotal,
+        })}
+        {renderRecordsBox(unassignedRecords)}
+      </section>
+    );
+
+    const miscellaneousNode = (
+      <section className='space-y-2'>
+        {renderSectionHeader({
+          Icon: ReceiptIndianRupee,
+          title: "Miscellaneous",
+          meta:
+            miscellaneousRecords.length === 0
+              ? "None yet"
+              : `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
+          total: miscellaneousTotal,
+          action: renderAddExpenseButton("Add a miscellaneous expense", () =>
+            openAddExpense("miscellaneous"),
+          ),
+        })}
+        {miscellaneousRecords.length > 0 &&
+          renderRecordsBox(miscellaneousRecords)}
+      </section>
+    );
+
+    const pageNote = expensesPagination &&
+      expensesPagination.total > expenses.length && (
+        <p className='text-xs text-gray-400'>
+          Showing {expenses.length} of {expensesPagination.total} entries
+        </p>
+      );
+
+    if (asTabs) {
+      // A tab for each section, the first with the vendor expenses in no
+      // group, then one for the miscellaneous expenses.
+      const tabs = [
+        ...sections.map((section, index) => ({
+          key: section.key,
+          Icon: section.Icon,
+          label: section.title,
+          count: section.groups.length,
+          content: (
+            <div className='space-y-6'>
+              {sectionNodes[index]}
+              {index === 0 && unassignedNode}
+            </div>
+          ),
+        })),
+        {
+          key: MISCELLANEOUS_TAB,
+          Icon: ReceiptIndianRupee,
+          label: "Miscellaneous",
+          count: miscellaneousRecords.length,
+          content: miscellaneousNode,
+        },
+      ];
+      const active = tabs.find((tab) => tab.key === groupedTab) ?? tabs[0]!;
+
+      return (
+        <div className='space-y-4'>
+          <Tabs
+            value={active.key}
+            onValueChange={setGroupedTab}>
+            <TabsList className='h-8'>
+              {tabs.map(({ key, Icon, label, count }) => (
+                <TabsTrigger
+                  key={key}
+                  value={key}
+                  className='gap-1.5 px-2.5 text-xs text-gray-800'>
+                  <Icon className='size-3.5 text-gray-500' />
+                  {label}
+                  <span className='tabular-nums text-gray-400'>{count}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          {active.content}
+          {pageNote}
+        </div>
+      );
+    }
+
     return (
       <div className='space-y-6'>
-        {sections.map((section) => (
-          <section
-            key={section.key}
-            className='space-y-2'>
-            {renderSectionHeader({
-              Icon: section.Icon,
-              title: section.title,
-              meta: section.meta,
-              total: section.groups.reduce((sum, group) => sum + group.total, 0),
-              action: section.action,
-            })}
-            {section.groups.length === 0
-              ? emptyGroupText(section.emptyText)
-              : section.groups.map((group) => renderGroupCard(group))}
-          </section>
-        ))}
-
-        {unassignedRecords.length > 0 && (
-          <section className='space-y-2'>
-            {renderSectionHeader({
-              Icon: HardHat,
-              title: unassignedTitle,
-              meta: `${unassignedRecords.length} expense${unassignedRecords.length !== 1 ? "s" : ""}`,
-              total: expenseTotal - miscellaneousTotal - groupedTotal,
-            })}
-            {renderRecordsBox(unassignedRecords)}
-          </section>
-        )}
-
-        <section className='space-y-2'>
-          {renderSectionHeader({
-            Icon: ReceiptIndianRupee,
-            title: "Miscellaneous",
-            meta:
-              miscellaneousRecords.length === 0
-                ? "None yet"
-                : `${miscellaneousRecords.length} expense${miscellaneousRecords.length !== 1 ? "s" : ""}`,
-            total: miscellaneousTotal,
-            action: renderAddExpenseButton("Add a miscellaneous expense", () =>
-              openAddExpense("miscellaneous"),
-            ),
-          })}
-          {miscellaneousRecords.length > 0 &&
-            renderRecordsBox(miscellaneousRecords)}
-        </section>
-
-        {expensesPagination && expensesPagination.total > expenses.length && (
-          <p className='text-xs text-gray-400'>
-            Showing {expenses.length} of {expensesPagination.total} entries
-          </p>
-        )}
+        {sectionNodes}
+        {unassignedNode}
+        {miscellaneousNode}
+        {pageNote}
       </div>
     );
   };
@@ -1139,7 +1233,7 @@ const SiteExpensesSection = ({
               emptyText: "No orders require anything at this site yet.",
               groups: items.map((item) => ({
                 key: `item-${item.id}`,
-                badge: item.order_number,
+                badge: item.order_code,
                 title: itemLabel(item.item, item.description),
                 meta: `${formatQty(Number(item.quantity))} ${item.unit}`,
                 total: orderItemTotal(item.id),
@@ -1175,7 +1269,7 @@ const SiteExpensesSection = ({
                 key: `job-order-${jobOrder.id}`,
                 badge: jobOrder.jo_number,
                 badgeNode: <JobOrderChip jobOrder={jobOrder} />,
-                title: jobOrder.title,
+                title: jobOrderPlace(jobOrder),
                 meta: formatDateRange(jobOrder.start_date, jobOrder.end_date),
                 total: summary?.byJobOrder?.[String(jobOrder.id)] ?? 0,
                 vendors: jobOrder.vendors,
@@ -1183,12 +1277,16 @@ const SiteExpensesSection = ({
                 vendorTotal: (vendorId: number) =>
                   summary?.byJobOrderVendor?.[`${jobOrder.id}:${vendorId}`] ?? 0,
                 onAdd: () => openAddExpense(null, null, jobOrder.id),
+                closedNote: isJobOrderClosed(jobOrder)
+                  ? `Closed, as ${jobOrder.jo_number}'s completion certificate is uploaded. Remove the certificate to reopen it.`
+                  : undefined,
                 status: jobOrderStatus?.(jobOrder),
                 menu: jobOrderActions?.(jobOrder),
               })),
             },
           ],
           unassignedTitle: "Vendor expenses not on a job order",
+          asTabs: true,
         })
       ) : records.length === 0 ? (
         <div className='text-center py-10 border border-dashed rounded-xl bg-gray-50/30'>
@@ -1252,7 +1350,12 @@ const SiteExpensesSection = ({
           dialogJobOrder
             ? {
                 id: dialogJobOrder.id,
-                label: `${dialogJobOrder.jo_number} · ${dialogJobOrder.title}`,
+                label: [
+                  dialogJobOrder.jo_number,
+                  jobOrderPlace(dialogJobOrder),
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
               }
             : null
         }

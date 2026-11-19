@@ -225,6 +225,8 @@ const SC_ITEMS = {
   jcb: { label: "JCB hire", unit: "hours", qty: [20, 320], cost: [900, 1600] },
   labour: { label: "Labour", unit: "man-days", qty: [30, 650], cost: [450, 720] },
   transport: { label: "Transport", unit: "trips", qty: [4, 140], cost: [2500, 9000] },
+  water_pump: { label: "Water pump hire", unit: "hours", qty: [24, 400], cost: [150, 400] },
+  tractor: { label: "Tractor hire", unit: "hours", qty: [16, 240], cost: [700, 1300] },
   other: { label: "Other", unit: "Nos", qty: [1, 60], cost: [500, 20000] },
 };
 
@@ -360,11 +362,6 @@ const CANCEL_REASONS = [
   "Spill site cleaned up by the client's own team.",
   "Work order reissued under a revised agreement number.",
 ];
-const JO_TITLES = [
-  "Restoration of oil spill site", "Cleaning and restoration of spill area",
-  "Excavation and refilling of contaminated land", "Recovery of oil and restoration of land",
-  "Restoration of pipeline leak area",
-];
 const LOCATION_HINTS = [
   "Near well plinth", "Along the flow line", "Behind the GGS boundary wall", "Paddy field near the pipeline",
   "Village approach road", "Drain near the tank farm", "Low-lying area near the CTF",
@@ -393,16 +390,16 @@ const UPLOAD_DESCRIPTIONS = [
 // ---------------------------------------------------------------------------
 
 const COLUMNS = {
-  users: ["id", "name", "email", "password", "contact_number", "role", "created_by", "status", "created_at", "updated_at"],
-  offices: ["id", "name", "address", "state", "city", "gst_number", "pincode", "email", "status", "created_at", "updated_at"],
-  parent_clients: ["id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
-  clients: ["id", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
+  users: ["id", "code", "name", "email", "password", "contact_number", "role", "created_by", "status", "created_at", "updated_at"],
+  offices: ["id", "code", "name", "address", "state", "city", "gst_number", "pincode", "email", "status", "created_at", "updated_at"],
+  parent_clients: ["id", "code", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
+  clients: ["id", "code", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   client_contacts: ["id", "client_id", "parent_client_id", "name", "designation", "contact_number", "email", "contact_type", "created_at", "updated_at"],
-  contractors: ["id", "code", "name", "contact_number", "email", "address", "gst_number", "pan_number", "status", "created_at", "updated_at"],
+  contractors: ["id", "code", "name", "contact_number", "email", "address", "state", "gst_number", "pan_number", "created_at", "updated_at"],
   office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
-  sites: ["id", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
+  sites: ["id", "code", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
-  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "agreement_number", "rate_contract_number", "title", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
+  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "purchase_order_code", "agreement_number", "rate_contract_number", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
   schedule_of_rates: ["id", "work_order_id", "activity", "unit", "estimated_quantity", "rc_unit_rate", "gst_percentage", "unit_rate_inc_gst", "total_cost", "transportation_km", "transportation_slabs", "created_at", "updated_at"],
   work_order_sites: ["id", "work_order_id", "client_id", "site_id", "date", "end_date", "process_type", "status", "isCompleted", "created_at", "updated_at"],
   site_activity_items: ["id", "work_order_site_id", "schedule_of_rates_id", "activity", "unit", "created_at", "updated_at"],
@@ -413,9 +410,9 @@ const COLUMNS = {
   biorem_cont_soil: ["id", "site_activity_id", "work_order_site_id", "estimated_quantity", "amount", "transportation_km", "oil_zapper_quantity", "type", "created_at", "updated_at"],
   bio_samples: ["id", "site_activity_id", "work_order_site_id", "biorem_cont_soil_id", "tph_document_url", "documents", "tph_value", "application_month", "sampled_on", "created_at", "updated_at"],
   bio_oil_zapping: ["id", "site_activity_id", "work_order_site_id", "bio_sample_id", "document_url", "documents", "estimated_quantity", "applied_on", "created_at", "updated_at"],
-  job_orders: ["id", "work_order_site_id", "jo_number", "title", "start_date", "end_date", "description", "issued_by", "rc_noa_number", "rc_noa_date", "ola_number", "po_number", "installation_name", "location", "mobilization_date", "activities", "completed_on", "completion_activities", "documents", "created_by", "created_at", "updated_at"],
+  job_orders: ["id", "work_order_site_id", "jo_number", "start_date", "end_date", "issued_by", "rc_noa_number", "rc_noa_date", "ola_number", "po_number", "installation_name", "location", "mobilization_date", "activities", "completed_on", "completion_activities", "documents", "invoices", "created_by", "created_at", "updated_at"],
   job_order_contractors: ["id", "job_order_id", "contractor_id", "created_at"],
-  contract_orders: ["id", "work_order_id", "type", "order_number", "order_date", "description", "unit_rate", "gst_percentage", "invoice_number", "documents", "completion_documents", "created_by", "created_at", "updated_at"],
+  contract_orders: ["id", "work_order_id", "type", "code", "order_date", "description", "unit_rate", "gst_percentage", "invoice_number", "documents", "completion_documents", "created_by", "created_at", "updated_at"],
   contract_order_items: ["id", "contract_order_id", "work_order_site_id", "item", "description", "quantity", "unit", "created_at", "updated_at"],
   contract_order_contractors: ["id", "contract_order_id", "contractor_id", "created_at"],
   wo_site_expenses: ["id", "work_order_site_id", "contractor_id", "contract_order_item_id", "from_order", "job_order_id", "title", "amount", "start_date", "end_date", "invoice_number", "activity_key", "quantity", "is_exceeded", "document_url", "document_id", "documents", "created_by", "created_at", "updated_at"],
@@ -452,8 +449,24 @@ const takenParentNames = new Set();
 const takenProposalCodes = new Set();
 // The last work order serials in use, overall and by financial year.
 const lastWorkOrderSerial = { overall: 0, byYear: new Map() };
-// The last vendor code number in use, as in VEN-0012.
-let lastVendorSerial = 0;
+// The tables whose rows are known by codes, such as USR-0007 or VEN-0012,
+// with each one's prefix and the last code number in use.
+const CODE_PREFIXES = {
+  users: "USR",
+  offices: "OFF",
+  sites: "SITE",
+  clients: "CLT",
+  parent_clients: "MCL",
+  contractors: "VEN",
+};
+const lastCodeSerial = Object.fromEntries(Object.keys(CODE_PREFIXES).map((table) => [table, 0]));
+const nextCode = (table) =>
+  `${CODE_PREFIXES[table]}-${String(++lastCodeSerial[table]).padStart(4, "0")}`;
+// Purchase orders and sub-contracts share a table but are numbered apart.
+const ORDER_CODE_PREFIXES = { purchase_order: "PO", sub_contract: "SC" };
+const lastOrderSerial = { purchase_order: 0, sub_contract: 0 };
+const orderCode = (type) =>
+  `${ORDER_CODE_PREFIXES[type]}-${String(++lastOrderSerial[type]).padStart(4, "0")}`;
 
 // ---------------------------------------------------------------------------
 // The database. It is read before anything is built: to check its schema, and
@@ -595,10 +608,18 @@ if (!DRY_RUN || APPEND) {
       "SELECT financial_year AS fy, MAX(fy_serial) AS n FROM work_orders GROUP BY financial_year",
     );
     for (const r of years) lastWorkOrderSerial.byYear.set(r.fy, Number(r.n));
-    const [[{ maxVendor }]] = await db.conn.query(
-      "SELECT COALESCE(MAX(CAST(SUBSTRING(code, 5) AS UNSIGNED)), 0) AS maxVendor FROM contractors",
-    );
-    lastVendorSerial = Number(maxVendor);
+    for (const [table, prefix] of Object.entries(CODE_PREFIXES)) {
+      const [[{ n }]] = await db.conn.query(
+        `SELECT COALESCE(MAX(CAST(SUBSTRING(code, ${prefix.length + 2}) AS UNSIGNED)), 0) AS n FROM \`${table}\``,
+      );
+      lastCodeSerial[table] = Number(n);
+    }
+    for (const [type, prefix] of Object.entries(ORDER_CODE_PREFIXES)) {
+      const [[{ n }]] = await db.conn.query(
+        `SELECT COALESCE(MAX(CAST(SUBSTRING(code, ${prefix.length + 2}) AS UNSIGNED)), 0) AS n FROM contract_orders WHERE code LIKE '${prefix}-%'`,
+      );
+      lastOrderSerial[type] = Number(n);
+    }
   } else {
     const filled = [];
     for (const table of Object.keys(COLUMNS)) {
@@ -647,6 +668,7 @@ const passwordHash = DRY_RUN
 
 function addUser(role, { name = personName(), email, createdBy = null, status } = {}) {
   return add("users", {
+    code: nextCode("users"),
     name,
     email: email ? uniqueEmail(email.split("@")[0], email.split("@")[1]) : uniqueEmail(name, "otbl.test"),
     password: passwordHash,
@@ -670,6 +692,7 @@ for (let i = 0; i < COUNT; i++) {
   for (let n = 2; usedOfficeNames.has(name); n++) name = `${loc.city} ${pick(OFFICE_KINDS)} ${n}`;
   usedOfficeNames.add(name);
   const office = add("offices", {
+    code: nextCode("offices"),
     name,
     address: address(loc),
     state: loc.state,
@@ -781,6 +804,7 @@ for (let i = 0; i < COUNT; i++) {
   const loc = pick(LOCATIONS);
   const domain = `${slug(base.short).replace(/-/g, "")}.test`;
   const parent = add("parent_clients", {
+    code: nextCode("parent_clients"),
     name,
     address: address(loc),
     state: loc.state,
@@ -813,6 +837,7 @@ const addBranch = (parent) => {
   const loc = pick(FIELD_LOCATIONS);
   const domain = `${slug(parent._short).replace(/-/g, "")}.test`;
   const client = add("clients", {
+    code: nextCode("clients"),
     parent_client_id: parent.id,
     name: `${parent._short} ${loc.city} ${pick(BRANCH_KINDS)}`,
     address: address(loc),
@@ -865,18 +890,19 @@ for (let i = 0; i < COUNT + 20; i++) {
   const name = pick(contractorNames)();
   const panNumber = pan(pick(["C", "F", "P"]), name);
   add("contractors", {
-    code: `VEN-${String(++lastVendorSerial).padStart(4, "0")}`,
+    code: nextCode("contractors"),
     name,
     contact_number: chance(0.9) ? phone() : null,
     email: chance(0.7) ? uniqueEmail("accounts", `${slug(name).replace(/-/g, "")}${i}.test`) : null,
     address: chance(0.85) ? `${address(loc)}, ${loc.state} ${pincode(loc)}` : null,
+    state: chance(0.9) ? loc.state.toLowerCase() : null,
     gst_number: chance(0.85) ? gstin(loc.state, panNumber) : null,
     pan_number: chance(0.9) ? panNumber : null,
-    status: chance(0.05) ? "inactive" : "active",
     ...stamp(atWorkHour(addDays(BASE, int(0, 200)))),
   });
 }
-const activeContractors = data.contractors.filter((c) => c.status === "active");
+// Vendors aren't marked active or inactive, so any can be given work.
+const seededVendors = data.contractors;
 
 // Each office's sites.
 const sitesOf = new Map();
@@ -900,6 +926,7 @@ for (const office of offices) {
     ])();
     list.push(
       add("sites", {
+        code: nextCode("sites"),
         name,
         address: address(loc),
         state: loc.state,
@@ -965,8 +992,6 @@ const workOrderCode = (start) => {
   return { code: `${financial_year}(${fy_serial})OTBL${serial}`, financial_year, fy_serial, serial };
 };
 let joSeq = 0;
-let poSeq = 0;
-let scSeq = 0;
 
 function addSiteDoc(row, type, when) {
   return add("work_order_site_docs", {
@@ -995,7 +1020,8 @@ function addExpense({
     title: title.slice(0, 500),
     amount: dec(amount),
     start_date: start,
-    end_date: end,
+    // A job order's expenses are each for one day.
+    end_date: jobOrderId ? start : end,
     invoice_number: invoiceNumber,
     activity_key: activityKey,
     quantity: quantity == null ? null : dec(quantity),
@@ -1078,8 +1104,9 @@ function jobOrderRows(shares, { from, to, completion, exSitu }) {
       quantity = anyTransport ? "Yes" : "No";
       done = anyTransport;
     } else if (r.bio) {
-      if (!exSitu) quantity = "No";
-      else if (!completion) quantity = "To be assessed later";
+      // The job order form's bioremediation rows always read To be assessed.
+      if (!completion) quantity = "To be assessed";
+      else if (!exSitu) quantity = "No";
       else quantity = qtyText(r.key === "bioremediation_volume" ? int(20, 400) : int(30, 640));
       done = exSitu;
     } else {
@@ -1172,10 +1199,8 @@ function buildRestoration(ctx) {
     const jo = add("job_orders", {
       work_order_site_id: row.id,
       jo_number: number,
-      title: `${pick(JO_TITLES)} at ${installation}`,
       start_date: joStart,
       end_date: joEnd,
-      description: chance(0.6) ? `Job order issued under ${wo.code} for restoration work at ${installation}.` : null,
       issued_by: `${personName()}, Installation Manager`,
       rc_noa_number: `RC/NOA/${int(1000, 9999)}/${yy(start)}`,
       rc_noa_date: dayStart(addDays(start, -int(30, 200))),
@@ -1190,6 +1215,7 @@ function buildRestoration(ctx) {
         ? jobOrderRows(joShares, { from: joStart, to: completedOn, completion: true, exSitu })
         : null,
       documents: completed ? [doc(`Work Completion Certificate ${number}.pdf`)] : [],
+      invoices: completed && chance(0.8) ? [doc(`Invoice ${number}.pdf`)] : [],
       created_by: manager.id,
       ...stamp(created),
     });
@@ -1199,7 +1225,7 @@ function buildRestoration(ctx) {
     }
     jobOrders.push(jo);
 
-    const vendors = sample(activeContractors, chance(0.65) ? 1 : 2);
+    const vendors = sample(seededVendors, chance(0.65) ? 1 : 2);
     for (const v of vendors) {
       add("job_order_contractors", { job_order_id: jo.id, contractor_id: v.id, created_at: jo.created_at });
       vendorsOnRow.add(v);
@@ -1366,8 +1392,8 @@ function planBioSite(ctx, site) {
 }
 
 function addPurchaseOrder(ctx, date, entries) {
-  const vendor = pick(activeContractors);
-  const number = `PO/${yy(date)}/${String(++poSeq).padStart(5, "0")}`;
+  const vendor = pick(seededVendors);
+  const number = orderCode("purchase_order");
   const rate = round2(real(380, 560));
   const invoice = chance(0.85) ? `INV/${yy(date)}/${int(1000, 99999)}` : null;
   const delivered = entries.every(([plan]) => plan.state === "done");
@@ -1375,7 +1401,7 @@ function addPurchaseOrder(ctx, date, entries) {
   const order = add("contract_orders", {
     work_order_id: ctx.wo.id,
     type: "purchase_order",
-    order_number: number,
+    code: number,
     order_date: date,
     description: chance(0.7) ? `Supply of Oilzapper for ${entries.length} site(s) under ${ctx.wo.code}.` : null,
     unit_rate: dec(rate),
@@ -1527,13 +1553,13 @@ function finishBioSite(ctx, plan) {
     state === "done" || state === "treating" ? int(1, 2) : estimate && chance(0.3) ? 1 : 0;
   for (let s = 0; s < subContracts; s++) {
     const orderDate = dayStart(randDate(row.date, earliest(addDays(row.date, 25), activeEnd)));
-    const vendors = sample(activeContractors, chance(0.7) ? 1 : 2);
-    const number = `SC/${yy(orderDate)}/${String(++scSeq).padStart(5, "0")}`;
+    const vendors = sample(seededVendors, chance(0.7) ? 1 : 2);
+    const number = orderCode("sub_contract");
     const created = clampPast(atWorkHour(orderDate));
     const order = add("contract_orders", {
       work_order_id: wo.id,
       type: "sub_contract",
-      order_number: number,
+      code: number,
       order_date: orderDate,
       description: chance(0.7) ? `Site works at ${plan.site.name}.` : null,
       unit_rate: null,
@@ -1579,7 +1605,7 @@ function finishBioSite(ctx, plan) {
     }
   }
 
-  if (chance(0.5)) plan.vendors.add(pick(activeContractors));
+  if (chance(0.5)) plan.vendors.add(pick(seededVendors));
   for (const v of plan.vendors) {
     add("wo_site_contractors", {
       work_order_site_id: row.id,
@@ -1626,6 +1652,71 @@ function finishBioSite(ctx, plan) {
   assignOperators(ctx, row, [...ops], activeEnd);
 }
 
+// Now and then one sub-contract hires a water pump or tractor for two of the
+// work order's sites, with each site's share billed there.
+function buildSharedSubContract(ctx, plans) {
+  const working = plans.filter((p) => p.state === "done" || p.state === "treating");
+  if (working.length < 2 || !chance(0.4)) return;
+  const pair = sample(working, 2);
+  const { wo, manager, staff, horizon } = ctx;
+  const activeEnd = earliest(horizon, NOW);
+  const from = latest(...pair.map((p) => p.mob));
+  if (from > activeEnd) return;
+
+  const orderDate = dayStart(randDate(from, earliest(addDays(from, 25), activeEnd)));
+  const vendor = pick(seededVendors);
+  const number = orderCode("sub_contract");
+  const created = clampPast(atWorkHour(orderDate));
+  const order = add("contract_orders", {
+    work_order_id: wo.id,
+    type: "sub_contract",
+    code: number,
+    order_date: orderDate,
+    description: `Shared hire for ${pair.map((p) => p.site.name).join(" and ")}.`,
+    unit_rate: null,
+    gst_percentage: null,
+    invoice_number: null,
+    documents: [doc(`Sub-contract ${number}.pdf`)],
+    completion_documents: [],
+    created_by: manager.id,
+    ...stamp(created),
+  });
+  add("contract_order_contractors", {
+    contract_order_id: order.id,
+    contractor_id: vendor.id,
+    created_at: order.created_at,
+  });
+
+  const kind = pick(["water_pump", "tractor"]);
+  const spec = SC_ITEMS[kind];
+  for (const plan of pair) {
+    const qty = int(...spec.qty);
+    const item = add("contract_order_items", {
+      contract_order_id: order.id,
+      work_order_site_id: plan.row.id,
+      item: kind,
+      description: null,
+      quantity: dec(qty),
+      unit: spec.unit,
+      ...stamp(created),
+    });
+    for (let b = int(0, 2); b > 0; b--) {
+      const st = dayStart(randDate(orderDate, activeEnd));
+      const portion = Math.max(1, Math.round(qty * real(0.15, 0.45)));
+      addExpense({
+        site: plan.row,
+        contractor: vendor,
+        itemId: item.id,
+        title: `${spec.label} - ${number} (${portion} ${spec.unit})`,
+        amount: portion * real(...spec.cost),
+        start: st,
+        end: dayStart(earliest(addDays(st, int(0, 10)), activeEnd)),
+        createdBy: pick(staff).id,
+      });
+    }
+  }
+}
+
 function buildBioremediation(ctx) {
   const sites = sitesOf.get(ctx.office.id);
   const usable = sites.filter((s) => s.status === "active");
@@ -1643,6 +1734,7 @@ function buildBioremediation(ctx) {
 
   buildPurchaseOrders(ctx, plans);
   for (const plan of plans) finishBioSite(ctx, plan);
+  buildSharedSubContract(ctx, plans);
 }
 
 // The first few work orders belong to the demo manager's office, one of each
@@ -1702,9 +1794,9 @@ function buildWorkOrder(index) {
 
   const wo = add("work_orders", {
     ...workOrderCode(start),
+    purchase_order_code: `${int(4_100_000_000, 4_199_999_999)}`,
     agreement_number: `AGR/${client._short.replace(/\s+/g, "")}/${yy(start)}/${int(100, 999)}`,
     rate_contract_number: `RC-${int(8_000_000_000, 8_099_999_999)}`,
-    title: PROCESS_TITLES[processType](client).slice(0, 255),
     proposal_id: proposal.id,
     client_id: client.id,
     office_id: office.id,
@@ -1799,7 +1891,7 @@ function verify() {
   unique("wo_site_contractors", (r) => `${r.work_order_site_id}:${r.contractor_id}`, "vendor");
   unique("job_orders", (r) => `${r.work_order_site_id}:${r.jo_number}`, "job order number");
   unique("job_order_contractors", (r) => `${r.job_order_id}:${r.contractor_id}`, "vendor");
-  unique("contract_orders", (r) => `${r.work_order_id}:${r.type}:${r.order_number}`, "order number");
+  unique("contract_orders", (r) => r.code, "code");
   unique("contract_order_contractors", (r) => `${r.contract_order_id}:${r.contractor_id}`, "vendor");
 
   const users = new Map(data.users.map((u) => [u.id, u]));

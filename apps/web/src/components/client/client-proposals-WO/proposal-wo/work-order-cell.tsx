@@ -58,11 +58,12 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
   if (!workOrder) return <NoWorkOrder proposalId={proposalId} />;
 
   const status = statusOf(workOrder.status);
-  const title = capitalFirstLetter(workOrder.title || "Untitled work order");
+  const title = workOrder.code;
   const documents = toDocuments(workOrder.documents);
   const note = scheduleNote(status, workOrder.start_date, workOrder.end_date);
   const processType = PROCESSES[workOrder.process_type];
   const handover = toDate(workOrder.handing_over_date);
+  const purchaseOrder = workOrder.purchase_order_code;
   const agreement = workOrder.agreement_number?.toUpperCase();
   const rateContract = workOrder.rate_contract_number?.toUpperCase();
 
@@ -83,8 +84,11 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
       }
       trailing={note && <span className={note.tone}>{note.text}</span>}
       details={
-        (handover || agreement || rateContract) && (
+        (handover || purchaseOrder || agreement || rateContract) && (
           <>
+            {purchaseOrder && (
+              <LabeledItem label='Purchase order'>{purchaseOrder}</LabeledItem>
+            )}
             {agreement && (
               <LabeledItem label='Agreement'>{agreement}</LabeledItem>
             )}
@@ -101,11 +105,6 @@ const WorkOrderCell = ({ workOrder, proposalId }: Props) => {
           </>
         )
       }>
-      <span
-        className='min-w-0 truncate font-mono font-medium text-gray-700'
-        title={workOrder.code}>
-        {workOrder.code.toUpperCase()}
-      </span>
       {processType && (
         <span className='inline-flex items-center gap-1.5'>
           <span

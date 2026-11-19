@@ -1,4 +1,5 @@
 import React from "react";
+import RecordCode from "@/components/shared/record-code";
 import { ClipboardList, MoreHorizontal, Pencil } from "lucide-react";
 import {
   Table,
@@ -83,7 +84,12 @@ export const SitesTable = ({
                   )}
                 </TableCell>
                 <TableCell className='text-xs font-medium pl-4'>
-                  {capitalFirstLetter(site.name)}
+                  <div className='flex items-center gap-2'>
+                    <RecordCode code={site.code} />
+                    <span className='truncate'>
+                      {capitalFirstLetter(site.name)}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell className='text-xs max-w-xs truncate'>
                   <div>{site.address}</div>

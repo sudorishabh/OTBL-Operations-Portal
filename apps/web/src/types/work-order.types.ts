@@ -1,6 +1,7 @@
 export interface IWorkOrder {
   id: number;
   code: string;
+  purchase_order_code: string | null;
   title: string;
   client_id: number;
   client_name: string | null;

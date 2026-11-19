@@ -11,6 +11,8 @@ import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { siteSchemas } from "@pkg/schema";
 import { escapeLike } from "../../helper/escape-like";
+import { CODE_PREFIX } from "@pkg/utils";
+import { codeMatches } from "../../helper/record-code";
 
 const { siteTable } = schema;
 
@@ -34,6 +36,7 @@ export const siteQueryRouter = router({
             eq(siteTable.office_id, office_id),
             searchQuery && searchQuery.trim() !== ""
               ? or(
+                  codeMatches(siteTable.code, CODE_PREFIX.SITE, searchQuery),
                   like(siteTable.name, `%${escapeLike(searchQuery)}%`),
                   like(siteTable.address, `%${escapeLike(searchQuery)}%`),
                   like(siteTable.city, `%${escapeLike(searchQuery)}%`),

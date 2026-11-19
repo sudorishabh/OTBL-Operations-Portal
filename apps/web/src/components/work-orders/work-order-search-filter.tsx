@@ -46,8 +46,6 @@ const SORT_OPTIONS = [
   { label: "Newest first", value: "latest" },
   { label: "Oldest first", value: "oldest" },
   { label: "Ending soonest", value: "ending_soonest" },
-  { label: "Title A–Z", value: "asc" },
-  { label: "Title Z–A", value: "desc" },
 ];
 
 const idValue = (id: number | undefined) => (id ? String(id) : ALL);
@@ -99,7 +97,7 @@ const WorkOrderSearchNFilter = () => {
     <FilterBar>
       <SearchFilter
         label='Search work orders'
-        placeholder='Search by code, title, agreement, client...'
+        placeholder='Search by code, purchase order, agreement, client...'
         value={searchQuery}
         onChange={setSearchQuery}
       />

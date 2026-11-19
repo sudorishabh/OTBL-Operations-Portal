@@ -5,9 +5,6 @@ import {
   optionalContactNumberValidator,
   positiveIntValidator,
 } from "../validators";
-import { constants } from "@pkg/utils";
-
-const { STATUS } = constants;
 
 // Vendors are stored in the contractors table: everyone material and work
 // are ordered from, through purchase orders, sub-contracts and job orders.
@@ -38,11 +35,16 @@ const vendorFields = {
     .trim()
     .max(500, "Address cannot exceed 500 characters")
     .optional(),
+  // Lowercase, as offices' and sites' states are.
+  state: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(100, "State cannot exceed 100 characters")
+    .optional(),
   gst_number: optionalGstNumberValidator,
   pan_number: optionalPanNumberValidator,
 };
-
-export const vendorStatusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
 export const createVendorSchema = z.object(vendorFields);
 
@@ -52,5 +54,4 @@ export const updateVendorSchema = z
   .partial()
   .extend({
     id: positiveIntValidator,
-    status: vendorStatusEnum.optional(),
   });

@@ -35,9 +35,9 @@ interface Props {
 }
 
 const toFormValues = (workOrder: any): EditFormInput => ({
+  purchase_order_code: workOrder.purchase_order_code ?? "",
   agreement_number: workOrder.agreement_number,
   rate_contract_number: workOrder.rate_contract_number,
-  title: workOrder.title,
   start_date: new Date(workOrder.start_date),
   end_date: new Date(workOrder.end_date),
   handing_over_date: new Date(workOrder.handing_over_date),
@@ -135,7 +135,7 @@ const EditWorkOrderDialog = ({ workOrder }: Props) => {
 
       <DialogWindow
         title='Edit Work Order'
-        description={`${workOrder.code} - ${workOrder.title}`}
+        description={workOrder.code}
         heightMode='full'
         open={open}
         size='2xl'
@@ -146,7 +146,6 @@ const EditWorkOrderDialog = ({ workOrder }: Props) => {
             className='h-full flex flex-col'>
             <div className='flex-1 flex flex-col justify-between h-full'>
               <WorkOrderDetailsFields
-                code={workOrder.code}
                 showProcessType={false}
                 files={files}
                 onFilesChange={(next) => {

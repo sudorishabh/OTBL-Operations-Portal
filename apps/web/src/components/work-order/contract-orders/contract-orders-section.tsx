@@ -36,7 +36,9 @@ const { CONTRACT_ORDER_TYPE, CONTRACT_ORDER_ITEMS, OIL_ZAPPER } = constants;
 export interface ContractOrder {
   id: number;
   type: "purchase_order" | "sub_contract";
-  order_number: string;
+  // Its code, and the number typed for an order added before codes were.
+  code: string;
+  order_number: string | null;
   order_date: string | Date;
   description: string | null;
   // A purchase order's cost; none on a sub-contract.
@@ -270,11 +272,12 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                         <group.Icon className='size-3.5' />
                       </div>
                       <div className='min-w-0'>
-                        <p className='truncate text-sm font-semibold text-gray-900'>
-                          {order.order_number}
+                        <p className='truncate font-mono text-sm font-semibold text-gray-900'>
+                          {order.code}
                         </p>
                         <p className='text-xs text-gray-500'>
                           {group.label}
+                          {order.order_number && ` · Ref. ${order.order_number}`}
                           {cost && (
                             <>
                               {" · "}
@@ -350,7 +353,7 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                             title='Delete order'
                             disabled={deleteOrder.isPending}
                             onClick={() => {
-                              if (confirm(`Delete order ${order.order_number}?`)) {
+                              if (confirm(`Delete order ${order.code}?`)) {
                                 deleteOrder.mutate({ id: order.id });
                               }
                             }}

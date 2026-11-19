@@ -14,7 +14,6 @@ import { workOrderSchemas } from "@pkg/schema";
 
 const {
   getWorkOrderSchema,
-  getNextWorkOrderCodeSchema,
   getWorkOrdersByOfficeSchema,
   getWorkOrdersByClientSchema,
   getAllWorkOrdersPaginatedSchema,
@@ -28,7 +27,6 @@ import { hasPhysicalSite, siteNameOrRestoration } from "../../helper/restoration
 import { USER_ROLES } from "../../authorization";
 import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
 import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
-import { nextWorkOrderCode } from "./work-order-code";
 
 const {
   workOrderTable,
@@ -106,7 +104,10 @@ export const workOrderQueryRouter = router({
           conditions,
           or(
             like(workOrderTable.code, `%${escapeLike(searchQuery)}%`),
-            like(workOrderTable.title, `%${escapeLike(searchQuery)}%`),
+            like(
+              workOrderTable.purchase_order_code,
+              `%${escapeLike(searchQuery)}%`,
+            ),
             like(
               workOrderTable.agreement_number,
               `%${escapeLike(searchQuery)}%`,
@@ -122,15 +123,11 @@ export const workOrderQueryRouter = router({
       // The id breaks ties so work orders never repeat or go missing across
       // pages.
       const orderBy = [
-        workOrderOrder === "asc"
-          ? asc(workOrderTable.title)
-          : workOrderOrder === "desc"
-            ? desc(workOrderTable.title)
-            : workOrderOrder === "latest"
-              ? desc(workOrderTable.created_at)
-              : workOrderOrder === "ending_soonest"
-                ? asc(workOrderTable.end_date)
-                : asc(workOrderTable.created_at),
+        workOrderOrder === "latest"
+          ? desc(workOrderTable.created_at)
+          : workOrderOrder === "ending_soonest"
+            ? asc(workOrderTable.end_date)
+            : asc(workOrderTable.created_at),
         workOrderOrder === "latest"
           ? desc(workOrderTable.id)
           : asc(workOrderTable.id),
@@ -142,7 +139,7 @@ export const workOrderQueryRouter = router({
             .select({
               id: workOrderTable.id,
               code: workOrderTable.code,
-              title: workOrderTable.title,
+              purchase_order_code: workOrderTable.purchase_order_code,
               client_id: workOrderTable.client_id,
               client_name: clientTable.name,
               office_id: workOrderTable.office_id,
@@ -231,7 +228,7 @@ export const workOrderQueryRouter = router({
           .select({
             id: workOrderTable.id,
             code: workOrderTable.code,
-            title: workOrderTable.title,
+            purchase_order_code: workOrderTable.purchase_order_code,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
             office_id: workOrderTable.office_id,
@@ -301,7 +298,7 @@ export const workOrderQueryRouter = router({
           .select({
             id: workOrderTable.id,
             code: workOrderTable.code,
-            title: workOrderTable.title,
+            purchase_order_code: workOrderTable.purchase_order_code,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
             office_id: workOrderTable.office_id,
@@ -326,16 +323,6 @@ export const workOrderQueryRouter = router({
     }),
   ),
 
-  // Shown on the create form; the code itself is numbered when it is saved.
-  getNextWorkOrderCode: protectedProcedure
-    .input(getNextWorkOrderCodeSchema)
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        const { code } = await nextWorkOrderCode(ctx.db, input.start_date);
-        return { code };
-      }),
-    ),
-
   getWorkOrder: protectedProcedure.input(getWorkOrderSchema).query(
     handleQuery(async ({ input, ctx }) => {
       const { id } = input;
@@ -351,7 +338,7 @@ export const workOrderQueryRouter = router({
           .select({
             id: workOrderTable.id,
             code: workOrderTable.code,
-            title: workOrderTable.title,
+            purchase_order_code: workOrderTable.purchase_order_code,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,
             client_email: clientTable.email,
@@ -555,7 +542,7 @@ export const workOrderQueryRouter = router({
             .select({
               id: workOrderTable.id,
               code: workOrderTable.code,
-              title: workOrderTable.title,
+              purchase_order_code: workOrderTable.purchase_order_code,
               client_id: workOrderTable.client_id,
               client_name: clientTable.name,
               office_id: workOrderTable.office_id,
@@ -598,7 +585,7 @@ export const workOrderQueryRouter = router({
             .select({
               id: workOrderTable.id,
               code: workOrderTable.code,
-              title: workOrderTable.title,
+              purchase_order_code: workOrderTable.purchase_order_code,
               client_id: workOrderTable.client_id,
               office_id: workOrderTable.office_id,
               office_name: officeTable.name,
@@ -664,7 +651,7 @@ export const workOrderQueryRouter = router({
           .select({
             id: workOrderTable.id,
             code: workOrderTable.code,
-            title: workOrderTable.title,
+            purchase_order_code: workOrderTable.purchase_order_code,
             description: workOrderTable.description,
             client_id: workOrderTable.client_id,
             client_name: clientTable.name,

@@ -13,7 +13,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { schema } from "@pkg/db";
-import { constants } from "@pkg/utils";
+import { CODE_PREFIX, constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import { z } from "zod";
@@ -21,6 +21,7 @@ import { hasAnyRole, hasRole } from "../../authorization";
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleProtectedQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
+import { codeMatches } from "../../helper/record-code";
 import { userSchemas, userTypes } from "@pkg/schema";
 
 const {
@@ -42,6 +43,7 @@ export const userQueryRouter = router({
       const [userData] = await ctx.db
         .select({
           id: userTable.id,
+          code: userTable.code,
           name: userTable.name,
           email: userTable.email,
           contact_number: userTable.contact_number,
@@ -152,6 +154,7 @@ export const userQueryRouter = router({
             and(
               userQuery,
               or(
+                codeMatches(userTable.code, CODE_PREFIX.USER, searchQuery),
                 like(userTable.name, `%${escapeLike(searchQuery)}%`),
                 like(userTable.email, `%${escapeLike(searchQuery)}%`),
                 like(userTable.contact_number, `%${escapeLike(searchQuery)}%`),
@@ -206,6 +209,7 @@ export const userQueryRouter = router({
         const users = await ctx.db
           .select({
             id: userTable.id,
+            code: userTable.code,
             name: userTable.name,
             email: userTable.email,
             contact_number: userTable.contact_number,
@@ -233,6 +237,7 @@ export const userQueryRouter = router({
             .select({
               userId: officeUserTable.user_id,
               id: officeTable.id,
+              code: officeTable.code,
               name: officeTable.name,
               officeRole: officeUserTable.role,
             })
@@ -247,6 +252,7 @@ export const userQueryRouter = router({
             .select({
               userId: workOrderSiteUserTable.user_id,
               id: siteTable.id,
+              code: siteTable.code,
               name: siteTable.name,
             })
             .from(workOrderSiteUserTable)
@@ -314,6 +320,7 @@ export const userQueryRouter = router({
         const [user] = await ctx.db
           .select({
             id: userTable.id,
+            code: userTable.code,
             name: userTable.name,
             email: userTable.email,
             contact_number: userTable.contact_number,
@@ -360,6 +367,7 @@ export const userQueryRouter = router({
             and(
               condition,
               or(
+                codeMatches(userTable.code, CODE_PREFIX.USER, search),
                 like(userTable.name, `%${escapeLike(search)}%`),
                 like(userTable.email, `%${escapeLike(search)}%`),
                 like(userTable.contact_number, `%${escapeLike(search)}%`),
@@ -390,6 +398,7 @@ export const userQueryRouter = router({
         const users = await ctx.db
           .select({
             id: userTable.id,
+            code: userTable.code,
             name: userTable.name,
             email: userTable.email,
             contact_number: userTable.contact_number,

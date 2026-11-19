@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
-import { constants } from "@pkg/utils";
+import { CODE_PREFIX, constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { adminProcedure, protectedProcedure } from "../../middleware";
 import { officeSchemas } from "@pkg/schema";
@@ -12,6 +12,7 @@ import {
   fromDatabaseError,
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
+import { nextCode } from "../../helper/record-code";
 import { assertOfficeManager } from "../../helper/office-permissions";
 
 const { officeTable, officeUserTable, userTable } = schema;
@@ -25,8 +26,10 @@ export const officeMutationRouter = router({
 
       try {
         const { officeId } = await ctx.db.transaction(async (tx) => {
+          const code = await nextCode(tx, officeTable, CODE_PREFIX.OFFICE);
           const result = await tx.insert(officeTable).values({
             ...officeData,
+            code,
             name: officeData.name.trim().toLowerCase(),
             city: officeData.city.trim().toLowerCase(),
             state: officeData.state.trim().toLowerCase(),

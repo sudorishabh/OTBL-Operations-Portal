@@ -48,6 +48,8 @@ export const userTable = mysqlTable(
   "users",
   {
     id: int("id").autoincrement().primaryKey(),
+    // The user's own code, such as USR-0007, numbered as they are added.
+    code: varchar("code", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     email: varchar("email", { length: 320 }).notNull().unique(),
     password: varchar("password", { length: 255 }).notNull(),
@@ -85,6 +87,8 @@ export const userTable = mysqlTable(
 // none, so those columns are nullable here.
 export const parentClientTable = mysqlTable("parent_clients", {
   id: int("id").autoincrement().primaryKey(),
+  // The main client's own code, such as MCL-0002, numbered as it is added.
+  code: varchar("code", { length: 20 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   address: varchar("address", { length: 255 }),
   state: varchar("state", { length: 255 }),
@@ -105,6 +109,8 @@ export const parentClientTable = mysqlTable("parent_clients", {
 
 export const clientTable = mysqlTable("clients", {
   id: int("id").autoincrement().primaryKey(),
+  // The client's own code, such as CLT-0014, numbered as it is added.
+  code: varchar("code", { length: 20 }).notNull().unique(),
   parent_client_id: int("parent_client_id").references(
     () => parentClientTable.id,
     { onDelete: "set null" },
@@ -171,6 +177,8 @@ export const officeTable = mysqlTable(
   "offices",
   {
     id: int("id").autoincrement().primaryKey(),
+    // The office's own code, such as OFF-0003, numbered as it is added.
+    code: varchar("code", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     address: varchar("address", { length: 255 }).notNull(),
     state: varchar("state", { length: 255 }).notNull(),
@@ -198,6 +206,8 @@ export const siteTable = mysqlTable(
   "sites",
   {
     id: int("id").autoincrement().primaryKey(),
+    // The site's own code, such as SITE-0042, numbered as it is added.
+    code: varchar("code", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     address: varchar("address", { length: 255 }).notNull(),
     state: varchar("state", { length: 255 }).notNull(),
@@ -235,11 +245,13 @@ export const workOrderTable = mysqlTable(
     financial_year: varchar("financial_year", { length: 7 }).notNull(),
     fy_serial: int("fy_serial").notNull(),
     serial: int("serial").notNull().unique(),
+    // The client's purchase order code, typed in when the work order is
+    // created. Work orders numbered before it was asked for may have none.
+    purchase_order_code: varchar("purchase_order_code", { length: 255 }),
     agreement_number: varchar("agreement_number", { length: 255 }).notNull(),
     rate_contract_number: varchar("rate_contract_number", {
       length: 255,
     }).notNull(),
-    title: varchar("title", { length: 255 }).notNull(),
     proposal_id: int("proposal_id")
       .notNull()
       .references(() => proposalTable.id, { onDelete: "cascade" }),
@@ -288,6 +300,7 @@ export const workOrderTable = mysqlTable(
     index("wo_dates_idx").on(table.start_date, table.end_date),
     index("wo_approved_at_idx").on(table.approved_at),
     uniqueIndex("wo_fy_serial_idx").on(table.financial_year, table.fy_serial),
+    index("wo_po_code_idx").on(table.purchase_order_code),
   ],
 );
 
@@ -600,14 +613,10 @@ export const contractorTable = mysqlTable(
     contact_number: varchar("contact_number", { length: 15 }),
     email: varchar("email", { length: 320 }),
     address: varchar("address", { length: 500 }),
+    // Lowercase, as offices' and sites' states are.
+    state: varchar("state", { length: 100 }),
     gst_number: varchar("gst_number", { length: 15 }),
     pan_number: varchar("pan_number", { length: 10 }),
-    status: varchar("status", {
-      length: 50,
-      enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-    })
-      .notNull()
-      .default(STATUS.ACTIVE),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
@@ -654,7 +663,6 @@ export const jobOrderTable = mysqlTable(
       .notNull()
       .references(() => workOrderSiteTable.id, { onDelete: "cascade" }),
     jo_number: varchar("jo_number", { length: 255 }).notNull(),
-    title: varchar("title", { length: 255 }).notNull(),
     start_date: timestamp("start_date").notNull(),
     end_date: timestamp("end_date").notNull(),
     description: text("description"),
@@ -678,6 +686,8 @@ export const jobOrderTable = mysqlTable(
     >(),
     // The job order's completion certificates.
     documents: json("documents").$type<StoredDocumentRow[]>(),
+    // The invoices raised for the job order's work.
+    invoices: json("invoices").$type<StoredDocumentRow[]>(),
     created_by: int("created_by").references(() => userTable.id, {
       onDelete: "set null",
     }),
@@ -716,8 +726,8 @@ export const jobOrderContractorTable = mysqlTable(
 
 // A purchase order or sub-contract that bioremediation work is given out
 // through. A purchase order buys oil zapper from one vendor for one or more
-// sites, at its own rate; a sub-contract gives out work at one site, whose
-// expenses are recorded there.
+// sites, at its own rate; a sub-contract gives out work at one or more sites,
+// whose expenses are recorded at each.
 export const contractOrderTable = mysqlTable(
   "contract_orders",
   {
@@ -732,7 +742,10 @@ export const contractOrderTable = mysqlTable(
         CONTRACT_ORDER_TYPE.SUB_CONTRACT,
       ],
     }).notNull(),
-    order_number: varchar("order_number", { length: 255 }).notNull(),
+    // The order's code, PO-0003 or SC-0003, numbered by type as it is added.
+    code: varchar("code", { length: 20 }).notNull().unique(),
+    // The number typed for an order added before orders had codes.
+    order_number: varchar("order_number", { length: 255 }),
     order_date: timestamp("order_date").notNull(),
     description: text("description"),
     // A purchase order's cost: its rate per unit of oil zapper before GST,

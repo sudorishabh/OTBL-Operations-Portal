@@ -164,6 +164,7 @@ export const contractOrderQueryRouter = router({
               quantity: contractOrderItemTable.quantity,
               unit: contractOrderItemTable.unit,
               order_type: contractOrderTable.type,
+              order_code: contractOrderTable.code,
               order_number: contractOrderTable.order_number,
               order_date: contractOrderTable.order_date,
             })

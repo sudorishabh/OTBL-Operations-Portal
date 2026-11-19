@@ -1,12 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState } from "react";
 
-export type WorkOrderSort =
-  | "asc"
-  | "desc"
-  | "latest"
-  | "oldest"
-  | "ending_soonest";
+export type WorkOrderSort = "latest" | "oldest" | "ending_soonest";
 
 export type WorkOrderProcess =
   | "bioremediation"

@@ -1,0 +1,1 @@
+ALTER TABLE `job_orders` ADD `invoices` json;

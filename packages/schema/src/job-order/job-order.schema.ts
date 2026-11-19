@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { constants } from "@pkg/utils";
+import { constants, withAssessedLater } from "@pkg/utils";
 import {
   dateValidator,
-  longDescriptionValidator,
   optionalDocumentsValidator,
   positiveIntValidator,
 } from "../validators";
@@ -47,14 +46,8 @@ export const baseJobOrderSchema = z
       .trim()
       .min(1, "Job order number is required")
       .max(255, "Job order number cannot exceed 255 characters"),
-    title: z
-      .string({ message: "Title is required" })
-      .trim()
-      .min(1, "Title is required")
-      .max(255, "Title cannot exceed 255 characters"),
     start_date: dateValidator,
     end_date: dateValidator,
-    description: longDescriptionValidator,
     // The client's job order form, as the installation manager issues it.
     issued_by: optionalText("Issuing office"),
     rc_noa_number: optionalText("RC NOA number"),
@@ -64,10 +57,12 @@ export const baseJobOrderSchema = z
     installation_name: requiredText("Installation name"),
     location: requiredText("Location of the job"),
     mobilization_date: dateValidator.nullable().optional(),
+    // The bioremediation rows always read "To be assessed".
     activities: z
       .array(jobOrderActivitySchema)
       .max(JOB_ORDER_ACTIVITIES.length)
-      .optional(),
+      .optional()
+      .transform((rows) => rows && withAssessedLater(rows)),
   })
   .refine((data) => data.end_date >= data.start_date, {
     message: "End date must be on or after the start date",
@@ -108,6 +103,12 @@ export const setJobOrderCompletionSchema = z.object({
 export const setJobOrderCertificatesSchema = z.object({
   id: positiveIntValidator,
   documents: optionalDocumentsValidator,
+});
+
+// The invoices raised for the job order's work, replacing those saved before.
+export const setJobOrderInvoicesSchema = z.object({
+  id: positiveIntValidator,
+  invoices: optionalDocumentsValidator,
 });
 
 export const getJobOrdersSchema = z.object({

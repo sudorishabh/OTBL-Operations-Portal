@@ -25,7 +25,7 @@ export type JobOrderFormContent = Pick<
 
 type FormWorkOrder = Pick<
   JobOrderWorkOrder,
-  "title" | "start_date" | "end_date"
+  "code" | "purchase_order_code" | "start_date" | "end_date"
 >;
 
 type ActivityRows = JobOrder["activities"];
@@ -107,10 +107,15 @@ const buildClientForm = async (form: ClientForm) => {
     y += 5.5;
   }
 
+  // The client knows the work by its purchase order; work orders saved
+  // without one are referred to by their own code.
   const { workOrder } = form;
+  const workRef = workOrder.purchase_order_code
+    ? `Purchase order ${workOrder.purchase_order_code}`
+    : `Work order ${workOrder.code}`;
   doc.setFont(FONT, "normal").setFontSize(11);
   const reference = doc.splitTextToSize(
-    `Ref.: ${workOrder.title}, for the period from ${formDate(workOrder.start_date)} to ${formDate(workOrder.end_date)}`,
+    `Ref.: ${workRef}, for the period from ${formDate(workOrder.start_date)} to ${formDate(workOrder.end_date)}`,
     width,
   );
   doc.text(reference, MARGIN, y);

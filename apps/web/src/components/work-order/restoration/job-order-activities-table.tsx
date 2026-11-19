@@ -1,6 +1,12 @@
 "use client";
 import React from "react";
-import { constants, countsTowardSor, jobOrderQuantity } from "@pkg/utils";
+import {
+  constants,
+  countsTowardSor,
+  isAssessedLater,
+  jobOrderQuantity,
+  TO_BE_ASSESSED,
+} from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { QTY_EPSILON } from "./restoration-display";
@@ -131,6 +137,8 @@ const JobOrderActivitiesTable = ({
             countsTowardSor(activity.key) &&
             entry.quantity.trim() !== "" &&
             jobOrderQuantity(entry.quantity) === null;
+          // The job order form's bioremediation rows can't be measured yet.
+          const isFixed = form === "job_order" && isAssessedLater(activity.key);
           return (
             <tr key={activity.key}>
               <td
@@ -144,20 +152,28 @@ const JobOrderActivitiesTable = ({
                 {unit || "Yes / No"}
               </td>
               <td className='px-2 py-1.5'>
-                <Input
-                  value={entry.quantity}
-                  onChange={(e) =>
-                    onChange(activity.key, {
-                      ...entry,
-                      quantity: e.target.value,
-                    })
-                  }
-                  placeholder={unit ? "Quantity" : "Yes or No"}
-                  aria-label={`${label} quantity`}
-                  aria-invalid={isUncounted || undefined}
-                  disabled={disabled}
-                  className='h-8 text-xs'
-                />
+                {isFixed ? (
+                  <span
+                    className='flex h-8 items-center rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 text-xs text-gray-500'
+                    title='Assessed once the work is under way'>
+                    {TO_BE_ASSESSED}
+                  </span>
+                ) : (
+                  <Input
+                    value={entry.quantity}
+                    onChange={(e) =>
+                      onChange(activity.key, {
+                        ...entry,
+                        quantity: e.target.value,
+                      })
+                    }
+                    placeholder={unit ? "Quantity" : "Yes or No"}
+                    aria-label={`${label} quantity`}
+                    aria-invalid={isUncounted || undefined}
+                    disabled={disabled}
+                    className='h-8 text-xs'
+                  />
+                )}
                 {isUncounted && (
                   <span className='mt-1 block text-[11px] leading-tight text-amber-700'>
                     Not counted against the SOR. End with the total, such as 25

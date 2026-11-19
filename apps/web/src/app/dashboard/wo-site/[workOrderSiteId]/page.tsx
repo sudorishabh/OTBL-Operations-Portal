@@ -361,11 +361,9 @@ export default function WoSiteOperatorUploadPage() {
           </span>
         </div>
 
-        {workOrder?.title && (
-          <p
-            className='mt-1.5 truncate text-[13px] text-gray-400'
-            title={workOrder.title}>
-            {workOrder.title}
+        {workOrder?.purchase_order_code && (
+          <p className='mt-1.5 truncate text-[13px] text-gray-400'>
+            Purchase order {workOrder.purchase_order_code}
           </p>
         )}
 

@@ -16,6 +16,9 @@ export {
 } from "./work-order-sor-status";
 export {
   countsTowardSor,
+  TO_BE_ASSESSED,
+  isAssessedLater,
+  withAssessedLater,
   jobOrderQuantity,
   certifiedQuantityByRow,
   certifiedQuantityByActivity,
@@ -26,6 +29,12 @@ export {
   formatWorkOrderCode,
   type WorkOrderCodeParts,
 } from "./work-order-code";
+export {
+  CODE_PREFIX,
+  formatCode,
+  typedCode,
+  type CodePrefix,
+} from "./record-code";
 export {
   constants,
   dateTimeUtils,

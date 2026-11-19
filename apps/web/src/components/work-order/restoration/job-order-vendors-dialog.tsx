@@ -8,7 +8,7 @@ import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import VendorCode from "@/components/vendor/vendor-code";
+import RecordCode from "@/components/shared/record-code";
 import NewVendorButton from "@/components/vendor/new-vendor-button";
 
 // The job order whose vendors are being chosen, and those it has.
@@ -18,7 +18,7 @@ export type VendorsJobOrder = {
   vendors: { id: number }[];
 };
 
-type Vendor = { id: number; code: string; name: string; status: string };
+type Vendor = { id: number; code: string; name: string };
 
 interface Props {
   // The work order's restoration row.
@@ -52,10 +52,7 @@ const JobOrderVendorsDialog = ({
     {},
     { enabled: open },
   );
-  // Inactive vendors can't take new work, but those already on it stay.
-  const vendors = ((vendorsQuery.data?.contractors ?? []) as Vendor[]).filter(
-    (vendor) => vendor.status === "active" || vendorIds.includes(vendor.id),
-  );
+  const vendors = (vendorsQuery.data?.contractors ?? []) as Vendor[];
   const term = search.trim().toLowerCase();
   const shown = term
     ? vendors.filter(
@@ -135,7 +132,7 @@ const JobOrderVendorsDialog = ({
                     toggle(vendor.id, checked === true)
                   }
                 />
-                <VendorCode code={vendor.code} />
+                <RecordCode code={vendor.code} />
                 <span className='truncate'>{vendor.name}</span>
               </label>
             ))

@@ -129,8 +129,12 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
 
   return (
     <PageWrapper
-      title={`${workOrderData.workOrder.code.toUpperCase()} - ${workOrderData.workOrder.title?.toUpperCase() || "Work Order"}`}
-      description='Work Order Details and Management'
+      title={workOrderData.workOrder.code}
+      description={
+        workOrderData.workOrder.purchase_order_code
+          ? `Purchase order ${workOrderData.workOrder.purchase_order_code}`
+          : "Work Order Details and Management"
+      }
       breadcrumbs={workOrderTrail({
         id: workOrderId,
         code: workOrderData.workOrder.code,
@@ -147,30 +151,32 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
           expenseSummary={expenseSummary}
         />
 
-        {scheduleOfRates.length > 0 && (
-          <div className='flex flex-wrap justify-end gap-2'>
-            <CustomButton
-              text='View Schedule of Rates'
-              variant='outline'
-              Icon={Rows3}
-              onClick={() => setParam("dialog", "schedule-of-rates")}
-            />
-            <CustomButton
-              text='View All Expenses'
-              variant='outline'
-              Icon={ReceiptIndianRupee}
-              onClick={() => setParam("dialog", "all-expenses")}
-            />
-            {woOperatorUploadsCount > 0 && (
+        <div className='flex flex-wrap justify-end gap-2'>
+          {scheduleOfRates.length > 0 && (
+            <>
               <CustomButton
-                text={`Operator Uploads (${woOperatorUploadsCount})`}
+                text='View Schedule of Rates'
                 variant='outline'
-                Icon={FolderOpen}
-                onClick={() => setParam("dialog", "operator-uploads")}
+                Icon={Rows3}
+                onClick={() => setParam("dialog", "schedule-of-rates")}
               />
-            )}
-          </div>
-        )}
+              <CustomButton
+                text='View All Expenses'
+                variant='outline'
+                Icon={ReceiptIndianRupee}
+                onClick={() => setParam("dialog", "all-expenses")}
+              />
+            </>
+          )}
+          {/* Operators' uploads from the restoration and every site are
+              seen here only. */}
+          <CustomButton
+            text={`Operator Uploads (${woOperatorUploadsCount})`}
+            variant='outline'
+            Icon={FolderOpen}
+            onClick={() => setParam("dialog", "operator-uploads")}
+          />
+        </div>
 
         {hasRestoration && (
           <RestorationSection

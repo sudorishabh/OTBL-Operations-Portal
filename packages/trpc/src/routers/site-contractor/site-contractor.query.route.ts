@@ -37,7 +37,6 @@ export const siteContractorQueryRouter = router({
               contact_number: contractorTable.contact_number,
               email: contractorTable.email,
               gst_number: contractorTable.gst_number,
-              status: contractorTable.status,
             })
             .from(workOrderSiteContractorTable)
             .innerJoin(

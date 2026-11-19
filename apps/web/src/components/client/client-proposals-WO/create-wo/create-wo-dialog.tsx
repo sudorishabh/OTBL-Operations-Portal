@@ -55,9 +55,9 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
   const form = useForm<WorkOrderFormInput, unknown, WorkOrderFormValues>({
     resolver: zodResolver(workOrderFormSchema),
     defaultValues: {
+      purchase_order_code: "",
       agreement_number: "",
       rate_contract_number: "",
-      title: "",
       start_date: undefined,
       end_date: undefined,
       handing_over_date: undefined,
@@ -76,7 +76,6 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
       utils.proposalQuery.getProposalsByClient.invalidate({
         client_id: clientId,
       });
-      utils.workOrderQuery.getNextWorkOrderCode.invalidate();
       toast.success(`Work order ${data.code} created`);
     },
     onError: (error: any) => {
@@ -94,9 +93,9 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
 
     setTimeout(() => {
       form.reset({
+        purchase_order_code: "",
         agreement_number: "",
         rate_contract_number: "",
-        title: "",
         start_date: undefined,
         end_date: undefined,
         handing_over_date: undefined,
@@ -120,9 +119,9 @@ const CreateWODialog = ({ proposalTitle }: Props) => {
 
   const handleNextStep = async () => {
     const isValid = await form.trigger([
+      "purchase_order_code",
       "agreement_number",
       "rate_contract_number",
-      "title",
       "start_date",
       "end_date",
       "handing_over_date",

@@ -1,0 +1,1 @@
+ALTER TABLE `contractors` ADD `state` varchar(100);

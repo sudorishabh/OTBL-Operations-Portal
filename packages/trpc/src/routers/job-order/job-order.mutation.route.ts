@@ -156,13 +156,12 @@ const filledActivities = (
 ) => (activities ?? []).filter((row) => row.quantity || row.completion_date);
 
 // The job order's fields as they are saved. Blank answers are saved as
-// nothing.
+// nothing. Job orders no longer take a description; one written on an older
+// job order is kept.
 const jobOrderValues = (input: jobOrderTypes.JobOrderValues) => ({
   jo_number: input.jo_number,
-  title: input.title,
   start_date: input.start_date,
   end_date: input.end_date,
-  description: input.description || null,
   issued_by: input.issued_by || null,
   rc_noa_number: input.rc_noa_number || null,
   rc_noa_date: input.rc_noa_date ?? null,
@@ -187,6 +186,7 @@ export const jobOrderMutationRouter = router({
             ...jobOrderValues(input),
             work_order_site_id: input.work_order_site_id,
             documents: [],
+            invoices: [],
             created_by: Number(ctx.user!.sub),
           });
 
@@ -285,6 +285,25 @@ export const jobOrderMutationRouter = router({
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Saving job order certificates");
+        }
+      }),
+    ),
+
+  setJobOrderInvoices: protectedProcedure
+    .input(jobOrderSchemas.setJobOrderInvoicesSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const jobOrder = await getJobOrder(ctx, input.id);
+        await assertManagesRestoration(ctx, jobOrder.work_order_site_id);
+
+        try {
+          await ctx.db
+            .update(jobOrderTable)
+            .set({ invoices: input.invoices })
+            .where(eq(jobOrderTable.id, input.id));
+          return { success: true };
+        } catch (error) {
+          throw fromDatabaseError(error, "Saving job order invoices");
         }
       }),
     ),

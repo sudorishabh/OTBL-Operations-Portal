@@ -46,6 +46,8 @@ const {
 } = schema;
 
 export const workOrderSiteQueryRouter = router({
+  // Everything field operators uploaded across a work order, newest first,
+  // each with the restoration or site it was uploaded to.
   getOperatorUploadsByWorkOrder: protectedProcedure
     .input(z.object({ work_order_id: z.number().positive() }))
     .query(
@@ -66,6 +68,9 @@ export const workOrderSiteQueryRouter = router({
               work_order_site_id:
                 workOrderSiteOperatorUploadTable.work_order_site_id,
               site_name: siteNameOrRestoration,
+              // None for the restoration, which isn't a site.
+              site_code: siteTable.code,
+              process_type: workOrderSiteTable.process_type,
               description: workOrderSiteOperatorUploadTable.description,
               file_name: workOrderSiteOperatorUploadTable.file_name,
               document_url: workOrderSiteOperatorUploadTable.document_url,
@@ -122,7 +127,7 @@ export const workOrderSiteQueryRouter = router({
             work_order_site_id: workOrderSiteTable.id,
             work_order_id: workOrderTable.id,
             wo_code: workOrderTable.code,
-            wo_title: workOrderTable.title,
+            wo_purchase_order_code: workOrderTable.purchase_order_code,
             site_name: siteNameOrRestoration,
             site_address: siteTable.address,
             site_city: siteTable.city,
@@ -440,7 +445,7 @@ export const workOrderSiteQueryRouter = router({
               work_order_site_id: workOrderSiteTable.id,
               work_order_id: workOrderTable.id,
               wo_code: workOrderTable.code,
-              wo_title: workOrderTable.title,
+              wo_purchase_order_code: workOrderTable.purchase_order_code,
               status: workOrderSiteTable.status,
             })
             .from(workOrderSiteTable)
@@ -616,7 +621,7 @@ export const workOrderSiteQueryRouter = router({
               site_state: siteTable.state,
               site_pincode: siteTable.pincode,
               wo_code: workOrderTable.code,
-              wo_title: workOrderTable.title,
+              wo_purchase_order_code: workOrderTable.purchase_order_code,
               wo_process_type: workOrderTable.process_type,
               wo_office_id: workOrderTable.office_id,
               wo_client_id: workOrderTable.client_id,
@@ -669,7 +674,7 @@ export const workOrderSiteQueryRouter = router({
             work_order: {
               id: woSite.work_order_id,
               code: woSite.wo_code,
-              title: woSite.wo_title,
+              purchase_order_code: woSite.wo_purchase_order_code,
               process_type: woSite.wo_process_type,
               office_id: woSite.wo_office_id,
               client_id: woSite.wo_client_id,

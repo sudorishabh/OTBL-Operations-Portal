@@ -5,13 +5,10 @@ import DocumentsField from "@/components/shared/documents-field";
 import type { StoredDocument } from "@/lib/documents";
 import { constants } from "@pkg/utils";
 import { useFormContext } from "react-hook-form";
-import WorkOrderCodeField from "./work-order-code-field";
 
 const { processTypeOptions } = constants;
 
 interface Props {
-  // A saved work order's code; a new one's is shown as it will be numbered.
-  code?: string;
   // The process type is fixed once the work order exists.
   showProcessType?: boolean;
   files: File[];
@@ -24,9 +21,9 @@ interface Props {
 }
 
 // The work order's own details and documents, shared by the create and edit
-// forms. Reads the form from context.
+// forms. Reads the form from context. The work order is known by its code,
+// which has no field: the server numbers it when the work order is created.
 const WorkOrderDetailsFields = ({
-  code,
   showProcessType = true,
   files,
   onFilesChange,
@@ -41,15 +38,12 @@ const WorkOrderDetailsFields = ({
   return (
     <div className='space-y-4'>
       <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-        <div className='md:col-span-2'>
-          <Input
-            control={form.control}
-            fieldName='title'
-            Label='Title'
-            placeholder='Enter title'
-          />
-        </div>
-        <WorkOrderCodeField code={code} />
+        <Input
+          control={form.control}
+          fieldName='purchase_order_code'
+          Label='Purchase Order Code'
+          placeholder='As on the purchase order'
+        />
 
         {showProcessType && (
           <Input

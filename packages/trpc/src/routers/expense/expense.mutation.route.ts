@@ -283,6 +283,29 @@ async function assertJobOrderAllowed(
   }
 }
 
+// A job order closes once its completion certificate is uploaded: expenses
+// can then no longer be added to it, changed or deleted. Removing the
+// certificate reopens it.
+async function assertJobOrderOpen(
+  ctx: any,
+  jobOrderId: number | null | undefined,
+) {
+  if (!jobOrderId) return;
+
+  const [jobOrder] = await ctx.db
+    .select({
+      jo_number: jobOrderTable.jo_number,
+      documents: jobOrderTable.documents,
+    })
+    .from(jobOrderTable)
+    .where(eq(jobOrderTable.id, jobOrderId));
+  if (jobOrder && (jobOrder.documents?.length ?? 0) > 0) {
+    throw businessRule(
+      `Job order ${jobOrder.jo_number} is closed, as its completion certificate is uploaded. Remove the certificate to reopen it.`,
+    );
+  }
+}
+
 // An expense can't end before it starts.
 const endsOnOrAfterStart = (value: { start_date?: string; end_date?: string }) =>
   !value.start_date ||
@@ -294,6 +317,51 @@ const endDateIssue = {
   path: ["end_date"],
 };
 
+const amountValidator = z
+  .string()
+  .min(1, "Amount is required")
+  .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
+    message: "Amount must be a positive number",
+  });
+
+// A new expense's row. Its documents also fill the legacy single-document
+// columns, kept until they are dropped.
+const newExpenseRow = (
+  expense: {
+    work_order_site_id: number;
+    contractor_id?: number | null;
+    contract_order_item_id?: number | null;
+    job_order_id?: number | null;
+    quantity?: string | null;
+    title: string;
+    amount: string;
+    start_date: string;
+    end_date: string;
+    invoice_number?: string | null;
+    documents?: { url: string; id?: string | null; name?: string | null }[];
+  },
+  activityKey: string | null,
+  isExceeded: boolean,
+  userId: number | null,
+) => ({
+  work_order_site_id: expense.work_order_site_id,
+  contractor_id: expense.contractor_id ?? null,
+  contract_order_item_id: expense.contract_order_item_id ?? null,
+  job_order_id: expense.job_order_id ?? null,
+  activity_key: activityKey,
+  quantity: expense.quantity ?? null,
+  is_exceeded: isExceeded ? 1 : 0,
+  title: expense.title,
+  amount: expense.amount,
+  start_date: new Date(expense.start_date),
+  end_date: new Date(expense.end_date),
+  invoice_number: expense.invoice_number ?? null,
+  documents: expense.documents ?? [],
+  document_url: expense.documents?.[0]?.url ?? null,
+  document_id: expense.documents?.[0]?.id ?? null,
+  created_by: userId,
+});
+
 const createExpenseSchema = z.object({
   work_order_site_id: z.number().positive(),
   contractor_id: z.number().positive().optional().nullable(),
@@ -303,17 +371,45 @@ const createExpenseSchema = z.object({
   quantity: z.string().optional().nullable(),
   is_exceeded: z.boolean().optional().default(false),
   title: z.string().min(1, "Title is required").max(500),
-  amount: z
-    .string()
-    .min(1, "Amount is required")
-    .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
-      message: "Amount must be a positive number",
-    }),
+  amount: amountValidator,
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().min(1, "End date is required"),
   invoice_number: z.string().max(100).optional().nullable(),
   documents: validators.optionalDocumentsValidator.optional(),
 }).refine(endsOnOrAfterStart, endDateIssue);
+
+// Several of a job order's activities recorded at once, under one of its
+// vendors: one expense for each activity, sharing the rest.
+const createJobOrderExpensesSchema = z
+  .object({
+    work_order_site_id: z.number().positive(),
+    job_order_id: z.number().positive(),
+    contractor_id: z.number().positive(),
+    title: z.string().min(1, "Title is required").max(500),
+    start_date: z.string().min(1, "Start date is required"),
+    end_date: z.string().min(1, "End date is required"),
+    invoice_number: z.string().max(100).optional().nullable(),
+    documents: validators.optionalDocumentsValidator.optional(),
+    lines: z
+      .array(
+        z.object({
+          activity_key: z.string().min(1, "Choose each line's activity").max(100),
+          quantity: z.string().optional().nullable(),
+          amount: amountValidator,
+          // For an activity whose quantity is already used up.
+          is_exceeded: z.boolean().optional().default(false),
+        }),
+      )
+      .min(1, "Add at least one activity")
+      .max(50),
+  })
+  .refine(endsOnOrAfterStart, endDateIssue)
+  .refine(
+    (value) =>
+      new Set(value.lines.map((line) => line.activity_key)).size ===
+      value.lines.length,
+    { message: "Give each activity one line", path: ["lines"] },
+  );
 
 const updateExpenseSchema = z.object({
   id: z.number().positive(),
@@ -360,6 +456,7 @@ export const expenseMutationRouter = router({
           input.job_order_id,
           input.contractor_id,
         );
+        await assertJobOrderOpen(ctx, input.job_order_id);
 
         try {
           const userId = ctx.user ? Number(ctx.user.sub) : null;
@@ -375,25 +472,7 @@ export const expenseMutationRouter = router({
 
           const [created] = await ctx.db
             .insert(workOrderSiteExpenseTable)
-            .values({
-              work_order_site_id: input.work_order_site_id,
-              contractor_id: input.contractor_id ?? null,
-              contract_order_item_id: input.contract_order_item_id ?? null,
-              job_order_id: input.job_order_id ?? null,
-              activity_key: activityKey,
-              quantity: input.quantity ?? null,
-              is_exceeded: finalExceeded ? 1 : 0,
-              title: input.title,
-              amount: input.amount,
-              start_date: new Date(input.start_date),
-              end_date: new Date(input.end_date),
-              invoice_number: input.invoice_number ?? null,
-              documents: input.documents ?? [],
-              // Legacy single-document columns, kept until they are dropped.
-              document_url: input.documents?.[0]?.url ?? null,
-              document_id: input.documents?.[0]?.id ?? null,
-              created_by: userId,
-            })
+            .values(newExpenseRow(input, activityKey, finalExceeded, userId))
             .$returningId();
 
           if (!created) {
@@ -406,6 +485,55 @@ export const expenseMutationRouter = router({
         } catch (error) {
           if (error && typeof error === "object" && "errorCode" in error) throw error;
           throw fromDatabaseError(error, "Creating expense");
+        }
+      }),
+    ),
+
+  createJobOrderExpenses: protectedProcedure
+    .input(createJobOrderExpensesSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        await assertJobOrderAllowed(
+          ctx,
+          input.work_order_site_id,
+          input.job_order_id,
+          input.contractor_id,
+        );
+        await assertJobOrderOpen(ctx, input.job_order_id);
+
+        try {
+          const userId = ctx.user ? Number(ctx.user.sub) : null;
+          const { lines, ...shared } = input;
+
+          // All of them or none.
+          const ids = await ctx.db.transaction(async (tx) => {
+            const created: number[] = [];
+            for (const line of lines) {
+              const autoExceeded = await computeIsExceeded(
+                { ...ctx, db: tx },
+                input.work_order_site_id,
+                line.activity_key,
+                line.quantity,
+              );
+              const [row] = await tx
+                .insert(workOrderSiteExpenseTable)
+                .values(
+                  newExpenseRow(
+                    { ...shared, quantity: line.quantity, amount: line.amount },
+                    line.activity_key,
+                    autoExceeded !== null ? autoExceeded : line.is_exceeded,
+                    userId,
+                  ),
+                )
+                .$returningId();
+              if (row) created.push(row.id);
+            }
+            return created;
+          });
+
+          return { success: true, ids };
+        } catch (error) {
+          throw fromDatabaseError(error, "Recording job order expenses");
         }
       }),
     ),
@@ -427,6 +555,10 @@ export const expenseMutationRouter = router({
 
         const prev = existing[0]!;
         assertNotFromOrder(prev);
+        await assertJobOrderOpen(ctx, prev.job_order_id);
+        if (updateData.job_order_id !== prev.job_order_id) {
+          await assertJobOrderOpen(ctx, updateData.job_order_id);
+        }
         const effectiveQuantity =
           updateData.quantity !== undefined ? updateData.quantity : prev.quantity;
         const effectiveItemId =
@@ -536,6 +668,7 @@ export const expenseMutationRouter = router({
 
         const expense = existing[0]!;
         assertNotFromOrder(expense);
+        await assertJobOrderOpen(ctx, expense.job_order_id);
         await assertProcuredCoversUsed(
           ctx,
           expense.work_order_site_id,

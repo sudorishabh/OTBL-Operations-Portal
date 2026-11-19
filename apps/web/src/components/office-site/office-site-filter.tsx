@@ -68,7 +68,7 @@ const OfficeSiteFilter = () => {
     <FilterBar className='mb-6'>
       <SearchFilter
         label='Search offices'
-        placeholder='Search offices by name, city, state...'
+        placeholder='Search offices by code, name, city, state...'
         value={searchQuery}
         onChange={setSearchQuery}
       />
