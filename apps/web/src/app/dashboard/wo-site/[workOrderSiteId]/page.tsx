@@ -41,6 +41,9 @@ import {
   X,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { type UseQueryResult } from "@tanstack/react-query";
+import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,10 +54,14 @@ const { MAX_DOCUMENTS, PHOTO_EXTENSIONS } = constants;
 
 type PendingItem = { file: File; description: string };
 
-type OperatorUploadRow =
-  RouterOutputs["workOrderSiteQuery"]["getOperatorUploads"][number];
+type OperatorUploadsPage =
+  RouterOutputs["workOrderSiteQuery"]["getOperatorUploads"];
+type OperatorUploadRow = OperatorUploadsPage["uploads"][number];
 
-const LABEL = "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-gray-400";
+const UPLOADS_PAGE_SIZE = 20;
+
+const LABEL =
+  "text-[11.5px] font-semibold uppercase tracking-[0.08em] text-gray-400";
 
 const Section = ({
   title,
@@ -119,11 +126,32 @@ export default function WoSiteOperatorUploadPage() {
       { enabled: Number.isFinite(workOrderSiteId) && workOrderSiteId > 0 },
     );
 
-  const { data: operatorUploads = [] } =
-    trpc.workOrderSiteQuery.getOperatorUploads.useQuery(
-      { work_order_site_id: workOrderSiteId },
-      { enabled: Number.isFinite(workOrderSiteId) && workOrderSiteId > 0 },
-    );
+  // The site's uploads, newest first, a page at a time. Each page is its own
+  // query, so an upload or delete refreshes the loaded pages in place.
+  const uploadsInput = {
+    work_order_site_id: workOrderSiteId,
+    limit: UPLOADS_PAGE_SIZE,
+  };
+  const { pages: uploadPages, loadMore: loadMoreUploads } =
+    useLoadMorePages(uploadsInput);
+  const uploadQueries: UseQueryResult<OperatorUploadsPage>[] = trpc.useQueries(
+    (t: any) =>
+      uploadPages.map((page) =>
+        t.workOrderSiteQuery.getOperatorUploads(
+          { ...uploadsInput, page },
+          {
+            enabled: Number.isFinite(workOrderSiteId) && workOrderSiteId > 0,
+          },
+        ),
+      ),
+  );
+  const operatorUploads = uploadQueries.flatMap(
+    (query) => query.data?.uploads ?? [],
+  );
+  const uploadsTotal = uploadQueries[0]?.data?.pagination.total ?? 0;
+  const hasMoreUploads = !!uploadQueries.at(-1)?.data?.pagination.hasMore;
+  const isLoadingMoreUploads =
+    uploadPages.length > 1 && !!uploadQueries.at(-1)?.isLoading;
 
   const operatorUpload = useSharePointUpload({
     folderPath: `/WorkOrders/Sites/${workOrderSiteId}/OperatorUploads`,
@@ -577,7 +605,7 @@ export default function WoSiteOperatorUploadPage() {
         }
         action={
           <span className='shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[12px] font-semibold tabular-nums text-gray-600'>
-            {operatorUploads.length}
+            {uploadsTotal}
           </span>
         }>
         {operatorUploads.length === 0 ? (
@@ -587,8 +615,8 @@ export default function WoSiteOperatorUploadPage() {
               Nothing uploaded yet
             </p>
             <p className='mt-1 text-[12.5px] text-gray-500'>
-              Select files above, or take a photo, then upload them with a
-              short description.
+              Select files above, or take a photo, then upload them with a short
+              description.
             </p>
           </div>
         ) : (
@@ -639,6 +667,13 @@ export default function WoSiteOperatorUploadPage() {
               </li>
             ))}
           </ul>
+        )}
+        {hasMoreUploads && (
+          <LoadMoreBtn
+            onClick={loadMoreUploads}
+            loading={isLoadingMoreUploads}
+            className='pt-4'
+          />
         )}
       </Section>
 
