@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import ContractOrderDialog from "./contract-order-dialog";
+import ContractOrderDetailsDialog from "./contract-order-details-dialog";
 import ContractOrderFilterBar from "./contract-order-filter-bar";
 import {
   NO_ORDER_FILTERS,
@@ -75,6 +76,10 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   const utils = trpc.useUtils();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ContractOrder | null>(null);
+  // The order whose details are open, and the one to go back to once its
+  // edit form closes, when it was opened from them.
+  const [detailsId, setDetailsId] = useState<number | null>(null);
+  const [returnToId, setReturnToId] = useState<number | null>(null);
   const [filters, setFilters] = useState<OrderFilters>(NO_ORDER_FILTERS);
   const [sort, setSort] = useState<OrderSort>("newest");
 
@@ -100,6 +105,12 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   const openDialog = (order: ContractOrder | null) => {
     setEditing(order);
     setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    if (returnToId) setDetailsId(returnToId);
+    setReturnToId(null);
   };
 
   const shownOrders = useMemo(
@@ -207,7 +218,8 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                 return (
                   <TableRow
                     key={order.id}
-                    className='hover:bg-gray-50/60'>
+                    onClick={() => setDetailsId(order.id)}
+                    className='cursor-pointer hover:bg-gray-50/60'>
                     <TableCell className={cn(cellClass, "pl-4 sm:pl-4")}>
                       <div className='flex items-start gap-3'>
                         <div
@@ -219,9 +231,13 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                           <group.Icon className='size-3.5' />
                         </div>
                         <div className='min-w-0'>
-                          <p className='truncate font-mono text-sm font-semibold text-gray-900'>
+                          <button
+                            type='button'
+                            onClick={() => setDetailsId(order.id)}
+                            title={`Open ${order.code}`}
+                            className='block max-w-full cursor-pointer truncate rounded font-mono text-sm font-semibold text-gray-900 hover:text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
                             {order.code}
-                          </p>
+                          </button>
                           <p className='whitespace-nowrap text-xs text-gray-600'>
                             {format(new Date(order.order_date), "d MMM yyyy")}
                           </p>
@@ -299,13 +315,18 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className={cellClass}>
+                    <TableCell
+                      className={cellClass}
+                      // Its badge and dialog leave the row's click alone.
+                      onClick={(event) => event.stopPropagation()}>
                       <OrderCompletionDocuments
                         workOrderId={workOrderId}
                         order={order}
                       />
                     </TableCell>
-                    <TableCell className={cn(cellClass, "py-2.5 sm:py-2.5")}>
+                    <TableCell
+                      className={cn(cellClass, "py-2.5 sm:py-2.5")}
+                      onClick={(event) => event.stopPropagation()}>
                       <div className='flex items-center justify-end gap-0.5'>
                         {documents.length > 0 && (
                           <DocumentsMenu documents={documents}>
@@ -375,8 +396,19 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
       <ContractOrderDialog
         workOrderId={workOrderId}
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={closeDialog}
         editing={editing}
+        onCreated={setDetailsId}
+      />
+      <ContractOrderDetailsDialog
+        workOrderId={workOrderId}
+        orderId={detailsId}
+        onClose={() => setDetailsId(null)}
+        onEdit={(order) => {
+          setReturnToId(order.id);
+          setDetailsId(null);
+          openDialog(order);
+        }}
       />
     </>
   );

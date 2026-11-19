@@ -355,6 +355,7 @@ const AddExpenseDialog = ({
     utils.workOrderSiteQuery.getOilZapperStock.invalidate({ work_order_site_id: workOrderSiteId });
     // A single-expense requirement takes no more once it has one.
     utils.contractOrderQuery.getSiteContractOrderItems.invalidate({ work_order_site_id: workOrderSiteId });
+    utils.contractOrderQuery.getContractOrderDetails.invalidate();
     toast.success(message);
     onSuccess?.();
     onClose();

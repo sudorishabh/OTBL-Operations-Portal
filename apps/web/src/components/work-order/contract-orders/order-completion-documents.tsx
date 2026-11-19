@@ -44,9 +44,14 @@ const OrderCompletionDocuments = ({ workOrderId, order }: Props) => {
       onSuccess: async () => {
         toast.success("Completion documents saved");
         setOpen(false);
-        await utils.contractOrderQuery.getContractOrders.invalidate({
-          work_order_id: workOrderId,
-        });
+        await Promise.all([
+          utils.contractOrderQuery.getContractOrders.invalidate({
+            work_order_id: workOrderId,
+          }),
+          utils.contractOrderQuery.getContractOrderDetails.invalidate({
+            id: order.id,
+          }),
+        ]);
       },
       onError: (error: unknown) => handleError(error, { showToast: true }),
     });

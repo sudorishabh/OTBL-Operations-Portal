@@ -66,6 +66,8 @@ interface Props {
   onClose: () => void;
   // The order being edited; a new one when left out.
   editing?: ContractOrder | null;
+  // Told the id of an order once it is added, to show it.
+  onCreated?: (id: number) => void;
 }
 
 // What a sub-contract can give out; a purchase order only buys oil zapper.
@@ -169,6 +171,7 @@ const ContractOrderDialog = ({
   workOrderId,
   open,
   onClose,
+  onCreated,
   editing,
 }: Props) => {
   const { handleError } = useApiError();
@@ -330,6 +333,7 @@ const ContractOrderDialog = ({
         work_order_id: workOrderId,
       }),
       utils.contractOrderQuery.getSiteContractOrderItems.invalidate(),
+      utils.contractOrderQuery.getContractOrderDetails.invalidate(),
       // A purchase order's cost is recorded at its sites.
       utils.expenseQuery.getExpenses.invalidate(),
       utils.expenseQuery.getExpenseSummary.invalidate(),
@@ -341,7 +345,10 @@ const ContractOrderDialog = ({
 
   const createOrder =
     trpc.contractOrderMutation.createContractOrder.useMutation({
-      onSuccess: () => onSaved("Order added"),
+      onSuccess: (data: { id: number }) => {
+        onSaved("Order added");
+        onCreated?.(data.id);
+      },
       onError,
     });
   const updateOrder =
