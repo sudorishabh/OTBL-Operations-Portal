@@ -21,6 +21,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserMenu } from "@/components/sidebar/user-menu";
+import { usePendingWorkOrderCount } from "@/components/sidebar/use-pending-work-order-count";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { constants } from "@pkg/utils";
@@ -100,16 +102,29 @@ const isLinkActive = (link: string, pathname: string) =>
     ? pathname === "/"
     : pathname === link || pathname.startsWith(`${link}/`);
 
-const NavLink = ({ item, isActive }: { item: NavItem; isActive: boolean }) => {
+// A count beside a link, such as the work orders still pending.
+type NavBadge = { count: number; label: string };
+
+const NavLink = ({
+  item,
+  isActive,
+  badge,
+}: {
+  item: NavItem;
+  isActive: boolean;
+  badge?: NavBadge;
+}) => {
   const { setOpenMobile } = useSidebar();
+  const badgeText =
+    badge && badge.count > 0 ? `${badge.count} ${badge.label}` : undefined;
 
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         asChild
         isActive={isActive}
-        tooltip={item.title}
-        className={ROW_CLASS}>
+        tooltip={badgeText ? `${item.title} · ${badgeText}` : item.title}
+        className={cn(ROW_CLASS, badgeText && "pr-10")}>
         <Link
           href={`/dashboard${item.link}`}
           aria-current={isActive ? "page" : undefined}
@@ -117,9 +132,27 @@ const NavLink = ({ item, isActive }: { item: NavItem; isActive: boolean }) => {
           // phone drawer here too.
           onClick={() => setOpenMobile(false)}>
           <item.icon />
-          <span>{item.title}</span>
+          <span>
+            {item.title}
+            {badgeText && <span className='sr-only'> ({badgeText})</span>}
+          </span>
         </Link>
       </SidebarMenuButton>
+
+      {badge && badgeText && (
+        <>
+          <SidebarMenuBadge
+            aria-hidden='true'
+            className='right-2 h-5 min-w-5 rounded-full bg-amber-400 px-1.5 text-[10.5px] font-semibold text-amber-950 peer-hover/menu-button:text-amber-950 peer-data-[active=true]/menu-button:text-amber-950'>
+            {badge.count > 99 ? "99+" : badge.count}
+          </SidebarMenuBadge>
+          {/* Folded to icons, a dot marks the link instead. */}
+          <span
+            aria-hidden='true'
+            className='pointer-events-none absolute top-0.5 right-0.5 hidden size-2 rounded-full bg-amber-400 ring-2 ring-sidebar group-data-[collapsible=icon]:block'
+          />
+        </>
+      )}
     </SidebarMenuItem>
   );
 };
@@ -164,6 +197,7 @@ function AppSidebar() {
   const pathname = usePathname();
   const { user, isUserLoading } = useAuthContext();
   const { setOpenMobile } = useSidebar();
+  const pendingWorkOrders = usePendingWorkOrderCount();
 
   // On phones the sidebar is a drawer over the page: close it once the user
   // has gone somewhere, from a link, the user menu or the back button.
@@ -190,6 +224,11 @@ function AppSidebar() {
   // Which links show depends on the role, so hold every link's place until
   // the user is known rather than adding some later.
   const groups = isUserLoading ? NAV_GROUPS : visibleGroups;
+
+  // Counts beside the links they belong to, hidden while zero.
+  const badges: Record<string, NavBadge | undefined> = {
+    "/work-order": { count: pendingWorkOrders ?? 0, label: "pending" },
+  };
 
   return (
     <Sidebar
@@ -235,6 +274,7 @@ function AppSidebar() {
                     key={item.title}
                     item={item}
                     isActive={isLinkActive(item.link, page)}
+                    badge={badges[item.link]}
                   />
                 ),
               )}
