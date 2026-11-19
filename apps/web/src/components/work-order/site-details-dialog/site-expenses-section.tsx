@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useDebounce } from "@/hooks/useDebounce";
 import { capitalFirstLetter, constants } from "@pkg/utils";
 import {
   Table,
@@ -10,13 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,6 +72,15 @@ import { differenceInCalendarDays, format, isSameDay } from "date-fns";
 import { formatDateRange } from "@/lib/wo-site-display";
 import { ExpenseGroupsSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 import VendorMonthlyExpensesDialog from "./vendor-monthly-expenses-dialog";
+import ExpenseFilterBar from "./expense-filter-bar";
+import {
+  NO_EXPENSE_FILTERS,
+  hasApiFilters,
+  orderGroups,
+  toApiFilters,
+  type ExpenseListFilters,
+  type ExpenseSort,
+} from "./expense-list-filters";
 
 type ExpenseRecord = {
   id: number;
@@ -123,6 +127,7 @@ type SiteOrderItem = {
   unit_rate: string | null;
   order_type: string;
   order_code: string;
+  order_date: string | Date;
   // Its sub-contract takes one expense per requirement.
   single_expense: boolean;
   // The expenses recorded against it at the site.
@@ -259,7 +264,18 @@ const SiteExpensesSection = ({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   // The expense whose full details are open under its row.
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [activityFilter, setActivityFilter] = useState<string>("__all__");
+  // The list's search, filters and order, which the server applies, so they
+  // hold across every page and the totals.
+  const [filters, setFilters] = useState<ExpenseListFilters>(NO_EXPENSE_FILTERS);
+  const [sort, setSort] = useState<ExpenseSort>("newest");
+  const debouncedSearch = useDebounce(filters.search, 300);
+  const apiFilters = useMemo(
+    () => toApiFilters(filters, debouncedSearch),
+    [filters, debouncedSearch],
+  );
+  const isFiltered = hasApiFilters(apiFilters);
+  // Changes whenever the server's list would.
+  const listKey = JSON.stringify({ ...apiFilters, sort });
   // What a new expense starts under, when added from a vendor or from
   // Miscellaneous.
   const [addUnder, setAddUnder] = useState<number | "miscellaneous" | null>(null);
@@ -285,9 +301,10 @@ const SiteExpensesSection = ({
     setExpensesPagination(null);
   };
 
+  // Another site, filter or order starts the list again.
   useEffect(() => {
     resetExpenseList();
-  }, [woSiteId]);
+  }, [woSiteId, listKey]);
 
   const siteActivitiesQuery = trpc.workOrderSiteQuery.getSiteActivities.useQuery(
     { work_order_site_id: woSiteId },
@@ -314,7 +331,7 @@ const SiteExpensesSection = ({
   const jobOrders = (jobOrdersQuery.data ?? []) as JobOrder[];
 
   const expensesQuery = trpc.expenseQuery.getExpenses.useQuery(
-    { work_order_site_id: woSiteId, page: expensePage },
+    { work_order_site_id: woSiteId, page: expensePage, ...apiFilters, sort },
     { enabled: !!woSiteId },
   );
 
@@ -335,13 +352,22 @@ const SiteExpensesSection = ({
     { enabled: !!woSiteId },
   );
 
+  // What the filters leave, for the groups' totals while filtering.
+  const filteredSummaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery(
+    { work_order_site_id: woSiteId, ...apiFilters },
+    { enabled: !!woSiteId && isFiltered, placeholderData: keepPreviousData },
+  );
+
   const deleteExpenseMutation = trpc.expenseMutation.deleteExpense.useMutation();
 
   const expenses: Expense[] = expensesList;
   const summary = summaryQuery.data;
+  const groupSummary = isFiltered ? filteredSummaryQuery.data : summary;
   const expenseTotal = summary?.grandTotal ?? 0;
-  // Every expense, including those on pages not loaded yet.
-  const entryCount = expensesPagination?.total ?? expensesList.length;
+  // Every expense the filters leave, including those on pages not loaded
+  // yet; from the totals, which keep their last count while the list reloads.
+  const entryCount =
+    groupSummary?.expenseCount ?? expensesPagination?.total ?? expensesList.length;
   const exceededTotal = summary?.exceededTotal ?? 0;
 
   const isBioremediation = processType === "bioremediation";
@@ -440,7 +466,7 @@ const SiteExpensesSection = ({
     }
   };
 
-  // Newest first, narrowed to the chosen activity.
+  // In the order, and narrowed by the filters, the server sent them.
   const records = useMemo(() => {
     const activityMetaByKey: Record<string, { label: string; unit: string | null }> = {};
     for (const a of activityOptions) {
@@ -481,12 +507,8 @@ const SiteExpensesSection = ({
         recordedAt: exp.created_at ?? null,
       };
     });
-    all.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-
-    if (activityFilter === "__all__") return all;
-    const filterKey = activityFilter === "__none__" ? null : activityFilter;
-    return all.filter((r) => r.activityKey === filterKey);
-  }, [expenses, activityOptions, activityFilter, orderItems]);
+    return all;
+  }, [expenses, activityOptions, orderItems]);
 
   // An expense row. Its edit and delete are off when it is locked, such as on
   // a closed job order, saying why.
@@ -744,9 +766,9 @@ const SiteExpensesSection = ({
 
   // Bioremediation totals per order requirement, and per vendor under it.
   const orderItemTotal = (itemId: number): number =>
-    summary?.byOrderItem?.[String(itemId)] ?? 0;
+    groupSummary?.byOrderItem?.[String(itemId)] ?? 0;
   const orderItemVendorTotal = (itemId: number, vendorId: number): number =>
-    summary?.byOrderItemVendor?.[`${itemId}:${vendorId}`] ?? 0;
+    groupSummary?.byOrderItemVendor?.[`${itemId}:${vendorId}`] ?? 0;
 
   const toggleGroup = (key: string) =>
     setToggledGroups((prev) => {
@@ -1093,7 +1115,7 @@ const SiteExpensesSection = ({
         sum + section.groups.reduce((groupSum, group) => groupSum + group.total, 0),
       0,
     );
-    const miscellaneousTotal = summary?.byContractor?.none ?? 0;
+    const miscellaneousTotal = groupSummary?.byContractor?.none ?? 0;
 
     const sectionNodes = sections.map((section) => (
       <section
@@ -1118,7 +1140,7 @@ const SiteExpensesSection = ({
           Icon: HardHat,
           title: unassignedTitle,
           meta: `${unassignedRecords.length} expense${unassignedRecords.length !== 1 ? "s" : ""}`,
-          total: expenseTotal - miscellaneousTotal - groupedTotal,
+          total: (groupSummary?.grandTotal ?? 0) - miscellaneousTotal - groupedTotal,
         })}
         {renderRecordsBox(unassignedRecords)}
       </section>
@@ -1271,6 +1293,51 @@ const SiteExpensesSection = ({
         : `Job order ${dialogJobOrder.jo_number} gives out none of the schedule of rates activities. Edit the job order to add them.`
       : undefined;
 
+  // Every vendor the site's expenses may be under: those on its job orders
+  // or orders, and any a loaded expense names.
+  const vendorOptions = useMemo(() => {
+    const names = new Map<number, string>();
+    for (const jobOrder of jobOrders) {
+      for (const vendor of jobOrder.vendors) names.set(vendor.id, vendor.name);
+    }
+    for (const item of orderItems) {
+      for (const vendor of item.vendors) names.set(vendor.id, vendor.name);
+    }
+    for (const expense of expenses) {
+      if (expense.contractor_id && expense.contractor_name) {
+        names.set(expense.contractor_id, expense.contractor_name);
+      }
+    }
+    return [...names]
+      .map(([id, name]) => ({ value: String(id), label: capitalFirstLetter(name) }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [jobOrders, orderItems, expenses]);
+  // The bar shows once there is anything to filter or put in order.
+  const hasAnythingToList =
+    Object.keys(summary?.byContractor ?? {}).length > 0 ||
+    jobOrders.length > 0 ||
+    orderItems.length > 0;
+
+  // While filtering, only the groups with an expense the filters leave.
+  const hasFilteredExpenses = (totals: Record<string, number> | undefined, id: number) =>
+    !isFiltered || String(id) in (totals ?? {});
+  const shownJobOrders = orderGroups(
+    jobOrders.filter((jobOrder) => hasFilteredExpenses(groupSummary?.byJobOrder, jobOrder.id)),
+    sort,
+    (jobOrder) => jobOrder.start_date,
+    (jobOrder) => groupSummary?.byJobOrder?.[String(jobOrder.id)] ?? 0,
+  );
+  const shownOrders = (type: string) =>
+    orderGroups(
+      itemsByOrder(orderItems, type).filter((items) =>
+        items.some((item) => hasFilteredExpenses(groupSummary?.byOrderItem, item.id)),
+      ),
+      sort,
+      (items) => items[0]!.order_date,
+      (items) => items.reduce((sum, item) => sum + orderItemTotal(item.id), 0),
+    );
+  const noMatchText = "No expenses match these filters.";
+
   const emptyGroupText = (text: string) => (
     <p className='rounded-lg border border-dashed border-gray-200 px-3 py-2.5 text-xs text-gray-400'>
       {text}
@@ -1368,29 +1435,14 @@ const SiteExpensesSection = ({
           </div>
           <p className='mt-0.5 text-xs text-gray-500'>
             <span className='font-semibold tabular-nums text-gray-900'>
-              {formatCurrency(expenseTotal)}
+              {formatCurrency(isFiltered ? (groupSummary?.grandTotal ?? 0) : expenseTotal)}
             </span>{" "}
-            spent across {entryCount} expense{entryCount !== 1 ? "s" : ""}
+            {isFiltered
+              ? `across ${entryCount} matching expense${entryCount !== 1 ? "s" : ""}, of ${formatCurrency(expenseTotal)} in all`
+              : `spent across ${entryCount} expense${entryCount !== 1 ? "s" : ""}`}
           </p>
         </div>
         <div className='flex flex-wrap items-center gap-2'>
-          {/* Bioremediation's one activity leaves nothing to filter by. */}
-          {!isBioremediation && (
-            <Select value={activityFilter} onValueChange={setActivityFilter}>
-              <SelectTrigger className='h-8 w-full text-xs sm:w-48'>
-                <SelectValue placeholder='Filter by activity' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='__all__' className='text-sm'>All activities</SelectItem>
-                <SelectItem value='__none__' className='text-sm'>Other / Unlinked</SelectItem>
-                {activityOptions.map((a) => (
-                  <SelectItem key={a.key} value={a.key} className='text-sm'>
-                    {a.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
           <CustomButton
             text='Monthly expenses'
             variant='outline'
@@ -1414,19 +1466,40 @@ const SiteExpensesSection = ({
         </div>
       </div>
 
+      {(hasAnythingToList || isFiltered) && (
+        <ExpenseFilterBar
+          filters={filters}
+          onChange={setFilters}
+          sort={sort}
+          onSortChange={setSort}
+          vendors={vendorOptions}
+          hasNoVendor={summary?.byContractor?.none !== undefined}
+          // Bioremediation's one activity leaves nothing to filter by.
+          activities={
+            isBioremediation
+              ? undefined
+              : activityOptions.map((a) => ({ value: a.key, label: a.label }))
+          }
+          hasExceeded={exceededTotal > 0}
+          isFiltered={isFiltered}
+        />
+      )}
+
       {expensesQuery.isLoading && expensePage === 1 ? (
         <ExpenseGroupsSkeleton />
       ) : isBioremediation ? (
         renderGroupedExpenses({
           // A card per order, however many of its items are at the site.
           sections: ORDER_GROUPS.map(({ type, title, noun, Icon }) => {
-            const orders = itemsByOrder(orderItems, type);
+            const orders = shownOrders(type);
             return {
               key: type,
               Icon,
               title,
               meta: `${orders.length} ${noun}${orders.length !== 1 ? "s" : ""}`,
-              emptyText: "No orders require anything at this site yet.",
+              emptyText: isFiltered
+                ? noMatchText
+                : "No orders require anything at this site yet.",
               groups: orders.map(toOrderGroup),
             };
           }),
@@ -1441,19 +1514,21 @@ const SiteExpensesSection = ({
               key: "job-orders",
               Icon: ClipboardList,
               title: "Job orders",
-              meta: `${jobOrders.length} job order${jobOrders.length !== 1 ? "s" : ""}`,
-              emptyText: "No job orders yet. Add one to record vendor expenses on it.",
-              groups: jobOrders.map((jobOrder) => ({
+              meta: `${shownJobOrders.length} job order${shownJobOrders.length !== 1 ? "s" : ""}`,
+              emptyText: isFiltered
+                ? noMatchText
+                : "No job orders yet. Add one to record vendor expenses on it.",
+              groups: shownJobOrders.map((jobOrder) => ({
                 key: `job-order-${jobOrder.id}`,
                 badge: jobOrder.jo_number,
                 badgeNode: <JobOrderChip jobOrder={jobOrder} />,
                 title: jobOrderPlace(jobOrder),
                 meta: formatDateRange(jobOrder.start_date, jobOrder.end_date),
-                total: summary?.byJobOrder?.[String(jobOrder.id)] ?? 0,
+                total: groupSummary?.byJobOrder?.[String(jobOrder.id)] ?? 0,
                 vendors: jobOrder.vendors,
                 records: records.filter((r) => r.jobOrderId === jobOrder.id),
                 vendorTotal: (vendorId: number) =>
-                  summary?.byJobOrderVendor?.[`${jobOrder.id}:${vendorId}`] ?? 0,
+                  groupSummary?.byJobOrderVendor?.[`${jobOrder.id}:${vendorId}`] ?? 0,
                 onAdd: () => openAddExpense(null, null, jobOrder.id),
                 closedNote: isJobOrderClosed(jobOrder)
                   ? `Closed, as ${jobOrder.jo_number}'s completion certificate is uploaded. Remove the certificate to reopen it.`
@@ -1469,10 +1544,14 @@ const SiteExpensesSection = ({
       ) : records.length === 0 ? (
         <div className='text-center py-10 border border-dashed rounded-xl bg-gray-50/30'>
           <ReceiptIndianRupee className='w-8 h-8 text-gray-300 mx-auto mb-2' />
-          <p className='text-sm text-gray-500 font-medium'>No expenses yet</p>
-          <p className='text-xs text-gray-400 mt-1'>
-            Click &quot;Add Expense&quot; to record the first expense for this site.
+          <p className='text-sm text-gray-500 font-medium'>
+            {isFiltered ? noMatchText : "No expenses yet"}
           </p>
+          {!isFiltered && (
+            <p className='text-xs text-gray-400 mt-1'>
+              Click &quot;Add Expense&quot; to record the first expense for this site.
+            </p>
+          )}
         </div>
       ) : (
         <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
