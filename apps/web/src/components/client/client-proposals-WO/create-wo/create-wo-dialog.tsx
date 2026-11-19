@@ -19,10 +19,11 @@ import StepperCreateWO from "./stepper-create-wo";
 import { z } from "zod";
 
 // Documents are picked as files and uploaded on submit, so the form omits them.
-// Its schedule of rates holds the activities picked, as the API checks.
-const workOrderFormSchema = workOrderSchemas.baseWorkOrderSchema
-  .omit({ documents: true })
-  .superRefine(workOrderSchemas.checkScheduleOfRatesActivities);
+// Which activities the schedule of rates may hold, the step only lets the
+// user pick within, and the API checks again.
+const workOrderFormSchema = workOrderSchemas.baseWorkOrderSchema.omit({
+  documents: true,
+});
 type WorkOrderFormInput = z.input<typeof workOrderFormSchema>;
 type WorkOrderFormValues = z.output<typeof workOrderFormSchema>;
 
