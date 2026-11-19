@@ -13,7 +13,7 @@ import {
   type ProposalFilters,
   type WorkOrderFilter,
 } from "./use-proposal-filters";
-import SubmittedDateFilter from "./submitted-date-filter";
+import DateRangeFilter from "@/components/filters/date-range-filter";
 
 const PROPOSAL_STATUS_OPTIONS = [
   { label: "All proposals", value: "all" },
@@ -93,7 +93,8 @@ const ProposalWOFilters = ({
         }
         className='h-8! w-36 text-xs'
       />
-      <SubmittedDateFilter
+      <DateRangeFilter
+        label='Submitted'
         from={filters.submittedFrom}
         to={filters.submittedTo}
         onChange={(from, to) => {
