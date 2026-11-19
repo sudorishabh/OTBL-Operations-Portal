@@ -11,25 +11,35 @@ import {
 import { cn } from "@/lib/utils";
 
 interface Props {
+  /** What the dates are, such as "Submitted". */
+  label: string;
   // YYYY-MM-DD, both ends included.
   from?: string;
   to?: string;
   onChange: (from?: string, to?: string) => void;
+  align?: "start" | "end";
 }
 
 const toDay = (date?: Date) => (date ? format(date, "yyyy-MM-dd") : undefined);
-const label = (day: string) => format(parseISO(day), "d MMM yy");
+const dayLabel = (day: string) => format(parseISO(day), "d MMM yy");
 
-// A range of submission dates, picked on a two-month calendar.
-const SubmittedDateFilter = ({ from, to, onChange }: Props) => {
+// A range of dates, such as when proposals were submitted, picked on a
+// two-month calendar.
+const DateRangeFilter = ({
+  label,
+  from,
+  to,
+  onChange,
+  align = "end",
+}: Props) => {
   const selected: DateRange | undefined = from
     ? { from: parseISO(from), to: to ? parseISO(to) : undefined }
     : undefined;
   const summary = !from
     ? "Any date"
     : !to || to === from
-      ? label(from)
-      : `${label(from)} – ${label(to)}`;
+      ? dayLabel(from)
+      : `${dayLabel(from)} – ${dayLabel(to)}`;
 
   return (
     <Popover>
@@ -41,12 +51,12 @@ const SubmittedDateFilter = ({ from, to, onChange }: Props) => {
             from ? "border-emerald-300" : "border-input",
           )}>
           <CalendarDays className='size-3.5 text-gray-400' />
-          <span className='text-gray-500'>Submitted</span>
+          <span className='text-gray-500'>{label}</span>
           <span className='font-medium text-gray-800'>{summary}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent
-        align='end'
+        align={align}
         className='w-auto p-0'>
         <Calendar
           mode='range'
@@ -71,4 +81,4 @@ const SubmittedDateFilter = ({ from, to, onChange }: Props) => {
   );
 };
 
-export default SubmittedDateFilter;
+export default DateRangeFilter;
