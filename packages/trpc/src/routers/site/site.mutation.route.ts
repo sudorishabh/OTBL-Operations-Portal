@@ -4,7 +4,7 @@ import { router } from "../../trpc";
 import { protectedProcedure } from "../../middleware";
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
-import { assertOfficeManager } from "../../helper/office-permissions";
+import { assertOfficeMember } from "../../helper/office-permissions";
 import { siteSchemas } from "@pkg/schema";
 import { CODE_PREFIX } from "@pkg/utils";
 import { nextCode } from "../../helper/record-code";
@@ -14,7 +14,7 @@ const { siteTable } = schema;
 export const siteMutationRouter = router({
   createSite: protectedProcedure.input(siteSchemas.createSiteSchema).mutation(
     handleMutation(async ({ input, ctx }) => {
-      await assertOfficeManager(ctx, input.office_id);
+      await assertOfficeMember(ctx, input.office_id);
 
       try {
         const [createdSite] = await ctx.db.transaction(async (tx) => {
@@ -52,7 +52,7 @@ export const siteMutationRouter = router({
         throw notFound("Site", input.siteId);
       }
 
-      await assertOfficeManager(ctx, existingSite[0]!.office_id);
+      await assertOfficeMember(ctx, existingSite[0]!.office_id);
 
       try {
         await ctx.db

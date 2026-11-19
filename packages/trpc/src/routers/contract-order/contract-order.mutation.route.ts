@@ -4,7 +4,7 @@ import { CODE_PREFIX, constants } from "@pkg/utils";
 import { contractOrderSchemas } from "@pkg/schema";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { assertOfficeManager } from "../../helper/office-permissions";
+import { assertOfficeMember } from "../../helper/office-permissions";
 import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { nextCode } from "../../helper/record-code";
@@ -129,7 +129,7 @@ const oilZapperChanges = (
   return changes;
 };
 
-// Only the office manager of the work order's office gives out its orders.
+// Only the work order's office operators and admins give out its orders.
 async function assertManagesWorkOrder(ctx: TrpcContext, workOrderId: number) {
   const [workOrder] = await ctx.db
     .select({ office_id: workOrderTable.office_id })
@@ -139,7 +139,7 @@ async function assertManagesWorkOrder(ctx: TrpcContext, workOrderId: number) {
   if (!workOrder) {
     throw notFound("Work order", workOrderId);
   }
-  await assertOfficeManager(ctx, workOrder.office_id);
+  await assertOfficeMember(ctx, workOrder.office_id);
 }
 
 // An order's requirements must be at the work order's bioremediation sites,

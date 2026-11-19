@@ -12,7 +12,7 @@ import {
   businessRule,
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
-import { assertOfficeManager } from "../../helper/office-permissions";
+import { assertOfficeMember } from "../../helper/office-permissions";
 import { nextCode } from "../../helper/record-code";
 import {
   coversRestoration,
@@ -430,7 +430,7 @@ export const workOrderMutationRouter = router({
               .where(eq(workOrderTable.id, input.work_order_id));
             const officeId = woOffice?.office_id as number;
 
-            await assertOfficeManager(ctx, officeId);
+            await assertOfficeMember(ctx, officeId);
 
             const [siteResult] = await tx.insert(siteTable).values({
               ...input.new_site,

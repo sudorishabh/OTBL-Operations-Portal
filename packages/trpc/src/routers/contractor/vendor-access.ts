@@ -23,12 +23,11 @@ export async function assertCanUseVendors(ctx: TrpcContext) {
 }
 
 // Editing or deleting a vendor changes it for every office, so only admins
-// and office managers can.
+// can.
 export function assertCanManageVendors(ctx: TrpcContext) {
-  const role = ctx.user!.role;
-  if (role !== USER_ROLES.ADMIN && role !== USER_ROLES.MANAGER) {
+  if (ctx.user!.role !== USER_ROLES.ADMIN) {
     throw forbidden("change vendors", {
-      userMessage: "Only admins and office managers can change vendors.",
+      userMessage: "Only admins can change vendors.",
     });
   }
 }

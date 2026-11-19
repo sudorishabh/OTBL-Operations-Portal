@@ -4,7 +4,7 @@ import { constants } from "@pkg/utils";
 import { jobOrderSchemas, type jobOrderTypes } from "@pkg/schema";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { assertOfficeManager } from "../../helper/office-permissions";
+import { assertOfficeMember } from "../../helper/office-permissions";
 import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import type { TrpcContext } from "../../context";
@@ -20,8 +20,8 @@ const {
 } = schema;
 const { WO_PROCESS } = constants;
 
-// Job orders belong to a work order's restoration row, and only the office
-// manager of the work order's office gives them out.
+// Job orders belong to a work order's restoration row, and only the work
+// order's office operators and admins give them out.
 async function assertManagesRestoration(
   ctx: TrpcContext,
   workOrderSiteId: number,
@@ -45,7 +45,7 @@ async function assertManagesRestoration(
   if (row.process_type !== WO_PROCESS.RESTORATION || row.site_id !== null) {
     throw businessRule("Job orders are only given out under restoration.");
   }
-  await assertOfficeManager(ctx, row.office_id);
+  await assertOfficeMember(ctx, row.office_id);
 }
 
 async function getJobOrder(ctx: TrpcContext, id: number) {

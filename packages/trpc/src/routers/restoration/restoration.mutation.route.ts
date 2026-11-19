@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { assertOfficeManager } from "../../helper/office-permissions";
+import { assertOfficeMember } from "../../helper/office-permissions";
 import { businessRule, fromDatabaseError, notFound } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
@@ -40,7 +40,7 @@ export const restorationMutationRouter = router({
           throw notFound("Work order", input.work_order_id);
         }
 
-        await assertOfficeManager(ctx, workOrder.office_id);
+        await assertOfficeMember(ctx, workOrder.office_id);
 
         if (!coversRestoration(workOrder.process_type)) {
           throw businessRule("This work order doesn't include restoration.");

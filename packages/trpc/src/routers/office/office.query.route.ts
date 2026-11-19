@@ -244,7 +244,11 @@ export const officeQueryRouter = router({
             latestSites: latestSites
               .filter((site) => site.office_id === office.id)
               .map(({ office_id, ...site }) => site),
-            canManage: isAdmin || manager?.id === currentUserId,
+            // Admins change the office and its members; its operators and
+            // admins look after its sites.
+            canManage: isAdmin,
+            canEditSites:
+              isAdmin || users.some((user) => user.id === currentUserId),
           };
         });
 
@@ -299,6 +303,7 @@ export const officeQueryRouter = router({
 
       try {
         const currentUserId = Number(ctx.user!.sub);
+        const isAdmin = ctx.user!.role === ROLES.ADMIN;
         const scope = await getAccessScope(
           ctx.db,
           currentUserId,
@@ -426,8 +431,9 @@ export const officeQueryRouter = router({
           office,
           manager,
           operators,
-          canManage:
-            ctx.user!.role === ROLES.ADMIN || manager?.id === currentUserId,
+          canManage: isAdmin,
+          canEditSites:
+            isAdmin || members.some((member) => member.id === currentUserId),
           sites,
           workOrders,
           totalBudgetAmount,

@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { CODE_PREFIX, constants } from "@pkg/utils";
 import { router } from "../../trpc";
-import { adminProcedure, protectedProcedure } from "../../middleware";
+import { adminProcedure } from "../../middleware";
 import { officeSchemas } from "@pkg/schema";
 import {
   notFound,
@@ -13,7 +13,6 @@ import {
 } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { nextCode } from "../../helper/record-code";
-import { assertOfficeManager } from "../../helper/office-permissions";
 
 const { officeTable, officeUserTable, userTable } = schema;
 const { ROLES } = constants;
@@ -111,7 +110,8 @@ export const officeMutationRouter = router({
     }),
   ),
 
-  updateOffice: protectedProcedure
+  // Only admins change an office's details and who works there.
+  updateOffice: adminProcedure
     .input(officeSchemas.updateOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
@@ -126,9 +126,6 @@ export const officeMutationRouter = router({
           throw notFound("Office", id);
         }
 
-        // global managerProcedure let any manager update any office.
-        await assertOfficeManager(ctx, id);
-
         try {
           await ctx.db
             .update(officeTable)
@@ -141,21 +138,12 @@ export const officeMutationRouter = router({
       }),
     ),
 
-  assignUserToOffice: protectedProcedure
+  assignUserToOffice: adminProcedure
     .input(officeSchemas.assignUserToOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { office_id, user_id, role } = input;
         const userId = parseInt(ctx.user!.sub);
-
-        await assertOfficeManager(ctx, office_id);
-
-        if (role === ROLES.MANAGER && ctx.user!.role !== ROLES.ADMIN) {
-          throw forbidden("assign a manager to this office", {
-            userMessage:
-              "Only an admin can assign an office's manager. Office managers can only add or remove office operators.",
-          });
-        }
 
         const [office] = await ctx.db
           .select()
@@ -236,13 +224,11 @@ export const officeMutationRouter = router({
       }),
     ),
 
-  removeUserFromOffice: protectedProcedure
+  removeUserFromOffice: adminProcedure
     .input(officeSchemas.expelUserFromOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
         const { office_id, user_id } = input;
-
-        await assertOfficeManager(ctx, office_id);
 
         const assignments = await ctx.db
           .select()
@@ -257,13 +243,6 @@ export const officeMutationRouter = router({
         if (!assignments[0]) {
           throw notFound("User assignment", undefined, {
             userMessage: "This user is not assigned to this office.",
-          });
-        }
-
-        if (assignments[0].role === ROLES.MANAGER && ctx.user!.role !== ROLES.ADMIN) {
-          throw forbidden("remove the manager from this office", {
-            userMessage:
-              "Only an admin can remove an office's manager. Office managers can only add or remove office operators.",
           });
         }
 
