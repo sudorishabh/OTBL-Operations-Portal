@@ -300,7 +300,10 @@ const ScheduleOfRatesTable = ({
             description='Approved rates and quantities, and what the work has used of each'
             action={
               isAdmin && (
-                <EditScheduleOfRatesDialog scheduleOfRates={scheduleOfRates} />
+                <EditScheduleOfRatesDialog
+                  scheduleOfRates={scheduleOfRates}
+                  usedQuantity={certificatesLoading ? undefined : usage.used}
+                />
               )
             }
           />
