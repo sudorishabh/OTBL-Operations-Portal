@@ -9,7 +9,7 @@ import {
   assertCanAccessWorkOrderSite,
   getAccessScope,
 } from "../../access-scope";
-import { fromDatabaseError } from "../../errors";
+import { fromDatabaseError, notFound } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { codeMatches } from "../../helper/record-code";
@@ -23,6 +23,7 @@ const {
   contractOrderTable,
   contractOrderItemTable,
   contractOrderContractorTable,
+  workOrderSiteExpenseTable,
 } = schema;
 
 const accessScope = (ctx: TrpcContext) =>
@@ -57,6 +58,32 @@ async function vendorsByOrder(ctx: TrpcContext, orderIds: number[]) {
     byOrder.set(row.contract_order_id, vendors);
   }
   return byOrder;
+}
+
+// What the given orders require at each of their sites, by site name.
+async function itemsOfOrders(ctx: TrpcContext, orderIds: number[]) {
+  if (orderIds.length === 0) return [];
+  return ctx.db
+    .select({
+      id: contractOrderItemTable.id,
+      contract_order_id: contractOrderItemTable.contract_order_id,
+      work_order_site_id: contractOrderItemTable.work_order_site_id,
+      site_code: siteTable.code,
+      site_name: siteTable.name,
+      item: contractOrderItemTable.item,
+      description: contractOrderItemTable.description,
+      quantity: contractOrderItemTable.quantity,
+      unit: contractOrderItemTable.unit,
+      unit_rate: contractOrderItemTable.unit_rate,
+    })
+    .from(contractOrderItemTable)
+    .innerJoin(
+      workOrderSiteTable,
+      eq(contractOrderItemTable.work_order_site_id, workOrderSiteTable.id),
+    )
+    .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+    .where(inArray(contractOrderItemTable.contract_order_id, orderIds))
+    .orderBy(asc(siteTable.name), asc(contractOrderItemTable.id));
 }
 
 export const contractOrderQueryRouter = router({
@@ -150,28 +177,7 @@ export const contractOrderQueryRouter = router({
           const orderIds = orders.map((order) => order.id);
           if (orderIds.length === 0) return [];
 
-          const items = await ctx.db
-            .select({
-              id: contractOrderItemTable.id,
-              contract_order_id: contractOrderItemTable.contract_order_id,
-              work_order_site_id: contractOrderItemTable.work_order_site_id,
-              site_code: siteTable.code,
-              site_name: siteTable.name,
-              item: contractOrderItemTable.item,
-              description: contractOrderItemTable.description,
-              quantity: contractOrderItemTable.quantity,
-              unit: contractOrderItemTable.unit,
-              unit_rate: contractOrderItemTable.unit_rate,
-            })
-            .from(contractOrderItemTable)
-            .innerJoin(
-              workOrderSiteTable,
-              eq(contractOrderItemTable.work_order_site_id, workOrderSiteTable.id),
-            )
-            .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
-            .where(inArray(contractOrderItemTable.contract_order_id, orderIds))
-            .orderBy(asc(siteTable.name), asc(contractOrderItemTable.id));
-
+          const items = await itemsOfOrders(ctx, orderIds);
           const vendors = await vendorsByOrder(ctx, orderIds);
 
           return orders.map((order) => ({
@@ -182,6 +188,88 @@ export const contractOrderQueryRouter = router({
           }));
         } catch (error) {
           throw fromDatabaseError(error, "Fetching contract orders");
+        }
+      }),
+    ),
+
+  // One order with everything about it: what it requires at each site, its
+  // vendors, and every expense recorded against it, newest first. A
+  // purchase order's own expenses, recorded from its rate, are among them.
+  getContractOrderDetails: protectedProcedure
+    .input(contractOrderSchemas.contractOrderIdSchema)
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const [order] = await ctx.db
+          .select()
+          .from(contractOrderTable)
+          .where(eq(contractOrderTable.id, input.id));
+        if (!order) throw notFound("Contract order", input.id);
+
+        await assertCanAccessWorkOrder(
+          ctx.db,
+          await accessScope(ctx),
+          order.work_order_id,
+        );
+
+        try {
+          const items = await itemsOfOrders(ctx, [order.id]);
+          const vendors = await vendorsByOrder(ctx, [order.id]);
+          const itemIds = items.map((item) => item.id);
+
+          const expenses =
+            itemIds.length === 0
+              ? []
+              : await ctx.db
+                  .select({
+                    id: workOrderSiteExpenseTable.id,
+                    contract_order_item_id:
+                      workOrderSiteExpenseTable.contract_order_item_id,
+                    work_order_site_id:
+                      workOrderSiteExpenseTable.work_order_site_id,
+                    title: workOrderSiteExpenseTable.title,
+                    amount: workOrderSiteExpenseTable.amount,
+                    quantity: workOrderSiteExpenseTable.quantity,
+                    start_date: workOrderSiteExpenseTable.start_date,
+                    end_date: workOrderSiteExpenseTable.end_date,
+                    invoice_number: workOrderSiteExpenseTable.invoice_number,
+                    is_exceeded: workOrderSiteExpenseTable.is_exceeded,
+                    from_order: workOrderSiteExpenseTable.from_order,
+                    documents: workOrderSiteExpenseTable.documents,
+                    vendor_id: contractorTable.id,
+                    vendor_name: contractorTable.name,
+                  })
+                  .from(workOrderSiteExpenseTable)
+                  .leftJoin(
+                    contractorTable,
+                    eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
+                  )
+                  .where(
+                    inArray(
+                      workOrderSiteExpenseTable.contract_order_item_id,
+                      itemIds,
+                    ),
+                  )
+                  .orderBy(
+                    desc(workOrderSiteExpenseTable.start_date),
+                    desc(workOrderSiteExpenseTable.id),
+                  );
+
+          return {
+            ...order,
+            single_expense: !!order.single_expense,
+            items,
+            vendors: vendors.get(order.id) ?? [],
+            expenses: expenses.map((expense) => ({
+              ...expense,
+              amount: Number(expense.amount),
+              quantity:
+                expense.quantity === null ? null : Number(expense.quantity),
+              is_exceeded: !!expense.is_exceeded,
+              from_order: !!expense.from_order,
+            })),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching contract order details");
         }
       }),
     ),

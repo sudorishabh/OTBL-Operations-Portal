@@ -15,7 +15,7 @@ import {
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
-import type { ContractOrder } from "./contract-orders-section";
+import type { ContractOrder } from "./contract-order-display";
 
 interface Props {
   workOrderId: number;
@@ -44,9 +44,14 @@ const OrderCompletionDocuments = ({ workOrderId, order }: Props) => {
       onSuccess: async () => {
         toast.success("Completion documents saved");
         setOpen(false);
-        await utils.contractOrderQuery.getContractOrders.invalidate({
-          work_order_id: workOrderId,
-        });
+        await Promise.all([
+          utils.contractOrderQuery.getContractOrders.invalidate({
+            work_order_id: workOrderId,
+          }),
+          utils.contractOrderQuery.getContractOrderDetails.invalidate({
+            id: order.id,
+          }),
+        ]);
       },
       onError: (error: unknown) => handleError(error, { showToast: true }),
     });

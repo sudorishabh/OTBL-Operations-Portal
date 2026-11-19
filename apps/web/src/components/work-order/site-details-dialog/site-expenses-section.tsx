@@ -54,7 +54,7 @@ import DocumentsMenu from "@/components/shared/documents-menu";
 import {
   itemLabel,
   rateLabel,
-} from "../contract-orders/contract-orders-section";
+} from "../contract-orders/contract-order-display";
 import type { JobOrder } from "../restoration/job-order-dialog";
 import JobOrderChip from "../restoration/job-order-chip";
 import {
@@ -458,6 +458,7 @@ const SiteExpensesSection = ({
       utils.workOrderSiteQuery.getOilZapperStock.invalidate({ work_order_site_id: woSiteId });
       // A single-expense requirement takes one again once its one is gone.
       utils.contractOrderQuery.getSiteContractOrderItems.invalidate({ work_order_site_id: woSiteId });
+      utils.contractOrderQuery.getContractOrderDetails.invalidate();
       toast.success("Expense deleted");
     } catch (e: any) {
       toast.error(e?.message || "Failed to delete expense");

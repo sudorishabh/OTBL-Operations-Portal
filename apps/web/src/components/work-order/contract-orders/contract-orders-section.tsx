@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import ContractOrderDialog from "./contract-order-dialog";
+import ContractOrderDetailsDialog from "./contract-order-details-dialog";
 import ContractOrderFilterBar from "./contract-order-filter-bar";
 import {
   NO_ORDER_FILTERS,
@@ -38,42 +39,20 @@ import {
   type OrderFilters,
   type OrderSort,
 } from "./contract-order-filters";
+import {
+  ORDER_TYPES,
+  formatAmount,
+  itemLabel,
+  orderTypeOf,
+  purchaseOrderCost,
+  requirementTerms,
+  requirementsBySite,
+  type ContractOrder,
+} from "./contract-order-display";
 import OrderCompletionDocuments from "./order-completion-documents";
 import ContractOrdersSkeleton from "@/components/skeleton/work-order/contract-orders-skeleton";
 
-const { CONTRACT_ORDER_TYPE, CONTRACT_ORDER_ITEMS, OIL_ZAPPER } = constants;
-
-export interface ContractOrder {
-  id: number;
-  type: "purchase_order" | "sub_contract";
-  // Its code, and the number typed for an order added before codes were.
-  code: string;
-  order_number: string | null;
-  order_date: string | Date;
-  description: string | null;
-  // A purchase order's cost; none on a sub-contract.
-  unit_rate: string | null;
-  gst_percentage: string | null;
-  invoice_number: string | null;
-  // A sub-contract whose requirements each take one expense at the site.
-  single_expense: boolean;
-  documents: unknown;
-  completion_documents: unknown;
-  items: {
-    id: number;
-    work_order_site_id: number;
-    site_code?: string | null;
-    site_name: string | null;
-    item: string;
-    description: string | null;
-    // A purchase order's oil zapper for the site.
-    quantity: string | null;
-    unit: string;
-    // A sub-contract requirement's rate per unit.
-    unit_rate: string | null;
-  }[];
-  vendors: { id: number; code?: string; name: string }[];
-}
+const { OIL_ZAPPER } = constants;
 
 interface Props {
   workOrderId: number;
@@ -84,93 +63,6 @@ interface Props {
     count: number;
   }) => React.ReactNode;
 }
-
-export const itemLabel = (item: string, description?: string | null) =>
-  item === "other" && description
-    ? description
-    : (CONTRACT_ORDER_ITEMS.find((option) => option.key === item)?.label ??
-      item);
-
-const formatAmount = (amount: number) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(amount);
-
-// One of an item's unit, as a rate is given per: hour, man-day, trip.
-export const singleUnit = (unit: string) =>
-  unit === "Nos" ? "unit" : unit.replace(/s$/, "");
-
-// A sub-contract requirement's rate, such as ₹1,200/hour.
-export const rateLabel = (rate: number | string, unit: string) =>
-  `${formatAmount(Number(rate))}/${singleUnit(unit)}`;
-
-// What a purchase order costs in all: its oil zapper at its rate, with GST.
-// Null for a sub-contract, costed at its site.
-const purchaseOrderCost = (order: ContractOrder) => {
-  if (order.type !== CONTRACT_ORDER_TYPE.PURCHASE_ORDER || !order.unit_rate) {
-    return null;
-  }
-  const quantity = order.items.reduce(
-    (sum, item) => sum + Number(item.quantity),
-    0,
-  );
-  const rate = Number(order.unit_rate);
-  const gst = Number(order.gst_percentage ?? 0);
-  return { total: quantity * rate * (1 + gst / 100), rate, gst };
-};
-
-// An order's requirements, a group per site, in the order they're listed.
-const requirementsBySite = (items: ContractOrder["items"]) => {
-  const sites = new Map<
-    number,
-    { name: string; items: ContractOrder["items"] }
-  >();
-  for (const item of items) {
-    const site = sites.get(item.work_order_site_id) ?? {
-      name: item.site_name ?? "Site",
-      items: [],
-    };
-    site.items.push(item);
-    sites.set(item.work_order_site_id, site);
-  }
-  return [...sites.entries()];
-};
-
-// What an order asks of a requirement: a purchase order's oil zapper, or a
-// sub-contract's rate, which requirements added before rates may lack.
-const requirementTerms = (
-  order: ContractOrder,
-  item: ContractOrder["items"][number],
-) => {
-  if (order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER) {
-    return `${Number(item.quantity ?? 0).toLocaleString("en-IN")} ${item.unit}`;
-  }
-  return item.unit_rate ? (
-    rateLabel(item.unit_rate, item.unit)
-  ) : (
-    <span className='text-amber-700'>No rate</span>
-  );
-};
-
-// How each kind of order is marked in the list.
-const GROUPS = [
-  {
-    type: CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
-    label: "Purchase order",
-    filterLabel: "Purchase orders",
-    Icon: ShoppingCart,
-    tone: "bg-sky-50 text-sky-700 ring-sky-100",
-  },
-  {
-    type: CONTRACT_ORDER_TYPE.SUB_CONTRACT,
-    label: "Sub-contract",
-    filterLabel: "Sub-contracts",
-    Icon: Wrench,
-    tone: "bg-amber-50 text-amber-700 ring-amber-100",
-  },
-] as const;
 
 // Tighter than the table defaults, at every screen size.
 const headClass = "h-9 px-3 sm:h-9 sm:px-3 text-xs font-medium text-gray-500";
@@ -184,6 +76,10 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   const utils = trpc.useUtils();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ContractOrder | null>(null);
+  // The order whose details are open, and the one to go back to once its
+  // edit form closes, when it was opened from them.
+  const [detailsId, setDetailsId] = useState<number | null>(null);
+  const [returnToId, setReturnToId] = useState<number | null>(null);
   const [filters, setFilters] = useState<OrderFilters>(NO_ORDER_FILTERS);
   const [sort, setSort] = useState<OrderSort>("newest");
 
@@ -209,6 +105,12 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   const openDialog = (order: ContractOrder | null) => {
     setEditing(order);
     setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    if (returnToId) setDetailsId(returnToId);
+    setReturnToId(null);
   };
 
   const shownOrders = useMemo(
@@ -304,21 +206,20 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                         </button>
                       </>
                     ) : (
-                      `No ${GROUPS.find((group) => group.type === filters.type)?.filterLabel.toLowerCase()} yet.`
+                      `No ${ORDER_TYPES.find((group) => group.type === filters.type)?.filterLabel.toLowerCase()} yet.`
                     )}
                   </TableCell>
                 </TableRow>
               )}
               {shownOrders.map((order) => {
-                const group =
-                  GROUPS.find((option) => option.type === order.type) ??
-                  GROUPS[0];
+                const group = orderTypeOf(order.type);
                 const documents = toDocuments(order.documents);
                 const cost = purchaseOrderCost(order);
                 return (
                   <TableRow
                     key={order.id}
-                    className='hover:bg-gray-50/60'>
+                    onClick={() => setDetailsId(order.id)}
+                    className='cursor-pointer hover:bg-gray-50/60'>
                     <TableCell className={cn(cellClass, "pl-4 sm:pl-4")}>
                       <div className='flex items-start gap-3'>
                         <div
@@ -330,9 +231,13 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                           <group.Icon className='size-3.5' />
                         </div>
                         <div className='min-w-0'>
-                          <p className='truncate font-mono text-sm font-semibold text-gray-900'>
+                          <button
+                            type='button'
+                            onClick={() => setDetailsId(order.id)}
+                            title={`Open ${order.code}`}
+                            className='block max-w-full cursor-pointer truncate rounded font-mono text-sm font-semibold text-gray-900 hover:text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
                             {order.code}
-                          </p>
+                          </button>
                           <p className='whitespace-nowrap text-xs text-gray-600'>
                             {format(new Date(order.order_date), "d MMM yyyy")}
                           </p>
@@ -410,13 +315,18 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className={cellClass}>
+                    <TableCell
+                      className={cellClass}
+                      // Its badge and dialog leave the row's click alone.
+                      onClick={(event) => event.stopPropagation()}>
                       <OrderCompletionDocuments
                         workOrderId={workOrderId}
                         order={order}
                       />
                     </TableCell>
-                    <TableCell className={cn(cellClass, "py-2.5 sm:py-2.5")}>
+                    <TableCell
+                      className={cn(cellClass, "py-2.5 sm:py-2.5")}
+                      onClick={(event) => event.stopPropagation()}>
                       <div className='flex items-center justify-end gap-0.5'>
                         {documents.length > 0 && (
                           <DocumentsMenu documents={documents}>
@@ -486,8 +396,19 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
       <ContractOrderDialog
         workOrderId={workOrderId}
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={closeDialog}
         editing={editing}
+        onCreated={setDetailsId}
+      />
+      <ContractOrderDetailsDialog
+        workOrderId={workOrderId}
+        orderId={detailsId}
+        onClose={() => setDetailsId(null)}
+        onEdit={(order) => {
+          setReturnToId(order.id);
+          setDetailsId(null);
+          openDialog(order);
+        }}
       />
     </>
   );
