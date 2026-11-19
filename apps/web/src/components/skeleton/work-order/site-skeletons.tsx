@@ -189,66 +189,90 @@ export const SiteDetailsSkeleton = ({
             </div>
           </div>
           <OperatorsRowSkeleton />
-          <div className='border-t border-gray-100 px-5 py-4'>
-            <div className='flex items-center justify-between gap-3'>
-              <TextLine
-                line='h-5'
-                className='w-72 max-w-full'
-              />
-              <Skeleton className='h-8 w-16' />
-            </div>
-            <div className='mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]'>
-              <DocumentBoxSkeleton />
-              <div className='divide-y divide-gray-100 rounded-lg border border-gray-200'>
-                <div className='flex h-9 items-center px-3'>
-                  <Skeleton className='h-2.5 w-full' />
+          {/* The document stages, then the estimate, each in its tinted
+              panel. */}
+          <div className='space-y-4 border-t border-gray-100 p-4'>
+            <div className='grid grid-cols-1 gap-4 xl:grid-cols-2'>
+              {[
+                "border-amber-100 bg-amber-50/60",
+                "border-emerald-100 bg-emerald-50/60",
+              ].map((tone) => (
+                <div
+                  key={tone}
+                  className={`space-y-3 rounded-lg border p-4 ${tone}`}>
+                  <TextLine
+                    line='h-5'
+                    className='w-64 max-w-full'
+                  />
+                  <div className='grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2'>
+                    {[0, 1].map((box) => (
+                      <div
+                        key={box}
+                        className='space-y-2'>
+                        <TextLine
+                          line='h-5'
+                          className='w-40'
+                        />
+                        <div className='rounded-lg bg-white'>
+                          <DocumentBoxSkeleton />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className='flex h-9 items-center px-3'>
-                  <Skeleton className='h-3 w-full' />
-                </div>
-              </div>
+              ))}
             </div>
-          </div>
-          <div className='grid grid-cols-1 border-t border-gray-100 lg:grid-cols-2 lg:divide-x lg:divide-gray-100'>
-            {[0, 1].map((stage) => (
-              <div
-                key={stage}
-                className='space-y-3 px-5 py-4'>
+            <div className='rounded-lg border border-blue-100 bg-blue-50/60 p-4'>
+              <div className='flex items-center justify-between gap-3'>
                 <TextLine
                   line='h-5'
-                  className='w-64 max-w-full'
+                  className='w-72 max-w-full'
                 />
-                <div className='grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2'>
-                  {[0, 1].map((box) => (
-                    <div
-                      key={box}
-                      className='space-y-2'>
-                      <TextLine
-                        line='h-5'
-                        className='w-40'
-                      />
-                      <DocumentBoxSkeleton />
-                    </div>
-                  ))}
+                <Skeleton className='h-8 w-16' />
+              </div>
+              <div className='mt-3 space-y-3'>
+                <div className='rounded-lg bg-white'>
+                  <DocumentBoxSkeleton />
+                </div>
+                <div className='divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white'>
+                  <div className='flex h-9 items-center px-3'>
+                    <Skeleton className='h-2.5 w-full' />
+                  </div>
+                  <div className='flex h-9 items-center px-3'>
+                    <Skeleton className='h-3 w-full' />
+                  </div>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </SkeletonCard>
 
         <SkeletonCard className='space-y-3 p-5'>
-          <div>
+          <div className='flex flex-wrap items-baseline gap-x-2'>
             <p className='text-sm font-semibold text-gray-900'>Availability</p>
             <p className='text-xs text-gray-500'>
               What is left for this site to draw on.
             </p>
           </div>
-          {["h-[68px]", "h-24", "h-28"].map((height, index) => (
-            <Skeleton
-              key={index}
-              className={`w-full rounded-lg bg-gray-100 ${height}`}
-            />
-          ))}
+          {/* The work order's card, then the site's two, each group in its
+              tint as the page shows them. */}
+          <div className='flex flex-col gap-3 xl:flex-row'>
+            <div className='space-y-2 rounded-xl bg-gray-50 p-2.5 ring-1 ring-inset ring-gray-200 xl:w-1/3'>
+              <Skeleton className='h-3.5 w-48' />
+              <Skeleton className='h-[116px] w-full rounded-lg bg-white' />
+            </div>
+            <div className='flex-1 space-y-2 rounded-xl bg-blue-50/60 p-2.5 ring-1 ring-inset ring-blue-100'>
+              <Skeleton className='h-3.5 w-48' />
+              <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+                {[0, 1].map((card) => (
+                  <Skeleton
+                    key={card}
+                    className='h-[116px] w-full rounded-lg bg-white'
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
         </SkeletonCard>
 
         <SkeletonCard className='p-5'>

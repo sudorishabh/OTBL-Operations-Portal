@@ -57,24 +57,31 @@ interface Props {
   siteDetails: WorkOrderSiteDetails | undefined | null;
 }
 
-// One stage of the site's paperwork: a numbered heading, then its
+// The tinted panels the card's lower sections sit in, each its own colour.
+const PANEL_TONES = {
+  beforeTreatment: "border-amber-100 bg-amber-50/60",
+  completion: "border-emerald-100 bg-emerald-50/60",
+  estimate: "border-blue-100 bg-blue-50/60",
+} as const;
+
+const panelClass = (tone: keyof typeof PANEL_TONES) =>
+  cn("min-w-0 rounded-lg border p-4", PANEL_TONES[tone]);
+
+// One stage of the site's paperwork, in its tinted panel: a heading, then its
 // documents side by side.
 const DocumentStage = ({
-  step,
+  tone,
   title,
   description,
   children,
 }: {
-  step: number;
+  tone: keyof typeof PANEL_TONES;
   title: string;
   description: string;
   children: React.ReactNode;
 }) => (
-  <div className='min-w-0 px-5 py-4'>
+  <div className={panelClass(tone)}>
     <div className='mb-3 flex min-w-0 items-center gap-2'>
-      <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[11px] font-semibold tabular-nums text-gray-600'>
-        {step}
-      </span>
       <h4 className='shrink-0 text-xs font-semibold text-gray-800'>{title}</h4>
       <p
         className='min-w-0 truncate text-[11px] text-gray-400'
@@ -173,52 +180,53 @@ const SiteDetailsCard = ({ siteDetails }: Props) => {
         />
       )}
 
-      {/* What the site is estimated to take, which sets its share of the
-          work order's schedule of rates. */}
+      {/* The site's documents, stage by stage, then its estimate, each in a
+          tinted panel. For bioremediation, how it was set up first: the team
+          moving on, and the baseline sample taken before treatment. Then the
+          measurements behind its quantities, and the certificate, taken once
+          the site is complete. */}
       {siteDetails?.id && (
-        <SiteEstimate
-          woSiteId={siteDetails.id}
-          processType={siteDetails.process_type}
-          className='border-t border-gray-100 px-5 py-4'
-        />
-      )}
-
-      {/* The site's documents, stage by stage. For bioremediation, how it
-          was set up first: the team moving on, and the baseline sample taken
-          before treatment. Then the measurements behind its quantities, and
-          the certificate, taken once the site is complete. */}
-      {siteDetails?.id && (
-        <div
-          className={cn(
-            "grid grid-cols-1 divide-y divide-gray-100 border-t border-gray-100",
-            isBioremediation && "xl:grid-cols-2 xl:divide-x xl:divide-y-0",
-          )}>
-          {isBioremediation && (
-            <DocumentStage
-              step={1}
-              title='Before treatment'
-              description='The team moving on, and the baseline sample'>
-              <MobilizationCertificate woSiteId={siteDetails.id} />
-              <ZeroDaySample woSiteId={siteDetails.id} />
-            </DocumentStage>
-          )}
-          <DocumentStage
-            step={isBioremediation ? 2 : 1}
-            title='Completion'
-            description='The measurements, then the signed certificate'>
-            <SiteMeasurementSheets woSiteId={siteDetails.id} />
-            {isCompleted ? (
-              <SiteCompletionCertificate woSiteId={siteDetails.id} />
-            ) : (
-              <PendingCompletionCertificate
-                note={
-                  isBioremediation
-                    ? `Upload it once the site is complete, when its latest TPH is below ${TPH_TARGET}.`
-                    : "Upload it once the site is complete."
-                }
-              />
+        <div className='space-y-4 border-t border-gray-100 p-4'>
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-4",
+              isBioremediation && "xl:grid-cols-2",
+            )}>
+            {isBioremediation && (
+              <DocumentStage
+                tone='beforeTreatment'
+                title='Before treatment'
+                description='The team moving on, and the baseline sample'>
+                <MobilizationCertificate woSiteId={siteDetails.id} />
+                <ZeroDaySample woSiteId={siteDetails.id} />
+              </DocumentStage>
             )}
-          </DocumentStage>
+            <DocumentStage
+              tone='completion'
+              title='Completion'
+              description='The measurements, then the signed certificate'>
+              <SiteMeasurementSheets woSiteId={siteDetails.id} />
+              {isCompleted ? (
+                <SiteCompletionCertificate woSiteId={siteDetails.id} />
+              ) : (
+                <PendingCompletionCertificate
+                  note={
+                    isBioremediation
+                      ? `Upload it once the site is complete, when its latest TPH is below ${TPH_TARGET}.`
+                      : "Upload it once the site is complete."
+                  }
+                />
+              )}
+            </DocumentStage>
+          </div>
+
+          {/* Last: what the site is estimated to take, which sets its share
+              of the work order's schedule of rates. */}
+          <SiteEstimate
+            woSiteId={siteDetails.id}
+            processType={siteDetails.process_type}
+            className={panelClass("estimate")}
+          />
         </div>
       )}
     </section>
