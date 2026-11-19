@@ -3,8 +3,8 @@
  * OTBL demo data loader: one file, no build step.
  *
  * Fills every table of the app with a large demo data set, 500+ rows per
- * table by default, that follows the app's own rules: one manager per office,
- * office operators on offices and site operators on work order sites, one work
+ * table by default, that follows the app's own rules: office operators on
+ * offices and site operators on work order sites, one work
  * order per approved proposal, a restoration row for restoration work orders,
  * bio samples whose TPH falls below the target only on completed sites, oil
  * zapper applied only once a purchase order has procured it, purchase order
@@ -396,7 +396,7 @@ const COLUMNS = {
   clients: ["id", "code", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   client_contacts: ["id", "client_id", "parent_client_id", "name", "designation", "contact_number", "email", "contact_type", "created_at", "updated_at"],
   contractors: ["id", "code", "name", "contact_number", "email", "address", "state", "gst_number", "pan_number", "created_at", "updated_at"],
-  office_users: ["id", "user_id", "office_id", "assigned_by", "role", "created_at", "updated_at"],
+  office_users: ["id", "user_id", "office_id", "assigned_by", "created_at", "updated_at"],
   sites: ["id", "code", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
   work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "purchase_order_code", "agreement_number", "rate_contract_number", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
@@ -681,9 +681,9 @@ function addUser(role, { name = personName(), email, createdBy = null } = {}) {
 
 const admin = addUser("admin", { name: "Demo Admin", email: "admin@otbl.test" });
 
-// Offices, each with its one manager.
+// Offices, each led by one of its office operators, who records its work.
 const offices = [];
-const managerOf = new Map();
+const leadOf = new Map();
 const usedOfficeNames = new Set();
 for (let i = 0; i < COUNT; i++) {
   const loc = pick(FIELD_LOCATIONS);
@@ -703,16 +703,12 @@ for (let i = 0; i < COUNT; i++) {
     ...stamp(atWorkHour(addDays(BASE, int(0, 60)))),
   });
   offices.push(office);
-  const manager = addUser("office_manager", {
-    createdBy: admin.id,
-    ...(i === 0 && { name: "Demo Manager", email: "manager@otbl.test" }),
-  });
-  managerOf.set(office.id, manager);
+  const lead = addUser("office_operator", { createdBy: admin.id });
+  leadOf.set(office.id, lead);
   add("office_users", {
-    user_id: manager.id,
+    user_id: lead.id,
     office_id: office.id,
     assigned_by: admin.id,
-    role: "office_manager",
     ...stamp(addHours(office.created_at, int(1, 72))),
   });
 }
@@ -722,9 +718,8 @@ const activeOffices = offices.filter((o) => o.status === "active");
 const officeOpsOf = new Map(offices.map((o) => [o.id, []]));
 for (let i = 0; i < COUNT; i++) {
   const home = offices[i];
-  const manager = managerOf.get(home.id);
   const op = addUser("office_operator", {
-    createdBy: manager.id,
+    createdBy: admin.id,
     ...(i === 0 && { name: "Demo Office Operator", email: "office.operator@otbl.test" }),
   });
   const homes = [home];
@@ -737,8 +732,7 @@ for (let i = 0; i < COUNT; i++) {
     add("office_users", {
       user_id: op.id,
       office_id: office.id,
-      assigned_by: managerOf.get(office.id).id,
-      role: "operator",
+      assigned_by: admin.id,
       ...stamp(addHours(op.created_at, int(1, 240))),
     });
   }
@@ -749,7 +743,7 @@ const siteOps = [];
 for (let i = 0; i < COUNT; i++) {
   siteOps.push(
     addUser("site_operator", {
-      createdBy: managerOf.get(pick(offices).id).id,
+      createdBy: admin.id,
       ...(i === 0 && { name: "Demo Site Operator", email: "site.operator@otbl.test" }),
     }),
   );
@@ -769,7 +763,6 @@ for (let i = 0; i < viewerCount; i++) {
 // added to one already taken.
 const DEMO_LOGINS = [
   ["Admin", "Demo Admin"],
-  ["Office manager", "Demo Manager"],
   ["Office operator", "Demo Office Operator"],
   ["Site operator", "Demo Site Operator"],
   ["Viewer", "Demo Viewer"],
@@ -967,7 +960,7 @@ function addProposal({ client, office, processType, date, status }) {
       : null,
     proposal_submission_date: dayStart(date),
     status,
-    created_by: managerOf.get(office.id).id,
+    created_by: leadOf.get(office.id).id,
     ...stamp(date),
   });
 }
@@ -1133,7 +1126,7 @@ function certifiedByActivity(jobOrders) {
 }
 
 function buildRestoration(ctx) {
-  const { wo, phase, start, end, horizon, manager, staff, rates, client } = ctx;
+  const { wo, phase, start, end, horizon, lead, staff, rates, client } = ctx;
   const row = add("work_order_sites", {
     work_order_id: wo.id,
     client_id: wo.client_id,
@@ -1214,7 +1207,7 @@ function buildRestoration(ctx) {
         : null,
       documents: completed ? [doc(`Work Completion Certificate ${number}.pdf`)] : [],
       invoices: completed && chance(0.8) ? [doc(`Invoice ${number}.pdf`)] : [],
-      created_by: manager.id,
+      created_by: lead.id,
       ...stamp(created),
     });
     if (completed) {
@@ -1261,7 +1254,7 @@ function buildRestoration(ctx) {
     add("wo_site_contractors", {
       work_order_site_id: row.id,
       contractor_id: v.id,
-      assigned_by: manager.id,
+      assigned_by: lead.id,
       created_at: clampPast(addHours(row.created_at, int(1, 240))),
     });
   }
@@ -1407,7 +1400,7 @@ function addPurchaseOrder(ctx, date, entries) {
     invoice_number: invoice,
     documents: [doc(`Purchase Order ${number}.pdf`)],
     completion_documents: delivered && chance(0.8) ? [doc(`Delivery Challan ${number}.pdf`)] : [],
-    created_by: ctx.manager.id,
+    created_by: ctx.lead.id,
     ...stamp(created),
   });
   add("contract_order_contractors", { contract_order_id: order.id, contractor_id: vendor.id, created_at: order.created_at });
@@ -1435,7 +1428,7 @@ function addPurchaseOrder(ctx, date, entries) {
       invoice,
       activityKey: "oil_zapper",
       quantity: qty,
-      createdBy: ctx.manager.id,
+      createdBy: ctx.lead.id,
       documents: [],
       createdAt: created,
     });
@@ -1463,7 +1456,7 @@ function buildPurchaseOrders(ctx, plans) {
 }
 
 function finishBioSite(ctx, plan) {
-  const { wo, phase, horizon, manager, staff, sor } = ctx;
+  const { wo, phase, horizon, lead, staff, sor } = ctx;
   const { row, state, mob, months, estimate } = plan;
 
   // The zero day sample, then one a month, with the TPH falling towards the
@@ -1565,7 +1558,7 @@ function finishBioSite(ctx, plan) {
       invoice_number: null,
       documents: [doc(`Sub-contract ${number}.pdf`)],
       completion_documents: state === "done" && chance(0.8) ? [doc(`Work Completion Report ${number}.pdf`)] : [],
-      created_by: manager.id,
+      created_by: lead.id,
       ...stamp(created),
     });
     for (const v of vendors) {
@@ -1608,7 +1601,7 @@ function finishBioSite(ctx, plan) {
     add("wo_site_contractors", {
       work_order_site_id: row.id,
       contractor_id: v.id,
-      assigned_by: manager.id,
+      assigned_by: lead.id,
       created_at: clampPast(addHours(row.created_at, int(1, 240))),
     });
   }
@@ -1656,7 +1649,7 @@ function buildSharedSubContract(ctx, plans) {
   const working = plans.filter((p) => p.state === "done" || p.state === "treating");
   if (working.length < 2 || !chance(0.4)) return;
   const pair = sample(working, 2);
-  const { wo, manager, staff, horizon } = ctx;
+  const { wo, lead, staff, horizon } = ctx;
   const activeEnd = earliest(horizon, NOW);
   const from = latest(...pair.map((p) => p.mob));
   if (from > activeEnd) return;
@@ -1676,7 +1669,7 @@ function buildSharedSubContract(ctx, plans) {
     invoice_number: null,
     documents: [doc(`Sub-contract ${number}.pdf`)],
     completion_documents: [],
-    created_by: manager.id,
+    created_by: lead.id,
     ...stamp(created),
   });
   add("contract_order_contractors", {
@@ -1735,7 +1728,7 @@ function buildBioremediation(ctx) {
   buildSharedSubContract(ctx, plans);
 }
 
-// The first few work orders belong to the demo manager's office, one of each
+// The first few work orders belong to the demo operator's office, one of each
 // kind, so the demo logins have something to look at.
 const SHOWCASE = [
   { phase: "completed", process: "bioremediation_restoration" },
@@ -1752,8 +1745,8 @@ function buildWorkOrder(index) {
     ? SHOWCASE[index].process
     : pickWeighted({ bioremediation: 40, restoration: 25, bioremediation_restoration: 35 });
   const office = showcase ? offices[0] : pick(activeOffices);
-  const manager = managerOf.get(office.id);
-  const staff = [manager, ...officeOpsOf.get(office.id)];
+  const lead = leadOf.get(office.id);
+  const staff = [lead, ...officeOpsOf.get(office.id)];
   const client = clientFor(office);
 
   let start;
@@ -1811,7 +1804,7 @@ function buildWorkOrder(index) {
     cancellation_reason: phase === "cancelled" ? pick(CANCEL_REASONS) : null,
     approved_at: approvedAt ? clampPast(approvedAt) : null,
     approved_by: approvedAt ? admin.id : null,
-    created_by: manager.id,
+    created_by: lead.id,
     ...stamp(created),
   });
   if (cancelledAt) wo.updated_at = cancelledAt;
@@ -1824,7 +1817,7 @@ function buildWorkOrder(index) {
     if (act === ACT.BIO ? hasBio : hasRestoration) rates[act] = addSor(wo, act);
   }
 
-  const ctx = { wo, phase, start, end, horizon, office, manager, staff, client, rates, sor: rates[ACT.BIO], showcase };
+  const ctx = { wo, phase, start, end, horizon, office, lead, staff, client, rates, sor: rates[ACT.BIO], showcase };
   if (hasRestoration) buildRestoration(ctx);
   if (hasBio) buildBioremediation(ctx);
 }
@@ -1884,7 +1877,6 @@ function verify() {
   unique("work_orders", (r) => r.proposal_id, "proposal");
   unique("work_order_sites", (r) => (r.site_id == null ? null : `${r.work_order_id}:${r.site_id}`), "site");
   unique("office_users", (r) => `${r.office_id}:${r.user_id}`, "assignment");
-  unique("office_users", (r) => (r.role === "office_manager" ? r.office_id : null), "office manager for office");
   unique("work_order_site_users", (r) => `${r.work_order_site_id}:${r.user_id}`, "assignment");
   unique("wo_site_contractors", (r) => `${r.work_order_site_id}:${r.contractor_id}`, "vendor");
   unique("job_orders", (r) => `${r.work_order_site_id}:${r.jo_number}`, "job order number");
@@ -1895,9 +1887,8 @@ function verify() {
   const users = new Map(data.users.map((u) => [u.id, u]));
   for (const r of data.office_users) {
     const role = users.get(r.user_id).role;
-    if ((r.role === "office_manager") !== (role === "office_manager") || (r.role === "operator" && role !== "office_operator")) {
-      problems.push(`office_users ${r.id}: a ${role} assigned as ${r.role}`);
-    }
+    if (role !== "office_operator")
+      problems.push(`office_users ${r.id}: a ${role} seated at an office`);
   }
   for (const r of data.work_order_site_users) {
     if (users.get(r.user_id).role !== "site_operator") problems.push(`work_order_site_users ${r.id}: not a site operator`);
