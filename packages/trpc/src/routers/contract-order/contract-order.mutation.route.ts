@@ -16,6 +16,10 @@ import {
   orderRecordedOilZapper,
   recordPurchaseOrderExpenses,
 } from "./purchase-order-expenses";
+import {
+  countExpensesByItem,
+  repriceItemExpenses,
+} from "./sub-contract-expenses";
 
 const {
   workOrderTable,
@@ -41,16 +45,22 @@ type OrderInput = {
     work_order_site_id: number;
     item: string;
     description?: string;
-    quantity: number;
+    quantity?: number | null;
+    unit_rate?: number | null;
   }[];
   contractor_ids: number[];
   unit_rate?: number | null;
   gst_percentage?: number | null;
   invoice_number?: string;
+  single_expense?: boolean;
 };
 
 const isPurchaseOrder = (order: { type: string }) =>
   order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER;
+
+// A sub-contract whose requirements each take one expense at the site.
+const takesSingleExpense = (order: OrderInput) =>
+  !isPurchaseOrder(order) && !!order.single_expense;
 
 // Purchase orders and sub-contracts are numbered apart.
 const codePrefix = (order: { type: string }) =>
@@ -61,13 +71,24 @@ const codePrefix = (order: { type: string }) =>
 const itemUnit = (item: string) =>
   CONTRACT_ORDER_ITEMS.find((option) => option.key === item)?.unit ?? "Nos";
 
-const toItemValues = (orderId: number, item: OrderInput["items"][number]) => ({
+// A purchase order's requirement keeps its quantity of oil zapper; a
+// sub-contract's keeps its rate, as its quantities are recorded at the site.
+const toItemValues = (
+  order: OrderInput,
+  orderId: number,
+  item: OrderInput["items"][number],
+) => ({
   contract_order_id: orderId,
   work_order_site_id: item.work_order_site_id,
   item: item.item,
   description: item.item === "other" ? (item.description ?? null) : null,
-  quantity: item.quantity.toFixed(2),
+  quantity:
+    isPurchaseOrder(order) && item.quantity ? item.quantity.toFixed(2) : null,
   unit: itemUnit(item.item),
+  unit_rate:
+    !isPurchaseOrder(order) && item.unit_rate
+      ? item.unit_rate.toFixed(2)
+      : null,
 });
 
 // A purchase order's cost. A sub-contract has none, as its expenses are
@@ -89,7 +110,7 @@ const orderedOilZapper = (input: OrderInput) => {
     if (item.item !== OIL_ZAPPER.KEY) continue;
     bySite.set(
       item.work_order_site_id,
-      (bySite.get(item.work_order_site_id) ?? 0) + item.quantity,
+      (bySite.get(item.work_order_site_id) ?? 0) + (item.quantity ?? 0),
     );
   }
   return bySite;
@@ -181,6 +202,7 @@ async function getOrderItems(ctx: TrpcContext, orderId: number) {
     .select({
       id: contractOrderItemTable.id,
       work_order_site_id: contractOrderItemTable.work_order_site_id,
+      unit_rate: contractOrderItemTable.unit_rate,
     })
     .from(contractOrderItemTable)
     .where(eq(contractOrderItemTable.contract_order_id, orderId));
@@ -248,6 +270,7 @@ export const contractOrderMutationRouter = router({
               order_date: input.order_date,
               description: input.description || null,
               ...costValues(input),
+              single_expense: takesSingleExpense(input) ? 1 : 0,
               documents: input.documents,
               completion_documents: input.completion_documents ?? [],
               created_by: Number(ctx.user!.sub),
@@ -256,7 +279,9 @@ export const contractOrderMutationRouter = router({
 
             await tx
               .insert(contractOrderItemTable)
-              .values(input.items.map((item) => toItemValues(orderId, item)));
+              .values(
+                input.items.map((item) => toItemValues(input, orderId, item)),
+              );
             await tx.insert(contractOrderContractorTable).values(
               [...new Set(input.contractor_ids)].map((contractorId) => ({
                 contract_order_id: orderId,
@@ -335,6 +360,16 @@ export const contractOrderMutationRouter = router({
           );
         }
 
+        // Each requirement of a single-expense sub-contract takes one.
+        if (takesSingleExpense(input)) {
+          const expensesByItem = await countExpensesByItem(ctx.db, keptItemIds);
+          if ([...expensesByItem.values()].some((total) => total > 1)) {
+            throw businessRule(
+              "A requirement on this sub-contract already has several expenses, so it can't take just one. Delete the extra expenses first.",
+            );
+          }
+        }
+
         // Expenses recorded at the sites before purchase orders kept their
         // own cost would count the oil zapper twice.
         if (
@@ -373,6 +408,21 @@ export const contractOrderMutationRouter = router({
           ),
         );
 
+        // A sub-contract requirement whose rate changes prices its expenses
+        // again at the new rate.
+        const rateByItem = new Map(
+          existingItems.map((item) => [item.id, Number(item.unit_rate ?? 0)]),
+        );
+        const repricedItems = isPurchaseOrder(input)
+          ? []
+          : input.items.flatMap((item) =>
+              item.id !== undefined &&
+              item.unit_rate &&
+              item.unit_rate !== rateByItem.get(item.id)
+                ? [{ id: item.id, unit_rate: item.unit_rate }]
+                : [],
+            );
+
         try {
           await ctx.db.transaction(async (tx) => {
             await clearOrderExpenses(tx, existingItemIds);
@@ -390,6 +440,7 @@ export const contractOrderMutationRouter = router({
                 order_date: input.order_date,
                 description: input.description || null,
                 ...costValues(input),
+                single_expense: takesSingleExpense(input) ? 1 : 0,
                 documents: input.documents,
                 ...(input.completion_documents && {
                   completion_documents: input.completion_documents,
@@ -403,7 +454,7 @@ export const contractOrderMutationRouter = router({
                 .where(inArray(contractOrderItemTable.id, droppedItemIds));
             }
             for (const item of input.items) {
-              const values = toItemValues(input.id, item);
+              const values = toItemValues(input, input.id, item);
               if (item.id) {
                 await tx
                   .update(contractOrderItemTable)
@@ -413,6 +464,7 @@ export const contractOrderMutationRouter = router({
                 await tx.insert(contractOrderItemTable).values(values);
               }
             }
+            await repriceItemExpenses(tx, repricedItems);
 
             await tx
               .delete(contractOrderContractorTable)

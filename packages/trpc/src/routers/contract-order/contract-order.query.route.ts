@@ -14,6 +14,7 @@ import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { codeMatches } from "../../helper/record-code";
 import type { TrpcContext } from "../../context";
+import { countExpensesByItem } from "./sub-contract-expenses";
 
 const {
   siteTable,
@@ -160,6 +161,7 @@ export const contractOrderQueryRouter = router({
               description: contractOrderItemTable.description,
               quantity: contractOrderItemTable.quantity,
               unit: contractOrderItemTable.unit,
+              unit_rate: contractOrderItemTable.unit_rate,
             })
             .from(contractOrderItemTable)
             .innerJoin(
@@ -174,6 +176,7 @@ export const contractOrderQueryRouter = router({
 
           return orders.map((order) => ({
             ...order,
+            single_expense: !!order.single_expense,
             items: items.filter((item) => item.contract_order_id === order.id),
             vendors: vendors.get(order.id) ?? [],
           }));
@@ -183,8 +186,8 @@ export const contractOrderQueryRouter = router({
       }),
     ),
 
-  // What contract orders require at one site, each with its order and the
-  // vendors expenses can be recorded under.
+  // What contract orders require at one site, each with its order, the
+  // vendors expenses can be recorded under, and how many have been.
   getSiteContractOrderItems: protectedProcedure
     .input(contractOrderSchemas.getSiteContractOrderItemsSchema)
     .query(
@@ -204,10 +207,12 @@ export const contractOrderQueryRouter = router({
               description: contractOrderItemTable.description,
               quantity: contractOrderItemTable.quantity,
               unit: contractOrderItemTable.unit,
+              unit_rate: contractOrderItemTable.unit_rate,
               order_type: contractOrderTable.type,
               order_code: contractOrderTable.code,
               order_number: contractOrderTable.order_number,
               order_date: contractOrderTable.order_date,
+              single_expense: contractOrderTable.single_expense,
             })
             .from(contractOrderItemTable)
             .innerJoin(
@@ -228,10 +233,16 @@ export const contractOrderQueryRouter = router({
           const vendors = await vendorsByOrder(ctx, [
             ...new Set(items.map((item) => item.contract_order_id)),
           ]);
+          const expenseCounts = await countExpensesByItem(
+            ctx.db,
+            items.map((item) => item.id),
+          );
 
           return items.map((item) => ({
             ...item,
+            single_expense: !!item.single_expense,
             vendors: vendors.get(item.contract_order_id) ?? [],
+            expense_count: expenseCounts.get(item.id) ?? 0,
           }));
         } catch (error) {
           throw fromDatabaseError(error, "Fetching site contract order items");

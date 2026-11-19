@@ -16,7 +16,9 @@ const {
 const { CONTRACT_ORDER_TYPE, OIL_ZAPPER } = constants;
 
 // Either the database or a transaction on it.
-type DbOrTx = Database | Parameters<Parameters<Database["transaction"]>[0]>[0];
+export type DbOrTx =
+  | Database
+  | Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 // What a quantity of oil zapper costs at a purchase order's rate, with GST.
 export const purchaseOrderAmount = (
