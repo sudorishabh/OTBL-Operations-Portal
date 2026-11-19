@@ -28,7 +28,6 @@ export const useHasRole = (requiredRole: string): boolean => {
 
   const roleHierarchy: Record<string, number> = {
     admin: 4,
-    office_manager: 3,
     office_operator: 2,
     site_operator: 2,
     viewer: 1,
@@ -48,7 +47,10 @@ export const useHasAnyRole = (allowedRoles: string[]): boolean => {
 
 export const useIsAdmin = (): boolean => useHasRole("admin");
 
-export const useIsManager = (): boolean => useHasRole("office_manager");
+// Office operators run their offices' sites and orders; the API checks which
+// offices.
+export const useIsOfficeOperatorOrAdmin = (): boolean =>
+  useHasAnyRole(["admin", "office_operator"]);
 
 export const useIsViewer = (): boolean => {
   const { user } = useAuthContext();

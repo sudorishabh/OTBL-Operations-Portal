@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useLoadMorePages } from "@/hooks/useLoadMorePages";
-import { useIsManager } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/contexts/AuthContext";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import PaginationSummary from "@/components/shared/pagination-summary";
@@ -116,7 +116,8 @@ type VendorSort = "name_asc" | "name_desc" | "newest" | "oldest";
 // The vendors page: everyone material and work are ordered from.
 const VendorPage = () => {
   const { setParams } = useHandleParams();
-  const isManager = useIsManager();
+  // Vendors are shared by every office, so only admins change them.
+  const isAdmin = useIsAdmin();
   const utils = trpc.useUtils();
 
   const [search, setSearch] = useState("");
@@ -253,7 +254,7 @@ const VendorPage = () => {
                           View orders and expenses
                         </Link>
                       </DropdownMenuItem>
-                      {isManager && (
+                      {isAdmin && (
                         <>
                           <DropdownMenuItem
                             onClick={() =>

@@ -3,5 +3,4 @@ export {
   RoleProtectedRoute,
   MultiRoleProtectedRoute,
   AdminRoute,
-  ManagerRoute,
 } from "./ProtectedRoute";

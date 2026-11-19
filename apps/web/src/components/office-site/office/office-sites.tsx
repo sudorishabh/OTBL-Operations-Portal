@@ -33,7 +33,7 @@ const STATUS_OPTIONS = [
 // The office's sites, searchable and a page at a time, each with its work
 // orders and edit options.
 const OfficeSites = ({ details }: { details: OfficeDetails }) => {
-  const { office, sites: counts, canManage } = details;
+  const { office, sites: counts, canEditSites } = details;
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<SiteStatus>(ALL);
   const debouncedSearch = useDebounce(search.trim(), 300);
@@ -109,7 +109,7 @@ const OfficeSites = ({ details }: { details: OfficeDetails }) => {
           sites={result.sites}
           officeId={office.id}
           officeName={office.name}
-          canManage={canManage}
+          canEditSites={canEditSites}
           emptyMessage={
             isFiltered
               ? "No sites match these filters"

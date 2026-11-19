@@ -3,7 +3,6 @@ import React, { createContext, useContext, useState } from "react";
 
 export type UserRoleFilter =
   | "all"
-  | "office_manager"
   | "office_operator"
   | "site_operator"
   | "viewer";

@@ -23,7 +23,7 @@ const formatCount = (value: number) => value.toLocaleString("en-IN");
 // The top of an office's page: who it is, totals across its sites and work
 // orders, then its details.
 const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
-  const { office, manager, sites, workOrders } = details;
+  const { office, sites, workOrders } = details;
   const status = office.status.toLowerCase();
   const location = [office.city, office.state]
     .filter(Boolean)
@@ -124,6 +124,7 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
         />
         <Field
           label='Email'
+          className='sm:col-span-2'
           value={
             office.email && (
               <a
@@ -134,10 +135,6 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
               </a>
             )
           }
-        />
-        <Field
-          label='Manager'
-          value={manager && capitalizeEachWord(manager.name)}
         />
         <Field
           label='Last updated'

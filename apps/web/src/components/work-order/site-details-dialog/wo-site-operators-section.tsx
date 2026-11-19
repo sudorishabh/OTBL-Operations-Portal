@@ -5,7 +5,7 @@ import { trpc } from "@/lib/trpc";
 import CustomButton from "@/components/shared/btn";
 import { Users, Settings2 } from "lucide-react";
 import { capitalizeEachWord } from "@pkg/utils";
-import { useIsManager } from "@/contexts/AuthContext";
+import { useIsOfficeOperatorOrAdmin } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import WoSiteOperatorsDialog from "./wo-site-operators-dialog";
 import { InlineSkeleton } from "@/components/skeleton/parts";
@@ -28,16 +28,16 @@ const WoSiteOperatorsSection: React.FC<Props> = ({
   subject = "work order site",
   className,
 }) => {
-  const isManager = useIsManager();
+  const canPick = useIsOfficeOperatorOrAdmin();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data, isLoading, isError } =
     trpc.workOrderSiteQuery.getWorkOrderSiteAssignedOperators.useQuery(
       { work_order_site_id: woSiteId },
-      { enabled: isManager && woSiteId > 0, retry: false },
+      { enabled: canPick && woSiteId > 0, retry: false },
     );
 
-  if (!isManager || isError) return null;
+  if (!canPick || isError) return null;
 
   const operators: AssignedOperator[] = data ?? [];
 

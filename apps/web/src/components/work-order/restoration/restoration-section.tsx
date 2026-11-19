@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import { useIsManager } from "@/contexts/AuthContext";
+import { useIsOfficeOperatorOrAdmin } from "@/contexts/AuthContext";
 import CustomButton from "@/components/shared/btn";
 import Error from "@/components/shared/error";
 import RestorationCardSkeleton from "@/components/skeleton/work-order/restoration-card-skeleton";
@@ -25,7 +25,7 @@ interface Props {
 // section is one entry that opens the restoration page.
 const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
   const pathname = usePathname();
-  const isManager = useIsManager();
+  const canSetUp = useIsOfficeOperatorOrAdmin();
   const utils = trpc.useUtils();
 
   const restorationQuery = trpc.restorationQuery.getRestoration.useQuery({
@@ -81,11 +81,11 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
       <div className='flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <p className='text-sm text-gray-600'>
           Restoration isn&apos;t set up for this work order yet.{" "}
-          {isManager
+          {canSetUp
             ? "Set it up to manage its operators, expenses and completion."
-            : "The office manager can set it up."}
+            : "The office's operators can set it up."}
         </p>
-        {isManager && (
+        {canSetUp && (
           <CustomButton
             variant='primary'
             Icon={RotateCcw}

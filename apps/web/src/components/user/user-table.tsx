@@ -45,12 +45,11 @@ import Error from "@/components/shared/error";
 
 const ALL_USERS_PAGE_SIZE = 50;
 
-// Office roles in cyan and sky, like the offices they work at; site
-// operators in orange, like their sites.
+// Office operators in cyan, like the offices they work at; site operators in
+// orange, like their sites.
 const ROLE_TONES: Record<string, PillTone> = {
   admin: "red",
-  office_manager: "cyan",
-  office_operator: "sky",
+  office_operator: "cyan",
   site_operator: "orange",
   viewer: "gray",
 };

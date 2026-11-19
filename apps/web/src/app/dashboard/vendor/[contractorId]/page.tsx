@@ -15,7 +15,6 @@ export default async function Page({ params }: PageProps) {
     <MultiRoleProtectedRoute
       allowedRoles={[
         ROLES.ADMIN,
-        ROLES.MANAGER,
         ROLES.OFFICE_OPERATOR,
         ROLES.VIEWER,
       ]}>

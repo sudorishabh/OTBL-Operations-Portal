@@ -28,8 +28,8 @@ interface SitesTableProps {
   sites: OfficeSite[];
   officeId: number;
   officeName: string;
-  /** The office's manager or an admin, who may edit its sites. */
-  canManage: boolean;
+  /** One of the office's operators or an admin, who may edit its sites. */
+  canEditSites: boolean;
   /** Shown in place of the rows when there are none. */
   emptyMessage: string;
   /** Under the table, such as a count or page controls. */
@@ -42,7 +42,7 @@ export const SitesTable = ({
   sites,
   officeId,
   officeName,
-  canManage,
+  canEditSites,
   emptyMessage,
   footer,
   className,
@@ -128,7 +128,7 @@ export const SitesTable = ({
                         <ClipboardList className='mr-2 h-4 w-4' />
                         Work orders and operators
                       </DropdownMenuItem>
-                      {canManage && (
+                      {canEditSites && (
                         <DropdownMenuItem
                           onClick={() =>
                             setParams({
