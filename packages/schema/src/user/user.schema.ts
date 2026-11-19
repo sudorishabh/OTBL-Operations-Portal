@@ -75,3 +75,11 @@ export const getAllUsersSchema = z.object({
   assignment: z.enum(["assigned", "unassigned"]).optional(),
   userNamesOrder: sortOrderValidator,
 });
+
+// The list's filters other than role, for counting the users in each role.
+export const getUserCountsSchema = getAllUsersSchema.pick({
+  searchQuery: true,
+  status: true,
+  officeId: true,
+  assignment: true,
+});

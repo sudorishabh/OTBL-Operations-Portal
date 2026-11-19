@@ -326,6 +326,33 @@ export const userQueryRouter = router({
       }),
     ),
 
+  // How many users each role has among those the list's other filters match,
+  // for the role tabs above the list.
+  getUserCounts: protectedProcedure
+    .use(hasRole(ROLES.ADMIN))
+    .input(userSchemas.getUserCountsSchema)
+    .query(
+      handleProtectedQuery(async ({ input, ctx }) => {
+        try {
+          const rows = await ctx.db
+            .select({ role: userTable.role, count: count() })
+            .from(userTable)
+            .where(userListWhere(ctx.db, input))
+            .groupBy(userTable.role);
+
+          const byRole: Record<string, number> = {};
+          for (const row of rows) byRole[row.role] = Number(row.count);
+
+          return {
+            total: rows.reduce((sum, row) => sum + Number(row.count), 0),
+            byRole,
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Counting users");
+        }
+      }),
+    ),
+
   getUserById: protectedProcedure
     .use(
       hasAnyRole([
