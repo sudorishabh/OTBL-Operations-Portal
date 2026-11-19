@@ -40,6 +40,7 @@ import { format } from "date-fns";
 import { capitalFirstLetter } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import RecordCode from "@/components/shared/record-code";
+import { rateLabel } from "../contract-orders/contract-orders-section";
 import ExpenseActivityLines, {
   formatQty,
   newActivityLine,
@@ -95,8 +96,16 @@ interface Props {
   // bioremediation's oil zapper.
   fixedActivityKey?: string;
   // The contract order requirement the expense is spent on. Its vendors are
-  // then the order's, and it can't be miscellaneous.
-  orderItem?: { id: number; label: string } | null;
+  // then the order's, and it can't be miscellaneous. A sub-contract's rate
+  // prices it from the quantity worked; with a single expense, that is the
+  // requirement's total.
+  orderItem?: {
+    id: number;
+    label: string;
+    unitRate?: number | null;
+    unit?: string;
+    singleExpense?: boolean;
+  } | null;
   // The restoration job order the expense is spent on, likewise.
   jobOrder?: { id: number; label: string } | null;
   // Why the activities are the ones offered, shown under their list. An
@@ -112,6 +121,13 @@ const toDateInput = (value: string | Date = new Date()) =>
 
 // A search box appears once a site has this many vendors.
 const VENDOR_SEARCH_FROM = 7;
+
+const formatAmount = (amount: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(amount);
 
 // "Sharma ext" -> "SE"; a single word gives its first two letters.
 const initialsOf = (name: string) => {
@@ -139,6 +155,10 @@ const AddExpenseDialog = ({
 }: Props) => {
   // What the expense is spent on, when it is on an order or job order.
   const spentOn = orderItem ?? jobOrder;
+  // The rate that prices the expense from its quantity, on a rated
+  // sub-contract requirement.
+  const orderRate = orderItem?.unitRate ?? null;
+  const orderUnit = orderItem?.unit ?? "Nos";
   // A job order's expenses are each for one day, so they take a single date.
   const isOneDay = !!jobOrder || editingExpense?.job_order_id != null;
   // A new job order expense can be for several of its activities, each
@@ -267,6 +287,9 @@ const AddExpenseDialog = ({
   const isExceededMode = !!selectedActivityKey && isQuotaExhausted;
   const enteredQty = quantity ? parseFloat(quantity) : 0;
   const canEnterQuantity = !!selectedActivityKey && !isMiscellaneous;
+  // A rated requirement's expense costs its quantity at the rate.
+  const pricedAmount =
+    orderRate !== null && enteredQty > 0 ? enteredQty * orderRate : null;
   const qtyExceedsRemaining =
     !isExceededMode && canEnterQuantity && !!quantity &&
     remainingQty !== null && enteredQty > remainingQty;
@@ -311,6 +334,8 @@ const AddExpenseDialog = ({
     utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: workOrderSiteId });
     utils.workOrderQuery.getWorkOrderDetails.invalidate();
     utils.workOrderSiteQuery.getOilZapperStock.invalidate({ work_order_site_id: workOrderSiteId });
+    // A single-expense requirement takes no more once it has one.
+    utils.contractOrderQuery.getSiteContractOrderItems.invalidate({ work_order_site_id: workOrderSiteId });
     toast.success(message);
     onSuccess?.();
     onClose();
@@ -388,10 +413,17 @@ const AddExpenseDialog = ({
         toast.error("Please select an activity");
         return;
       }
-      const parsedAmount = parseFloat(amount);
-      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-        toast.error("Enter a valid amount");
-        return;
+      if (orderRate !== null) {
+        if (pricedAmount === null) {
+          toast.error(`Enter the quantity worked, in ${orderUnit}`);
+          return;
+        }
+      } else {
+        const parsedAmount = parseFloat(amount);
+        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+          toast.error("Enter a valid amount");
+          return;
+        }
       }
     }
     if (!title.trim()) { toast.error("Title is required"); return; }
@@ -449,10 +481,12 @@ const AddExpenseDialog = ({
       contract_order_item_id: orderItem?.id ?? null,
       job_order_id: jobOrder?.id ?? null,
       activity_key: selectedActivityKey || null,
-      quantity: canEnterQuantity && quantity ? quantity : null,
+      quantity:
+        (canEnterQuantity || orderRate !== null) && quantity ? quantity : null,
       is_exceeded: isExceededMode,
       title: title.trim(),
-      amount,
+      // Priced again by the server from the requirement's rate.
+      amount: pricedAmount !== null ? pricedAmount.toFixed(2) : amount,
       start_date: new Date(startDate).toISOString(),
       end_date: new Date(lastDate).toISOString(),
       invoice_number: invoiceNumber.trim() || null,
@@ -776,6 +810,36 @@ const AddExpenseDialog = ({
             </div>
           )}
 
+          {/* A rated requirement's expense gives the quantity worked, which
+              its rate prices. */}
+          {orderRate !== null && (
+            <div className='space-y-1.5'>
+              <Label className='text-xs font-medium text-gray-700'>
+                {orderItem?.singleExpense ? "Total quantity" : "Quantity"}{" "}
+                <span className='text-red-500'>*</span>
+              </Label>
+              <div className='sm:w-1/2 sm:pr-1.5'>
+                <div className='relative'>
+                  <Input
+                    type='number' min='0' step='0.01' placeholder='0.00'
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    className='h-9 pr-20 text-sm'
+                  />
+                  <span className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400'>
+                    {orderUnit}
+                  </span>
+                </div>
+              </div>
+              <p className='text-xs text-gray-500'>
+                At {rateLabel(orderRate, orderUnit)}
+                {orderItem?.singleExpense
+                  ? ". The requirement takes this one expense, so give its total."
+                  : "."}
+              </p>
+            </div>
+          )}
+
           {picksAnyVendor && (
             <div className='space-y-2 border border-blue-100 rounded-lg p-3 bg-blue-50/30'>
               <Label className='text-xs font-medium text-gray-700 flex items-center gap-1.5'>
@@ -864,6 +928,19 @@ const AddExpenseDialog = ({
             {/* Each activity line has its own amount. */}
             {takesSeveralActivities ? (
               singleDateField
+            ) : orderRate !== null ? (
+              <div className='space-y-1.5'>
+                <Label className='text-xs font-medium text-gray-700'>Amount</Label>
+                <p className='flex h-9 items-center rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 text-sm tabular-nums'>
+                  {pricedAmount !== null ? (
+                    <span className='font-medium text-gray-900'>
+                      {formatAmount(pricedAmount)}
+                    </span>
+                  ) : (
+                    <span className='text-gray-400'>Quantity × rate</span>
+                  )}
+                </p>
+              </div>
             ) : (
               <div className='space-y-1.5'>
                 <Label className='text-xs font-medium text-gray-700'>
