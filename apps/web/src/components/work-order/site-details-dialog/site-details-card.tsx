@@ -68,7 +68,7 @@ const panelClass = (tone: keyof typeof PANEL_TONES) =>
   cn("min-w-0 rounded-lg border p-4", PANEL_TONES[tone]);
 
 // One stage of the site's paperwork, in its tinted panel: a heading, then its
-// documents side by side.
+// documents one under another, each the panel's full width.
 const DocumentStage = ({
   tone,
   title,
@@ -89,7 +89,7 @@ const DocumentStage = ({
         {description}
       </p>
     </div>
-    <div className='grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 [&>*]:min-w-0'>
+    <div className='grid grid-cols-1 gap-y-4 [&>*]:min-w-0'>
       {children}
     </div>
   </div>
