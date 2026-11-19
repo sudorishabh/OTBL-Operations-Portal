@@ -37,7 +37,6 @@ const { ROLES } = constants;
 
 type UserListFilters = {
   role?: string;
-  status?: "active" | "inactive" | "all";
   officeId?: number;
   assignment?: "assigned" | "unassigned";
   searchQuery?: string;
@@ -47,16 +46,12 @@ type UserListFilters = {
 // filters. Shared by the list and its counts so the two always agree.
 const userListWhere = (
   db: Database,
-  { role, status, officeId, assignment, searchQuery }: UserListFilters,
+  { role, officeId, assignment, searchQuery }: UserListFilters,
 ) => {
   let userQuery = not(eq(userTable.role, ROLES.ADMIN));
 
   if (role && role !== "all") {
     userQuery = and(userQuery, eq(userTable.role, role as any)) ?? userQuery;
-  }
-
-  if (status && status !== "all") {
-    userQuery = and(userQuery, eq(userTable.status, status)) ?? userQuery;
   }
 
   // An office seat, or a pin on a work order site, optionally in one
@@ -141,7 +136,6 @@ export const userQueryRouter = router({
           email: userTable.email,
           contact_number: userTable.contact_number,
           role: userTable.role,
-          status: userTable.status,
           created_at: userTable.created_at,
         })
         .from(userTable)
@@ -168,7 +162,6 @@ export const userQueryRouter = router({
           limit,
           searchQuery,
           role,
-          status,
           officeId,
           assignment,
           userNamesOrder,
@@ -177,7 +170,6 @@ export const userQueryRouter = router({
         const offset = (page - 1) * limit;
         const userQuery = userListWhere(ctx.db, {
           role,
-          status,
           officeId,
           assignment,
           searchQuery,
@@ -235,7 +227,6 @@ export const userQueryRouter = router({
             email: userTable.email,
             contact_number: userTable.contact_number,
             role: userTable.role,
-            status: userTable.status,
             created_at: userTable.created_at,
           })
           .from(userTable)
@@ -373,7 +364,6 @@ export const userQueryRouter = router({
             email: userTable.email,
             contact_number: userTable.contact_number,
             role: userTable.role,
-            status: userTable.status,
             created_at: userTable.created_at,
           })
           .from(userTable)
@@ -451,7 +441,6 @@ export const userQueryRouter = router({
             email: userTable.email,
             contact_number: userTable.contact_number,
             role: userTable.role,
-            status: userTable.status,
           })
           .from(userTable)
           .where(condition)

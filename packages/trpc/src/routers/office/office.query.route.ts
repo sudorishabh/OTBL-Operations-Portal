@@ -320,7 +320,6 @@ export const officeQueryRouter = router({
             name: userTable.name,
             email: userTable.email,
             contact_number: userTable.contact_number,
-            status: userTable.status,
             role: officeUserTable.role,
           })
           .from(officeUserTable)
