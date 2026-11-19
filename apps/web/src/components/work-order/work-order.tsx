@@ -38,12 +38,16 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
     { enabled: !!workOrderId },
   );
 
-  const { data: woOperatorUploads = [] } =
-    trpc.workOrderSiteQuery.getOperatorUploadsByWorkOrder.useQuery(
+  // Only the count, for the button: the dialog loads the uploads a page at a
+  // time.
+  const { data: woOperatorUploadsCount = 0 } =
+    trpc.workOrderSiteQuery.countOperatorUploadsByWorkOrder.useQuery(
       { work_order_id: Number(workOrderId) },
-      { enabled: !!workOrderId },
+      {
+        enabled: !!workOrderId,
+        select: (data: { count: number }) => data.count,
+      },
     );
-  const woOperatorUploadsCount = woOperatorUploads.length;
 
   const workOrder = workOrderData?.workOrder;
   const sites = workOrderData?.sites ?? [];

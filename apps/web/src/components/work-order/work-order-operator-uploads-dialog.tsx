@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
+import { keepPreviousData, type UseQueryResult } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   ArrowUpDown,
@@ -17,25 +18,31 @@ import RecordCode from "@/components/shared/record-code";
 import {
   ALL,
   ClearFiltersButton,
+  ComboboxFilter,
   FilterBar,
   SelectFilter,
 } from "@/components/filters/list-filters";
+import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import useHandleParams from "@/hooks/useHandleParams";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import { PROCESS_TONES } from "./process-section-header";
 
 const { WO_PROCESS } = constants;
+
+const PAGE_SIZE = 20;
 
 interface Props {
   workOrderId: number;
   workOrderCode: string;
 }
 
-type UploadRow =
-  RouterOutputs["workOrderSiteQuery"]["getOperatorUploadsByWorkOrder"][number];
+type UploadsPage =
+  RouterOutputs["workOrderSiteQuery"]["getOperatorUploadsByWorkOrder"];
+type UploadRow = UploadsPage["uploads"][number];
 
 // Uploads come from the restoration or a bioremediation site.
 type ProcessFilter =
@@ -70,24 +77,12 @@ const SORT_OPTIONS = [
 const isImageFileName = (fileName: string | null | undefined) =>
   !!fileName && /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName.trim());
 
-const time = (row: UploadRow) =>
-  row.created_at ? new Date(row.created_at).getTime() : 0;
-
-const byName = (a: string, b: string) =>
-  a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
-
-// Ties fall back to the newest first, so the order never jumps about.
-const SORTERS: Record<UploadSort, (a: UploadRow, b: UploadRow) => number> = {
-  newest: (a, b) => time(b) - time(a),
-  oldest: (a, b) => time(a) - time(b),
-  site: (a, b) => byName(a.site_name, b.site_name) || time(b) - time(a),
-  file: (a, b) =>
-    byName(a.file_name ?? "", b.file_name ?? "") || time(b) - time(a),
-};
+const plural = (count: number) =>
+  `${count.toLocaleString("en-IN")} upload${count !== 1 ? "s" : ""}`;
 
 // Everything field operators uploaded across the work order: at its
 // restoration and at each bioremediation site. Narrowed by process and site,
-// and sorted by date, site or file name.
+// sorted by date, site or file name, and loaded a page at a time.
 export function WorkOrderOperatorUploadsDialog({
   workOrderId,
   workOrderCode,
@@ -99,51 +94,48 @@ export function WorkOrderOperatorUploadsDialog({
   const [siteId, setSiteId] = useState<string>(ALL);
   const [sort, setSort] = useState<UploadSort>("newest");
 
-  const { data, isLoading } =
-    trpc.workOrderSiteQuery.getOperatorUploadsByWorkOrder.useQuery(
-      { work_order_id: workOrderId },
-      { enabled: open && workOrderId > 0 },
-    );
-  const uploads = (data ?? []) as UploadRow[];
+  const queryInput = {
+    work_order_id: workOrderId,
+    limit: PAGE_SIZE,
+    process_type: processType === ALL ? undefined : processType,
+    work_order_site_id: siteId === ALL ? undefined : Number(siteId),
+    sort,
+  };
+  const { pages, loadMore } = useLoadMorePages(queryInput);
+
+  // Each page is its own query, so a refresh updates the rows in place. A
+  // new filter keeps the last rows in view until its first page arrives.
+  const pageQueries: UseQueryResult<UploadsPage>[] = trpc.useQueries((t: any) =>
+    pages.map((page) =>
+      t.workOrderSiteQuery.getOperatorUploadsByWorkOrder(
+        { ...queryInput, page },
+        {
+          enabled: open && workOrderId > 0,
+          placeholderData: page === 1 ? keepPreviousData : undefined,
+        },
+      ),
+    ),
+  );
+
+  const firstPage = pageQueries[0]?.data;
+  const lastPage = pageQueries.at(-1)?.data;
+  const uploads = pageQueries.flatMap((query) => query.data?.uploads ?? []);
+  const isLoading = !!pageQueries[0]?.isLoading;
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
 
   const counts = {
-    [ALL]: uploads.length,
-    [WO_PROCESS.RESTORATION]: uploads.filter(
-      (row) => row.process_type === WO_PROCESS.RESTORATION,
-    ).length,
-    [WO_PROCESS.BIOREMEDIATION]: uploads.filter(
-      (row) => row.process_type === WO_PROCESS.BIOREMEDIATION,
-    ).length,
+    [ALL]: firstPage?.counts.all ?? 0,
+    [WO_PROCESS.RESTORATION]: firstPage?.counts[WO_PROCESS.RESTORATION] ?? 0,
+    [WO_PROCESS.BIOREMEDIATION]:
+      firstPage?.counts[WO_PROCESS.BIOREMEDIATION] ?? 0,
   };
+  const shownTotal = firstPage?.pagination.total ?? 0;
 
-  const inProcess = (row: UploadRow) =>
-    processType === ALL || row.process_type === processType;
-
-  // The sites with uploads in the chosen process, each once, by name.
-  const siteOptions = useMemo(() => {
-    const sites = new Map<number, string>();
-    for (const row of uploads) {
-      if (inProcess(row)) sites.set(row.work_order_site_id, row.site_name);
-    }
-    return [
-      { label: "All sites", value: ALL },
-      ...[...sites]
-        .sort(([, a], [, b]) => byName(a, b))
-        .map(([id, name]) => ({
-          label: capitalFirstLetter(name),
-          value: String(id),
-        })),
-    ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploads, processType]);
-
-  const shown = uploads
-    .filter(
-      (row) =>
-        inProcess(row) &&
-        (siteId === ALL || String(row.work_order_site_id) === siteId),
-    )
-    .sort(SORTERS[sort]);
+  // The sites with uploads in the chosen process, by name.
+  const siteOptions = (firstPage?.sites ?? []).map((site) => ({
+    label: capitalFirstLetter(site.name),
+    value: String(site.id),
+  }));
 
   const isFiltered = processType !== ALL || siteId !== ALL;
   const clearFilters = () => {
@@ -169,7 +161,7 @@ export function WorkOrderOperatorUploadsDialog({
       heightMode='fixed'
       isLoading={isLoading}
       loadingSkeleton='list'>
-      {uploads.length === 0 ? (
+      {counts[ALL] === 0 ? (
         <div className='py-10 text-center'>
           <FolderOpen className='mx-auto size-6 text-gray-300' />
           <p className='mt-2 text-sm font-medium text-gray-900'>
@@ -215,12 +207,14 @@ export function WorkOrderOperatorUploadsDialog({
           </Tabs>
 
           <FilterBar>
-            <SelectFilter
+            <ComboboxFilter
               label='Site'
+              allLabel='All sites'
               Icon={MapPin}
               value={siteId}
               onChange={setSiteId}
               options={siteOptions}
+              searchPlaceholder='Search sites…'
             />
             <SelectFilter
               label='Sort uploads'
@@ -232,26 +226,33 @@ export function WorkOrderOperatorUploadsDialog({
             />
             {isFiltered && <ClearFiltersButton onClick={clearFilters} />}
             <p className='col-span-2 text-xs text-gray-500 sm:ml-auto'>
-              {shown.length === uploads.length
-                ? `${uploads.length} upload${uploads.length !== 1 ? "s" : ""}`
-                : `${shown.length} of ${uploads.length} uploads`}
+              {isFiltered
+                ? `${shownTotal.toLocaleString("en-IN")} of ${plural(counts[ALL])}`
+                : plural(counts[ALL])}
             </p>
           </FilterBar>
 
-          {shown.length === 0 ? (
+          {uploads.length === 0 ? (
             <p className='rounded-lg border border-dashed py-6 text-center text-xs text-gray-500'>
               No uploads match these filters.
             </p>
           ) : (
             <ScrollArea className='h-[min(460px,55vh)] pr-3'>
               <ul className='divide-y divide-gray-100 rounded-lg border border-gray-200'>
-                {shown.map((row) => (
+                {uploads.map((row) => (
                   <UploadItem
                     key={row.id}
                     row={row}
                   />
                 ))}
               </ul>
+              {lastPage?.pagination.hasMore && (
+                <LoadMoreBtn
+                  onClick={loadMore}
+                  loading={isFetchingMore}
+                  className='pt-3 pb-1'
+                />
+              )}
             </ScrollArea>
           )}
         </div>
