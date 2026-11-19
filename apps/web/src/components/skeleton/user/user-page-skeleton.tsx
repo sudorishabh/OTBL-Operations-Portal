@@ -1,6 +1,6 @@
 import React from "react";
-import { FilterBarSkeleton, SkeletonRegion, TableSkeleton } from "../parts";
-import { USER_COLUMNS } from "./user-tab-skeleton";
+import { FilterBarSkeleton, SkeletonRegion } from "../parts";
+import { UsersTableSkeleton } from "./user-tab-skeleton";
 
 // The user page before it mounts: the filters and the table.
 const UserPageSkeleton = () => (
@@ -12,11 +12,7 @@ const UserPageSkeleton = () => (
       selects={["w-28", "w-28", "w-28", "w-32", "w-28"]}
       className='mb-4'
     />
-    <TableSkeleton
-      columns={USER_COLUMNS}
-      rows={10}
-      rowClassName='h-16'
-    />
+    <UsersTableSkeleton />
   </SkeletonRegion>
 );
 
