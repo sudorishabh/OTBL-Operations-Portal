@@ -226,9 +226,10 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
     <article className='group relative overflow-hidden rounded-xl border border-gray-200 bg-white transition-colors duration-200 focus-within:ring-2 focus-within:ring-emerald-500/30 hover:border-emerald-300'>
       <div className='flex flex-col lg:flex-row lg:items-start'>
         {/* Identity */}
-        <div className='flex min-w-0 flex-1 items-start gap-3 px-4 pt-4 lg:px-5 lg:pb-4'>
-          <div className='shrink-0 rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100'>
-            <Building2 className='size-5' />
+        <div className='flex min-w-0 flex-1 items-start gap-2.5 px-4 pt-4 lg:px-5 lg:pb-4'>
+          {/* A small mark, as tall as the name beside it. */}
+          <div className='shrink-0 rounded-md bg-emerald-50 p-1 text-emerald-700 ring-1 ring-emerald-100'>
+            <Building2 className='size-3.5' />
           </div>
           <div className='min-w-0 flex-1'>
             <div className='flex flex-wrap items-center gap-x-2.5 gap-y-1'>
