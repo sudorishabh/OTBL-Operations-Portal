@@ -7,12 +7,14 @@ import { type StoredDocument } from "@/lib/documents";
 const META_LINE =
   "mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500";
 
-// One half of a proposal row: a title line, a meta line, and an optional
-// line of details underneath. With `onOpen` the whole cell opens the record;
-// without it the cell only shows, with room for an `action` on the right.
+// One half of a proposal row: an optional eyebrow line, such as a code and
+// its status, then a title line, a meta line and optional details. With
+// `onOpen` the whole cell opens the record; without it the cell only shows,
+// with room for an `action` on the right.
 export const RowCell = ({
   label,
   onOpen,
+  eyebrow,
   title,
   tooltip,
   aside,
@@ -24,6 +26,8 @@ export const RowCell = ({
   // Accessible name when the cell opens, e.g. "Open work order X".
   label?: string;
   onOpen?: () => void;
+  // Above the title, e.g. a code and status pill.
+  eyebrow?: React.ReactNode;
   title: string;
   // Shown when hovering the title; defaults to the title.
   tooltip?: string;
@@ -59,10 +63,16 @@ export const RowCell = ({
         "cursor-pointer outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-emerald-500/30",
     )}>
     <div className='min-w-0 flex-1'>
-      <div className='flex min-w-0 items-start gap-2'>
+      {eyebrow && (
+        <div className='mb-1 flex h-5 min-w-0 items-center gap-2'>
+          {eyebrow}
+        </div>
+      )}
+      {/* A pill or note that doesn't fit beside the title wraps under it. */}
+      <div className='flex min-w-0 flex-wrap items-start gap-x-2 gap-y-0.5'>
         <span
           className={cn(
-            "min-w-0 break-words text-sm font-medium text-gray-900",
+            "min-w-0 break-words text-sm font-semibold text-gray-900",
             // A record that opens shows its full title on its own page.
             onOpen &&
               "line-clamp-2 transition-colors group-hover:text-emerald-700",
@@ -148,7 +158,7 @@ export const ClampedText = ({ text }: { text: string }) => {
       <p
         ref={ref}
         className={cn(
-          "whitespace-pre-line break-words leading-5 text-gray-600",
+          "whitespace-pre-line break-words leading-5 text-gray-500",
           !isExpanded && "line-clamp-2",
         )}>
         {text}
