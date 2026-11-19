@@ -45,6 +45,8 @@ export interface ContractOrder {
   unit_rate: string | null;
   gst_percentage: string | null;
   invoice_number: string | null;
+  // A sub-contract whose requirements each take one expense at the site.
+  single_expense: boolean;
   documents: unknown;
   completion_documents: unknown;
   items: {
@@ -54,8 +56,11 @@ export interface ContractOrder {
     site_name: string | null;
     item: string;
     description: string | null;
-    quantity: string;
+    // A purchase order's oil zapper for the site.
+    quantity: string | null;
     unit: string;
+    // A sub-contract requirement's rate per unit.
+    unit_rate: string | null;
   }[];
   vendors: { id: number; code?: string; name: string }[];
 }
@@ -82,6 +87,14 @@ const formatAmount = (amount: number) =>
     currency: "INR",
     maximumFractionDigits: 2,
   }).format(amount);
+
+// One of an item's unit, as a rate is given per: hour, man-day, trip.
+export const singleUnit = (unit: string) =>
+  unit === "Nos" ? "unit" : unit.replace(/s$/, "");
+
+// A sub-contract requirement's rate, such as ₹1,200/hour.
+export const rateLabel = (rate: number | string, unit: string) =>
+  `${formatAmount(Number(rate))}/${singleUnit(unit)}`;
 
 // What a purchase order costs in all: its oil zapper at its rate, with GST.
 // Null for a sub-contract, costed at its site.
