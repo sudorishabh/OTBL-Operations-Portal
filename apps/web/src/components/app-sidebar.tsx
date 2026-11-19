@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, type ComponentType, type SVGProps } from "react";
+import { useEffect, useMemo, type ComponentType, type SVGProps } from "react";
 import {
   HardHat,
   LayoutDashboard,
@@ -100,22 +100,29 @@ const isLinkActive = (link: string, pathname: string) =>
     ? pathname === "/"
     : pathname === link || pathname.startsWith(`${link}/`);
 
-const NavLink = ({ item, isActive }: { item: NavItem; isActive: boolean }) => (
-  <SidebarMenuItem>
-    <SidebarMenuButton
-      asChild
-      isActive={isActive}
-      tooltip={item.title}
-      className={ROW_CLASS}>
-      <Link
-        href={`/dashboard${item.link}`}
-        aria-current={isActive ? "page" : undefined}>
-        <item.icon />
-        <span>{item.title}</span>
-      </Link>
-    </SidebarMenuButton>
-  </SidebarMenuItem>
-);
+const NavLink = ({ item, isActive }: { item: NavItem; isActive: boolean }) => {
+  const { setOpenMobile } = useSidebar();
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        isActive={isActive}
+        tooltip={item.title}
+        className={ROW_CLASS}>
+        <Link
+          href={`/dashboard${item.link}`}
+          aria-current={isActive ? "page" : undefined}
+          // Tapping the page already open changes no route, so close the
+          // phone drawer here too.
+          onClick={() => setOpenMobile(false)}>
+          <item.icon />
+          <span>{item.title}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+};
 
 // Holds a link's place while the user, and so which links they get, loads.
 const NavLinkSkeleton = () => (
@@ -156,6 +163,13 @@ const CollapseToggle = () => {
 function AppSidebar() {
   const pathname = usePathname();
   const { user, isUserLoading } = useAuthContext();
+  const { setOpenMobile } = useSidebar();
+
+  // On phones the sidebar is a drawer over the page: close it once the user
+  // has gone somewhere, from a link, the user menu or the back button.
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   // The groups this user gets, each holding only the links their role sees.
   const visibleGroups = useMemo(() => {
