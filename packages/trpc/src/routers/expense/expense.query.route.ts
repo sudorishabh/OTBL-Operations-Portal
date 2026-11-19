@@ -1,4 +1,18 @@
-import { eq, sum, desc, and, ne, count } from "drizzle-orm";
+import {
+  eq,
+  sum,
+  desc,
+  asc,
+  and,
+  or,
+  ne,
+  gte,
+  lt,
+  like,
+  isNull,
+  count,
+  type SQL,
+} from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -10,6 +24,7 @@ import {
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { siteNameOrRestoration } from "../../helper/restoration";
+import { escapeLike } from "../../helper/escape-like";
 import { z } from "zod";
 
 const {
@@ -24,6 +39,73 @@ const {
   contractOrderItemTable,
 } = schema;
 
+const dayValidator = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+// How a site's expenses are narrowed; each filter is optional.
+const expenseFilters = {
+  // Matches the title, invoice number or vendor.
+  search: z.string().trim().max(100).optional(),
+  // A vendor's id, or "none" for those under no vendor.
+  vendor: z.union([z.number().int().positive(), z.literal("none")]).optional(),
+  // The first and last day, YYYY-MM-DD, an expense may start on.
+  from: dayValidator.optional(),
+  to: dayValidator.optional(),
+  // An activity's key, or "none" for those on no activity.
+  activity: z.string().trim().min(1).max(100).optional(),
+  // Only those over the estimate.
+  exceeded_only: z.boolean().optional(),
+};
+type ExpenseFilters = {
+  [K in keyof typeof expenseFilters]?: z.infer<(typeof expenseFilters)[K]>;
+};
+
+const EXPENSE_SORTS = ["newest", "oldest", "amount_desc", "amount_asc"] as const;
+
+// A day's midnight in the server's time zone, as expense dates are kept.
+const startOfDay = (day: string) => new Date(`${day}T00:00:00`);
+const dayAfter = (day: string) => {
+  const date = startOfDay(day);
+  date.setDate(date.getDate() + 1);
+  return date;
+};
+
+// A site's expenses, narrowed by the filters. Reads the vendor's name, so the
+// query must join contractorTable.
+const expenseWhere = (workOrderSiteId: number, filters: ExpenseFilters) => {
+  const e = workOrderSiteExpenseTable;
+  const conditions: (SQL | undefined)[] = [eq(e.work_order_site_id, workOrderSiteId)];
+
+  if (filters.search) {
+    const term = `%${escapeLike(filters.search)}%`;
+    conditions.push(
+      or(like(e.title, term), like(e.invoice_number, term), like(contractorTable.name, term)),
+    );
+  }
+  if (filters.vendor === "none") conditions.push(isNull(e.contractor_id));
+  else if (filters.vendor) conditions.push(eq(e.contractor_id, filters.vendor));
+  if (filters.from) conditions.push(gte(e.start_date, startOfDay(filters.from)));
+  if (filters.to) conditions.push(lt(e.start_date, dayAfter(filters.to)));
+  if (filters.activity === "none") conditions.push(isNull(e.activity_key));
+  else if (filters.activity) conditions.push(eq(e.activity_key, filters.activity));
+  if (filters.exceeded_only) conditions.push(ne(e.is_exceeded, 0));
+
+  return and(...conditions);
+};
+
+const expenseOrder = (sort: (typeof EXPENSE_SORTS)[number]) => {
+  const e = workOrderSiteExpenseTable;
+  switch (sort) {
+    case "oldest":
+      return [asc(e.start_date), asc(e.created_at), asc(e.id)];
+    case "amount_desc":
+      return [desc(e.amount), desc(e.start_date), desc(e.id)];
+    case "amount_asc":
+      return [asc(e.amount), desc(e.start_date), desc(e.id)];
+    default:
+      return [desc(e.start_date), desc(e.created_at), desc(e.id)];
+  }
+};
+
 // The month a date falls in, as "2026-04", in the server's time zone.
 const monthOf = (value: Date | string) => {
   const date = new Date(value);
@@ -36,10 +118,14 @@ export const expenseQueryRouter = router({
       work_order_site_id: z.number().positive(),
       page: z.number().min(1).default(1),
       limit: z.number().min(1).max(100).default(20),
+      ...expenseFilters,
+      // Newest first unless asked otherwise.
+      sort: z.enum(EXPENSE_SORTS).default("newest"),
     }))
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { work_order_site_id, page, limit } = input;
+        const { work_order_site_id, page, limit, sort, ...filters } = input;
+        const where = expenseWhere(work_order_site_id, filters);
         const offset = (page - 1) * limit;
 
         const scope = await getAccessScope(
@@ -53,7 +139,11 @@ export const expenseQueryRouter = router({
           const [totalResult] = await ctx.db
             .select({ count: count() })
             .from(workOrderSiteExpenseTable)
-            .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id));
+            .leftJoin(
+              contractorTable,
+              eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
+            )
+            .where(where);
 
           const total = totalResult?.count ?? 0;
 
@@ -95,8 +185,8 @@ export const expenseQueryRouter = router({
               eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
             )
             .leftJoin(userTable, eq(workOrderSiteExpenseTable.created_by, userTable.id))
-            .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id))
-            .orderBy(desc(workOrderSiteExpenseTable.start_date), desc(workOrderSiteExpenseTable.created_at))
+            .where(where)
+            .orderBy(...expenseOrder(sort))
             .limit(limit)
             .offset(offset);
 
@@ -193,11 +283,18 @@ export const expenseQueryRouter = router({
       }),
     ),
 
+  // A site's expense totals, of those the filters leave when given.
   getExpenseSummary: protectedProcedure
-    .input(z.object({ work_order_site_id: z.number().positive() }))
+    .input(
+      z.object({
+        work_order_site_id: z.number().positive(),
+        ...expenseFilters,
+      }),
+    )
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { work_order_site_id } = input;
+        const { work_order_site_id, ...filters } = input;
+        const where = expenseWhere(work_order_site_id, filters);
 
         const scope = await getAccessScope(
           ctx.db,
@@ -210,18 +307,21 @@ export const expenseQueryRouter = router({
           const [totalRow] = await ctx.db
             .select({ total: sum(workOrderSiteExpenseTable.amount) })
             .from(workOrderSiteExpenseTable)
-            .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id));
+            .leftJoin(
+              contractorTable,
+              eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
+            )
+            .where(where);
           const grandTotal = Number(totalRow?.total ?? 0);
 
           const exceededRows = await ctx.db
             .select({ total: sum(workOrderSiteExpenseTable.amount) })
             .from(workOrderSiteExpenseTable)
-            .where(
-              and(
-                eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id),
-                ne(workOrderSiteExpenseTable.is_exceeded, 0),
-              ),
-            );
+            .leftJoin(
+              contractorTable,
+              eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
+            )
+            .where(and(where, ne(workOrderSiteExpenseTable.is_exceeded, 0)));
           const exceededTotal = Number(exceededRows[0]?.total ?? 0);
           const regularTotal = grandTotal - exceededTotal;
 
@@ -250,7 +350,11 @@ export const expenseQueryRouter = router({
               amount: workOrderSiteExpenseTable.amount,
             })
             .from(workOrderSiteExpenseTable)
-            .where(eq(workOrderSiteExpenseTable.work_order_site_id, work_order_site_id));
+            .leftJoin(
+              contractorTable,
+              eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
+            )
+            .where(where);
 
           const byActivity: Record<string, { totalAmount: number; exceededAmount: number; totalQuantity: number; count: number }> = {};
           // Totals per contractor id; expenses under none are keyed "none".
