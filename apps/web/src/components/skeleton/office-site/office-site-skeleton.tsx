@@ -50,8 +50,8 @@ export const OfficeSitesTableSkeleton = ({ rows = 3 }: { rows?: number }) => (
 const OfficeCardSkeleton = () => (
   <div className='overflow-hidden rounded-xl border border-gray-200 bg-white'>
     <div className='flex flex-col lg:flex-row lg:items-start'>
-      <div className='flex min-w-0 flex-1 items-start gap-3 px-4 pt-4 lg:px-5 lg:pb-4'>
-        <Skeleton className='size-10 shrink-0 rounded-lg' />
+      <div className='flex min-w-0 flex-1 items-start gap-2.5 px-4 pt-4 lg:px-5 lg:pb-4'>
+        <Skeleton className='size-[22px] shrink-0 rounded-md' />
         <div className='min-w-0 flex-1'>
           <div className='flex h-[22.5px] items-center gap-2.5'>
             <Skeleton className='h-4 w-56 max-w-[60%]' />
