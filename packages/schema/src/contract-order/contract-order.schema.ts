@@ -151,6 +151,15 @@ export const getContractOrdersSchema = z.object({
   work_order_id: positiveIntValidator,
 });
 
+// A page of the work order's sites an order can be for, optionally narrowed
+// by their code, name or city.
+export const findOrderableSitesSchema = z.object({
+  work_order_id: positiveIntValidator,
+  search: z.string().trim().max(100).optional(),
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(50).default(8),
+});
+
 export const getSiteContractOrderItemsSchema = z.object({
   work_order_site_id: positiveIntValidator,
 });

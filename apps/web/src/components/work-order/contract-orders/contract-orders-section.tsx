@@ -50,13 +50,14 @@ export interface ContractOrder {
   items: {
     id: number;
     work_order_site_id: number;
+    site_code?: string | null;
     site_name: string | null;
     item: string;
     description: string | null;
     quantity: string;
     unit: string;
   }[];
-  vendors: { id: number; name: string }[];
+  vendors: { id: number; code?: string; name: string }[];
 }
 
 interface Props {

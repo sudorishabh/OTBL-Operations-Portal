@@ -17,10 +17,10 @@ import {
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
-import NewVendorButton from "@/components/vendor/new-vendor-button";
+import VendorPicker from "@/components/vendor/vendor-picker";
+import { type PickerItem } from "@/components/shared/paged-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { itemLabel, type ContractOrder } from "./contract-orders-section";
 import RecordCode from "@/components/shared/record-code";
+import OrderSitePicker from "./order-site-picker";
 
 const {
   CONTRACT_ORDER_TYPE,
@@ -169,8 +170,11 @@ const ContractOrderDialog = ({
   );
   const [orderDate, setOrderDate] = useState("");
   const [description, setDescription] = useState("");
-  const [vendorIds, setVendorIds] = useState<number[]>([]);
-  const [rows, setRows] = useState<ItemRow[]>([newRow(type)]);
+  const [vendors, setVendors] = useState<PickerItem[]>([]);
+  const [rows, setRows] = useState<ItemRow[]>([]);
+  // The sites chosen, by id, for their names and codes; the picker shows only
+  // a page of them at a time.
+  const [siteItems, setSiteItems] = useState<Record<string, PickerItem>>({});
   const [unitRate, setUnitRate] = useState("");
   const [gstPercentage, setGstPercentage] = useState(String(GST_PERCENTAGE));
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -181,21 +185,6 @@ const ContractOrderDialog = ({
 
   const isPurchase = type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER;
   const typeLabel = isPurchase ? "Purchase order" : "Sub-contract";
-
-  const sitesQuery = trpc.contractOrderQuery.getOrderableSites.useQuery(
-    { work_order_id: workOrderId },
-    { enabled: open },
-  );
-  const vendorsQuery = trpc.contractorQuery.getContractors.useQuery(
-    {},
-    { enabled: open },
-  );
-  const vendors = (vendorsQuery.data?.contractors ?? []) as {
-    id: number;
-    code: string;
-    name: string;
-  }[];
-  const sites = (sitesQuery.data ?? []) as { id: number; name: string }[];
 
   const documentsUpload = useSharePointUpload({
     folderPath: `/WorkOrders/${workOrderId}/ContractOrders`,
@@ -214,7 +203,25 @@ const ContractOrderDialog = ({
       format(editing ? new Date(editing.order_date) : new Date(), "yyyy-MM-dd"),
     );
     setDescription(editing?.description ?? "");
-    setVendorIds(editing?.vendors.map((vendor) => vendor.id) ?? []);
+    setVendors(
+      editing?.vendors.map((vendor) => ({
+        id: vendor.id,
+        code: vendor.code ?? null,
+        name: vendor.name,
+      })) ?? [],
+    );
+    setSiteItems(
+      Object.fromEntries(
+        (editing?.items ?? []).map((item) => [
+          String(item.work_order_site_id),
+          {
+            id: item.work_order_site_id,
+            code: item.site_code ?? null,
+            name: item.site_name ?? "Site",
+          },
+        ]),
+      ),
+    );
     setRows(
       editing?.items.length
         ? editing.items.map((item) => ({
@@ -225,7 +232,7 @@ const ContractOrderDialog = ({
             description: item.description ?? "",
             quantity: String(Number(item.quantity)),
           }))
-        : [newRow(startType)],
+        : [],
     );
     setUnitRate(editing?.unit_rate ? String(Number(editing.unit_rate)) : "");
     setGstPercentage(
@@ -243,17 +250,39 @@ const ContractOrderDialog = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
 
-  // A sub-contract's sites: those its requirements are at, as chosen. A site
-  // is chosen with one empty requirement, and unticking it drops its own.
-  const subContractSiteIds = uniqueSiteIds(rows);
-  const toggleSite = (siteId: string, checked: boolean) =>
-    setRows((prev) =>
-      checked
-        ? [...prev.filter((row) => row.siteId), newRow(type, siteId)]
-        : prev.filter((row) => row.siteId !== siteId),
+  // The order's sites: those its rows are at, as chosen. A site is chosen
+  // with one empty row, and taking it off drops its own.
+  const chosenSiteIds = uniqueSiteIds(rows);
+  const selectedSites = chosenSiteIds.map(
+    (siteId) => siteItems[siteId] ?? { id: Number(siteId), name: "Site" },
+  );
+  const changeSites = (next: PickerItem[]) => {
+    setSiteItems((prev) => ({
+      ...prev,
+      ...Object.fromEntries(next.map((site) => [String(site.id), site])),
+    }));
+    const nextIds = new Set(next.map((site) => String(site.id)));
+    setRows((prev) => {
+      const kept = prev.filter((row) => nextIds.has(row.siteId));
+      const have = new Set(kept.map((row) => row.siteId));
+      const added = next
+        .filter((site) => !have.has(String(site.id)))
+        .map((site) => newRow(type, String(site.id)));
+      return [...kept, ...added];
+    });
+  };
+
+  // A site as its rows are headed: its code and name.
+  const siteLabel = (siteId: string) => {
+    const site = siteItems[siteId];
+    return (
+      <p className='flex min-w-0 items-center gap-1.5 px-1 text-xs font-medium text-gray-800'>
+        <MapPin className='size-3.5 shrink-0 text-gray-400' />
+        {site?.code && <RecordCode code={site.code} />}
+        <span className='truncate'>{site?.name ?? "Site"}</span>
+      </p>
     );
-  const siteName = (siteId: string) =>
-    sites.find((site) => String(site.id) === siteId)?.name ?? "Site";
+  };
 
   // Switching type keeps the rows whose items the new type takes, with their
   // ids so their expenses stay linked, such as an older purchase order's JCB
@@ -270,15 +299,11 @@ const ContractOrderDialog = ({
     const kept =
       fitting.length > 0
         ? fitting
-        : siteIds.length > 0
-          ? siteIds.map((siteId) => newRow(next, siteId))
-          : isNextPurchase
-            ? [newRow(next)]
-            : [];
+        : siteIds.map((siteId) => newRow(next, siteId));
     setType(next);
     setRows(kept);
     if (isNextPurchase) {
-      setVendorIds((prev) => prev.slice(0, 1));
+      setVendors((prev) => prev.slice(0, 1));
     }
   };
 
@@ -316,18 +341,6 @@ const ContractOrderDialog = ({
   const removeRow = (key: string) =>
     setRows((prev) => prev.filter((row) => row.key !== key));
 
-  const toggleVendor = (id: number, checked: boolean) =>
-    setVendorIds((prev) =>
-      checked ? [...prev, id] : prev.filter((vendorId) => vendorId !== id),
-    );
-
-  // A vendor added from here is chosen for the order: as a purchase order's
-  // one vendor, or alongside a sub-contract's others.
-  const chooseNewVendor = (id: number) =>
-    setVendorIds((prev) =>
-      isPurchase ? [id] : prev.includes(id) ? prev : [...prev, id],
-    );
-
   // A purchase order's cost, as it will be recorded at its sites.
   const rate = Number(unitRate) || 0;
   const gst = Number(gstPercentage) || 0;
@@ -346,7 +359,7 @@ const ContractOrderDialog = ({
       description,
       documents: savedDocuments,
       completion_documents: savedCompletion,
-      contractor_ids: vendorIds,
+      contractor_ids: vendors.map((vendor) => vendor.id),
       items: rows.map((row) => ({
         id: row.id,
         work_order_site_id: Number(row.siteId),
@@ -399,31 +412,6 @@ const ContractOrderDialog = ({
     completionUpload.isUploading ||
     createOrder.isPending ||
     updateOrder.isPending;
-
-  const siteSelect = (value: string, onChange: (siteId: string) => void) => (
-    <Select
-      value={value}
-      onValueChange={onChange}>
-      <SelectTrigger className='h-9 w-full bg-white'>
-        <SelectValue
-          placeholder={sites.length === 0 ? "No sites yet" : "Site"}
-        />
-      </SelectTrigger>
-      <SelectContent>
-        {sites.map((site) => (
-          <SelectItem
-            key={site.id}
-            value={String(site.id)}>
-            {site.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-
-  const noVendorsText = vendorsQuery.isLoading
-    ? "Loading vendors..."
-    : "No vendors yet. Add one with New vendor.";
 
   // A sub-contract's requirement at one of its sites. A site's only one goes
   // when the site is unticked.
@@ -547,68 +535,57 @@ const ContractOrderDialog = ({
           </div>
         </div>
 
+        {/* Who and where, picked a page at a time. */}
+        <section className={sectionClass}>
+          <SectionTitle
+            title={isPurchase ? "Sites and vendor" : "Sites and vendors"}
+            description={
+              isPurchase
+                ? "A purchase order buys oil zapper for one or more sites, from one vendor."
+                : "A sub-contract gives out work at one or more sites. Its expenses are recorded at each site, under these vendors."
+            }
+          />
+          <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
+            <OrderSitePicker
+              workOrderId={workOrderId}
+              selected={selectedSites}
+              onChange={changeSites}
+            />
+            <VendorPicker
+              mode={isPurchase ? "single" : "multiple"}
+              selected={vendors}
+              onChange={setVendors}
+            />
+          </div>
+          {isPurchase && vendors.length > 1 && (
+            <p className='flex items-center gap-1.5 text-xs text-amber-700'>
+              <AlertTriangle className='size-3.5' />
+              This order has {vendors.length} vendors. Choose the one it is
+              given to.
+            </p>
+          )}
+        </section>
+
         {isPurchase ? (
           <>
             <section className={sectionClass}>
               <SectionTitle
-                title='Vendor'
-                description='A purchase order is given to one vendor.'
+                title='Oil zapper by site'
+                description={`How many ${OIL_ZAPPER.UNIT} each chosen site gets.`}
               />
-              <div className='flex flex-wrap items-center gap-3'>
-                <Select
-                  value={vendorIds.length === 1 ? String(vendorIds[0]) : ""}
-                  onValueChange={(id) => setVendorIds([Number(id)])}>
-                  <SelectTrigger className='h-9 w-full sm:w-1/2'>
-                    <SelectValue
-                      placeholder={
-                        vendors.length === 0
-                          ? noVendorsText
-                          : "Choose the vendor"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendors.map((vendor) => (
-                      <SelectItem
-                        key={vendor.id}
-                        value={String(vendor.id)}>
-                        <RecordCode code={vendor.code} />
-                        {vendor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <NewVendorButton onAdded={chooseNewVendor} />
-              </div>
-              {vendorIds.length > 1 && (
-                <p className='flex items-center gap-1.5 text-xs text-amber-700'>
-                  <AlertTriangle className='size-3.5' />
-                  This order has {vendorIds.length} vendors. Choose the one it
-                  is given to.
+              {rows.length === 0 && (
+                <p className='rounded-lg border border-dashed px-3 py-4 text-center text-xs text-gray-400'>
+                  Choose the sites the order buys oil zapper for, then give each
+                  its quantity.
                 </p>
               )}
-            </section>
-
-            <section className={sectionClass}>
-              <SectionTitle
-                title='Oil zapper by site'
-                description={`How many ${OIL_ZAPPER.UNIT} each site gets.`}
-                action={
-                  <AddRowButton
-                    label='Add site'
-                    onClick={() => setRows((prev) => [...prev, newRow(type)])}
-                  />
-                }
-              />
               <div className='space-y-2'>
                 {rows.map((row) => (
                   <div
                     key={row.key}
                     className='grid grid-cols-1 items-center gap-2 rounded-lg border bg-gray-50/50 p-2 sm:grid-cols-[1fr_10rem_10rem_32px]'>
                     <div className='min-w-0'>
-                      {siteSelect(row.siteId, (siteId) =>
-                        updateRow(row.key, { siteId }),
-                      )}
+                      {siteLabel(row.siteId)}
                       {row.item !== OIL_ZAPPER.KEY && (
                         <p className='mt-1 text-[11px] text-amber-700'>
                           Was {itemLabel(row.item, row.description)}: a purchase
@@ -637,8 +614,9 @@ const ContractOrderDialog = ({
                         <span className='text-gray-300'>—</span>
                       )}
                     </p>
+                    {/* Takes the site off the order. */}
                     <RemoveRowButton
-                      disabled={rows.length === 1}
+                      disabled={false}
                       onClick={() => removeRow(row.key)}
                     />
                   </div>
@@ -725,86 +703,17 @@ const ContractOrderDialog = ({
           <>
             <section className={sectionClass}>
               <SectionTitle
-                title='Sites and vendors'
-                description='A sub-contract gives out work at one or more sites. Its expenses are recorded at each site, under these vendors.'
-              />
-              <div className='grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]'>
-                <div>
-                  <label className={fieldLabel}>Sites</label>
-                  <div className='max-h-32 overflow-y-auto rounded-lg border bg-white p-2'>
-                    {sites.length === 0 ? (
-                      <p className='px-1 py-1 text-xs text-gray-400'>
-                        {sitesQuery.isLoading
-                          ? "Loading sites..."
-                          : "No bioremediation sites yet."}
-                      </p>
-                    ) : (
-                      <div className='grid grid-cols-1 gap-1'>
-                        {sites.map((site) => (
-                          <label
-                            key={site.id}
-                            className='flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs text-gray-700 hover:bg-gray-50'>
-                            <Checkbox
-                              checked={subContractSiteIds.includes(
-                                String(site.id),
-                              )}
-                              onCheckedChange={(checked) =>
-                                toggleSite(String(site.id), checked === true)
-                              }
-                            />
-                            <span className='truncate'>{site.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <div className='mb-1 flex items-center justify-between gap-2'>
-                    <label className={cn(fieldLabel, "mb-0")}>Vendors</label>
-                    <NewVendorButton onAdded={chooseNewVendor} />
-                  </div>
-                  <div className='max-h-32 overflow-y-auto rounded-lg border bg-white p-2'>
-                    {vendors.length === 0 ? (
-                      <p className='px-1 py-1 text-xs text-gray-400'>
-                        {noVendorsText}
-                      </p>
-                    ) : (
-                      <div className='grid grid-cols-1 gap-1 sm:grid-cols-2'>
-                        {vendors.map((vendor) => (
-                          <label
-                            key={vendor.id}
-                            className='flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs text-gray-700 hover:bg-gray-50'>
-                            <Checkbox
-                              checked={vendorIds.includes(vendor.id)}
-                              onCheckedChange={(checked) =>
-                                toggleVendor(vendor.id, checked === true)
-                              }
-                            />
-                            <RecordCode code={vendor.code} />
-                            <span className='truncate'>{vendor.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className={sectionClass}>
-              <SectionTitle
                 title='Requirements'
                 description='What the sub-contract gives out at each of its sites.'
               />
-              {subContractSiteIds.length === 0 ? (
+              {chosenSiteIds.length === 0 ? (
                 <p className='rounded-lg border border-dashed px-3 py-4 text-center text-xs text-gray-400'>
-                  Tick the sites the sub-contract is for, then add what it
+                  Choose the sites the sub-contract is for, then add what it
                   requires at each.
                 </p>
               ) : (
                 <div className='space-y-4'>
-                  {subContractSiteIds.map((siteId) => {
+                  {chosenSiteIds.map((siteId) => {
                     const siteRows = rows.filter(
                       (row) => row.siteId === siteId,
                     );
@@ -813,10 +722,7 @@ const ContractOrderDialog = ({
                         key={siteId}
                         className='space-y-2'>
                         <div className='flex items-center justify-between gap-3'>
-                          <p className='flex min-w-0 items-center gap-1.5 text-xs font-medium text-gray-800'>
-                            <MapPin className='size-3.5 shrink-0 text-gray-400' />
-                            <span className='truncate'>{siteName(siteId)}</span>
-                          </p>
+                          {siteLabel(siteId)}
                           <AddRowButton
                             label='Add requirement'
                             onClick={() =>
