@@ -55,6 +55,19 @@ export interface ActivityOption {
   estimateQty: number | null;
 }
 
+// One of an order's requirements at the site, as an expense on the order
+// can be spent on. A sub-contract's rate prices it from the quantity worked;
+// with a single expense, that is the requirement's total.
+export interface OrderItemOption {
+  id: number;
+  label: string;
+  unitRate: number | null;
+  unit: string;
+  singleExpense: boolean;
+  // A single-expense requirement that already has its one.
+  isTaken: boolean;
+}
+
 export interface Expense {
   id: number;
   contractor_id: number | null;
@@ -95,17 +108,10 @@ interface Props {
   // The one activity every expense is recorded against, so none is picked:
   // bioremediation's oil zapper.
   fixedActivityKey?: string;
-  // The contract order requirement the expense is spent on. Its vendors are
-  // then the order's, and it can't be miscellaneous. A sub-contract's rate
-  // prices it from the quantity worked; with a single expense, that is the
-  // requirement's total.
-  orderItem?: {
-    id: number;
-    label: string;
-    unitRate?: number | null;
-    unit?: string;
-    singleExpense?: boolean;
-  } | null;
+  // The contract order the expense is spent on, with its requirements at the
+  // site, one of which is picked. Its vendors are then the order's, and it
+  // can't be miscellaneous.
+  order?: { label: string; items: OrderItemOption[] } | null;
   // The restoration job order the expense is spent on, likewise.
   jobOrder?: { id: number; label: string } | null;
   // Why the activities are the ones offered, shown under their list. An
@@ -149,12 +155,16 @@ const AddExpenseDialog = ({
   defaultContractorId = null,
   startsMiscellaneous = false,
   fixedActivityKey,
-  orderItem = null,
+  order = null,
   jobOrder = null,
   activitiesNote,
 }: Props) => {
   // What the expense is spent on, when it is on an order or job order.
-  const spentOn = orderItem ?? jobOrder;
+  const spentOn = order ?? jobOrder;
+  // The order requirement picked, by id.
+  const [orderItemId, setOrderItemId] = useState("");
+  const orderItem =
+    order?.items.find((item) => String(item.id) === orderItemId) ?? null;
   // The rate that prices the expense from its quantity, on a rated
   // sub-contract requirement.
   const orderRate = orderItem?.unitRate ?? null;
@@ -235,6 +245,11 @@ const AddExpenseDialog = ({
       setSelectedActivityKey(
         editingExpense.activity_key ?? fixedActivityKey ?? "",
       );
+      setOrderItemId(
+        editingExpense.contract_order_item_id
+          ? String(editingExpense.contract_order_item_id)
+          : "",
+      );
       setQuantity(editingExpense.quantity ?? "");
       setTitle(editingExpense.title);
       setStartDate(toDateInput(editingExpense.start_date));
@@ -256,6 +271,10 @@ const AddExpenseDialog = ({
               : "",
       );
       setSelectedActivityKey(fixedActivityKey ?? "");
+      // With one requirement left to spend on it is the choice; with
+      // several, ask.
+      const openItems = order?.items.filter((item) => !item.isTaken) ?? [];
+      setOrderItemId(openItems.length === 1 ? String(openItems[0]!.id) : "");
       setQuantity("");
       setTitle("");
       setStartDate(toDateInput());
@@ -396,6 +415,10 @@ const AddExpenseDialog = ({
   };
 
   const handleSubmit = async () => {
+    if (order && !orderItem) {
+      toast.error("Choose the item this expense is for");
+      return;
+    }
     if (siteVendors.length > 0 && !underId) {
       toast.error("Choose which vendor this expense is under");
       return;
@@ -634,6 +657,45 @@ const AddExpenseDialog = ({
         )}
 
         <div className='flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0'>
+
+          {/* What on the order the expense is for. A single-expense
+              requirement that has its one can't take another. */}
+          {order && (
+            <div className='space-y-1.5'>
+              <Label className='text-xs font-medium text-gray-700'>
+                Item <span className='text-red-500'>*</span>
+              </Label>
+              <Select
+                value={orderItemId}
+                onValueChange={(value) => {
+                  setOrderItemId(value);
+                  // Its unit may differ from the last item's.
+                  setQuantity("");
+                }}>
+                <SelectTrigger className='h-9 w-full text-sm'>
+                  <SelectValue placeholder='Choose what the expense is for' />
+                </SelectTrigger>
+                <SelectContent>
+                  {order.items.map((item) => (
+                    <SelectItem
+                      key={item.id}
+                      value={String(item.id)}
+                      disabled={item.isTaken}
+                      className='text-sm'>
+                      {item.label}
+                      <span className='ml-1 text-gray-400'>
+                        ·{" "}
+                        {item.unitRate !== null
+                          ? rateLabel(item.unitRate, item.unit)
+                          : "no rate"}
+                        {item.isTaken && " · recorded"}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {siteVendors.length > 0 && (
             <fieldset className='min-w-0'>

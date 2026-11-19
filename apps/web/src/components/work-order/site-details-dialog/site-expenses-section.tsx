@@ -51,6 +51,7 @@ import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import AddExpenseDialog, {
   ActivityOption,
   Expense,
+  OrderItemOption,
 } from "./add-expense-dialog";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import {
@@ -140,6 +141,23 @@ const ORDER_GROUPS = [
 
 const orderItemTitle = (item: SiteOrderItem) =>
   `${item.order_code} · ${itemLabel(item.item, item.description)}`;
+
+// A requirement as the expense dialog offers it. A single-expense one with
+// its one recorded is taken, unless that is the expense being edited.
+const toItemOption = (
+  item: SiteOrderItem,
+  editing: Expense | null,
+): OrderItemOption => ({
+  id: item.id,
+  label: itemLabel(item.item, item.description),
+  unitRate: item.unit_rate ? Number(item.unit_rate) : null,
+  unit: item.unit,
+  singleExpense: item.single_expense,
+  isTaken:
+    item.single_expense &&
+    item.expense_count > 0 &&
+    editing?.contract_order_item_id !== item.id,
+});
 
 // What an order asks of the site: a purchase order's oil zapper, or a
 // sub-contract's rate, taken in one expense or as many as needed.
@@ -1408,16 +1426,11 @@ const SiteExpensesSection = ({
         fixedActivityKey={dialogProcuresOilZapper ? constants.OIL_ZAPPER.KEY : undefined}
         activities={dialogActivities}
         activitiesNote={dialogActivitiesNote}
-        orderItem={
+        order={
           dialogOrderItem
             ? {
-                id: dialogOrderItem.id,
                 label: orderItemTitle(dialogOrderItem),
-                unitRate: dialogOrderItem.unit_rate
-                  ? Number(dialogOrderItem.unit_rate)
-                  : null,
-                unit: dialogOrderItem.unit,
-                singleExpense: dialogOrderItem.single_expense,
+                items: [toItemOption(dialogOrderItem, editingExpense)],
               }
             : null
         }
