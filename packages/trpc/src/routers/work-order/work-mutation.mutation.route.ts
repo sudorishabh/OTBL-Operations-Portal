@@ -25,6 +25,20 @@ import { nextWorkOrderCode } from "./work-order-code";
 // Allowance for decimal rounding when checking transport slab totals.
 const SLAB_EPSILON = 0.005;
 
+// A schedule of rates row's rate including GST and its total, worked out
+// here rather than taken as sent.
+const sorAmounts = (
+  rcRate: number,
+  gstPercentage: number,
+  quantity: number,
+) => {
+  const unitRateIncGst = rcRate * (1 + gstPercentage / 100);
+  return {
+    unit_rate_inc_gst: unitRateIncGst.toFixed(2),
+    total_cost: (unitRateIncGst * quantity).toFixed(2),
+  };
+};
+
 const {
   workOrderTable,
   clientTable,
@@ -120,8 +134,11 @@ export const workOrderMutationRouter = router({
                   estimated_quantity: sor.estimated_quantity.toString(),
                   rc_unit_rate: sor.rc_unit_rate.toString(),
                   gst_percentage: sor.gst_percentage.toString(),
-                  unit_rate_inc_gst: sor.unit_rate_inc_gst.toString(),
-                  total_cost: sor.total_cost.toString(),
+                  ...sorAmounts(
+                    sor.rc_unit_rate,
+                    sor.gst_percentage,
+                    sor.estimated_quantity,
+                  ),
                   transportation_slabs: sor.transportation_slabs ?? null,
                 }),
               );
@@ -260,15 +277,16 @@ export const workOrderMutationRouter = router({
             }
           }
 
-          const unitRateIncGst =
-            rate.rc_unit_rate * (1 + Number(row.gst_percentage) / 100);
           return {
             id: row.id,
             values: {
               estimated_quantity: rate.estimated_quantity.toFixed(2),
               rc_unit_rate: rate.rc_unit_rate.toFixed(2),
-              unit_rate_inc_gst: unitRateIncGst.toFixed(2),
-              total_cost: (unitRateIncGst * rate.estimated_quantity).toFixed(2),
+              ...sorAmounts(
+                rate.rc_unit_rate,
+                Number(row.gst_percentage),
+                rate.estimated_quantity,
+              ),
               ...(isTransport && {
                 transportation_slabs: rate.transportation_slabs,
               }),
