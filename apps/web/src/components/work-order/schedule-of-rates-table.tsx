@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
+import { MapPin, ReceiptIndianRupee, Wallet } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -8,29 +9,34 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  ReceiptIndianRupee,
-  MapPin,
-  ChevronDown,
-  ChevronRight,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
 import DialogWindow from "@/components/shared/dialog-window";
+import {
+  LIST_CELL,
+  LIST_FRAME,
+  LIST_HEAD,
+  LIST_HEAD_ROW,
+  LIST_ROW,
+  LIST_SUBTEXT,
+  ListPill,
+  type PillTone,
+} from "@/components/shared/list-table";
 import useHandleParams from "@/hooks/useHandleParams";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
 import { workOrderTypes } from "@pkg/schema";
 import { useIsAdmin } from "@/contexts/AuthContext";
+import { constants, toNumberSafe } from "@pkg/utils";
 import EditScheduleOfRatesDialog from "./edit-schedule-of-rates-dialog";
 import {
-  activityKey,
-  constants,
-  SOR_ACTIVITY_TO_COMPLETION_ACTIVITY,
-  toNumberSafe,
-} from "@pkg/utils";
+  isBioremediationActivity,
+  isBioremediationSite,
+  restorationSiteOf,
+  siteUsedQuantity,
+  sorUsage,
+  type SorUsageSite,
+} from "./sor-usage";
 
-const { TRANSPORT_SLABS, allActivityOptions } = constants;
+const { TRANSPORT_SLABS, WO_UNITS, allActivityOptions } = constants;
 
 interface ScheduleOfRate {
   id: number;
@@ -46,62 +52,42 @@ interface ScheduleOfRate {
   transportation_slabs?: workOrderTypes.TransportationSlabs | null;
 }
 
-interface SiteCompletion {
-  id: number;
-  activity_name: string;
-  estimated_quantity: string;
-  amount: string;
-  transportation_km?: string | null;
-}
-
-interface SiteWithCompletions {
-  site: {
-    name: string;
-  };
-  wo_site_id?: number;
+interface Site extends SorUsageSite {
+  site: { id?: number | null; name: string };
+  status?: string | null;
   total_expenses?: string;
   expense_entry_count?: number;
-  completions?: SiteCompletion[];
 }
 
 interface WorkOrderExpenseSummary {
   total_expenses: number;
+  exceeded_total?: number;
   expense_entry_count: number;
-  total_income: number;
-  net_surplus: number;
 }
 
 interface Props {
   scheduleOfRates: ScheduleOfRate[];
-  sites: SiteWithCompletions[];
+  sites: Site[];
   expenseSummary?: WorkOrderExpenseSummary | null;
 }
 
-const formatCurrency = (amount: string | number) => {
-  const val = Number(amount);
-  if (isNaN(val)) return "₹0.00";
-  return new Intl.NumberFormat("en-IN", {
+// Within this of nothing, a quantity counts as used up.
+const QTY_EPSILON = 0.001;
+
+const formatCurrency = (amount: string | number) =>
+  new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-  }).format(val);
-};
-
-const formatActivityName = (name: string) => {
-  return name
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
-
-// Restoration records no completion quantities: its usage is in its
-// expenses, shown in the restoration dialog.
-const isRestorationActivity = (activity: string) =>
-  allActivityOptions.some(
-    (option) => option.value === activity && !option.isBioremediation,
-  );
+  }).format(toNumberSafe(amount));
 
 const formatQuantity = (value: unknown) =>
   toNumberSafe(value).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+
+const formatActivityName = (name: string) =>
+  name
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 
 const activityLabel = (activity: string) =>
   allActivityOptions.find((option) => option.value === activity)?.label ??
@@ -115,202 +101,100 @@ const activityOrder = (activity: string) => {
   return index === -1 ? allActivityOptions.length : index;
 };
 
-// The table primitives add `sm:` padding and height, so these pin both sizes.
-const sorHeadClass =
-  "h-10 px-4 sm:h-10 sm:px-4 text-xs font-medium text-gray-500";
-const sorCellClass = "px-4 py-3 sm:px-4 sm:py-3";
-const sorNumberClass = cn(
-  sorCellClass,
-  "text-right text-sm tabular-nums text-gray-600",
-);
-const slabNumberClass =
-  "px-4 py-1.5 text-right text-xs tabular-nums text-gray-600";
+const percentOf = (part: number, whole: number) =>
+  whole > 0 ? (part / whole) * 100 : 0;
 
-const SiteSpendingCard = ({
-  site,
-  index,
-}: {
-  site: SiteWithCompletions;
-  index: number;
-}) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const completions = site.completions || [];
-  const hasCompletions = completions.length > 0;
-  const expenseTotal = Number(site.total_expenses || 0);
-  const expenseCount = site.expense_entry_count ?? 0;
-  const hasExpenses = expenseTotal > 0 || expenseCount > 0;
-
-  const siteTotal = completions.reduce(
-    (acc, comp) => acc + Number(comp.amount || 0),
-    0,
-  );
-
-  const siteHasData = hasCompletions || hasExpenses;
-
-  return (
-    <div
-      className={`border rounded-lg overflow-hidden transition-all duration-200 ${
-        siteHasData
-          ? "border-slate-200 bg-white hover:border-slate-300 shadow-sm"
-          : "border-slate-100 bg-slate-50/50"
-      }`}>
-      <button
-        onClick={() => hasCompletions && setIsExpanded(!isExpanded)}
-        disabled={!hasCompletions}
-        className={`w-full flex items-center justify-between px-4 py-3 transition-colors ${
-          hasCompletions
-            ? "cursor-pointer hover:bg-slate-50/80"
-            : "cursor-default"
-        }`}>
-        <div className='flex items-center gap-3'>
-          <div
-            className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-              siteHasData
-                ? hasCompletions
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-rose-100 text-rose-700"
-                : "bg-slate-100 text-slate-400"
-            }`}>
-            {index + 1}
-          </div>
-          <div className='flex items-center gap-2'>
-            <MapPin
-              className={`w-3.5 h-3.5 ${siteHasData ? "text-slate-500" : "text-slate-300"}`}
-            />
-            <span
-              className={`text-sm font-semibold ${siteHasData ? "text-gray-800" : "text-gray-400"}`}>
-              {site.site.name}
-            </span>
-          </div>
-          {hasCompletions && (
-            <Badge
-              variant='outline'
-              className='bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-medium'>
-              {completions.length}{" "}
-              {completions.length === 1 ? "activity" : "activities"}
-            </Badge>
-          )}
-          {hasExpenses && (
-            <Badge
-              variant='outline'
-              className='bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-medium'>
-              {expenseCount} expense{expenseCount !== 1 ? "s" : ""}
-            </Badge>
-          )}
-          {!siteHasData && (
-            <span className='text-[10px] text-slate-400 italic'>
-              No completion or expense data
-            </span>
-          )}
-        </div>
-        <div className='flex items-center gap-3'>
-          {hasCompletions && (
-            <span className='text-sm font-bold text-emerald-700'>
-              {formatCurrency(siteTotal)}
-            </span>
-          )}
-          {hasExpenses && hasCompletions && (
-            <span className='text-[11px] font-semibold text-rose-600 whitespace-nowrap'>
-              Exp {formatCurrency(expenseTotal)}
-            </span>
-          )}
-          {hasExpenses && !hasCompletions && (
-            <span className='text-sm font-bold text-rose-700'>
-              {formatCurrency(expenseTotal)}
-            </span>
-          )}
-          {hasCompletions &&
-            (isExpanded ? (
-              <ChevronDown className='w-4 h-4 text-slate-400' />
-            ) : (
-              <ChevronRight className='w-4 h-4 text-slate-400' />
-            ))}
-        </div>
-      </button>
-
-      {isExpanded && hasCompletions && (
-        <div className='border-t border-slate-100'>
-          <Table>
-            <TableHeader>
-              <TableRow className='bg-slate-50/80 hover:bg-slate-50/80'>
-                <TableHead className='text-[11px] font-semibold text-slate-500 uppercase tracking-wider py-2.5 pl-14'>
-                  Activity
-                </TableHead>
-                <TableHead className='text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right py-2.5'>
-                  Quantity
-                </TableHead>
-                <TableHead className='text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right py-2.5'>
-                  Trans. Km
-                </TableHead>
-                <TableHead className='text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right py-2.5 pr-4'>
-                  Amount
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {completions.map((comp, idx) => (
-                <TableRow
-                  key={`${comp.id}-${idx}`}
-                  className='hover:bg-emerald-50/30 transition-colors border-b border-slate-50 last:border-0'>
-                  <TableCell className='py-2.5 pl-14 text-xs font-medium text-gray-700'>
-                    {formatActivityName(comp.activity_name)}
-                  </TableCell>
-                  <TableCell className='py-2.5 text-right font-mono text-xs text-gray-600'>
-                    {comp.estimated_quantity}
-                  </TableCell>
-                  <TableCell className='py-2.5 text-right font-mono text-xs text-gray-600'>
-                    {comp.transportation_km ? (
-                      <span>{comp.transportation_km} km</span>
-                    ) : (
-                      <span className='text-gray-300'>-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className='py-2.5 text-right font-semibold text-xs text-gray-800 pr-4'>
-                    {formatCurrency(comp.amount)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter className='bg-emerald-50/40'>
-              <TableRow className='hover:bg-emerald-50/40'>
-                <TableCell
-                  colSpan={3}
-                  className='text-right text-xs font-bold text-emerald-800 py-2.5'>
-                  Site Total
-                </TableCell>
-                <TableCell className='text-right text-xs font-bold text-emerald-700 pr-4 py-2.5'>
-                  {formatCurrency(siteTotal)}
-                </TableCell>
-              </TableRow>
-            </TableFooter>
-          </Table>
-        </div>
-      )}
-
-      {hasExpenses && (
-        <div className='flex items-center justify-between border-t border-rose-100/80 bg-rose-50/20 px-4 py-2.5'>
-          <div className='flex items-center gap-2'>
-            <ReceiptIndianRupee className='w-3.5 h-3.5 text-rose-500' />
-            <span className='text-xs font-semibold text-rose-800'>
-              Site expenses
-            </span>
-            {expenseCount > 0 && (
-              <Badge
-                variant='outline'
-                className='text-[10px] bg-white text-rose-700 border-rose-200'>
-                {expenseCount} record{expenseCount !== 1 ? "s" : ""}
-              </Badge>
-            )}
-          </div>
-          <span className='text-xs font-bold text-rose-700'>
-            {formatCurrency(expenseTotal)}
-          </span>
-        </div>
-      )}
-    </div>
-  );
+const SITE_STATUSES: Record<string, { label: string; tone: PillTone }> = {
+  pending: { label: "Pending", tone: "yellow" },
+  completed: { label: "Complete", tone: "green" },
+  cancelled: { label: "Cancelled", tone: "red" },
 };
 
+const siteStatus = (site: Site) =>
+  site.is_completed
+    ? SITE_STATUSES.completed!
+    : (SITE_STATUSES[site.status ?? ""] ?? SITE_STATUSES.pending!);
+
+// The table primitives add `sm:` padding and height, so these pin both sizes.
+const NUMBER_CELL = cn(LIST_CELL, "text-right tabular-nums");
+const SLAB_NUMBER = "px-4 py-1.5 text-right text-xs tabular-nums text-gray-600";
+
+const SectionTitle = ({
+  Icon,
+  iconClass,
+  title,
+  description,
+  action,
+}: {
+  Icon: React.ElementType;
+  iconClass: string;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) => (
+  <div className='mb-3 flex items-center gap-3 px-1'>
+    <div className={cn("rounded-lg p-2", iconClass)}>
+      <Icon className='size-4' />
+    </div>
+    <div className='min-w-0'>
+      <h3 className='text-sm font-semibold text-gray-900'>{title}</h3>
+      <p className='text-xs text-gray-500'>{description}</p>
+    </div>
+    {action && <div className='ml-auto shrink-0'>{action}</div>}
+  </div>
+);
+
+const Stat = ({
+  label,
+  value,
+  hint,
+  valueClass,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: React.ReactNode;
+  valueClass?: string;
+}) => (
+  <div className='min-w-0 px-4 py-3'>
+    <p className='text-xs font-medium text-gray-500'>{label}</p>
+    <p
+      className={cn(
+        "mt-0.5 truncate text-base font-semibold tabular-nums text-gray-900",
+        valueClass,
+      )}>
+      {value}
+    </p>
+    {hint && <p className='mt-0.5 text-xs text-gray-400'>{hint}</p>}
+  </div>
+);
+
+const Pending = () => (
+  <span
+    aria-label='Loading'
+    className='ml-auto block h-3 w-10 animate-pulse rounded bg-gray-100'
+  />
+);
+
+// What is left of a quantity: green once used up, red past it.
+const LeftValue = ({ left, total }: { left: number; total: number }) => {
+  if (left < -QTY_EPSILON) {
+    return (
+      <span
+        className='font-medium text-rose-600'
+        title='Used more than the schedule of rates allows'>
+        {formatQuantity(left)}
+      </span>
+    );
+  }
+  if (total > 0 && left <= QTY_EPSILON) {
+    return <span className='font-medium text-emerald-700'>0</span>;
+  }
+  return <>{formatQuantity(left)}</>;
+};
+
+// The work order's schedule of rates: each activity's rates and quantity,
+// what the work has used of it, what that is worth, and how its sites and
+// expenses stand against it.
 const ScheduleOfRatesTable = ({
   scheduleOfRates,
   sites,
@@ -318,438 +202,564 @@ const ScheduleOfRatesTable = ({
 }: Props) => {
   const { getParam, deleteParam } = useHandleParams();
   const isAdmin = useIsAdmin();
-  const dialog = getParam("dialog");
-  const isDialogOpen = dialog === "schedule-of-rates";
+  const isDialogOpen = getParam("dialog") === "schedule-of-rates";
 
-  const handleClose = () => {
-    deleteParam("dialog");
-  };
+  const allSites = sites ?? [];
+  const restoration = restorationSiteOf(allSites);
+  const hasRestorationRates = (scheduleOfRates ?? []).some(
+    (rate) => !isBioremediationActivity(rate.activity),
+  );
+  // Restoration's usage is what its job orders' certificates certify.
+  const jobOrdersQuery = trpc.jobOrderQuery.getJobOrders.useQuery(
+    { work_order_site_id: restoration?.wo_site_id ?? 0 },
+    { enabled: isDialogOpen && !!restoration && hasRestorationRates },
+  );
+  const certificatesLoading = jobOrdersQuery.isLoading;
 
   if (!scheduleOfRates || scheduleOfRates.length === 0) {
     return null;
   }
 
-  const grandTotal = scheduleOfRates.reduce(
-    (acc, curr) => acc + Number(curr.total_cost || 0),
+  const usage = sorUsage(allSites, jobOrdersQuery.data ?? []);
+
+  const rows = [...scheduleOfRates]
+    .sort((a, b) => activityOrder(a.activity) - activityOrder(b.activity))
+    .map((item) => {
+      const quantity = toNumberSafe(item.estimated_quantity);
+      const used = usage.used(item.activity);
+      return {
+        item,
+        quantity,
+        used,
+        usedValue: used * toNumberSafe(item.unit_rate_inc_gst),
+        isBioremediation: isBioremediationActivity(item.activity),
+      };
+    });
+
+  const grandTotal = rows.reduce(
+    (sum, row) => sum + toNumberSafe(row.item.total_cost),
     0,
   );
+  const usedTotal = rows.reduce((sum, row) => sum + row.usedValue, 0);
+  const usedPct = percentOf(usedTotal, grandTotal);
 
-  const sortedRates = [...scheduleOfRates].sort(
-    (a, b) => activityOrder(a.activity) - activityOrder(b.activity),
-  );
   const gstRates = new Set(
     scheduleOfRates.map((item) => Number(item.gst_percentage)),
   );
   const gstLabel = gstRates.size === 1 ? ` (${[...gstRates][0]}%)` : "";
 
-  const usedQtyByActivity = (sites || []).reduce<Record<string, number>>(
-    (acc, s) => {
-      for (const c of s.completions || []) {
-        const key = activityKey(c.activity_name);
-        acc[key] = (acc[key] || 0) + toNumberSafe(c.estimated_quantity);
-      }
-      return acc;
-    },
-    {},
+  // Bioremediation sites draw on the one bioremediation rate.
+  const bioremediationRate = toNumberSafe(
+    rows.find((row) => row.isBioremediation)?.item.unit_rate_inc_gst,
+  );
+  const restorationRows = rows.filter((row) => !row.isBioremediation);
+  const restorationUsedValue = restorationRows.reduce(
+    (sum, row) => sum + row.usedValue,
+    0,
   );
 
-  const totalSiteCompletions = sites?.reduce((acc: number, site) => {
-    return (
-      acc +
-      (site.completions || []).reduce(
-        (sAcc: number, comp: SiteCompletion) => sAcc + Number(comp.amount || 0),
-        0,
-      )
-    );
-  }, 0);
-
-  const spendingPct =
-    grandTotal > 0
-      ? Math.min(100, (totalSiteCompletions / grandTotal) * 100)
-      : 0;
-
-  const sortedSites = [...(sites || [])].sort((a, b) => {
-    const aHas =
-      (a.completions || []).length > 0 ||
-      Number(a.total_expenses || 0) > 0 ||
-      (a.expense_entry_count ?? 0) > 0
-        ? 0
-        : 1;
-    const bHas =
-      (b.completions || []).length > 0 ||
-      Number(b.total_expenses || 0) > 0 ||
-      (b.expense_entry_count ?? 0) > 0
-        ? 0
-        : 1;
-    return aHas - bHas;
-  });
-
-  const sitesWithData = sortedSites.filter(
-    (s) =>
-      (s.completions || []).length > 0 ||
-      Number(s.total_expenses || 0) > 0 ||
-      (s.expense_entry_count ?? 0) > 0,
+  // The restoration first, then the sites as listed on the work order.
+  const siteRows = [...allSites].sort(
+    (a, b) =>
+      Number(b.wo_site_id === restoration?.wo_site_id) -
+      Number(a.wo_site_id === restoration?.wo_site_id),
   );
+  const siteUsedValue = (site: Site) =>
+    site.wo_site_id === restoration?.wo_site_id
+      ? restorationUsedValue
+      : siteUsedQuantity(site) * bioremediationRate;
+  const expensesOf = (site: Site) => toNumberSafe(site.total_expenses);
+  const sitesUsedTotal = siteRows.reduce(
+    (sum, site) => sum + siteUsedValue(site),
+    0,
+  );
+  const sitesExpenseTotal = siteRows.reduce(
+    (sum, site) => sum + expensesOf(site),
+    0,
+  );
+
+  const expenses = toNumberSafe(expenseSummary?.total_expenses);
+  const exceeded = toNumberSafe(expenseSummary?.exceeded_total);
+  const profit = grandTotal - expenses;
+  const isProfit = profit >= 0;
 
   return (
     <DialogWindow
       size='2xl'
       heightMode='fixed'
-      title='View Schedule of Rates & Site Completion Data'
+      title='Schedule of Rates'
+      description="The work order's rates and quantities, what the work has used of them, and how its sites and expenses stand"
       open={isDialogOpen}
-      setOpen={handleClose}>
-      <div className='space-y-10 pb-10'>
+      setOpen={() => deleteParam("dialog")}>
+      <div className='space-y-8 pb-8'>
         <section>
-          <div className='flex items-center gap-2 mb-4 px-1'>
-            <div className='p-2 bg-blue-50 rounded-lg'>
-              <ReceiptIndianRupee className='w-5 h-5 text-blue-600' />
+          <SectionTitle
+            Icon={ReceiptIndianRupee}
+            iconClass='bg-blue-50 text-blue-600'
+            title='Schedule of Rates (SOR)'
+            description='Approved rates and quantities, and what the work has used of each'
+            action={
+              isAdmin && (
+                <EditScheduleOfRatesDialog scheduleOfRates={scheduleOfRates} />
+              )
+            }
+          />
+
+          <div className={cn(LIST_FRAME, "mb-3")}>
+            <div className='grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0'>
+              <Stat
+                label='SOR total (incl. GST)'
+                value={formatCurrency(grandTotal)}
+              />
+              <Stat
+                label='Used so far'
+                value={
+                  certificatesLoading ? <Pending /> : formatCurrency(usedTotal)
+                }
+                valueClass='text-emerald-700'
+                hint={`${usedPct.toFixed(1)}% of the SOR total`}
+              />
+              <Stat
+                label='Left'
+                value={
+                  certificatesLoading ? (
+                    <Pending />
+                  ) : (
+                    formatCurrency(grandTotal - usedTotal)
+                  )
+                }
+                valueClass={
+                  grandTotal - usedTotal < 0 ? "text-rose-600" : undefined
+                }
+              />
             </div>
-            <div>
-              <h3 className='text-lg font-bold text-gray-900'>
-                Schedule of Rates (SOR)
-              </h3>
-              <p className='text-xs text-gray-500'>
-                Approved rates and estimated quantities for the work order
+            <div className='border-t border-gray-100 px-4 py-2.5'>
+              <div className='h-1.5 overflow-hidden rounded-full bg-gray-100'>
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    usedPct > 100 ? "bg-rose-500" : "bg-emerald-500",
+                  )}
+                  style={{ width: `${Math.min(100, usedPct)}%` }}
+                />
+              </div>
+              <p className='mt-1.5 text-xs text-gray-400'>
+                Bioremediation uses a site&apos;s estimate once the site is
+                complete; restoration uses what its completion certificates
+                certify.
               </p>
             </div>
-            {isAdmin && (
-              <div className='ml-auto'>
-                <EditScheduleOfRatesDialog scheduleOfRates={scheduleOfRates} />
-              </div>
-            )}
           </div>
-          <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
-            <Table>
-              <TableHeader>
-                <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
-                  <TableHead className={sorHeadClass}>Activity</TableHead>
-                  <TableHead className={sorHeadClass}>Unit</TableHead>
-                  <TableHead className={cn(sorHeadClass, "text-right")}>
-                    Est. Qty
-                  </TableHead>
-                  <TableHead className={cn(sorHeadClass, "text-right")}>
-                    Used Qty
-                  </TableHead>
-                  <TableHead className={cn(sorHeadClass, "text-right")}>
-                    RC Rate
-                  </TableHead>
-                  <TableHead className={cn(sorHeadClass, "text-right")}>
-                    Rate + GST{gstLabel}
-                  </TableHead>
-                  <TableHead className={cn(sorHeadClass, "text-right")}>
-                    Total
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedRates.map((item) => {
-                  const completionActivity =
-                    SOR_ACTIVITY_TO_COMPLETION_ACTIVITY[item.activity] ??
-                    item.activity;
-                  const usedQty =
-                    usedQtyByActivity[activityKey(completionActivity)] ?? 0;
-                  const slabs = item.transportation_slabs;
 
-                  return (
-                    <React.Fragment key={item.id}>
-                      <TableRow
-                        className={cn(
-                          "border-gray-100 hover:bg-transparent",
-                          slabs && "border-dashed border-gray-200",
-                        )}>
-                        <TableCell className={sorCellClass}>
-                          <p className='text-sm font-medium text-gray-900'>
-                            {activityLabel(item.activity)}
-                          </p>
-                          {slabs && (
-                            <p className='mt-0.5 text-xs text-gray-500'>
-                              Quantity and RC rate are the totals of the
-                              distance slabs.
-                            </p>
-                          )}
-                          {!slabs && toNumberSafe(item.transportation_km) > 0 && (
-                            <p className='mt-0.5 text-xs text-gray-500'>
-                              Distance: {formatQuantity(item.transportation_km)}{" "}
-                              km
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell className={sorCellClass}>
-                          <span className='rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700'>
-                            {item.unit}
-                          </span>
-                        </TableCell>
-                        <TableCell className={sorNumberClass}>
-                          {formatQuantity(item.estimated_quantity)}
-                        </TableCell>
-                        <TableCell className={sorNumberClass}>
-                          {isRestorationActivity(item.activity) ? (
-                            <span
-                              className='text-gray-300'
-                              title="Tracked by the restoration's completion certificates">
-                              —
-                            </span>
-                          ) : usedQty > 0 ? (
-                            formatQuantity(usedQty)
-                          ) : (
-                            <span className='text-gray-300'>0</span>
-                          )}
-                        </TableCell>
-                        <TableCell className={sorNumberClass}>
-                          {formatCurrency(item.rc_unit_rate)}
-                        </TableCell>
-                        <TableCell className={sorNumberClass}>
-                          {formatCurrency(item.unit_rate_inc_gst)}
-                        </TableCell>
-                        <TableCell
+          <div className={LIST_FRAME}>
+            <div className='overflow-x-auto'>
+              <Table>
+                <TableHeader>
+                  <TableRow className={LIST_HEAD_ROW}>
+                    <TableHead className={LIST_HEAD}>Activity</TableHead>
+                    <TableHead className={LIST_HEAD}>Unit</TableHead>
+                    <TableHead className={cn(LIST_HEAD, "text-right")}>
+                      SOR qty
+                    </TableHead>
+                    <TableHead className={cn(LIST_HEAD, "text-right")}>
+                      Used
+                    </TableHead>
+                    <TableHead className={cn(LIST_HEAD, "text-right")}>
+                      Left
+                    </TableHead>
+                    <TableHead className={cn(LIST_HEAD, "text-right")}>
+                      RC rate
+                    </TableHead>
+                    <TableHead className={cn(LIST_HEAD, "text-right")}>
+                      Rate + GST{gstLabel}
+                    </TableHead>
+                    <TableHead className={cn(LIST_HEAD, "text-right")}>
+                      Total
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map(({ item, quantity, used, isBioremediation }) => {
+                    const slabs = item.transportation_slabs;
+                    const waiting = !isBioremediation && certificatesLoading;
+                    const unallotted =
+                      isBioremediation &&
+                      usage.bioremediationAllotted - used > QTY_EPSILON;
+
+                    return (
+                      <React.Fragment key={item.id}>
+                        <TableRow
                           className={cn(
-                            sorCellClass,
-                            "text-right text-sm font-semibold tabular-nums text-gray-900",
+                            LIST_ROW,
+                            "hover:bg-transparent",
+                            slabs && "border-b-0",
                           )}>
-                          {formatCurrency(item.total_cost)}
-                        </TableCell>
-                      </TableRow>
-
-                      {slabs &&
-                        TRANSPORT_SLABS.map((slab, slabIndex) => {
-                          const slabValue = slabs[slab.key];
-                          const isLast =
-                            slabIndex === TRANSPORT_SLABS.length - 1;
-                          // Margins, not padding, so the guide line stops
-                          // at the first and last slab.
-                          const edgeClass = cn(
-                            slabIndex === 0 && "mt-2",
-                            isLast && "mb-2",
-                          );
-                          return (
-                            <TableRow
-                              key={slab.key}
-                              className={cn(
-                                "bg-gray-50/80 hover:bg-gray-50/80",
-                                isLast ? "border-gray-100" : "border-b-0",
-                              )}>
-                              <TableCell className='p-0 sm:p-0'>
-                                <div
+                          <TableCell className={LIST_CELL}>
+                            <p className='font-medium text-gray-900'>
+                              {activityLabel(item.activity)}
+                            </p>
+                            {slabs && (
+                              <p className={cn(LIST_SUBTEXT, "mt-0.5")}>
+                                Quantity and RC rate are the totals of the
+                                distance slabs.
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell className={LIST_CELL}>
+                            <span className='rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700'>
+                              {item.unit}
+                            </span>
+                          </TableCell>
+                          <TableCell className={NUMBER_CELL}>
+                            {formatQuantity(quantity)}
+                          </TableCell>
+                          <TableCell
+                            className={NUMBER_CELL}
+                            title={
+                              isBioremediation
+                                ? "The estimates of the complete bioremediation sites"
+                                : "Certified by the job orders' completion certificates"
+                            }>
+                            {waiting ? (
+                              <Pending />
+                            ) : (
+                              <>
+                                <span
                                   className={cn(
-                                    "ml-6 border-l border-gray-300 py-1.5 pl-4 text-xs text-gray-600",
-                                    edgeClass,
+                                    used > 0
+                                      ? "text-gray-900"
+                                      : "text-gray-300",
                                   )}>
-                                  {slab.label}
-                                </div>
-                              </TableCell>
-                              <TableCell className='p-0 sm:p-0' />
-                              <TableCell className='p-0 sm:p-0'>
-                                <div className={cn(slabNumberClass, edgeClass)}>
-                                  {formatQuantity(slabValue?.quantity)}
-                                </div>
-                              </TableCell>
-                              <TableCell className='p-0 sm:p-0' />
-                              <TableCell className='p-0 sm:p-0'>
-                                <div className={cn(slabNumberClass, edgeClass)}>
-                                  {formatCurrency(slabValue?.rate ?? 0)}
-                                </div>
-                              </TableCell>
-                              <TableCell
-                                colSpan={2}
-                                className='p-0 sm:p-0'
+                                  {formatQuantity(used)}
+                                </span>
+                                {unallotted && (
+                                  <p className={LIST_SUBTEXT}>
+                                    of{" "}
+                                    {formatQuantity(
+                                      usage.bioremediationAllotted,
+                                    )}{" "}
+                                    estimated
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </TableCell>
+                          <TableCell className={NUMBER_CELL}>
+                            {waiting ? (
+                              <Pending />
+                            ) : (
+                              <LeftValue
+                                left={quantity - used}
+                                total={quantity}
                               />
-                            </TableRow>
-                          );
-                        })}
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-              <TableFooter className='border-gray-200 bg-gray-50'>
-                <TableRow className='hover:bg-gray-50'>
-                  <TableCell
-                    colSpan={6}
-                    className={cn(
-                      sorCellClass,
-                      "text-right text-sm font-medium text-gray-700",
-                    )}>
-                    SOR total (incl. GST)
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      sorCellClass,
-                      "text-right text-base font-semibold tabular-nums text-emerald-700",
-                    )}>
-                    {formatCurrency(grandTotal)}
-                  </TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
+                            )}
+                          </TableCell>
+                          <TableCell className={NUMBER_CELL}>
+                            {formatCurrency(item.rc_unit_rate)}
+                          </TableCell>
+                          <TableCell className={NUMBER_CELL}>
+                            {formatCurrency(item.unit_rate_inc_gst)}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              NUMBER_CELL,
+                              "font-semibold text-gray-900",
+                            )}>
+                            {formatCurrency(item.total_cost)}
+                          </TableCell>
+                        </TableRow>
+
+                        {slabs &&
+                          TRANSPORT_SLABS.map((slab, slabIndex) => {
+                            const slabValue = slabs[slab.key];
+                            const slabQuantity = toNumberSafe(
+                              slabValue?.quantity,
+                            );
+                            const slabUsed = usage.usedOfSlab(slab.key);
+                            const isLast =
+                              slabIndex === TRANSPORT_SLABS.length - 1;
+                            // Margins, not padding, so the guide line stops
+                            // at the first and last slab.
+                            const edgeClass = cn(
+                              slabIndex === 0 && "mt-1",
+                              isLast && "mb-2",
+                            );
+                            return (
+                              <TableRow
+                                key={slab.key}
+                                className={cn(
+                                  "hover:bg-transparent",
+                                  isLast ? LIST_ROW : "border-b-0",
+                                )}>
+                                <TableCell className='p-0 sm:p-0'>
+                                  <div
+                                    className={cn(
+                                      "ml-6 border-l border-gray-200 py-1.5 pl-4 text-xs text-gray-600",
+                                      edgeClass,
+                                    )}>
+                                    {slab.label}
+                                  </div>
+                                </TableCell>
+                                <TableCell className='p-0 sm:p-0' />
+                                <TableCell className='p-0 sm:p-0'>
+                                  <div className={cn(SLAB_NUMBER, edgeClass)}>
+                                    {formatQuantity(slabQuantity)}
+                                  </div>
+                                </TableCell>
+                                <TableCell className='p-0 sm:p-0'>
+                                  <div className={cn(SLAB_NUMBER, edgeClass)}>
+                                    {waiting ? (
+                                      <Pending />
+                                    ) : (
+                                      formatQuantity(slabUsed)
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className='p-0 sm:p-0'>
+                                  <div className={cn(SLAB_NUMBER, edgeClass)}>
+                                    {waiting ? (
+                                      <Pending />
+                                    ) : (
+                                      <LeftValue
+                                        left={slabQuantity - slabUsed}
+                                        total={slabQuantity}
+                                      />
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className='p-0 sm:p-0'>
+                                  <div className={cn(SLAB_NUMBER, edgeClass)}>
+                                    {formatCurrency(slabValue?.rate ?? 0)}
+                                  </div>
+                                </TableCell>
+                                <TableCell
+                                  colSpan={2}
+                                  className='p-0 sm:p-0'
+                                />
+                              </TableRow>
+                            );
+                          })}
+                      </React.Fragment>
+                    );
+                  })}
+                </TableBody>
+                <TableFooter className='border-gray-200 bg-gray-50'>
+                  <TableRow className='hover:bg-gray-50'>
+                    <TableCell
+                      colSpan={7}
+                      className={cn(LIST_CELL, "text-right font-medium")}>
+                      SOR total (incl. GST)
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        NUMBER_CELL,
+                        "font-semibold text-emerald-700",
+                      )}>
+                      {formatCurrency(grandTotal)}
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
           </div>
         </section>
 
         {expenseSummary && (
           <section>
-            <div className='flex items-center gap-2 mb-4 px-1'>
-              <div className='p-2 bg-rose-50 rounded-lg'>
-                <Wallet className='w-5 h-5 text-rose-600' />
-              </div>
-              <div>
-                <h3 className='text-lg font-bold text-gray-900'>
-                  Expenses &amp; profitability
-                </h3>
-                <p className='text-xs text-gray-500'>
-                  Recorded costs across all sites vs SOR income
-                </p>
-              </div>
+            <SectionTitle
+              Icon={Wallet}
+              iconClass='bg-rose-50 text-rose-600'
+              title='Expenses & profitability'
+              description='Recorded costs across all sites against the SOR total'
+            />
+            <div
+              className={cn(
+                LIST_FRAME,
+                "grid grid-cols-2 divide-gray-100 sm:grid-cols-4 sm:divide-x",
+              )}>
+              <Stat
+                label='Income (SOR total)'
+                value={formatCurrency(grandTotal)}
+                valueClass='text-emerald-700'
+              />
+              <Stat
+                label='Total expenses'
+                value={formatCurrency(expenses)}
+                valueClass='text-rose-700'
+                hint={
+                  exceeded > 0
+                    ? `${formatCurrency(exceeded)} exceeded`
+                    : undefined
+                }
+              />
+              <Stat
+                label={isProfit ? "Profit" : "Loss"}
+                value={formatCurrency(Math.abs(profit))}
+                valueClass={isProfit ? "text-blue-700" : "text-orange-700"}
+                hint={`${percentOf(profit, grandTotal).toFixed(1)}% margin`}
+              />
+              <Stat
+                label='Expense records'
+                value={toNumberSafe(
+                  expenseSummary.expense_entry_count,
+                ).toLocaleString("en-IN")}
+              />
             </div>
-
-            {(() => {
-              const income = grandTotal;
-              const expenses = Number(expenseSummary.total_expenses) || 0;
-              const profit = income - expenses;
-              const isProfit = profit >= 0;
-              return (
-            <div className='rounded-lg border border-rose-100 bg-linear-to-r from-rose-50/40 to-slate-50 p-4 mb-2'>
-              <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-                <div>
-                  <span className='text-[10px] uppercase tracking-wider text-slate-500 font-semibold block'>
-                    Income (SOR total)
-                  </span>
-                  <p className='text-base font-bold text-emerald-700'>
-                    {formatCurrency(income)}
-                  </p>
-                </div>
-                <div>
-                  <span className='text-[10px] uppercase tracking-wider text-slate-500 font-semibold block'>
-                    Total expenses
-                  </span>
-                  <p className='text-base font-bold text-rose-700'>
-                    {formatCurrency(expenses)}
-                  </p>
-                </div>
-                <div>
-                  <span className='text-[10px] uppercase tracking-wider text-slate-500 font-semibold block'>
-                    {isProfit ? "Profit" : "Loss"}
-                  </span>
-                  <p
-                    className={`text-base font-bold ${
-                      isProfit ? "text-blue-700" : "text-orange-700"
-                    }`}>
-                    {formatCurrency(Math.abs(profit))}
-                  </p>
-                </div>
-                <div>
-                  <span className='text-[10px] uppercase tracking-wider text-slate-500 font-semibold block'>
-                    Expense records
-                  </span>
-                  <p className='text-base font-bold text-slate-700'>
-                    {expenseSummary.expense_entry_count}
-                  </p>
-                </div>
-              </div>
-            </div>
-              );
-            })()}
           </section>
         )}
 
         <section>
-          <div className='flex items-center gap-2 mb-4 px-1'>
-            <div className='p-2 bg-emerald-50 rounded-lg'>
-              <TrendingUp className='w-5 h-5 text-emerald-600' />
-            </div>
-            <div>
-              <h3 className='text-lg font-bold text-gray-900'>
-                Site-wise Spending Breakdown
-              </h3>
-              <p className='text-xs text-gray-500'>
-                Activity completion spendings and per-site expense totals
-              </p>
+          <SectionTitle
+            Icon={MapPin}
+            iconClass='bg-emerald-50 text-emerald-600'
+            title='Sites'
+            description="Each site's share of the SOR, what it has used and what it has cost"
+          />
+          <div className={LIST_FRAME}>
+            <div className='overflow-x-auto'>
+              <Table>
+                <TableHeader>
+                  <TableRow className={LIST_HEAD_ROW}>
+                    <TableHead className={LIST_HEAD}>Site</TableHead>
+                    <TableHead className={cn(LIST_HEAD, "text-right")}>
+                      SOR share
+                    </TableHead>
+                    <TableHead className={cn(LIST_HEAD, "text-right")}>
+                      Used
+                    </TableHead>
+                    <TableHead className={cn(LIST_HEAD, "text-right")}>
+                      Expenses
+                    </TableHead>
+                    <TableHead className={LIST_HEAD}>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {siteRows.length === 0 ? (
+                    <TableRow className={cn(LIST_ROW, "hover:bg-transparent")}>
+                      <TableCell
+                        colSpan={5}
+                        className={cn(
+                          LIST_CELL,
+                          "py-8 text-center text-gray-500",
+                        )}>
+                        No sites found for this work order.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    siteRows.map((site) => {
+                      const isRestoration =
+                        site.wo_site_id === restoration?.wo_site_id;
+                      const estimate = isBioremediationSite(site)
+                        ? site.estimate
+                        : null;
+                      const usedValue = siteUsedValue(site);
+                      const siteExpenses = expensesOf(site);
+                      const records = site.expense_entry_count ?? 0;
+                      const status = siteStatus(site);
+
+                      return (
+                        <TableRow
+                          key={site.wo_site_id}
+                          className={cn(LIST_ROW, "hover:bg-gray-50/60")}>
+                          <TableCell className={LIST_CELL}>
+                            <p className='font-medium text-gray-900'>
+                              {site.site.name}
+                            </p>
+                          </TableCell>
+                          <TableCell className={NUMBER_CELL}>
+                            {isRestoration ? (
+                              <span
+                                className='text-gray-400'
+                                title='Restoration draws on its SOR activities directly'>
+                                —
+                              </span>
+                            ) : estimate ? (
+                              <>
+                                {formatQuantity(estimate.quantity)}{" "}
+                                {WO_UNITS.MT}
+                                <p className={LIST_SUBTEXT}>
+                                  {formatCurrency(
+                                    toNumberSafe(estimate.quantity) *
+                                      bioremediationRate,
+                                  )}
+                                </p>
+                              </>
+                            ) : (
+                              <span className='text-gray-400'>No estimate</span>
+                            )}
+                          </TableCell>
+                          <TableCell className={NUMBER_CELL}>
+                            {isRestoration && certificatesLoading ? (
+                              <Pending />
+                            ) : usedValue > 0 ? (
+                              <span className='font-medium text-emerald-700'>
+                                {formatCurrency(usedValue)}
+                              </span>
+                            ) : (
+                              <span className='text-gray-300'>—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className={NUMBER_CELL}>
+                            {records > 0 || siteExpenses > 0 ? (
+                              <>
+                                <span className='font-medium text-rose-700'>
+                                  {formatCurrency(siteExpenses)}
+                                </span>
+                                <p className={LIST_SUBTEXT}>
+                                  {records}{" "}
+                                  {records === 1 ? "record" : "records"}
+                                </p>
+                              </>
+                            ) : (
+                              <span className='text-gray-300'>—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className={LIST_CELL}>
+                            <ListPill tone={status.tone}>
+                              {status.label}
+                            </ListPill>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+                {siteRows.length > 0 && (
+                  <TableFooter className='border-gray-200 bg-gray-50'>
+                    <TableRow className='hover:bg-gray-50'>
+                      <TableCell className={cn(LIST_CELL, "font-medium")}>
+                        {siteRows.length}{" "}
+                        {siteRows.length === 1 ? "site" : "sites"}
+                      </TableCell>
+                      <TableCell className={cn(NUMBER_CELL, "font-medium")}>
+                        {formatQuantity(usage.bioremediationAllotted)}{" "}
+                        {WO_UNITS.MT}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          NUMBER_CELL,
+                          "font-semibold text-emerald-700",
+                        )}>
+                        {certificatesLoading ? (
+                          <Pending />
+                        ) : (
+                          formatCurrency(sitesUsedTotal)
+                        )}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          NUMBER_CELL,
+                          "font-semibold text-rose-700",
+                        )}>
+                        {formatCurrency(sitesExpenseTotal)}
+                      </TableCell>
+                      <TableCell className={LIST_CELL} />
+                    </TableRow>
+                  </TableFooter>
+                )}
+              </Table>
             </div>
           </div>
-
-          <div className='mb-5 rounded-lg border border-slate-200 bg-linear-to-r from-slate-50 to-emerald-50/30 p-4'>
-            <div className='flex items-center justify-between mb-2'>
-              <div className='flex items-center gap-4'>
-                <div>
-                  <span className='text-[10px] uppercase tracking-wider text-slate-500 font-semibold'>
-                    Total Spent
-                  </span>
-                  <p className='text-lg font-bold text-emerald-700'>
-                    {formatCurrency(totalSiteCompletions)}
-                  </p>
-                </div>
-                <div className='h-8 w-px bg-slate-200' />
-                <div>
-                  <span className='text-[10px] uppercase tracking-wider text-slate-500 font-semibold'>
-                    SOR Budget
-                  </span>
-                  <p className='text-lg font-bold text-slate-700'>
-                    {formatCurrency(grandTotal)}
-                  </p>
-                </div>
-              </div>
-              <div className='text-right'>
-                <span className='text-[10px] uppercase tracking-wider text-slate-500 font-semibold'>
-                  Utilization
-                </span>
-                <p
-                  className={`text-lg font-bold ${
-                    spendingPct >= 100
-                      ? "text-red-600"
-                      : spendingPct >= 80
-                        ? "text-amber-600"
-                        : "text-emerald-600"
-                  }`}>
-                  {spendingPct.toFixed(1)}%
-                </p>
-              </div>
-            </div>
-            <div className='h-2 bg-slate-200 rounded-full overflow-hidden'>
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  spendingPct >= 100
-                    ? "bg-red-500"
-                    : spendingPct >= 80
-                      ? "bg-amber-500"
-                      : "bg-emerald-500"
-                }`}
-                style={{ width: `${Math.min(100, spendingPct)}%` }}
-              />
-            </div>
-            <div className='flex justify-between mt-1.5 text-[10px] text-slate-400'>
-              <span>
-                {sitesWithData.length} of {sortedSites.length} sites with
-                completion data
-              </span>
-              <span>
-                Remaining: {formatCurrency(grandTotal - totalSiteCompletions)}
-              </span>
-            </div>
-          </div>
-
-          {sortedSites.length > 0 ? (
-            <div className='space-y-2'>
-              {sortedSites.map((site, index) => (
-                <SiteSpendingCard
-                  key={`${site.site.name}-${index}`}
-                  site={site}
-                  index={index}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className='text-center py-10 text-gray-400 italic text-sm border rounded-lg bg-slate-50/50'>
-              No sites found for this work order.
-            </div>
-          )}
-
-          {totalSiteCompletions > 0 && (
-            <div className='mt-4 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between'>
-              <span className='text-sm font-bold text-emerald-900'>
-                Total Site Completion Amount
-              </span>
-              <span className='text-lg font-bold text-emerald-700'>
-                {formatCurrency(totalSiteCompletions)}
-              </span>
-            </div>
-          )}
         </section>
       </div>
     </DialogWindow>
