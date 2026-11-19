@@ -405,6 +405,8 @@ export const expenseQueryRouter = router({
 
           return {
             grandTotal,
+            // How many expenses the totals are of.
+            expenseCount: activityRows.length,
             regularTotal,
             exceededTotal,
             incomeTotal,
