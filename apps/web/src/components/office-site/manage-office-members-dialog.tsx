@@ -102,7 +102,6 @@ const ManageOfficeMembersDialog = () => {
       await assignUser.mutateAsync({
         office_id,
         user_id: user.id,
-        role: "operator",
       });
       toast.success("Office operator assigned");
       await invalidateOffice();

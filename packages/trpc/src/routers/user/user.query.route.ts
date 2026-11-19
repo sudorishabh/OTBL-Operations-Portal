@@ -240,7 +240,6 @@ export const userQueryRouter = router({
           userId: number;
           id: number;
           name: string;
-          officeRole: string | null;
         }[] = [];
         let allSites: { userId: number; id: number; name: string }[] = [];
 
@@ -251,7 +250,6 @@ export const userQueryRouter = router({
               id: officeTable.id,
               code: officeTable.code,
               name: officeTable.name,
-              officeRole: officeUserTable.role,
             })
             .from(officeUserTable)
             .innerJoin(

@@ -67,7 +67,6 @@ export const officeMutationRouter = router({
             const operatorValues = operator_ids.map((operatorId: number) => ({
               user_id: operatorId,
               office_id: officeId,
-              role: "operator" as const,
               assigned_by: userId,
             }));
 
@@ -122,7 +121,7 @@ export const officeMutationRouter = router({
     .input(officeSchemas.assignUserToOfficeSchema)
     .mutation(
       handleMutation(async ({ input, ctx }) => {
-        const { office_id, user_id, role } = input;
+        const { office_id, user_id } = input;
         const userId = parseInt(ctx.user!.sub);
 
         const [office] = await ctx.db
@@ -145,7 +144,7 @@ export const officeMutationRouter = router({
           });
         }
 
-        if (role === "operator" && user.role !== ROLES.OFFICE_OPERATOR) {
+        if (user.role !== ROLES.OFFICE_OPERATOR) {
           throw forbidden("add this user to the office as an operator", {
             userMessage:
               "Only Office Operators can be added to an office. This user isn't an Office Operator.",
@@ -164,16 +163,11 @@ export const officeMutationRouter = router({
             )
             .limit(1);
 
-          if (existingAssignments) {
-            await ctx.db
-              .update(officeUserTable)
-              .set({ role })
-              .where(eq(officeUserTable.id, existingAssignments.id));
-          } else {
+          // Already seated, there's nothing to change.
+          if (!existingAssignments) {
             await ctx.db.insert(officeUserTable).values({
               user_id,
               office_id,
-              role,
               assigned_by: userId,
             });
           }

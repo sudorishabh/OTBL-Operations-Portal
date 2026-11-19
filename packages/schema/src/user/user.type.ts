@@ -23,7 +23,6 @@ export type AllUserType = UserBaseType & {
   offices: {
     id: number;
     name: string;
-    officeRole: string;
     type: "office";
   }[];
   sites: {

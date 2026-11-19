@@ -17,7 +17,6 @@ import {
 const { STATUS } = constants;
 
 const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
-const officeRoleEnum = z.enum(["operator"]);
 const officeNamesOrderEnum = z.enum(["asc", "desc", "latest", "oldest"]);
 
 const officeBaseSchema = z.object({
@@ -43,7 +42,6 @@ export const updateOfficeSchema = officeBaseSchema.extend({
 export const assignUserToOfficeSchema = z.object({
   office_id: positiveIntValidator,
   user_id: positiveIntValidator,
-  role: officeRoleEnum,
 });
 
 export const expelUserFromOfficeSchema = z.object({

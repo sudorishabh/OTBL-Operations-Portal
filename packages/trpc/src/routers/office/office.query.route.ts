@@ -171,7 +171,6 @@ export const officeQueryRouter = router({
                     code: userTable.code,
                     name: userTable.name,
                     email: userTable.email,
-                    role: officeUserTable.role,
                   })
                   .from(officeUserTable)
                   .innerJoin(
@@ -222,10 +221,9 @@ export const officeQueryRouter = router({
               ]);
 
         const officesWithUsersAndSitesCount = offices.map((office) => {
-          const users = members.filter(
+          const operators = members.filter(
             (member) => member.office_id === office.id,
           );
-          const operators = users.filter((user) => user.role === "operator");
           const sites = siteCounts.filter((row) => row.office_id === office.id);
 
           return {
@@ -246,7 +244,8 @@ export const officeQueryRouter = router({
             // admins look after its sites.
             canManage: isAdmin,
             canEditSites:
-              isAdmin || users.some((user) => user.id === currentUserId),
+              isAdmin ||
+              operators.some((operator) => operator.id === currentUserId),
           };
         });
 
@@ -316,23 +315,18 @@ export const officeQueryRouter = router({
 
         await assertCanAccessOffice(ctx.db, scope, officeId);
 
-        const members = await ctx.db
+        const operators = await ctx.db
           .select({
             id: userTable.id,
             code: userTable.code,
             name: userTable.name,
             email: userTable.email,
             contact_number: userTable.contact_number,
-            role: officeUserTable.role,
           })
           .from(officeUserTable)
           .innerJoin(userTable, eq(officeUserTable.user_id, userTable.id))
           .where(eq(officeUserTable.office_id, officeId))
           .orderBy(asc(userTable.name), asc(userTable.id));
-
-        const operators = members.filter(
-          (member) => member.role === "operator",
-        );
 
         const siteCounts = await ctx.db
           .select({ status: siteTable.status, count: count() })
@@ -428,7 +422,8 @@ export const officeQueryRouter = router({
           operators,
           canManage: isAdmin,
           canEditSites:
-            isAdmin || members.some((member) => member.id === currentUserId),
+            isAdmin ||
+            operators.some((operator) => operator.id === currentUserId),
           sites,
           workOrders,
           totalBudgetAmount,
@@ -453,26 +448,20 @@ export const officeQueryRouter = router({
           );
           await assertCanAccessOffice(ctx.db, scope, input.office_id);
 
-          const users = await ctx.db
+          const operators = await ctx.db
             .select({
               id: userTable.id,
               code: userTable.code,
               name: userTable.name,
               email: userTable.email,
               contact_number: userTable.contact_number,
-              role: officeUserTable.role,
               officeUserId: officeUserTable.id,
             })
             .from(officeUserTable)
             .innerJoin(userTable, eq(officeUserTable.user_id, userTable.id))
             .where(eq(officeUserTable.office_id, input.office_id));
 
-          const operators = users.filter((u: any) => u.role === "operator");
-
-          return {
-            operators,
-            allUsers: users,
-          };
+          return { operators };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching office users");
         }

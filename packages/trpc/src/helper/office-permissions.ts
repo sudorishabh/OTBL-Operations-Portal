@@ -10,15 +10,14 @@ import {
 
 const { officeUserTable } = schema;
 
-export type OfficeRole = "operator";
-
-export async function getOfficeRole(
+// Everyone seated at an office is one of its office operators.
+export async function isOfficeMember(
   db: Database,
   userId: number,
   officeId: number,
-): Promise<OfficeRole | null> {
+): Promise<boolean> {
   const rows = await db
-    .select({ role: officeUserTable.role })
+    .select({ id: officeUserTable.id })
     .from(officeUserTable)
     .where(
       and(
@@ -28,15 +27,7 @@ export async function getOfficeRole(
     )
     .limit(1);
 
-  return (rows[0]?.role as OfficeRole | undefined) ?? null;
-}
-
-export async function isOfficeMember(
-  db: Database,
-  userId: number,
-  officeId: number,
-): Promise<boolean> {
-  return (await getOfficeRole(db, userId, officeId)) !== null;
+  return rows.length > 0;
 }
 
 type PermissionCtx = {
