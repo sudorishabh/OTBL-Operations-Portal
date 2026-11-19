@@ -10,7 +10,7 @@ import {
 import { createSiteSchema } from "../site/site.schema";
 import { constants } from "@pkg/utils";
 
-const { WO_ACTIVITIES, allActivityOptions } = constants;
+const { WO_ACTIVITIES, WO_PROCESS, allActivityOptions } = constants;
 
 export const activityTypeEnum = z.enum(["insitu", "exsitu"]);
 
@@ -147,10 +147,59 @@ export const baseWorkOrderSchema = z.object({
     .min(1, "At least one schedule of rate entry is required"),
 });
 
-export const createWorkOrderSchema = baseWorkOrderSchema.extend({
-  proposal_id: positiveIntValidator,
-  client_id: positiveIntValidator,
-});
+const isBioremediationActivity = (name: string) =>
+  allActivityOptions.some(
+    (option) => option.value === name && option.isBioremediation,
+  );
+
+// Which activities a work order's schedule of rates holds is picked as its
+// work needs them, within its process: each activity once and only the
+// process's own, with the bioremediation activity its sites treat soil
+// under, and at least one restoration activity when it restores land.
+export const checkScheduleOfRatesActivities = (
+  workOrder: {
+    process_type?: string;
+    schedule_of_rates?: { activity: { name: string } }[];
+  },
+  ctx: z.RefinementCtx,
+) => {
+  const names = (workOrder.schedule_of_rates ?? []).map(
+    (row) => row.activity.name,
+  );
+  // An empty schedule of rates, or no process yet, is reported elsewhere.
+  if (!workOrder.process_type || names.length === 0) return;
+
+  const treatsSoil = workOrder.process_type !== WO_PROCESS.RESTORATION;
+  const restoresLand = workOrder.process_type !== WO_PROCESS.BIOREMEDIATION;
+  const issue = (message: string) =>
+    ctx.addIssue({ code: "custom", path: ["schedule_of_rates"], message });
+
+  if (
+    names.some((name) =>
+      isBioremediationActivity(name) ? !treatsSoil : !restoresLand,
+    )
+  ) {
+    issue(
+      "Only this process type's activities can be in its schedule of rates",
+    );
+  }
+  if (new Set(names).size !== names.length) {
+    issue("Each activity can be in the schedule of rates only once");
+  }
+  if (treatsSoil && !names.some(isBioremediationActivity)) {
+    issue("Bioremediation needs its activity in the schedule of rates");
+  }
+  if (restoresLand && !names.some((name) => !isBioremediationActivity(name))) {
+    issue("Pick at least one restoration activity");
+  }
+};
+
+export const createWorkOrderSchema = baseWorkOrderSchema
+  .extend({
+    proposal_id: positiveIntValidator,
+    client_id: positiveIntValidator,
+  })
+  .superRefine(checkScheduleOfRatesActivities);
 
 // The process type and schedule of rates shape the work order's sites and
 // restoration, so an edit covers only its details and documents.
