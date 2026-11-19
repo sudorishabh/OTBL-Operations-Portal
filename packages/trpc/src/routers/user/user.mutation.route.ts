@@ -101,7 +101,6 @@ export const userMutationRouter = router({
 
         if (!isAdmin) {
           delete updateData.role;
-          delete updateData.status;
         }
 
         if (updateData.role && updateData.role !== existingUser.role) {
@@ -150,52 +149,6 @@ export const userMutationRouter = router({
         return {
           success: true,
           message: "User updated successfully",
-        };
-      }),
-    ),
-
-  // Turns an account on or off. Off, the user can't sign in and is signed out
-  // when their session next refreshes; everything they did stays on record.
-  setUserStatus: adminProcedure
-    .input(userSchemas.setUserStatusSchema)
-    .mutation(
-      handleProtectedMutation(async ({ input, ctx }) => {
-        const { id, status } = input;
-
-        const [existingUser] = await ctx.db
-          .select({ id: userTable.id, role: userTable.role })
-          .from(userTable)
-          .where(eq(userTable.id, id));
-
-        if (!existingUser) {
-          throw notFound("User", id);
-        }
-
-        if (ctx.user.sub === id.toString()) {
-          throw forbidden("change your own account's status", {
-            userMessage: "You can't deactivate your own account.",
-          });
-        }
-
-        if (existingUser.role === USER_ROLES.ADMIN) {
-          throw forbidden("change an admin's status", {
-            userMessage: "Admin accounts can't be deactivated here.",
-          });
-        }
-
-        try {
-          await ctx.db
-            .update(userTable)
-            .set({ status })
-            .where(eq(userTable.id, id));
-        } catch (error) {
-          throw fromDatabaseError(error, "Updating user status");
-        }
-
-        return {
-          success: true,
-          message:
-            status === "active" ? "User reactivated" : "User deactivated",
         };
       }),
     ),

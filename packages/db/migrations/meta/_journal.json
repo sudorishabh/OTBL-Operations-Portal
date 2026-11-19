@@ -274,6 +274,13 @@
       "when": 1795067329213,
       "tag": "0038_sub_contract_rates",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1795079533007,
+      "tag": "0039_drop_user_status",
+      "breakpoints": true
     }
   ]
 }

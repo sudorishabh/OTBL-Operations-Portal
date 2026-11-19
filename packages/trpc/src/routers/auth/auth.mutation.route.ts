@@ -9,7 +9,6 @@ import {
 } from "@pkg/utils/auth";
 import { eq } from "drizzle-orm";
 import { schema } from "@pkg/db";
-import { constants } from "@pkg/utils";
 import { publicProcedure } from "../../middleware";
 import { router } from "../../trpc";
 import { authSchemas } from "@pkg/schema";
@@ -17,7 +16,6 @@ import { unauthorized, internal, fromDatabaseError } from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
 
-const { STATUS } = constants;
 const { userTable } = schema;
 
 export const authMutationRouter = router({
@@ -33,7 +31,6 @@ export const authMutationRouter = router({
             name: userTable.name,
             email: userTable.email,
             role: userTable.role,
-            status: userTable.status,
             password: userTable.password,
           })
           .from(userTable)
@@ -48,15 +45,6 @@ export const authMutationRouter = router({
         throw unauthorized("Invalid email or password, please try again.", {
           devMessage: `No user found with email: ${email}`,
         });
-      }
-
-      if (user.status !== STATUS.ACTIVE) {
-        throw unauthorized(
-          "Your account is inactive. Please contact support.",
-          {
-            devMessage: `User ${email} has status: ${user.status}`,
-          },
-        );
       }
 
       const isPasswordValid = await verifyPassword(password, user.password);
@@ -102,7 +90,6 @@ export const authMutationRouter = router({
           name: user.name,
           email: user.email,
           role: user.role,
-          status: user.status,
         },
       };
     }),
@@ -154,7 +141,6 @@ export const authMutationRouter = router({
               name: userTable.name,
               email: userTable.email,
               role: userTable.role,
-              status: userTable.status,
             })
             .from(userTable)
             .where(eq(userTable.id, parseInt(payload.sub)));
@@ -164,11 +150,11 @@ export const authMutationRouter = router({
 
         const user = users?.[0];
 
-        if (!user || user.status !== STATUS.ACTIVE) {
+        if (!user) {
           throw unauthorized(
-            "Your account is no longer active. Please contact support.",
+            "Your account could not be found. Please sign in again.",
             {
-              devMessage: `User ${payload.sub} not found or inactive`,
+              devMessage: `User ${payload.sub} not found`,
             },
           );
         }
@@ -200,7 +186,6 @@ export const authMutationRouter = router({
             name: user.name,
             email: user.email,
             role: user.role,
-            status: user.status,
           },
         };
       }),

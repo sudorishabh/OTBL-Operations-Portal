@@ -8,13 +8,11 @@ import {
 } from "@pkg/utils/auth";
 import { schema } from "@pkg/db";
 import { getAccessScope, getDashboardUi } from "../../access-scope";
-import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure, publicProcedure } from "../../middleware";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 
-const { STATUS } = constants;
 const { userTable, workOrderSiteTable } = schema;
 
 export const authQueryRouter = router({
@@ -28,14 +26,13 @@ export const authQueryRouter = router({
               name: userTable.name,
               email: userTable.email,
               role: userTable.role,
-              status: userTable.status,
             })
             .from(userTable)
             .where(eq(userTable.id, parseInt(ctx.user!.sub)));
 
           const user = existingUser[0];
 
-          if (user && user.status === STATUS.ACTIVE) {
+          if (user) {
             return {
               success: true,
               user,
@@ -72,14 +69,13 @@ export const authQueryRouter = router({
             name: userTable.name,
             email: userTable.email,
             role: userTable.role,
-            status: userTable.status,
           })
           .from(userTable)
           .where(eq(userTable.id, parseInt(payload.sub)));
 
         const user = existingUser[0];
 
-        if (!user || user.status !== STATUS.ACTIVE) {
+        if (!user) {
           return {
             success: false,
             user: null,

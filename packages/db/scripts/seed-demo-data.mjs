@@ -390,7 +390,7 @@ const UPLOAD_DESCRIPTIONS = [
 // ---------------------------------------------------------------------------
 
 const COLUMNS = {
-  users: ["id", "code", "name", "email", "password", "contact_number", "role", "created_by", "status", "created_at", "updated_at"],
+  users: ["id", "code", "name", "email", "password", "contact_number", "role", "created_by", "created_at", "updated_at"],
   offices: ["id", "code", "name", "address", "state", "city", "gst_number", "pincode", "email", "status", "created_at", "updated_at"],
   parent_clients: ["id", "code", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
   clients: ["id", "code", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
@@ -666,7 +666,7 @@ const passwordHash = DRY_RUN
       return bcrypt.hash(PASSWORD, 10);
     })();
 
-function addUser(role, { name = personName(), email, createdBy = null, status } = {}) {
+function addUser(role, { name = personName(), email, createdBy = null } = {}) {
   return add("users", {
     code: nextCode("users"),
     name,
@@ -675,12 +675,11 @@ function addUser(role, { name = personName(), email, createdBy = null, status } 
     contact_number: phone(),
     role,
     created_by: createdBy,
-    status: status ?? (chance(0.05) ? "inactive" : "active"),
     ...stamp(atWorkHour(addDays(BASE, int(0, 90)))),
   });
 }
 
-const admin = addUser("admin", { name: "Demo Admin", email: "admin@otbl.test", status: "active" });
+const admin = addUser("admin", { name: "Demo Admin", email: "admin@otbl.test" });
 
 // Offices, each with its one manager.
 const offices = [];
@@ -706,7 +705,6 @@ for (let i = 0; i < COUNT; i++) {
   offices.push(office);
   const manager = addUser("office_manager", {
     createdBy: admin.id,
-    status: "active",
     ...(i === 0 && { name: "Demo Manager", email: "manager@otbl.test" }),
   });
   managerOf.set(office.id, manager);
@@ -727,7 +725,7 @@ for (let i = 0; i < COUNT; i++) {
   const manager = managerOf.get(home.id);
   const op = addUser("office_operator", {
     createdBy: manager.id,
-    ...(i === 0 && { name: "Demo Office Operator", email: "office.operator@otbl.test", status: "active" }),
+    ...(i === 0 && { name: "Demo Office Operator", email: "office.operator@otbl.test" }),
   });
   const homes = [home];
   if (chance(0.4)) {
@@ -752,11 +750,11 @@ for (let i = 0; i < COUNT; i++) {
   siteOps.push(
     addUser("site_operator", {
       createdBy: managerOf.get(pick(offices).id).id,
-      ...(i === 0 && { name: "Demo Site Operator", email: "site.operator@otbl.test", status: "active" }),
+      ...(i === 0 && { name: "Demo Site Operator", email: "site.operator@otbl.test" }),
     }),
   );
 }
-const siteOpQueue = shuffle(siteOps.filter((u) => u.status === "active"));
+const siteOpQueue = shuffle(siteOps);
 let siteOpCursor = 0;
 const nextSiteOp = () => siteOpQueue[siteOpCursor++ % siteOpQueue.length];
 
@@ -764,7 +762,7 @@ const viewerCount = Math.max(20, Math.round(COUNT / 10));
 for (let i = 0; i < viewerCount; i++) {
   addUser("viewer", {
     createdBy: admin.id,
-    ...(i === 0 && { name: "Demo Viewer", email: "viewer@otbl.test", status: "active" }),
+    ...(i === 0 && { name: "Demo Viewer", email: "viewer@otbl.test" }),
   });
 }
 // One login per role, with the email it got: on an --append run, a number is

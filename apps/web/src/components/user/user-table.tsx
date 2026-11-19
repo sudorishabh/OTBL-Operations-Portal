@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import {
   Table,
   TableBody,
@@ -8,12 +8,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, UserCheck, UserIcon, UserX } from "lucide-react";
+import { Edit, UserIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUserManagementContext } from "@/contexts/UserManagementContext";
@@ -26,7 +25,6 @@ import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import { useDebounce } from "@/hooks/useDebounce";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import PaginationSummary from "@/components/shared/pagination-summary";
-import StatusIndicator from "../shared/status-indicator";
 import RecordCode from "@/components/shared/record-code";
 import {
   LIST_CELL,
@@ -44,7 +42,6 @@ import { userTypes } from "@pkg/schema";
 import UserTabSkeleton from "../skeleton/user/user-tab-skeleton";
 import { toast } from "react-hot-toast";
 import Error from "@/components/shared/error";
-import UserStatusDialog, { type StatusTarget } from "./user-status-dialog";
 
 const ALL_USERS_PAGE_SIZE = 50;
 
@@ -61,8 +58,6 @@ const ROLE_TONES: Record<string, PillTone> = {
 const UserTable = () => {
   const { setParams } = useHandleParams();
   const isViewer = useIsViewer();
-  // The user whose account is being turned off or on.
-  const [statusTarget, setStatusTarget] = useState<StatusTarget | null>(null);
 
   const { userNamesOrder, searchQuery, filters } = useUserManagementContext();
   const debouncedSearch = useDebounce(searchQuery.trim(), 300);
@@ -71,7 +66,6 @@ const UserTable = () => {
     limit: ALL_USERS_PAGE_SIZE,
     searchQuery: debouncedSearch || undefined,
     role: filters.role,
-    status: filters.status,
     officeId: filters.officeId === "all" ? undefined : Number(filters.officeId),
     assignment: filters.assignment === "all" ? undefined : filters.assignment,
     userNamesOrder,
@@ -93,7 +87,6 @@ const UserTable = () => {
   const isFiltered =
     !!debouncedSearch ||
     filters.role !== "all" ||
-    filters.status !== "all" ||
     filters.officeId !== "all" ||
     filters.assignment !== "all";
 
@@ -130,7 +123,6 @@ const UserTable = () => {
       <Table>
         <TableHeader>
           <TableRow className={LIST_HEAD_ROW}>
-            <TableHead className={LIST_HEAD}>Status</TableHead>
             <TableHead className={LIST_HEAD}>Name</TableHead>
             <TableHead className={LIST_HEAD}>Email</TableHead>
             <TableHead className={LIST_HEAD}>Contact</TableHead>
@@ -165,11 +157,6 @@ const UserTable = () => {
               <TableRow
                 key={`user-${user.email}`}
                 className={LIST_ROW}>
-                <TableCell className={LIST_CELL}>
-                  <StatusIndicator
-                    status={user.status as "active" | "inactive"}
-                  />
-                </TableCell>
                 <TableCell className={LIST_CELL}>
                   <p className='flex items-center gap-2 font-medium text-gray-900'>
                     <RecordCode code={user.code} />
@@ -223,23 +210,6 @@ const UserTable = () => {
                         <Edit className='mr-2 h-4 w-4' />
                         Edit User
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      {user.status === "active" ? (
-                        <DropdownMenuItem
-                          variant='destructive'
-                          disabled={isViewer}
-                          onClick={() => setStatusTarget(user)}>
-                          <UserX className='mr-2 h-4 w-4' />
-                          Deactivate User
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem
-                          disabled={isViewer}
-                          onClick={() => setStatusTarget(user)}>
-                          <UserCheck className='mr-2 h-4 w-4' />
-                          Reactivate User
-                        </DropdownMenuItem>
-                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -262,11 +232,6 @@ const UserTable = () => {
         totalPages={pagination?.totalPages}
         noun='users'
         className='border-t'
-      />
-
-      <UserStatusDialog
-        user={statusTarget}
-        onClose={() => setStatusTarget(null)}
       />
     </div>
   );

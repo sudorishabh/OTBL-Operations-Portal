@@ -12,7 +12,7 @@ import {
   positiveIntValidator,
 } from "../validators";
 
-const { ROLES, STATUS } = constants;
+const { ROLES } = constants;
 
 const userRoleEnum = z.enum([
   ROLES.ADMIN,
@@ -21,8 +21,6 @@ const userRoleEnum = z.enum([
   ROLES.SITE_OPERATOR,
   ROLES.VIEWER,
 ]);
-
-const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
 export const createUserSchema = z.object({
   name: nameValidator,
@@ -35,12 +33,6 @@ export const createUserSchema = z.object({
 export const updateUserSchema = createUserSchema.extend({
   id: positiveIntValidator,
   password: z.union([passwordValidator, z.literal("")]).optional(),
-});
-
-// Turning an account off stops its sign-in but keeps its records.
-export const setUserStatusSchema = z.object({
-  id: positiveIntValidator,
-  status: statusEnum,
 });
 
 export const updateUserPasswordSchema = z
@@ -67,7 +59,6 @@ export const getAllUsersSchema = z.object({
       ROLES.VIEWER,
     ])
     .optional(),
-  status: z.enum([...statusEnum.options, "all"]).optional(),
   // Users working at the office: its seats, and site operators on its work
   // orders.
   officeId: positiveIntValidator.optional(),
@@ -79,7 +70,6 @@ export const getAllUsersSchema = z.object({
 // The list's filters other than role, for counting the users in each role.
 export const getUserCountsSchema = getAllUsersSchema.pick({
   searchQuery: true,
-  status: true,
   officeId: true,
   assignment: true,
 });
