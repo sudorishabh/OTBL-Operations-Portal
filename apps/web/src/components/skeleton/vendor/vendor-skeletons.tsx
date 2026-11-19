@@ -10,10 +10,12 @@ import {
   TextLine,
   type SkeletonColumn,
 } from "../parts";
-
-// Classes the vendor list table uses.
-const LIST_HEAD = "h-10 px-4 sm:h-10 sm:px-4 text-xs font-medium text-gray-500";
-const LIST_CELL = "px-4 py-3 sm:px-4 sm:py-3";
+import {
+  LIST_CELL,
+  LIST_HEAD,
+  LIST_HEAD_ROW,
+  LIST_ROW,
+} from "@/components/shared/list-table";
 
 const LIST_COLUMNS: SkeletonColumn[] = [
   {
@@ -52,8 +54,8 @@ export const VendorsTableSkeleton = ({
       }
       rows={10}
       className='border-gray-200'
-      headRowClassName='border-gray-200 bg-gray-50'
-      rowClassName='h-[61px] border-gray-100'
+      headRowClassName={LIST_HEAD_ROW}
+      rowClassName={`h-[61px] ${LIST_ROW}`}
     />
   </SkeletonRegion>
 );

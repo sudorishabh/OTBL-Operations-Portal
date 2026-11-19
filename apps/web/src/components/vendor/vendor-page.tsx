@@ -5,7 +5,6 @@ import {
   ExternalLink,
   FileStack,
   HardHat,
-  MoreHorizontal,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -18,11 +17,20 @@ import useHandleParams from "@/hooks/useHandleParams";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import { useIsManager } from "@/contexts/AuthContext";
-import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import PaginationSummary from "@/components/shared/pagination-summary";
-import { Button } from "@/components/ui/button";
+import {
+  LIST_CELL,
+  LIST_FRAME,
+  LIST_HEAD,
+  LIST_HEAD_ROW,
+  LIST_LINK,
+  LIST_ROW,
+  LIST_SUBTEXT,
+  ListLoadMore,
+  RowActionsButton,
+} from "@/components/shared/list-table";
 import { VendorsTableSkeleton } from "@/components/skeleton/vendor/vendor-skeletons";
 import {
   ALL,
@@ -105,9 +113,6 @@ const SORT_OPTIONS = [
 type VendorUsage = "purchase_order" | "sub_contract" | "job_order" | "unused";
 type VendorSort = "name_asc" | "name_desc" | "newest" | "oldest";
 
-const headClass = "h-10 px-4 sm:h-10 sm:px-4 text-xs font-medium text-gray-500";
-const cellClass = "px-4 py-3 sm:px-4 sm:py-3 text-sm text-gray-700";
-
 // The vendors page: everyone material and work are ordered from.
 const VendorPage = () => {
   const { setParams } = useHandleParams();
@@ -186,15 +191,15 @@ const VendorPage = () => {
     }
 
     return (
-      <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
+      <div className={LIST_FRAME}>
         <Table>
           <TableHeader>
-            <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
-              <TableHead className={headClass}>Vendor</TableHead>
-              <TableHead className={headClass}>Contact</TableHead>
-              <TableHead className={headClass}>State</TableHead>
-              <TableHead className={headClass}>GST / PAN</TableHead>
-              <TableHead className={cn(headClass, "w-12")}>
+            <TableRow className={LIST_HEAD_ROW}>
+              <TableHead className={LIST_HEAD}>Vendor</TableHead>
+              <TableHead className={LIST_HEAD}>Contact</TableHead>
+              <TableHead className={LIST_HEAD}>State</TableHead>
+              <TableHead className={LIST_HEAD}>GST / PAN</TableHead>
+              <TableHead className={cn(LIST_HEAD, "w-12")}>
                 <span className='sr-only'>Actions</span>
               </TableHead>
             </TableRow>
@@ -203,50 +208,43 @@ const VendorPage = () => {
             {vendors.map((vendor) => (
               <TableRow
                 key={vendor.id}
-                className='border-gray-100'>
-                <TableCell className={cellClass}>
+                className={LIST_ROW}>
+                <TableCell className={LIST_CELL}>
                   <p className='flex items-center gap-2 font-medium text-gray-900'>
                     <RecordCode code={vendor.code} />
                     <Link
                       href={`/dashboard/vendor/${vendor.id}`}
-                      className='min-w-0 truncate hover:text-emerald-700 hover:underline'>
+                      className={cn("min-w-0 truncate", LIST_LINK)}>
                       {capitalFirstLetter(vendor.name)}
                     </Link>
                   </p>
                   {vendor.address && (
                     <p
-                      className='max-w-xs truncate text-xs text-gray-400'
+                      className={cn("max-w-xs truncate", LIST_SUBTEXT)}
                       title={vendor.address}>
                       {vendor.address}
                     </p>
                   )}
                 </TableCell>
-                <TableCell className={cellClass}>
+                <TableCell className={LIST_CELL}>
                   <p>{vendor.contact_number || "—"}</p>
                   {vendor.email && (
-                    <p className='text-xs text-gray-400'>{vendor.email}</p>
+                    <p className={LIST_SUBTEXT}>{vendor.email}</p>
                   )}
                 </TableCell>
-                <TableCell className={cellClass}>
+                <TableCell className={LIST_CELL}>
                   {vendor.state ? capitalizeEachWord(vendor.state) : "—"}
                 </TableCell>
-                <TableCell className={cn(cellClass, "tabular-nums")}>
+                <TableCell className={cn(LIST_CELL, "tabular-nums")}>
                   <p>{vendor.gst_number || "—"}</p>
                   {vendor.pan_number && (
-                    <p className='text-xs text-gray-400'>{vendor.pan_number}</p>
+                    <p className={LIST_SUBTEXT}>{vendor.pan_number}</p>
                   )}
                 </TableCell>
-                <TableCell className={cn(cellClass, "text-right")}>
+                <TableCell className={cn(LIST_CELL, "text-right")}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        variant='ghost'
-                        className='h-8 w-8 p-0'>
-                        <span className='sr-only'>
-                          Actions for {vendor.name}
-                        </span>
-                        <MoreHorizontal className='h-4 w-4' />
-                      </Button>
+                      <RowActionsButton label={`Actions for ${vendor.name}`} />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align='end'>
                       <DropdownMenuItem asChild>
@@ -285,12 +283,10 @@ const VendorPage = () => {
         </Table>
 
         {pagination?.hasMore && (
-          <div className='flex justify-center border-t py-3'>
-            <LoadMoreBtn
-              onClick={loadMore}
-              loading={isFetchingMore}
-            />
-          </div>
+          <ListLoadMore
+            onClick={loadMore}
+            loading={isFetchingMore}
+          />
         )}
         <PaginationSummary
           shown={vendors.length}

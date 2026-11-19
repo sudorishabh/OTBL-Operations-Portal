@@ -8,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Building2, Edit, ExternalLink } from "lucide-react";
 import {
   DropdownMenu,
@@ -16,13 +15,31 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
-import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import PaginationSummary from "@/components/shared/pagination-summary";
+import RecordCode from "@/components/shared/record-code";
+import {
+  LIST_CELL,
+  LIST_FRAME,
+  LIST_HEAD,
+  LIST_HEAD_ROW,
+  LIST_LINK,
+  LIST_ROW,
+  ListLoadMore,
+  ListPill,
+  RowActionsButton,
+  type PillTone,
+} from "@/components/shared/list-table";
 import { useIsViewer } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 import { IWorkOrder, IWorkOrderPagination } from "@/types/work-order.types";
 import { capitalFirstLetter } from "@pkg/utils";
+
+// The same colours the overview gives each status.
+const STATUS_TONES: Record<string, PillTone> = {
+  completed: "green",
+  pending: "yellow",
+  cancelled: "red",
+};
 
 interface Props {
   workOrders: IWorkOrder[];
@@ -41,32 +58,6 @@ const WorkOrderTable = ({
 }: Props) => {
   const isViewer = useIsViewer();
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "default";
-      case "pending":
-        return "secondary";
-      case "cancelled":
-        return "destructive";
-      default:
-        return "outline";
-    }
-  };
-
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 border-green-300 text-green-800";
-      case "pending":
-        return "bg-yellow-100 border-yellow-300 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 border-red-300 text-red-700";
-      default:
-        return "";
-    }
-  };
-
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -82,137 +73,128 @@ const WorkOrderTable = ({
   };
 
   return (
-    <div className='border rounded-lg bg-white'>
+    <div className={LIST_FRAME}>
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead className='pl-8 text-xs'>Code</TableHead>
-            <TableHead className='text-xs'>Purchase Order</TableHead>
-            <TableHead className='text-xs'>Client</TableHead>
-            <TableHead className='text-xs'>Office</TableHead>
-            <TableHead className='text-xs'>Start Date</TableHead>
-            <TableHead className='text-xs'>End Date</TableHead>
-            <TableHead className='text-xs'>Budget</TableHead>
-            <TableHead className='text-xs'>Status</TableHead>
-            <TableHead className='text-xs text-right'>Actions</TableHead>
+          <TableRow className={LIST_HEAD_ROW}>
+            <TableHead className={LIST_HEAD}>Code</TableHead>
+            <TableHead className={LIST_HEAD}>Purchase Order</TableHead>
+            <TableHead className={LIST_HEAD}>Client</TableHead>
+            <TableHead className={LIST_HEAD}>Office</TableHead>
+            <TableHead className={LIST_HEAD}>Start Date</TableHead>
+            <TableHead className={LIST_HEAD}>End Date</TableHead>
+            <TableHead className={LIST_HEAD}>Budget</TableHead>
+            <TableHead className={LIST_HEAD}>Status</TableHead>
+            <TableHead className={cn(LIST_HEAD, "w-12")}>
+              <span className='sr-only'>Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {workOrders?.length === 0 ? (
-            <TableRow>
+            <TableRow className={LIST_ROW}>
               <TableCell
                 colSpan={9}
-                className='text-center py-8 text-muted-foreground'>
+                className={cn(LIST_CELL, "py-8 text-center text-gray-500")}>
                 No work orders found
               </TableCell>
             </TableRow>
           ) : (
-            <>
-              {workOrders?.map((workOrder) => (
-                <TableRow key={workOrder.id}>
-                  <TableCell className='text-xs font-medium font-mono pl-8'>
+            workOrders?.map((workOrder) => (
+              <TableRow
+                key={workOrder.id}
+                className={LIST_ROW}>
+                <TableCell
+                  className={cn(
+                    LIST_CELL,
+                    "whitespace-nowrap font-medium text-gray-900",
+                  )}>
+                  <Link
+                    href={`/dashboard/work-order/${workOrder.id}`}
+                    className={LIST_LINK}>
+                    {workOrder.code}
+                  </Link>
+                </TableCell>
+                <TableCell className={LIST_CELL}>
+                  {workOrder.purchase_order_code ? (
+                    <RecordCode code={workOrder.purchase_order_code} />
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell className={LIST_CELL}>
+                  {workOrder.client_name ? (
                     <Link
-                      href={`/dashboard/work-order/${workOrder.id}`}
-                      className='hover:text-emerald-700 hover:underline'>
-                      {workOrder.code}
+                      href={`/dashboard/client/${workOrder.client_id}`}
+                      className={LIST_LINK}>
+                      {capitalFirstLetter(workOrder.client_name)}
                     </Link>
-                  </TableCell>
-                  <TableCell className='text-xs font-mono text-gray-600'>
-                    {workOrder.purchase_order_code || "-"}
-                  </TableCell>
-                  <TableCell className='text-xs'>
-                    {workOrder.client_name ? (
-                      <Link
-                        href={`/dashboard/client/${workOrder.client_id}`}
-                        className='hover:text-emerald-700 hover:underline'>
-                        {capitalFirstLetter(workOrder.client_name)}
-                      </Link>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell className='text-xs'>
-                    <Badge
-                      variant='outline'
-                      className='text-xs'>
-                      {capitalFirstLetter(
-                        workOrder.office_name || "Unknown Office",
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell className={LIST_CELL}>
+                  {capitalFirstLetter(
+                    workOrder.office_name || "Unknown Office",
+                  )}
+                </TableCell>
+                <TableCell className={cn(LIST_CELL, "whitespace-nowrap")}>
+                  {formatDate(workOrder.start_date)}
+                </TableCell>
+                <TableCell className={cn(LIST_CELL, "whitespace-nowrap")}>
+                  {formatDate(workOrder.end_date)}
+                </TableCell>
+                <TableCell className={cn(LIST_CELL, "tabular-nums")}>
+                  {formatCurrency(workOrder.budget_amount)}
+                </TableCell>
+                <TableCell className={LIST_CELL}>
+                  <ListPill tone={STATUS_TONES[workOrder.status] ?? "gray"}>
+                    {capitalFirstLetter(workOrder.status)}
+                  </ListPill>
+                </TableCell>
+                <TableCell className={cn(LIST_CELL, "text-right")}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <RowActionsButton
+                        label={`Actions for ${workOrder.code}`}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/work-order/${workOrder.id}`}>
+                          <ExternalLink className='mr-2 h-4 w-4' />
+                          Open work order
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/client/${workOrder.client_id}`}>
+                          <Building2 className='mr-2 h-4 w-4' />
+                          Open client
+                        </Link>
+                      </DropdownMenuItem>
+                      {onEdit && (
+                        <DropdownMenuItem
+                          disabled={isViewer}
+                          onClick={() => onEdit(workOrder)}>
+                          <Edit className='mr-2 h-4 w-4' />
+                          Edit Work Order
+                        </DropdownMenuItem>
                       )}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className='text-xs'>
-                    {formatDate(workOrder.start_date)}
-                  </TableCell>
-                  <TableCell className='text-xs'>
-                    {formatDate(workOrder.end_date)}
-                  </TableCell>
-                  <TableCell className='text-xs'>
-                    {formatCurrency(workOrder.budget_amount)}
-                  </TableCell>
-                  <TableCell className='text-xs'>
-                    <Badge
-                      variant={getStatusBadgeVariant(workOrder.status)}
-                      className={getStatusBadgeClass(workOrder.status)}>
-                      {capitalFirstLetter(workOrder.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className='text-right'>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant='ghost'
-                          className='h-8 w-8 p-0'>
-                          <span className='sr-only'>
-                            Actions for {workOrder.code}
-                          </span>
-                          <MoreHorizontal className='h-4 w-4' />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align='end'>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/work-order/${workOrder.id}`}>
-                            <ExternalLink className='mr-2 h-4 w-4' />
-                            Open work order
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href={`/dashboard/client/${workOrder.client_id}`}>
-                            <Building2 className='mr-2 h-4 w-4' />
-                            Open client
-                          </Link>
-                        </DropdownMenuItem>
-                        {onEdit && (
-                          <DropdownMenuItem
-                            disabled={isViewer}
-                            onClick={() => onEdit(workOrder)}>
-                            <Edit className='mr-2 h-4 w-4' />
-                            Edit Work Order
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-
-              {pagination?.hasMore && (
-                <TableRow>
-                  <TableCell
-                    colSpan={9}
-                    className='text-center'>
-                    <LoadMoreBtn
-                      onClick={handleLoadMore}
-                      loading={isLoadingData}
-                    />
-                  </TableCell>
-                </TableRow>
-              )}
-            </>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))
           )}
         </TableBody>
       </Table>
 
+      {workOrders.length > 0 && pagination?.hasMore && (
+        <ListLoadMore
+          onClick={handleLoadMore}
+          loading={isLoadingData}
+        />
+      )}
       <PaginationSummary
         shown={workOrders.length}
         total={pagination?.total}

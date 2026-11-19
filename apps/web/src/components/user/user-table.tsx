@@ -8,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Edit, UserCheck, UserIcon, UserX } from "lucide-react";
 import {
   DropdownMenu,
@@ -17,9 +16,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
-import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import { useUserManagementContext } from "@/contexts/UserManagementContext";
 import { useIsViewer } from "@/contexts/AuthContext";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -32,6 +28,18 @@ import NoFetchData from "@/components/shared/no-fetch-data";
 import PaginationSummary from "@/components/shared/pagination-summary";
 import StatusIndicator from "../shared/status-indicator";
 import RecordCode from "@/components/shared/record-code";
+import {
+  LIST_CELL,
+  LIST_FRAME,
+  LIST_HEAD,
+  LIST_HEAD_ROW,
+  LIST_ROW,
+  ListLoadMore,
+  ListPill,
+  RowActionsButton,
+  type PillTone,
+} from "@/components/shared/list-table";
+import { cn } from "@/lib/utils";
 import { userTypes } from "@pkg/schema";
 import UserTabSkeleton from "../skeleton/user/user-tab-skeleton";
 import { toast } from "react-hot-toast";
@@ -39,6 +47,16 @@ import Error from "@/components/shared/error";
 import UserStatusDialog, { type StatusTarget } from "./user-status-dialog";
 
 const ALL_USERS_PAGE_SIZE = 50;
+
+// Office roles in cyan and sky, like the offices they work at; site
+// operators in orange, like their sites.
+const ROLE_TONES: Record<string, PillTone> = {
+  admin: "red",
+  office_manager: "cyan",
+  office_operator: "sky",
+  site_operator: "orange",
+  viewer: "gray",
+};
 
 const UserTable = () => {
   const { setParams } = useHandleParams();
@@ -81,19 +99,6 @@ const UserTable = () => {
 
   const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "destructive";
-      case "office_manager":
-        return "default";
-      case "viewer":
-        return "secondary";
-      default:
-        return "outline";
-    }
-  };
-
   if (pageQueries[0]?.isLoading) return <UserTabSkeleton />;
 
   if (failedQuery?.error) {
@@ -121,138 +126,135 @@ const UserTable = () => {
     );
 
   return (
-    <div className='border rounded-lg bg-white'>
+    <div className={LIST_FRAME}>
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead className='text-xs'>Status</TableHead>
-            <TableHead className='text-xs'>Name</TableHead>
-            <TableHead className='text-xs'>Email</TableHead>
-            <TableHead className='text-xs'>Contact</TableHead>
-            <TableHead className='text-xs'>Role</TableHead>
-            <TableHead className='text-xs flex gap-1.5 items-center'>
-              <span className='text-xs font-medium bg-cyan-800/15 px-1.5 text-cyan-900 py-0.5 rounded-sm'>
-                Offices
-              </span>
-              <span>/</span>
-              <span className='text-xs font-medium bg-orange-800/15 px-1.5 text-orange-900 py-0.5 rounded-sm'>
-                Sites
+          <TableRow className={LIST_HEAD_ROW}>
+            <TableHead className={LIST_HEAD}>Status</TableHead>
+            <TableHead className={LIST_HEAD}>Name</TableHead>
+            <TableHead className={LIST_HEAD}>Email</TableHead>
+            <TableHead className={LIST_HEAD}>Contact</TableHead>
+            <TableHead className={LIST_HEAD}>Role</TableHead>
+            <TableHead className={LIST_HEAD}>
+              <span className='flex items-center gap-1.5'>
+                <ListPill
+                  square
+                  tone='cyan'>
+                  Offices
+                </ListPill>
+                /
+                <ListPill
+                  square
+                  tone='orange'>
+                  Sites
+                </ListPill>
               </span>
             </TableHead>
-            <TableHead className='text-xs text-right'>Actions</TableHead>
+            <TableHead className={cn(LIST_HEAD, "w-12")}>
+              <span className='sr-only'>Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {allUsersList.map((user) => (
-            <TableRow key={`user-${user.email}`}>
-              <TableCell className='pl-6'>
-                <StatusIndicator
-                  status={user.status as "active" | "inactive"}
-                />
-              </TableCell>
-              <TableCell className='text-xs font-medium'>
-                <div className='flex items-center gap-2'>
-                  <RecordCode code={user.code} />
-                  <span className='truncate'>
-                    {capitalizeEachWord(user.name)}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell className='text-xs'>{user.email}</TableCell>
-              <TableCell className='text-xs'>
-                {user.contact_number || "- - - - - - -"}
-              </TableCell>
-              <TableCell className='text-xs'>
-                <Badge
-                  variant={getRoleBadgeVariant(user.role)}
-                  className={`${user.role === "office_manager" ? "bg-cyan-800" : ""}`}>
-                  {capitalizeEachWord(user.role.replace(/_/g, " "))}
-                </Badge>
-              </TableCell>
-              <TableCell className='text-xs overflow-hidden max-w-[450px] flex flex-wrap gap-1.5'>
-                {(() => {
-                  const sortedLocations = [...user.offices, ...user.sites].sort(
-                    (a, b) => a.name.localeCompare(b.name),
-                  );
+          {allUsersList.map((user) => {
+            const locations = [...user.offices, ...user.sites].sort((a, b) =>
+              a.name.localeCompare(b.name),
+            );
 
-                  return sortedLocations.length > 0 ? (
-                    <>
-                      {sortedLocations.map((uo) => (
-                        <Badge
-                          key={`${uo.type}-${uo.id}`}
-                          variant='outline'
-                          className={`text-xs px-1.5 ${uo.type === "office" ? "bg-cyan-800/15 text-cyan-900" : "bg-orange-800/15 text-orange-900"}`}>
-                          {capitalFirstLetter(uo.name) || "Unknown Office"}
-                        </Badge>
+            return (
+              <TableRow
+                key={`user-${user.email}`}
+                className={LIST_ROW}>
+                <TableCell className={LIST_CELL}>
+                  <StatusIndicator
+                    status={user.status as "active" | "inactive"}
+                  />
+                </TableCell>
+                <TableCell className={LIST_CELL}>
+                  <p className='flex items-center gap-2 font-medium text-gray-900'>
+                    <RecordCode code={user.code} />
+                    <span className='truncate'>
+                      {capitalizeEachWord(user.name)}
+                    </span>
+                  </p>
+                </TableCell>
+                <TableCell className={LIST_CELL}>{user.email}</TableCell>
+                <TableCell className={cn(LIST_CELL, "tabular-nums")}>
+                  {user.contact_number || "—"}
+                </TableCell>
+                <TableCell className={LIST_CELL}>
+                  <ListPill tone={ROLE_TONES[user.role] ?? "gray"}>
+                    {capitalizeEachWord(user.role.replace(/_/g, " "))}
+                  </ListPill>
+                </TableCell>
+                <TableCell className={cn(LIST_CELL, "max-w-[450px]")}>
+                  {locations.length > 0 ? (
+                    <div className='flex flex-wrap gap-1.5'>
+                      {locations.map((location) => (
+                        <ListPill
+                          key={`${location.type}-${location.id}`}
+                          square
+                          tone={location.type === "office" ? "cyan" : "orange"}>
+                          {capitalFirstLetter(location.name) ||
+                            "Unknown Office"}
+                        </ListPill>
                       ))}
-                    </>
+                    </div>
                   ) : (
-                    <span className='text-xs text-muted-foreground'>
+                    <span className='text-xs text-gray-400'>
                       No offices & sites
                     </span>
-                  );
-                })()}
-              </TableCell>
-              <TableCell className='text-right'>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant='ghost'
-                      className='h-8 w-8 p-0'>
-                      <span className='sr-only'>Actions for {user.name}</span>
-                      <MoreHorizontal className='h-4 w-4' />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align='end'>
-                    <DropdownMenuItem
-                      disabled={isViewer}
-                      onClick={() => {
-                        setParams({
-                          "dialog-over": "update-user",
-                          id: user.id.toString(),
-                        });
-                      }}>
-                      <Edit className='mr-2 h-4 w-4' />
-                      Edit User
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {user.status === "active" ? (
-                      <DropdownMenuItem
-                        variant='destructive'
-                        disabled={isViewer}
-                        onClick={() => setStatusTarget(user)}>
-                        <UserX className='mr-2 h-4 w-4' />
-                        Deactivate User
-                      </DropdownMenuItem>
-                    ) : (
+                  )}
+                </TableCell>
+                <TableCell className={cn(LIST_CELL, "text-right")}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <RowActionsButton label={`Actions for ${user.name}`} />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
                       <DropdownMenuItem
                         disabled={isViewer}
-                        onClick={() => setStatusTarget(user)}>
-                        <UserCheck className='mr-2 h-4 w-4' />
-                        Reactivate User
+                        onClick={() => {
+                          setParams({
+                            "dialog-over": "update-user",
+                            id: user.id.toString(),
+                          });
+                        }}>
+                        <Edit className='mr-2 h-4 w-4' />
+                        Edit User
                       </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-
-          {pagination?.hasMore && (
-            <TableRow>
-              <TableCell
-                colSpan={8}
-                className='text-center'>
-                <LoadMoreBtn
-                  onClick={loadMore}
-                  loading={isFetchingMore}
-                />
-              </TableCell>
-            </TableRow>
-          )}
+                      <DropdownMenuSeparator />
+                      {user.status === "active" ? (
+                        <DropdownMenuItem
+                          variant='destructive'
+                          disabled={isViewer}
+                          onClick={() => setStatusTarget(user)}>
+                          <UserX className='mr-2 h-4 w-4' />
+                          Deactivate User
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          disabled={isViewer}
+                          onClick={() => setStatusTarget(user)}>
+                          <UserCheck className='mr-2 h-4 w-4' />
+                          Reactivate User
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
+      {pagination?.hasMore && (
+        <ListLoadMore
+          onClick={loadMore}
+          loading={isFetchingMore}
+        />
+      )}
       <PaginationSummary
         shown={allUsersList.length}
         total={pagination?.total}
