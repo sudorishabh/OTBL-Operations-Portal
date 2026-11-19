@@ -660,15 +660,19 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
+  // What field operators uploaded at a site, newest first, a page at a time.
   getOperatorUploads: protectedProcedure
     .input(
       z.object({
         work_order_site_id: z.number().positive(),
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(20),
       }),
     )
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { work_order_site_id } = input;
+        const { work_order_site_id, page, limit } = input;
+        const offset = (page - 1) * limit;
 
         try {
           const scope = await getAccessScope(
@@ -682,36 +686,56 @@ export const workOrderSiteQueryRouter = router({
             work_order_site_id,
           );
 
-          const uploads = await ctx.db
-            .select({
-              id: workOrderSiteOperatorUploadTable.id,
-              work_order_site_id:
-                workOrderSiteOperatorUploadTable.work_order_site_id,
-              description: workOrderSiteOperatorUploadTable.description,
-              file_name: workOrderSiteOperatorUploadTable.file_name,
-              document_url: workOrderSiteOperatorUploadTable.document_url,
-              document_id: workOrderSiteOperatorUploadTable.document_id,
-              created_at: workOrderSiteOperatorUploadTable.created_at,
-              uploaded_by_name: userTable.name,
-            })
-            .from(workOrderSiteOperatorUploadTable)
-            .innerJoin(
-              userTable,
-              eq(
-                workOrderSiteOperatorUploadTable.uploaded_by_user_id,
-                userTable.id,
-              ),
-            )
-            .where(
-              eq(
-                workOrderSiteOperatorUploadTable.work_order_site_id,
-                work_order_site_id,
-              ),
-            )
-            .orderBy(desc(workOrderSiteOperatorUploadTable.created_at));
+          const atSite = eq(
+            workOrderSiteOperatorUploadTable.work_order_site_id,
+            work_order_site_id,
+          );
+          const [[totalRow], uploads] = await Promise.all([
+            ctx.db
+              .select({ count: count() })
+              .from(workOrderSiteOperatorUploadTable)
+              .where(atSite),
+            ctx.db
+              .select({
+                id: workOrderSiteOperatorUploadTable.id,
+                work_order_site_id:
+                  workOrderSiteOperatorUploadTable.work_order_site_id,
+                description: workOrderSiteOperatorUploadTable.description,
+                file_name: workOrderSiteOperatorUploadTable.file_name,
+                document_url: workOrderSiteOperatorUploadTable.document_url,
+                document_id: workOrderSiteOperatorUploadTable.document_id,
+                created_at: workOrderSiteOperatorUploadTable.created_at,
+                uploaded_by_name: userTable.name,
+              })
+              .from(workOrderSiteOperatorUploadTable)
+              .innerJoin(
+                userTable,
+                eq(
+                  workOrderSiteOperatorUploadTable.uploaded_by_user_id,
+                  userTable.id,
+                ),
+              )
+              .where(atSite)
+              .orderBy(...uploadOrder("newest"))
+              .limit(limit)
+              .offset(offset),
+          ]);
 
-          return uploads;
+          const total = Number(totalRow?.count ?? 0);
+          return {
+            uploads,
+            pagination: {
+              page,
+              limit,
+              total,
+              totalPages: Math.ceil(total / limit),
+              hasMore: offset + uploads.length < total,
+            },
+          };
         } catch (error) {
+          if (error && typeof error === "object" && "errorCode" in error) {
+            throw error;
+          }
           throw fromDatabaseError(error, "Fetching operator uploads");
         }
       }),
