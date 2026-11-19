@@ -19,7 +19,16 @@ const {
   workOrderSiteTable,
   siteTable,
   bioremediationContSoilTable,
+  jobOrderTable,
+  contractOrderTable,
+  contractOrderItemTable,
 } = schema;
+
+// The month a date falls in, as "2026-04", in the server's time zone.
+const monthOf = (value: Date | string) => {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
 
 export const expenseQueryRouter = router({
   getExpenses: protectedProcedure
@@ -101,9 +110,11 @@ export const expenseQueryRouter = router({
       }),
     ),
 
-  // A site's expenses by the month they start in, newest first, split by job
-  // order; expenses on none (miscellaneous) are keyed "none".
-  getMonthlyExpenses: protectedProcedure
+  // Every expense at a site, newest first, with the month it starts in and
+  // what it was spent on: its vendor, its job order under restoration, or its
+  // purchase order or sub-contract under bioremediation. Light enough to send
+  // whole, so the monthly view filters and totals them as the user picks.
+  getVendorMonthlyExpenses: protectedProcedure
     .input(z.object({ work_order_site_id: z.number().positive() }))
     .query(
       handleQuery(async ({ input, ctx }) => {
@@ -121,36 +132,61 @@ export const expenseQueryRouter = router({
         try {
           const rows = await ctx.db
             .select({
-              start_date: workOrderSiteExpenseTable.start_date,
-              job_order_id: workOrderSiteExpenseTable.job_order_id,
+              id: workOrderSiteExpenseTable.id,
+              title: workOrderSiteExpenseTable.title,
               amount: workOrderSiteExpenseTable.amount,
+              start_date: workOrderSiteExpenseTable.start_date,
+              end_date: workOrderSiteExpenseTable.end_date,
+              invoice_number: workOrderSiteExpenseTable.invoice_number,
+              activity_key: workOrderSiteExpenseTable.activity_key,
+              from_order: workOrderSiteExpenseTable.from_order,
+              is_exceeded: workOrderSiteExpenseTable.is_exceeded,
+              vendor_id: workOrderSiteExpenseTable.contractor_id,
+              vendor_name: contractorTable.name,
+              job_order_id: workOrderSiteExpenseTable.job_order_id,
+              jo_number: jobOrderTable.jo_number,
+              order_id: contractOrderTable.id,
+              order_code: contractOrderTable.code,
+              order_type: contractOrderTable.type,
             })
             .from(workOrderSiteExpenseTable)
+            .leftJoin(
+              contractorTable,
+              eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
+            )
+            .leftJoin(
+              jobOrderTable,
+              eq(workOrderSiteExpenseTable.job_order_id, jobOrderTable.id),
+            )
+            .leftJoin(
+              contractOrderItemTable,
+              eq(
+                workOrderSiteExpenseTable.contract_order_item_id,
+                contractOrderItemTable.id,
+              ),
+            )
+            .leftJoin(
+              contractOrderTable,
+              eq(contractOrderItemTable.contract_order_id, contractOrderTable.id),
+            )
             .where(
               eq(
                 workOrderSiteExpenseTable.work_order_site_id,
                 input.work_order_site_id,
               ),
+            )
+            .orderBy(
+              desc(workOrderSiteExpenseTable.start_date),
+              desc(workOrderSiteExpenseTable.id),
             );
 
-          const months = new Map<
-            string,
-            { total: number; byJobOrder: Record<string, number> }
-          >();
-          for (const row of rows) {
-            const date = new Date(row.start_date);
-            const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-            const entry = months.get(month) ?? { total: 0, byJobOrder: {} };
-            const amount = Number(row.amount || 0);
-            const jobKey = row.job_order_id ? String(row.job_order_id) : "none";
-            entry.total += amount;
-            entry.byJobOrder[jobKey] = (entry.byJobOrder[jobKey] ?? 0) + amount;
-            months.set(month, entry);
-          }
-
-          return [...months.entries()]
-            .sort(([a], [b]) => b.localeCompare(a))
-            .map(([month, entry]) => ({ month, ...entry }));
+          return rows.map((row) => ({
+            ...row,
+            month: monthOf(row.start_date),
+            amount: Number(row.amount || 0),
+            from_order: !!row.from_order,
+            is_exceeded: !!row.is_exceeded,
+          }));
         } catch (error) {
           throw fromDatabaseError(error, "Fetching monthly expenses");
         }

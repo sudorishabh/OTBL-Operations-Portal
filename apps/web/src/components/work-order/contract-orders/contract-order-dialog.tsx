@@ -333,6 +333,7 @@ const ContractOrderDialog = ({
       // A purchase order's cost is recorded at its sites.
       utils.expenseQuery.getExpenses.invalidate(),
       utils.expenseQuery.getExpenseSummary.invalidate(),
+      utils.expenseQuery.getVendorMonthlyExpenses.invalidate(),
       utils.workOrderSiteQuery.getOilZapperStock.invalidate(),
     ]);
   };

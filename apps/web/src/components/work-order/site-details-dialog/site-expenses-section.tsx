@@ -36,6 +36,7 @@ import {
   Paperclip,
   ReceiptIndianRupee,
   AlertTriangle,
+  CalendarRange,
   ChevronRight,
   FileText,
   ShoppingCart,
@@ -75,6 +76,7 @@ import {
 import { differenceInCalendarDays, format, isSameDay } from "date-fns";
 import { formatDateRange } from "@/lib/wo-site-display";
 import { ExpenseGroupsSkeleton } from "@/components/skeleton/work-order/site-skeletons";
+import VendorMonthlyExpensesDialog from "./vendor-monthly-expenses-dialog";
 
 type ExpenseRecord = {
   id: number;
@@ -251,6 +253,8 @@ const SiteExpensesSection = ({
   const utils = trpc.useUtils();
   const isViewer = useIsViewer();
   const [dialogOpen, setDialogOpen] = useState(false);
+  // Each vendor's spend, month by month.
+  const [monthlyOpen, setMonthlyOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   // The expense whose full details are open under its row.
@@ -420,7 +424,7 @@ const SiteExpensesSection = ({
       resetExpenseList();
       await utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: woSiteId });
       await utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: woSiteId });
-      utils.expenseQuery.getMonthlyExpenses.invalidate({ work_order_site_id: woSiteId });
+      utils.expenseQuery.getVendorMonthlyExpenses.invalidate({ work_order_site_id: woSiteId });
       // Deleting one can reopen a completed restoration or bioremediation site.
       utils.restorationQuery.getRestoration.invalidate();
       utils.workOrderSiteQuery.getWorkOrderSiteDetails.invalidate({ work_order_site_id: woSiteId });
@@ -1387,6 +1391,13 @@ const SiteExpensesSection = ({
               </SelectContent>
             </Select>
           )}
+          <CustomButton
+            text='Monthly expenses'
+            variant='outline'
+            Icon={CalendarRange}
+            onClick={() => setMonthlyOpen(true)}
+            className='h-8 text-xs'
+          />
           {headerActions}
           {/* Bioremediation and restoration expenses are added under an
               order or job order, or as miscellaneous, from their groups. */}
@@ -1531,6 +1542,13 @@ const SiteExpensesSection = ({
               }
             : null
         }
+      />
+
+      <VendorMonthlyExpensesDialog
+        woSiteId={woSiteId}
+        isRestoration={isRestoration}
+        open={monthlyOpen}
+        onOpenChange={setMonthlyOpen}
       />
 
       <AlertDialog
