@@ -289,7 +289,8 @@ export const SiteDetailsSkeleton = ({
                 className='w-56'
               />
             </div>
-            <Skeleton className='h-8 w-48' />
+            {/* The monthly expenses button. */}
+            <Skeleton className='h-8 w-36' />
           </div>
           <ExpenseGroupsSkeleton />
         </SkeletonCard>
@@ -320,9 +321,8 @@ export const RestorationRatesTableSkeleton = ({
   />
 );
 
-// The restoration page: its information card, the monthly expenses button,
-// the schedule of rates, the completion certificate, then the expenses by job
-// order.
+// The restoration page: its information card, the schedule of rates, the
+// completion certificate, then the expenses by job order.
 export const RestorationPageSkeleton = ({
   from = "list",
 }: {
@@ -361,10 +361,6 @@ export const RestorationPageSkeleton = ({
           <OperatorsRowSkeleton />
         </SkeletonCard>
 
-        <div className='flex flex-wrap justify-end gap-2'>
-          <Skeleton className='h-8 w-48 bg-white/80' />
-        </div>
-
         <SkeletonCard className='p-5'>
           <p className='text-sm font-semibold text-gray-900'>
             Schedule of Rates
@@ -400,6 +396,7 @@ export const RestorationPageSkeleton = ({
             </div>
             <div className='flex items-center gap-2'>
               <Skeleton className='h-8 w-44' />
+              <Skeleton className='h-8 w-36' />
               <Skeleton className='h-8 w-32' />
             </div>
           </div>

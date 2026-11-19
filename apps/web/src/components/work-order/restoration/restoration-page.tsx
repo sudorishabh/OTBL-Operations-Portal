@@ -1,14 +1,12 @@
 "use client";
 import React, { useState } from "react";
 import {
-  CalendarRange,
   CheckCircle2,
   File,
   Plus,
 } from "lucide-react";
 import { constants } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
-import useHandleParams from "@/hooks/useHandleParams";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import { workOrderChildTrail } from "@/lib/breadcrumbs";
 import CustomButton from "@/components/shared/btn";
@@ -20,9 +18,6 @@ import type { WorkOrderFrom } from "../work-order-path";
 import JobOrderDialog, { type JobOrder } from "./job-order-dialog";
 import JobOrderActions from "./job-order-actions";
 import JobOrderDocuments from "./job-order-documents";
-import RestorationMonthlyExpensesDialog, {
-  MONTHLY_EXPENSES_DIALOG,
-} from "./restoration-monthly-expenses-dialog";
 import RestorationHeader from "./restoration-header";
 import RestorationCompletion from "./restoration-completion";
 import RestorationRatesSection from "./restoration-rates-section";
@@ -44,7 +39,6 @@ interface Props {
 
 // The one place restoration work is managed, as it has no sites.
 const RestorationPage = ({ workOrderId, from }: Props) => {
-  const { setParam } = useHandleParams();
   const [jobOrderDialogOpen, setJobOrderDialogOpen] = useState(false);
   const [editingJobOrder, setEditingJobOrder] = useState<JobOrder | null>(null);
 
@@ -157,15 +151,6 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
           restoration={restoration}
         />
 
-        <div className='flex flex-wrap justify-end gap-2'>
-          <CustomButton
-            text='View Monthly Expenses'
-            variant='outline'
-            Icon={CalendarRange}
-            onClick={() => setParam("dialog", MONTHLY_EXPENSES_DIALOG)}
-          />
-        </div>
-
         {/* The schedule of rates stays in view, as the work is measured
             against it. */}
         {rates.length > 0 && (
@@ -224,8 +209,6 @@ const RestorationPage = ({ workOrderId, from }: Props) => {
           />
         </section>
       </div>
-
-      <RestorationMonthlyExpensesDialog restorationId={restoration.id} />
 
       <JobOrderDialog
         restorationId={restoration.id}
