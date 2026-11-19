@@ -341,7 +341,10 @@ const VendorMonthlyExpensesDialog = ({
       setOpen={onOpenChange}
       title='Monthly expenses'
       description='What each vendor was paid, month by month, by the month each expense starts in. Open a month to see its expenses.'
-      size='xl'
+      // Nearly the whole screen, so wide tables of vendors fit and the size
+      // holds while the filters change.
+      size='full'
+      heightMode='full'
       isLoading={expensesQuery.isLoading}
       loadingSkeleton='list'>
       <div className='space-y-4 py-3'>
