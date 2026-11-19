@@ -1,7 +1,11 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { keepPreviousData, type UseQueryResult } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import { FilterBar, SearchFilter } from "@/components/filters/list-filters";
 import {
   FlaskConical,
   LayoutGrid,
@@ -31,13 +35,7 @@ interface Props {
   scheduleOfRates: any[];
 }
 
-interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
-}
+type SitesPage = RouterOutputs["workOrderQuery"]["getWorkOrderSites"];
 
 const SITES_QUERY_LIMIT = 12;
 
@@ -59,78 +57,59 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
   const { setParam } = useHandleParams();
   const router = useRouter();
   const pathname = usePathname();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sitesList, setSitesList] = useState<any[]>([]);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
   const [tab, setTab] = useState<SectionTab>("sites");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search.trim(), 300);
 
   const isWorkOrderCompleted = workOrder.status === "completed";
 
-  const {
-    data: sitesData,
-    isLoading: isSitesQueryLoading,
-    dataUpdatedAt: sitesDataUpdatedAt,
-    isError: isSitesQueryError,
-    error: sitesQueryError,
-  } = trpc.workOrderQuery.getWorkOrderSites.useQuery({
+  const queryInput = {
     id: workOrder.id,
-    page: currentPage,
     limit: SITES_QUERY_LIMIT,
-  });
-
-  const { sites: fetchedSites, pagination: fetchedPagination } = sitesData || {
-    sites: [],
-    pagination: {
-      page: 1,
-      limit: SITES_QUERY_LIMIT,
-      total: 0,
-      totalPages: 1,
-      hasMore: false,
-    },
+    search: debouncedSearch || undefined,
   };
+  const { pages, loadMore } = useLoadMorePages(queryInput);
 
-  const isFetchingMore = isSitesQueryLoading && currentPage > 1;
+  // Each page is its own query, so adding or editing a site refreshes the
+  // loaded pages in place. A new search keeps the last sites in view until
+  // its first page arrives.
+  const pageQueries: UseQueryResult<SitesPage>[] = trpc.useQueries((t: any) =>
+    pages.map((page) =>
+      t.workOrderQuery.getWorkOrderSites(
+        { ...queryInput, page },
+        { placeholderData: page === 1 ? keepPreviousData : undefined },
+      ),
+    ),
+  );
 
-  useEffect(() => {
-    if (
-      !isSitesQueryLoading &&
-      fetchedSites &&
-      fetchedPagination?.page === currentPage
-    ) {
-      const mappedSites = fetchedSites.map((s: any) => ({
-        id: s.site_id,
-        wo_site_id: s.id,
-        name: s.site_name,
-        address: s.site_address,
-        city: s.site_city,
-        state: s.site_state,
-        pincode: s.site_pincode,
-        // A site can be added before its dates are known.
-        start_date: toDate(s.start_date)?.toISOString() ?? null,
-        end_date: toDate(s.end_date)?.toISOString() ?? null,
-        status:
-          s.is_completed === true ? "completed" : normalizeSiteStatus(s.status),
-        client_id: workOrder.client_id,
-        work_order_id: workOrder.id,
-        activity_type: s.activity_type,
-        metric_ton: s.metric_ton,
-        metric_ton_rate: s.metric_ton_rate,
-        budget_amount: s.budget_amount,
-        total_completion_amount: s.total_completion_amount,
-        created_at: s.created_at,
-        users: s.users,
-        measurement_sheets: s.measurement_sheets,
-      }));
-
-      if (currentPage === 1) {
-        setSitesList(mappedSites);
-      } else {
-        setSitesList((prev) => [...prev, ...mappedSites]);
-      }
-      setPagination(fetchedPagination);
-    }
-  }, [sitesDataUpdatedAt, currentPage]);
+  const firstPage = pageQueries[0]?.data;
+  const pagination = pageQueries.at(-1)?.data?.pagination ?? null;
+  const failedQuery = pageQueries.find((query) => query.isError);
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
+  const sitesList = pageQueries.flatMap((query) =>
+    (query.data?.sites ?? []).map((s: any) => ({
+      id: s.site_id,
+      wo_site_id: s.id,
+      name: s.site_name,
+      address: s.site_address,
+      city: s.site_city,
+      state: s.site_state,
+      pincode: s.site_pincode,
+      // A site can be added before its dates are known.
+      start_date: toDate(s.start_date)?.toISOString() ?? null,
+      end_date: toDate(s.end_date)?.toISOString() ?? null,
+      status:
+        s.is_completed === true ? "completed" : normalizeSiteStatus(s.status),
+      client_id: workOrder.client_id,
+      work_order_id: workOrder.id,
+      created_at: s.created_at,
+      users: s.users,
+      measurement_sheets: s.measurement_sheets,
+    })),
+  );
+  // Every site of the work order, whatever the search.
+  const siteCount = firstPage?.total_sites ?? 0;
 
   const handleCreateSiteDialog = () => {
     if (isWorkOrderCompleted) {
@@ -145,20 +124,18 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
     router.push(`${pathname}/sites/${siteId}`);
   };
 
-  if (isSitesQueryLoading && currentPage === 1) {
+  if (pageQueries[0]?.isLoading) {
     return <BioremediationSectionSkeleton />;
   }
 
-  if (isSitesQueryError) {
+  if (failedQuery?.error) {
     return (
       <Error
         variant='inline'
-        message={sitesQueryError.message || "Failed to load sites"}
+        message={failedQuery.error.message || "Failed to load sites"}
       />
     );
   }
-
-  const siteCount = pagination?.total || 0;
 
   const siteActions = (
     <>
@@ -193,6 +170,22 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
     </>
   );
 
+  const searchBar = siteCount > 0 && (
+    <FilterBar className='mb-3'>
+      <SearchFilter
+        value={search}
+        onChange={setSearch}
+        placeholder='Search code, name, address or city…'
+        label='Search sites'
+      />
+      {debouncedSearch && pagination && (
+        <p className='col-span-2 text-xs text-gray-500 sm:ml-auto'>
+          {pagination.total} of {siteCount} sites
+        </p>
+      )}
+    </FilterBar>
+  );
+
   const sitesContent =
     sitesList.length > 0 ? (
       <div className='relative'>
@@ -217,7 +210,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
         {!isFetchingMore && pagination?.hasMore && (
           <div className='mt-4 flex flex-col items-center gap-2'>
             <LoadMoreBtn
-              onClick={() => setCurrentPage((prev) => prev + 1)}
+              onClick={loadMore}
               loading={false}
             />
             <span className='text-xs text-gray-500'>
@@ -228,7 +221,9 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
       </div>
     ) : (
       <p className='rounded-lg border border-dashed py-8 text-center text-xs text-gray-500'>
-        No sites yet. Create one to estimate and treat its contaminated soil.
+        {debouncedSearch
+          ? "No sites match this search."
+          : "No sites yet. Create one to estimate and treat its contaminated soil."}
       </p>
     );
 
@@ -262,7 +257,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
                 {/* Orders list what each site needs, so wait for a site. */}
                 <TabsTrigger
                   value='orders'
-                  disabled={sitesList.length === 0}
+                  disabled={siteCount === 0}
                   className='gap-2 px-3 text-xs text-gray-800'>
                   <ShoppingCart className='size-3.5 text-gray-500' />
                   Purchase orders and sub-contracts
@@ -278,6 +273,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
             <TabsContent
               value='sites'
               className='mt-4'>
+              {searchBar}
               {sitesContent}
             </TabsContent>
             <TabsContent
