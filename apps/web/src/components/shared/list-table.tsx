@@ -28,10 +28,11 @@ export const ListLoadMore = ({
   onClick: () => void;
   loading: boolean;
 }) => (
-  <div className='flex justify-center border-t py-3'>
+  <div className='border-t py-2.5'>
     <LoadMoreBtn
       onClick={onClick}
       loading={loading}
+      className='pt-0'
     />
   </div>
 );
@@ -79,7 +80,7 @@ export const ListPill = ({
   <span
     className={cn(
       "inline-flex items-center whitespace-nowrap border px-2 py-0.5 text-[11px] font-medium leading-4",
-      square ? "rounded-md" : "rounded-full",
+      square ? "rounded" : "rounded-full",
       PILL_TONES[tone],
       className,
     )}>
