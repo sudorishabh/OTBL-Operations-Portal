@@ -8,7 +8,9 @@ import {
   SidebarMenuItem,
   useSidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -23,6 +25,8 @@ import {
   Users,
   Webhook,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -128,6 +132,34 @@ const SidebarMenuList = ({ item, isActive }: SidebarMenuListProps) => {
   );
 };
 
+// Folds the sidebar down to its icons, or opens it back out. Ctrl/⌘ + B and
+// the sidebar's edge do the same. Phones open the sidebar from the top bar.
+const CollapseToggle = () => {
+  const { state, isMobile, toggleSidebar } = useSidebar();
+  if (isMobile) return null;
+
+  const collapsed = state === "collapsed";
+  const label = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          tooltip={`${label} (Ctrl+B)`}
+          onClick={toggleSidebar}
+          className='h-7 pl-3 text-gray-300! hover:bg-emerald-600/65 focus:bg-transparent!'>
+          <Icon className='h-4 w-4' />
+          <span className='text-xs'>{label}</span>
+          <kbd className='ml-auto rounded border border-white/20 px-1 font-sans text-[10px] text-gray-300'>
+            Ctrl B
+          </kbd>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+};
+
 function AppSidebar() {
   let pathname = usePathname();
   const { state } = useSidebar();
@@ -151,15 +183,15 @@ function AppSidebar() {
   return (
     <Sidebar
       collapsible='icon'
-      className='border-0 w-56'>
-      <SidebarHeader className='p-6 bg-cyan-900'>
+      className='border-0'>
+      <SidebarHeader className='p-6 bg-cyan-900 transition-[padding] group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-4'>
         <div className='flex flex-col justify-center items-center gap-2'>
           <Image
             src='/Otbl-logo_transparent.png'
             alt='OTBL Logo'
             width={112}
             height={64}
-            className='h-16 w-28 object-contain'
+            className='h-16 w-28 object-contain transition-[width,height] group-data-[collapsible=icon]:h-5 group-data-[collapsible=icon]:w-8'
             loading='eager'
           />
           {state !== "collapsed" && (
@@ -168,7 +200,7 @@ function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className='px-3 bg-cyan-900'>
+      <SidebarContent className='px-3 bg-cyan-900 group-data-[collapsible=icon]:px-0'>
         <Separator className='bg-gray-400' />
         <SidebarGroup>
           <SidebarGroupLabel className='text-[11px] font-medium text-gray-300 uppercase tracking-wider'>
@@ -237,6 +269,11 @@ function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className='bg-cyan-900 px-3 pb-3 group-data-[collapsible=icon]:px-2'>
+        <CollapseToggle />
+      </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }
