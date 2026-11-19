@@ -12,7 +12,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { schema } from "@pkg/db";
+import { schema, type Database } from "@pkg/db";
 import { CODE_PREFIX, constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -34,6 +34,99 @@ const {
   workOrderSiteUserTable,
 } = schema;
 const { ROLES } = constants;
+
+type UserListFilters = {
+  role?: string;
+  status?: "active" | "inactive" | "all";
+  officeId?: number;
+  assignment?: "assigned" | "unassigned";
+  searchQuery?: string;
+};
+
+// The users a list shows: everyone but admins, narrowed by its search and
+// filters. Shared by the list and its counts so the two always agree.
+const userListWhere = (
+  db: Database,
+  { role, status, officeId, assignment, searchQuery }: UserListFilters,
+) => {
+  let userQuery = not(eq(userTable.role, ROLES.ADMIN));
+
+  if (role && role !== "all") {
+    userQuery = and(userQuery, eq(userTable.role, role as any)) ?? userQuery;
+  }
+
+  if (status && status !== "all") {
+    userQuery = and(userQuery, eq(userTable.status, status)) ?? userQuery;
+  }
+
+  // An office seat, or a pin on a work order site, optionally in one
+  // office.
+  const hasOfficeSeat = (inOffice?: number) =>
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(officeUserTable)
+        .where(
+          and(
+            eq(officeUserTable.user_id, userTable.id),
+            inOffice ? eq(officeUserTable.office_id, inOffice) : undefined,
+          ),
+        ),
+    );
+  const hasSitePin = (inOffice?: number) =>
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(workOrderSiteUserTable)
+        .innerJoin(
+          workOrderSiteTable,
+          eq(workOrderSiteUserTable.work_order_site_id, workOrderSiteTable.id),
+        )
+        .innerJoin(
+          workOrderTable,
+          eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+        )
+        .where(
+          and(
+            eq(workOrderSiteUserTable.user_id, userTable.id),
+            inOffice ? eq(workOrderTable.office_id, inOffice) : undefined,
+          ),
+        ),
+    );
+
+  if (officeId) {
+    userQuery =
+      and(userQuery, or(hasOfficeSeat(officeId), hasSitePin(officeId))) ??
+      userQuery;
+  }
+
+  if (assignment === "assigned") {
+    userQuery = and(userQuery, or(hasOfficeSeat(), hasSitePin())) ?? userQuery;
+  } else if (assignment === "unassigned") {
+    userQuery =
+      and(
+        userQuery,
+        ne(userTable.role, ROLES.VIEWER),
+        not(hasOfficeSeat()),
+        not(hasSitePin()),
+      ) ?? userQuery;
+  }
+
+  if (searchQuery && searchQuery.trim() !== "") {
+    userQuery =
+      and(
+        userQuery,
+        or(
+          codeMatches(userTable.code, CODE_PREFIX.USER, searchQuery),
+          like(userTable.name, `%${escapeLike(searchQuery)}%`),
+          like(userTable.email, `%${escapeLike(searchQuery)}%`),
+          like(userTable.contact_number, `%${escapeLike(searchQuery)}%`),
+        ),
+      ) ?? userQuery;
+  }
+
+  return userQuery;
+};
 
 export const userQueryRouter = router({
   me: protectedProcedure.query(
@@ -82,85 +175,13 @@ export const userQueryRouter = router({
         } = input;
 
         const offset = (page - 1) * limit;
-        let userQuery = not(eq(userTable.role, ROLES.ADMIN));
-
-        if (role && role !== "all") {
-          userQuery = and(userQuery, eq(userTable.role, role as any)) ?? userQuery;
-        }
-
-        if (status && status !== "all") {
-          userQuery = and(userQuery, eq(userTable.status, status)) ?? userQuery;
-        }
-
-        // An office seat, or a pin on a work order site, optionally in one
-        // office.
-        const hasOfficeSeat = (inOffice?: number) =>
-          exists(
-            ctx.db
-              .select({ one: sql`1` })
-              .from(officeUserTable)
-              .where(
-                and(
-                  eq(officeUserTable.user_id, userTable.id),
-                  inOffice ? eq(officeUserTable.office_id, inOffice) : undefined,
-                ),
-              ),
-          );
-        const hasSitePin = (inOffice?: number) =>
-          exists(
-            ctx.db
-              .select({ one: sql`1` })
-              .from(workOrderSiteUserTable)
-              .innerJoin(
-                workOrderSiteTable,
-                eq(
-                  workOrderSiteUserTable.work_order_site_id,
-                  workOrderSiteTable.id,
-                ),
-              )
-              .innerJoin(
-                workOrderTable,
-                eq(workOrderSiteTable.work_order_id, workOrderTable.id),
-              )
-              .where(
-                and(
-                  eq(workOrderSiteUserTable.user_id, userTable.id),
-                  inOffice ? eq(workOrderTable.office_id, inOffice) : undefined,
-                ),
-              ),
-          );
-
-        if (officeId) {
-          userQuery =
-            and(userQuery, or(hasOfficeSeat(officeId), hasSitePin(officeId))) ??
-            userQuery;
-        }
-
-        if (assignment === "assigned") {
-          userQuery =
-            and(userQuery, or(hasOfficeSeat(), hasSitePin())) ?? userQuery;
-        } else if (assignment === "unassigned") {
-          userQuery =
-            and(
-              userQuery,
-              ne(userTable.role, ROLES.VIEWER),
-              not(hasOfficeSeat()),
-              not(hasSitePin()),
-            ) ?? userQuery;
-        }
-
-        if (searchQuery && searchQuery.trim() !== "") {
-          userQuery =
-            and(
-              userQuery,
-              or(
-                codeMatches(userTable.code, CODE_PREFIX.USER, searchQuery),
-                like(userTable.name, `%${escapeLike(searchQuery)}%`),
-                like(userTable.email, `%${escapeLike(searchQuery)}%`),
-                like(userTable.contact_number, `%${escapeLike(searchQuery)}%`),
-              ),
-            ) ?? userQuery;
-        }
+        const userQuery = userListWhere(ctx.db, {
+          role,
+          status,
+          officeId,
+          assignment,
+          searchQuery,
+        });
 
         const [totalResult] = await ctx.db
           .select({ count: count() })
