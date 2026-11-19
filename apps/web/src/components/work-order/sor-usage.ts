@@ -75,3 +75,14 @@ export const sorUsage = (
 
   return { used, usedOfSlab, bioremediationAllotted };
 };
+
+// What the used quantities are worth at the GST inclusive rates.
+export const sorUsedValue = (
+  scheduleOfRates: { activity: string; unit_rate_inc_gst: unknown }[],
+  usage: ReturnType<typeof sorUsage>,
+) =>
+  scheduleOfRates.reduce(
+    (sum, rate) =>
+      sum + usage.used(rate.activity) * toNumberSafe(rate.unit_rate_inc_gst),
+    0,
+  );
