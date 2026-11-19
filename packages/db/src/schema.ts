@@ -753,6 +753,9 @@ export const contractOrderTable = mysqlTable(
     unit_rate: decimal("unit_rate", { precision: 20, scale: 2 }),
     gst_percentage: decimal("gst_percentage", { precision: 10, scale: 2 }),
     invoice_number: varchar("invoice_number", { length: 100 }),
+    // A sub-contract whose requirements each take one expense at the site,
+    // with its total quantity, rather than one for each stretch of work.
+    single_expense: tinyint("single_expense").notNull().default(0),
     // The order's own paperwork, and the completion documents uploaded once
     // its work is done.
     documents: json("documents").$type<StoredDocumentRow[]>(),
@@ -775,7 +778,8 @@ export const contractOrderTable = mysqlTable(
 );
 
 // What a contract order requires at one of its sites, such as oil zapper or
-// a JCB, and how much.
+// a JCB. A purchase order says how much oil zapper; a sub-contract sets the
+// rate per unit, and the quantity is recorded with each expense at the site.
 export const contractOrderItemTable = mysqlTable(
   "contract_order_items",
   {
@@ -789,8 +793,12 @@ export const contractOrderItemTable = mysqlTable(
     item: varchar("item", { length: 100 }).notNull(),
     // Names the item when it is "other".
     description: varchar("description", { length: 255 }),
-    quantity: decimal("quantity", { precision: 20, scale: 2 }).notNull(),
+    // A purchase order's oil zapper for the site. Sub-contract requirements
+    // added before they were rated may still carry one.
+    quantity: decimal("quantity", { precision: 20, scale: 2 }),
     unit: varchar("unit", { length: 20 }).notNull(),
+    // A sub-contract requirement's rate per unit, which prices its expenses.
+    unit_rate: decimal("unit_rate", { precision: 20, scale: 2 }),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },

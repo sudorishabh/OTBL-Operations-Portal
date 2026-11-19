@@ -21,7 +21,10 @@ const itemKeys = CONTRACT_ORDER_ITEMS.map((item) => item.key) as [
 export const contractOrderItemEnum = z.enum(itemKeys);
 
 // What the order requires at one of its sites. "Other" items say what they are.
-// An edit names the items it keeps by id, as expenses point at them.
+// An edit names the items it keeps by id, as expenses point at them. A
+// purchase order gives each site's quantity of oil zapper; a sub-contract
+// gives each requirement's rate per unit, as the quantity is recorded with
+// its expenses at the site.
 export const contractOrderItemSchema = z
   .object({
     id: positiveIntValidator.optional(),
@@ -32,7 +35,16 @@ export const contractOrderItemSchema = z
       .trim()
       .max(255, "Description cannot exceed 255 characters")
       .optional(),
-    quantity: z.number().gt(0, "Quantity must be greater than zero"),
+    quantity: z
+      .number()
+      .gt(0, "Quantity must be greater than zero")
+      .nullable()
+      .optional(),
+    unit_rate: z
+      .number()
+      .gt(0, "The rate must be greater than zero")
+      .nullable()
+      .optional(),
   })
   .refine((data) => data.item !== "other" || !!data.description, {
     message: "Describe the item",
@@ -73,11 +85,18 @@ const orderFields = z.object({
     .trim()
     .max(100, "Invoice number cannot exceed 100 characters")
     .optional(),
+  // A sub-contract whose requirements each take one expense at the site,
+  // with its total quantity, rather than one for each stretch of work.
+  single_expense: z.boolean().optional(),
 });
+
+const itemOption = (key: string) =>
+  CONTRACT_ORDER_ITEMS.find((option) => option.key === key);
 
 // What each kind of order may hold. A purchase order buys oil zapper from one
 // vendor, once per site, at its rate. A sub-contract gives out the rest at one
-// or more sites.
+// or more sites, at a rate for each; taking one expense per requirement, it
+// is given to one vendor, who that expense is under.
 const checkOrderRules = (
   order: z.infer<typeof orderFields>,
   ctx: z.RefinementCtx,
@@ -97,10 +116,41 @@ const checkOrderRules = (
           ? "A purchase order only buys oil zapper. Give other items out through a sub-contract."
           : "Oil zapper is bought through a purchase order, not a sub-contract.",
       });
+      return;
+    }
+    if (isPurchase && !item.quantity) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["items", index, "quantity"],
+        message: `Enter how many ${OIL_ZAPPER.UNIT} of oil zapper each site gets`,
+      });
+    }
+    if (!isPurchase && !item.unit_rate) {
+      const name =
+        item.item === "other"
+          ? item.description || "each requirement"
+          : (itemOption(item.item)?.label ?? "each requirement");
+      ctx.addIssue({
+        code: "custom",
+        path: ["items", index, "unit_rate"],
+        message: `Enter a rate per unit for ${name}`,
+      });
     }
   });
 
   const siteIds = order.items.map((item) => item.work_order_site_id);
+  if (
+    !isPurchase &&
+    order.single_expense &&
+    new Set(order.contractor_ids).size !== 1
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["contractor_ids"],
+      message:
+        "A sub-contract taking one expense per requirement is given to one vendor",
+    });
+  }
   if (isPurchase) {
     if (new Set(order.contractor_ids).size !== 1) {
       ctx.addIssue({

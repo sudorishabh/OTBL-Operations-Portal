@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import { AlertTriangle, MapPin, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
@@ -20,6 +20,7 @@ import DocumentsField from "@/components/shared/documents-field";
 import VendorPicker from "@/components/vendor/vendor-picker";
 import { type PickerItem } from "@/components/shared/paged-picker";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -28,7 +29,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { itemLabel, type ContractOrder } from "./contract-orders-section";
+import {
+  itemLabel,
+  singleUnit,
+  type ContractOrder,
+} from "./contract-orders-section";
 import RecordCode from "@/components/shared/record-code";
 import OrderSitePicker from "./order-site-picker";
 
@@ -49,7 +54,10 @@ interface ItemRow {
   siteId: string;
   item: string;
   description: string;
+  // A purchase order's oil zapper for the site.
   quantity: string;
+  // A sub-contract requirement's rate per unit.
+  rate: string;
 }
 
 interface Props {
@@ -71,6 +79,7 @@ const newRow = (type: OrderType, siteId = ""): ItemRow => ({
   item: type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER ? OIL_ZAPPER.KEY : "",
   description: "",
   quantity: "",
+  rate: "",
 });
 
 const fieldLabel = "mb-1 block text-xs font-medium text-gray-700";
@@ -178,11 +187,17 @@ const ContractOrderDialog = ({
   const [unitRate, setUnitRate] = useState("");
   const [gstPercentage, setGstPercentage] = useState(String(GST_PERCENTAGE));
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  // A sub-contract whose requirements each take one expense at the site,
+  // with its total quantity.
+  const [singleExpense, setSingleExpense] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [savedDocuments, setSavedDocuments] = useState<StoredDocument[]>([]);
+  const singleExpenseId = useId();
 
   const isPurchase = type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER;
   const typeLabel = isPurchase ? "Purchase order" : "Sub-contract";
+  // A purchase order, and a single-expense sub-contract, go to one vendor.
+  const takesOneVendor = isPurchase || singleExpense;
 
   const documentsUpload = useSharePointUpload({
     folderPath: `/WorkOrders/${workOrderId}/ContractOrders`,
@@ -224,10 +239,12 @@ const ContractOrderDialog = ({
             siteId: String(item.work_order_site_id),
             item: item.item,
             description: item.description ?? "",
-            quantity: String(Number(item.quantity)),
+            quantity: item.quantity ? String(Number(item.quantity)) : "",
+            rate: item.unit_rate ? String(Number(item.unit_rate)) : "",
           }))
         : [],
     );
+    setSingleExpense(editing?.single_expense ?? false);
     setUnitRate(editing?.unit_rate ? String(Number(editing.unit_rate)) : "");
     setGstPercentage(
       editing?.gst_percentage != null
@@ -298,6 +315,13 @@ const ContractOrderDialog = ({
     }
   };
 
+  // Taking one expense per requirement, a sub-contract keeps one vendor, who
+  // that expense is under.
+  const changeSingleExpense = (next: boolean) => {
+    setSingleExpense(next);
+    if (next) setVendors((prev) => prev.slice(0, 1));
+  };
+
   const onSaved = async (message: string) => {
     toast.success(message);
     onClose();
@@ -350,19 +374,24 @@ const ContractOrderDialog = ({
       description,
       documents: savedDocuments,
       contractor_ids: vendors.map((vendor) => vendor.id),
+      // A purchase order gives each site's oil zapper; a sub-contract gives
+      // each requirement's rate, its quantities recorded at the site.
       items: rows.map((row) => ({
         id: row.id,
         work_order_site_id: Number(row.siteId),
         item: row.item,
         description: row.description || undefined,
-        quantity: Number(row.quantity),
+        quantity: isPurchase ? Number(row.quantity) || null : null,
+        unit_rate: isPurchase ? null : Number(row.rate) || null,
       })),
-      ...(isPurchase && {
-        unit_rate: rate || null,
-        // Saved as shown: a blank GST is none.
-        gst_percentage: gst,
-        invoice_number: invoiceNumber,
-      }),
+      ...(isPurchase
+        ? {
+            unit_rate: rate || null,
+            // Saved as shown: a blank GST is none.
+            gst_percentage: gst,
+            invoice_number: invoiceNumber,
+          }
+        : { single_expense: singleExpense }),
     };
     const parsed =
       contractOrderSchemas.baseContractOrderSchema.safeParse(order);
@@ -395,12 +424,12 @@ const ContractOrderDialog = ({
     createOrder.isPending ||
     updateOrder.isPending;
 
-  // A sub-contract's requirement at one of its sites. A site's only one goes
-  // when the site is unticked.
+  // A sub-contract's requirement at one of its sites, at its rate per unit.
+  // A site's only one goes when the site is unticked.
   const requirementRow = (row: ItemRow, isSiteOnly: boolean) => (
     <div
       key={row.key}
-      className='grid grid-cols-1 items-start gap-2 rounded-lg border bg-gray-50/50 p-2 sm:grid-cols-[12rem_1fr_9rem_32px]'>
+      className='grid grid-cols-1 items-start gap-2 rounded-lg border bg-gray-50/50 p-2 sm:grid-cols-[12rem_1fr_11rem_32px]'>
       <Select
         value={row.item === OIL_ZAPPER.KEY ? "" : row.item}
         onValueChange={(item) => updateRow(row.key, { item })}>
@@ -437,18 +466,22 @@ const ContractOrderDialog = ({
         className='h-9 bg-white'
       />
       <div className='relative'>
+        <span className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400'>
+          ₹
+        </span>
         <Input
           inputMode='decimal'
-          value={row.quantity}
-          onChange={decimalInput((quantity) =>
-            updateRow(row.key, { quantity }),
-          )}
-          placeholder='Qty'
-          className='h-9 bg-white pr-16'
+          value={row.rate}
+          onChange={decimalInput((rate) => updateRow(row.key, { rate }))}
+          placeholder='Rate'
+          aria-label='Rate per unit'
+          className='h-9 bg-white pl-7 pr-20'
         />
-        <span className='pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400'>
-          {itemUnit(row.item)}
-        </span>
+        {row.item && row.item !== OIL_ZAPPER.KEY && (
+          <span className='pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400'>
+            per {singleUnit(itemUnit(row.item))}
+          </span>
+        )}
       </div>
       <RemoveRowButton
         disabled={isSiteOnly}
@@ -520,11 +553,13 @@ const ContractOrderDialog = ({
         {/* Who and where, picked a page at a time. */}
         <section className={sectionClass}>
           <SectionTitle
-            title={isPurchase ? "Sites and vendor" : "Sites and vendors"}
+            title={takesOneVendor ? "Sites and vendor" : "Sites and vendors"}
             description={
               isPurchase
                 ? "A purchase order buys oil zapper for one or more sites, from one vendor."
-                : "A sub-contract gives out work at one or more sites. Its expenses are recorded at each site, under these vendors."
+                : singleExpense
+                  ? "A sub-contract gives out work at one or more sites. Its expenses are recorded at each site, under its vendor."
+                  : "A sub-contract gives out work at one or more sites. Its expenses are recorded at each site, under these vendors."
             }
           />
           <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
@@ -534,12 +569,12 @@ const ContractOrderDialog = ({
               onChange={changeSites}
             />
             <VendorPicker
-              mode={isPurchase ? "single" : "multiple"}
+              mode={takesOneVendor ? "single" : "multiple"}
               selected={vendors}
               onChange={setVendors}
             />
           </div>
-          {isPurchase && vendors.length > 1 && (
+          {takesOneVendor && vendors.length > 1 && (
             <p className='flex items-center gap-1.5 text-xs text-amber-700'>
               <AlertTriangle className='size-3.5' />
               This order has {vendors.length} vendors. Choose the one it is
@@ -686,8 +721,28 @@ const ContractOrderDialog = ({
             <section className={sectionClass}>
               <SectionTitle
                 title='Requirements'
-                description='What the sub-contract gives out at each of its sites.'
+                description='What the sub-contract gives out at each of its sites, at a rate per unit. The quantity is recorded with its expenses at the site.'
               />
+              <div className='flex items-start gap-3 rounded-lg border bg-gray-50/50 px-3 py-2.5'>
+                <Switch
+                  id={singleExpenseId}
+                  checked={singleExpense}
+                  onCheckedChange={changeSingleExpense}
+                  className='mt-0.5'
+                />
+                <label
+                  htmlFor={singleExpenseId}
+                  className='min-w-0 cursor-pointer'>
+                  <span className='block text-sm font-medium text-gray-900'>
+                    One expense per requirement
+                  </span>
+                  <span className='block text-xs text-gray-500'>
+                    {singleExpense
+                      ? "Each requirement takes one expense at its site, with the total quantity, such as JCB 70 hours. The sub-contract goes to one vendor."
+                      : "Each requirement takes as many expenses at its site as needed, each with its own quantity, such as JCB 20 hours, then 50 hours."}
+                  </span>
+                </label>
+              </div>
               {chosenSiteIds.length === 0 ? (
                 <p className='rounded-lg border border-dashed px-3 py-4 text-center text-xs text-gray-400'>
                   Choose the sites the sub-contract is for, then add what it

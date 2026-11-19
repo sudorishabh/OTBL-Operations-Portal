@@ -45,6 +45,8 @@ export interface ContractOrder {
   unit_rate: string | null;
   gst_percentage: string | null;
   invoice_number: string | null;
+  // A sub-contract whose requirements each take one expense at the site.
+  single_expense: boolean;
   documents: unknown;
   completion_documents: unknown;
   items: {
@@ -54,8 +56,11 @@ export interface ContractOrder {
     site_name: string | null;
     item: string;
     description: string | null;
-    quantity: string;
+    // A purchase order's oil zapper for the site.
+    quantity: string | null;
     unit: string;
+    // A sub-contract requirement's rate per unit.
+    unit_rate: string | null;
   }[];
   vendors: { id: number; code?: string; name: string }[];
 }
@@ -83,6 +88,14 @@ const formatAmount = (amount: number) =>
     maximumFractionDigits: 2,
   }).format(amount);
 
+// One of an item's unit, as a rate is given per: hour, man-day, trip.
+export const singleUnit = (unit: string) =>
+  unit === "Nos" ? "unit" : unit.replace(/s$/, "");
+
+// A sub-contract requirement's rate, such as ₹1,200/hour.
+export const rateLabel = (rate: number | string, unit: string) =>
+  `${formatAmount(Number(rate))}/${singleUnit(unit)}`;
+
 // What a purchase order costs in all: its oil zapper at its rate, with GST.
 // Null for a sub-contract, costed at its site.
 const purchaseOrderCost = (order: ContractOrder) => {
@@ -96,6 +109,22 @@ const purchaseOrderCost = (order: ContractOrder) => {
   const rate = Number(order.unit_rate);
   const gst = Number(order.gst_percentage ?? 0);
   return { total: quantity * rate * (1 + gst / 100), rate, gst };
+};
+
+// What an order asks of a requirement: a purchase order's oil zapper, or a
+// sub-contract's rate, which requirements added before rates may lack.
+const requirementTerms = (
+  order: ContractOrder,
+  item: ContractOrder["items"][number],
+) => {
+  if (order.type === CONTRACT_ORDER_TYPE.PURCHASE_ORDER) {
+    return `${Number(item.quantity ?? 0).toLocaleString("en-IN")} ${item.unit}`;
+  }
+  return item.unit_rate ? (
+    rateLabel(item.unit_rate, item.unit)
+  ) : (
+    <span className='text-amber-700'>No rate</span>
+  );
 };
 
 // How each kind of order is marked in the list.
@@ -278,6 +307,7 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                         </p>
                         <p className='text-xs text-gray-500'>
                           {group.label}
+                          {order.single_expense && " · One expense each"}
                           {order.order_number && ` · Ref. ${order.order_number}`}
                           {cost && (
                             <>
@@ -317,8 +347,7 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                             {itemLabel(item.item, item.description)}
                           </span>
                           <span className='tabular-nums'>
-                            {Number(item.quantity).toLocaleString("en-IN")}{" "}
-                            {item.unit}
+                            {requirementTerms(order, item)}
                           </span>
                         </span>
                       ))}

@@ -267,6 +267,13 @@
       "when": 1794982801841,
       "tag": "0037_contract_order_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1795067329213,
+      "tag": "0038_sub_contract_rates",
+      "breakpoints": true
     }
   ]
 }
