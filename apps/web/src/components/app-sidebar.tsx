@@ -6,12 +6,10 @@ import { useMemo, type ComponentType, type SVGProps } from "react";
 import {
   HardHat,
   LayoutDashboard,
-  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   ReceiptIndianRupee,
   Tent,
-  User,
   Users,
   Webhook,
 } from "lucide-react";
@@ -30,6 +28,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserMenu } from "@/components/sidebar/user-menu";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { constants } from "@pkg/utils";
@@ -156,7 +155,7 @@ const CollapseToggle = () => {
 
 function AppSidebar() {
   const pathname = usePathname();
-  const { user, logout, isUserLoading } = useAuthContext();
+  const { user, isUserLoading } = useAuthContext();
 
   // The groups this user gets, each holding only the links their role sees.
   const visibleGroups = useMemo(() => {
@@ -234,20 +233,8 @@ function AppSidebar() {
 
       <SidebarFooter className='px-3.5 pt-2 pb-3 group-data-[collapsible=icon]:px-2'>
         <SidebarMenu>
-          <NavLink
-            item={{ title: "Profile", link: "/profile", icon: User }}
-            isActive={isLinkActive("/profile", page)}
-          />
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip='Logout'
-              onClick={() => logout()}
-              className={ROW_CLASS}>
-              <LogOut />
-              <span>Logout</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <CollapseToggle />
+          <UserMenu />
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
