@@ -42,6 +42,7 @@ import {
   Wrench,
   ClipboardList,
   Lock,
+  Package,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import CustomButton from "@/components/shared/btn";
@@ -112,6 +113,7 @@ const formatQty = (value: number) =>
 // returns it: a purchase order's oil zapper, or a sub-contract's rate.
 type SiteOrderItem = {
   id: number;
+  contract_order_id: number;
   item: string;
   description: string | null;
   quantity: string | null;
@@ -130,17 +132,30 @@ const ORDER_GROUPS = [
   {
     type: constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
     title: "Purchase orders",
+    noun: "purchase order",
     Icon: ShoppingCart,
   },
   {
     type: constants.CONTRACT_ORDER_TYPE.SUB_CONTRACT,
     title: "Sub-contracts",
+    noun: "sub-contract",
     Icon: Wrench,
   },
 ] as const;
 
-const orderItemTitle = (item: SiteOrderItem) =>
-  `${item.order_code} · ${itemLabel(item.item, item.description)}`;
+// The site's requirements of the given type, by order, each order's in the
+// order they come.
+const itemsByOrder = (items: SiteOrderItem[], type: string) => {
+  const byOrder = new Map<number, SiteOrderItem[]>();
+  for (const item of items) {
+    if (item.order_type !== type) continue;
+    byOrder.set(item.contract_order_id, [
+      ...(byOrder.get(item.contract_order_id) ?? []),
+      item,
+    ]);
+  }
+  return [...byOrder.values()];
+};
 
 // A requirement as the expense dialog offers it. A single-expense one with
 // its one recorded is taken, unless that is the expense being edited.
@@ -160,14 +175,12 @@ const toItemOption = (
 });
 
 // What an order asks of the site: a purchase order's oil zapper, or a
-// sub-contract's rate, taken in one expense or as many as needed.
+// sub-contract's rate.
 const orderItemTerms = (item: SiteOrderItem) => {
   if (item.order_type === constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER) {
     return `${formatQty(Number(item.quantity ?? 0))} ${item.unit}`;
   }
-  if (!item.unit_rate) return "No rate";
-  const rate = rateLabel(item.unit_rate, item.unit);
-  return item.single_expense ? `${rate} · one expense` : rate;
+  return item.unit_rate ? rateLabel(item.unit_rate, item.unit) : "No rate";
 };
 
 // The tabs of expenses under no vendor, and of vendor expenses in no group,
@@ -246,9 +259,10 @@ const SiteExpensesSection = ({
   // What a new expense starts under, when added from a vendor or from
   // Miscellaneous.
   const [addUnder, setAddUnder] = useState<number | "miscellaneous" | null>(null);
-  // The contract order requirement a bioremediation expense is spent on, or
-  // the job order a restoration one is.
-  const [dialogOrderItemId, setDialogOrderItemId] = useState<number | null>(null);
+  // The contract order a bioremediation expense is spent on, one of whose
+  // requirements is picked in the dialog, or the job order a restoration one
+  // is.
+  const [dialogOrderId, setDialogOrderId] = useState<number | null>(null);
   const [dialogJobOrderId, setDialogJobOrderId] = useState<number | null>(null);
   // The groups opened or folded away from how each starts: open, or folded
   // for a closed job order.
@@ -371,7 +385,10 @@ const SiteExpensesSection = ({
 
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
-    setDialogOrderItemId(expense.contract_order_item_id ?? null);
+    setDialogOrderId(
+      orderItems.find((item) => item.id === expense.contract_order_item_id)
+        ?.contract_order_id ?? null,
+    );
     setDialogJobOrderId(expense.job_order_id ?? null);
     setDialogOpen(true);
   };
@@ -380,18 +397,18 @@ const SiteExpensesSection = ({
     setDialogOpen(false);
     setEditingExpense(null);
     setAddUnder(null);
-    setDialogOrderItemId(null);
+    setDialogOrderId(null);
     setDialogJobOrderId(null);
   };
 
   const openAddExpense = (
     under: number | "miscellaneous" | null = null,
-    orderItemId: number | null = null,
+    orderId: number | null = null,
     jobOrderId: number | null = null,
   ) => {
     setEditingExpense(null);
     setAddUnder(under);
-    setDialogOrderItemId(orderItemId);
+    setDialogOrderId(orderId);
     setDialogJobOrderId(jobOrderId);
     setDialogOpen(true);
   };
@@ -787,7 +804,7 @@ const SiteExpensesSection = ({
   );
 
   // Expenses spent on something with its own vendors, such as a job order or
-  // a contract order requirement: a card for each, listing its expenses.
+  // a contract order: a card for each, listing its expenses.
   type ExpenseGroup = {
     key: string;
     // Its number, such as the job order's.
@@ -798,6 +815,14 @@ const SiteExpensesSection = ({
     title: string;
     meta?: string;
     total: number;
+    // What it gives out, such as a sub-contract's items, each with its terms
+    // and what it has cost.
+    requirements?: {
+      key: string;
+      label: string;
+      terms: string;
+      total: number;
+    }[];
     vendors: { id: number; name: string }[];
     records: ExpenseRecord[];
     vendorTotal: (vendorId: number) => number;
@@ -812,25 +837,67 @@ const SiteExpensesSection = ({
     closedNote?: string;
   };
 
-  // A sub-contract requirement takes expenses at the site; a single-expense
-  // one only until it has its one, which holds the total quantity.
-  const subContractItemParts = (
-    item: SiteOrderItem,
-  ): Pick<ExpenseGroup, "status" | "onAdd"> => {
-    const isRecorded = item.single_expense && item.expense_count > 0;
+  // An order's requirements at the site, as one card listing every expense
+  // on any of them. A purchase order records its own cost. A sub-contract's
+  // expenses are added here, each for one of its items; a single-expense
+  // one's only until each item has its one, which holds the total quantity.
+  const toOrderGroup = (items: SiteOrderItem[]): ExpenseGroup => {
+    const first = items[0]!;
+    const itemIds = new Set(items.map((item) => item.id));
+    const sumOver = (total: (itemId: number) => number) =>
+      items.reduce((sum, item) => sum + total(item.id), 0);
+    const group = {
+      key: `order-${first.contract_order_id}`,
+      badge: first.order_code,
+      title: items
+        .map((item) => itemLabel(item.item, item.description))
+        .join(", "),
+      total: sumOver(orderItemTotal),
+      vendors: first.vendors,
+      records: records.filter(
+        (r) =>
+          r.contractOrderItemId !== null && itemIds.has(r.contractOrderItemId),
+      ),
+      vendorTotal: (vendorId: number) =>
+        sumOver((itemId) => orderItemVendorTotal(itemId, vendorId)),
+    };
+
+    if (first.order_type === constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER) {
+      return {
+        ...group,
+        meta: items.map(orderItemTerms).join(", "),
+        status: (
+          <span className='shrink-0 whitespace-nowrap rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-200'>
+            Costed by the order
+          </span>
+        ),
+      };
+    }
+
+    const isAllRecorded =
+      first.single_expense && items.every((item) => item.expense_count > 0);
     return {
-      status: item.single_expense && (
+      ...group,
+      requirements: items.map((item) => ({
+        key: String(item.id),
+        label: itemLabel(item.item, item.description),
+        terms: orderItemTerms(item),
+        total: orderItemTotal(item.id),
+      })),
+      status: first.single_expense && (
         <span
           className={cn(
             "shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
-            isRecorded
+            isAllRecorded
               ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
               : "bg-gray-50 text-gray-600 ring-gray-200",
           )}>
-          {isRecorded ? "Total recorded" : "One expense"}
+          {isAllRecorded ? "All recorded" : "One expense per item"}
         </span>
       ),
-      onAdd: isRecorded ? undefined : () => openAddExpense(null, item.id),
+      onAdd: isAllRecorded
+        ? undefined
+        : () => openAddExpense(null, first.contract_order_id),
     };
   };
 
@@ -872,8 +939,37 @@ const SiteExpensesSection = ({
     </div>
   );
 
-  // A job order or order requirement, as a card: its vendors, then its
-  // expenses.
+  // What a group gives out, each with its terms and what it has cost on it.
+  const renderRequirementStrip = (
+    requirements: NonNullable<ExpenseGroup["requirements"]>,
+  ) => (
+    <div className='flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-gray-100 bg-gray-50/70 px-3 py-2'>
+      <span className='inline-flex items-center gap-1.5 pl-6 pr-1 text-[11px] font-medium text-gray-500'>
+        <Package className='size-3.5 text-gray-400' />
+        Items
+      </span>
+      {requirements.map((requirement) => (
+        <span
+          key={requirement.key}
+          className='inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-xs ring-1 ring-inset ring-gray-200'>
+          <span className='font-medium text-gray-700'>{requirement.label}</span>
+          <span className='text-gray-400'>{requirement.terms}</span>
+          <span
+            className={cn(
+              "tabular-nums",
+              requirement.total > 0 ? "text-gray-900" : "text-gray-400",
+            )}>
+            {requirement.total > 0
+              ? formatCurrency(requirement.total)
+              : "No expenses"}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+
+  // A job order or contract order, as a card: what it gives out and its
+  // vendors, then its expenses.
   const renderGroupCard = (group: ExpenseGroup) => {
     const isOpen = toggledGroups.has(group.key) === !!group.closedNote;
 
@@ -936,6 +1032,7 @@ const SiteExpensesSection = ({
         </div>
         {isOpen && (
           <>
+            {group.requirements && renderRequirementStrip(group.requirements)}
             {renderVendorStrip(group)}
             {group.records.length > 0 ? (
               <div className='border-t border-gray-100'>
@@ -1118,20 +1215,24 @@ const SiteExpensesSection = ({
     );
   };
 
-  // Which vendors the expense dialog offers. A bioremediation expense on an
-  // order is under one of the order's vendors; an older one keeps its own;
-  // a miscellaneous one has none.
-  const dialogOrderItem =
-    orderItems.find((item) => item.id === dialogOrderItemId) ?? null;
+  // The dialog's order, by its requirements at the site; the first carries
+  // the order's code and vendors.
+  const dialogOrderItems = orderItems.filter(
+    (item) => item.contract_order_id === dialogOrderId,
+  );
+  const dialogOrder = dialogOrderItems[0] ?? null;
   const dialogJobOrder =
     jobOrders.find((jobOrder) => jobOrder.id === dialogJobOrderId) ?? null;
   const editingVendor =
     editingExpense?.contractor_id && editingExpense.contractor_name
       ? [{ id: editingExpense.contractor_id, name: editingExpense.contractor_name }]
       : [];
+  // Which vendors the expense dialog offers. A bioremediation expense on an
+  // order is under one of the order's vendors; an older one keeps its own;
+  // a miscellaneous one has none.
   const dialogContractors = isBioremediation
-    ? dialogOrderItem
-      ? dialogOrderItem.vendors
+    ? dialogOrder
+      ? dialogOrder.vendors
       : editingVendor
     : isRestoration
       ? dialogJobOrder
@@ -1142,8 +1243,8 @@ const SiteExpensesSection = ({
   // may also carry some.
   const dialogProcuresOilZapper =
     isBioremediation &&
-    (dialogOrderItem
-      ? dialogOrderItem.item === constants.OIL_ZAPPER.KEY
+    (dialogOrder
+      ? dialogOrderItems.some((item) => item.item === constants.OIL_ZAPPER.KEY)
       : editingExpense?.activity_key === constants.OIL_ZAPPER.KEY);
   // A job order's expenses are under the activities it gives out. An expense
   // being edited keeps its own activity, so it still shows.
@@ -1306,35 +1407,16 @@ const SiteExpensesSection = ({
         <ExpenseGroupsSkeleton />
       ) : isBioremediation ? (
         renderGroupedExpenses({
-          sections: ORDER_GROUPS.map(({ type, title, Icon }) => {
-            const items = orderItems.filter((item) => item.order_type === type);
+          // A card per order, however many of its items are at the site.
+          sections: ORDER_GROUPS.map(({ type, title, noun, Icon }) => {
+            const orders = itemsByOrder(orderItems, type);
             return {
               key: type,
               Icon,
               title,
-              meta: `${items.length} requirement${items.length !== 1 ? "s" : ""}`,
+              meta: `${orders.length} ${noun}${orders.length !== 1 ? "s" : ""}`,
               emptyText: "No orders require anything at this site yet.",
-              groups: items.map((item) => ({
-                key: `item-${item.id}`,
-                badge: item.order_code,
-                title: itemLabel(item.item, item.description),
-                meta: orderItemTerms(item),
-                total: orderItemTotal(item.id),
-                vendors: item.vendors,
-                records: records.filter((r) => r.contractOrderItemId === item.id),
-                vendorTotal: (vendorId: number) =>
-                  orderItemVendorTotal(item.id, vendorId),
-                // A purchase order records its own cost, from its rate.
-                ...(type === constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER
-                  ? {
-                      status: (
-                        <span className='shrink-0 whitespace-nowrap rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-200'>
-                          Costed by the order
-                        </span>
-                      ),
-                    }
-                  : subContractItemParts(item)),
-              })),
+              groups: orders.map(toOrderGroup),
             };
           }),
           unassignedTitle: "Vendor expenses not on an order",
@@ -1427,10 +1509,12 @@ const SiteExpensesSection = ({
         activities={dialogActivities}
         activitiesNote={dialogActivitiesNote}
         order={
-          dialogOrderItem
+          dialogOrder
             ? {
-                label: orderItemTitle(dialogOrderItem),
-                items: [toItemOption(dialogOrderItem, editingExpense)],
+                label: dialogOrder.order_code,
+                items: dialogOrderItems.map((item) =>
+                  toItemOption(item, editingExpense),
+                ),
               }
             : null
         }
