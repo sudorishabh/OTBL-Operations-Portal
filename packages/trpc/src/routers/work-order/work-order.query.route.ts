@@ -34,10 +34,14 @@ import { notFound, fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { readTransportationSlabs } from "../../helper/transportation-slabs";
-import { hasPhysicalSite, siteNameOrRestoration } from "../../helper/restoration";
+import {
+  hasPhysicalSite,
+  siteNameOrRestoration,
+} from "../../helper/restoration";
 import { USER_ROLES } from "../../authorization";
 import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
-import { effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
+import { CODE_PREFIX, effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
+import { codeMatches } from "../../helper/record-code";
 
 const {
   workOrderTable,
@@ -420,23 +424,45 @@ export const workOrderQueryRouter = router({
             : eq(workOrderSiteTable.id, -1)
           : undefined;
 
-        const woSiteWhere = and(
+        const allSitesWhere = and(
           eq(workOrderSiteTable.work_order_id, id),
           hasPhysicalSite,
           siteRowFilter,
         );
+        // A search matches the site's code, name, address, city or state.
+        const term = search?.trim();
+        const woSiteWhere = and(
+          allSitesWhere,
+          term
+            ? or(
+                codeMatches(siteTable.code, CODE_PREFIX.SITE, term),
+                like(siteTable.name, `%${escapeLike(term)}%`),
+                like(siteTable.address, `%${escapeLike(term)}%`),
+                like(siteTable.city, `%${escapeLike(term)}%`),
+                like(siteTable.state, `%${escapeLike(term)}%`),
+              )
+            : undefined,
+        );
 
-        const [totalResult] = await ctx.db
-          .select({ count: count() })
-          .from(workOrderSiteTable)
-          .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
-          .where(woSiteWhere);
+        const countSites = (where: typeof woSiteWhere) =>
+          ctx.db
+            .select({ count: count() })
+            .from(workOrderSiteTable)
+            .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+            .where(where);
+        const [[totalResult], [allResult]] = await Promise.all([
+          countSites(woSiteWhere),
+          term ? countSites(allSitesWhere) : Promise.resolve([undefined]),
+        ]);
 
         const total = totalResult?.count ?? 0;
+        // Every site of the work order, whatever the search.
+        const totalSites = term ? (allResult?.count ?? 0) : total;
 
         if (total === 0) {
           return {
             sites: [],
+            total_sites: totalSites,
             pagination: {
               page,
               limit,
@@ -461,6 +487,8 @@ export const workOrderQueryRouter = router({
             start_date: workOrderSiteTable.date,
             end_date: workOrderSiteTable.end_date,
             status: workOrderSiteTable.status,
+            // A bioremediation site is complete once its TPH is below target.
+            is_completed: workOrderSiteTable.is_completed,
             created_at: workOrderSiteTable.created_at,
           })
           .from(workOrderSiteTable)
@@ -468,48 +496,63 @@ export const workOrderQueryRouter = router({
           .where(woSiteWhere)
           .limit(limit)
           .offset(offset)
-          .orderBy(desc(workOrderSiteTable.created_at));
+          // The id breaks ties so sites never repeat or go missing across
+          // pages.
+          .orderBy(
+            desc(workOrderSiteTable.created_at),
+            desc(workOrderSiteTable.id),
+          );
 
-        const [sitesUsers, sitesSheets] = await Promise.all([
-          Promise.all(
-            woSites.map((woSite: any) =>
-              ctx.db
-                .select({
-                  user_id: workOrderSiteUserTable.user_id,
-                  user_name: userTable.name,
-                  user_email: userTable.email,
-                  user_contact_number: userTable.contact_number,
-                  user_role: userTable.role,
-                })
-                .from(workOrderSiteUserTable)
-                .leftJoin(
-                  userTable,
-                  eq(workOrderSiteUserTable.user_id, userTable.id),
-                )
-                .where(
-                  eq(workOrderSiteUserTable.work_order_site_id, woSite.id),
-                ),
-            ),
-          ),
-          Promise.all(
-            woSites.map((woSite: any) =>
-              ctx.db
-                .select()
-                .from(workOrderSiteDocsTable)
-                .where(
-                  and(
-                    eq(workOrderSiteDocsTable.work_order_site_id, woSite.id),
-                    eq(workOrderSiteDocsTable.type, "measurement_sheet"),
+        // The page's operators and measurement sheets, two queries in all
+        // rather than two per site.
+        const pageSiteIds = woSites.map((woSite) => woSite.id);
+        const [pageUsers, pageSheets] =
+          pageSiteIds.length === 0
+            ? [[], []]
+            : await Promise.all([
+                ctx.db
+                  .select({
+                    work_order_site_id:
+                      workOrderSiteUserTable.work_order_site_id,
+                    user_id: workOrderSiteUserTable.user_id,
+                    user_name: userTable.name,
+                    user_email: userTable.email,
+                    user_contact_number: userTable.contact_number,
+                    user_role: userTable.role,
+                  })
+                  .from(workOrderSiteUserTable)
+                  .leftJoin(
+                    userTable,
+                    eq(workOrderSiteUserTable.user_id, userTable.id),
+                  )
+                  .where(
+                    inArray(
+                      workOrderSiteUserTable.work_order_site_id,
+                      pageSiteIds,
+                    ),
                   ),
-                ),
-            ),
-          ),
-        ]);
+                ctx.db
+                  .select()
+                  .from(workOrderSiteDocsTable)
+                  .where(
+                    and(
+                      inArray(
+                        workOrderSiteDocsTable.work_order_site_id,
+                        pageSiteIds,
+                      ),
+                      eq(workOrderSiteDocsTable.type, "measurement_sheet"),
+                    ),
+                  ),
+              ]);
 
-        const sitesWithDetails = woSites.map((woSite: any, index: any) => ({
+        const sitesWithDetails = woSites.map((woSite) => ({
           ...woSite,
-          users: sitesUsers[index],
-          measurement_sheets: sitesSheets[index],
+          users: pageUsers
+            .filter((user) => user.work_order_site_id === woSite.id)
+            .map(({ work_order_site_id: _site, ...user }) => user),
+          measurement_sheets: pageSheets.filter(
+            (sheet) => sheet.work_order_site_id === woSite.id,
+          ),
         }));
 
         const totalPages = Math.ceil(total / limit);
@@ -517,6 +560,7 @@ export const workOrderQueryRouter = router({
 
         return {
           sites: sitesWithDetails,
+          total_sites: totalSites,
           pagination: {
             page,
             limit,
