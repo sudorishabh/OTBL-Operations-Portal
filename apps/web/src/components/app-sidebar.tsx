@@ -24,8 +24,10 @@ import {
   isLinkActive,
   NAV_GROUPS,
   navGroupsForRole,
+  navHref,
   type NavItem,
 } from "@/components/sidebar/nav-links";
+import { QuickSearch } from "@/components/sidebar/quick-search";
 import { UserMenu } from "@/components/sidebar/user-menu";
 import { usePendingWorkOrderCount } from "@/components/sidebar/use-pending-work-order-count";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -64,7 +66,7 @@ const NavLink = ({
         tooltip={badgeText ? `${item.title} · ${badgeText}` : item.title}
         className={cn(ROW_CLASS, badgeText && "pr-10")}>
         <Link
-          href={`/dashboard${item.link}`}
+          href={navHref(item.link)}
           aria-current={isActive ? "page" : undefined}
           // Tapping the page already open changes no route, so close the
           // phone drawer here too.
@@ -148,6 +150,11 @@ function AppSidebar() {
     () => (isUserLoading ? [] : navGroupsForRole(user?.role)),
     [isUserLoading, user?.role],
   );
+  // Every page the user can open, for the search to find by name.
+  const pages = useMemo(
+    () => visibleGroups.flatMap((group) => group.items),
+    [visibleGroups],
+  );
 
   if (!pathname.startsWith("/dashboard")) return null;
   const page = pathname.replace("/dashboard", "") || "/";
@@ -187,6 +194,14 @@ function AppSidebar() {
       <SidebarSeparator />
 
       <SidebarContent className='gap-0 px-1.5 py-1 group-data-[collapsible=icon]:px-0'>
+        <SidebarGroup className='py-1.5'>
+          <SidebarMenu>
+            <QuickSearch
+              pages={pages}
+              className={ROW_CLASS}
+            />
+          </SidebarMenu>
+        </SidebarGroup>
         {groups.map((group, index) => (
           <SidebarGroup
             key={group.label ?? index}

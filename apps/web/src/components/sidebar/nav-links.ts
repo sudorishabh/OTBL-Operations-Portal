@@ -78,3 +78,7 @@ export const navGroupsForRole = (role: string | undefined): NavGroup[] =>
 // are paths under /dashboard.
 export const isLinkActive = (link: string, page: string) =>
   link === "/" ? page === "/" : page === link || page.startsWith(`${link}/`);
+
+// Where a link leads: Overview is /dashboard itself.
+export const navHref = (link: string) =>
+  link === "/" ? "/dashboard" : `/dashboard${link}`;
