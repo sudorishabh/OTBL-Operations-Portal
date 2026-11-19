@@ -7,23 +7,28 @@ import { type StoredDocument } from "@/lib/documents";
 const META_LINE =
   "mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500";
 
-// One half of a proposal row: a title line, a meta line, and an optional
-// line of details underneath. With `onOpen` the whole cell opens the record;
-// without it the cell only shows, with room for an `action` on the right.
+// One half of a proposal row: an optional eyebrow line, such as a code and
+// its status, then a title line, a meta line and optional details. With
+// `onOpen` the whole cell opens the record; without it the cell only shows,
+// with room for an `action` on the right.
 export const RowCell = ({
   label,
   onOpen,
+  eyebrow,
   title,
   tooltip,
   aside,
   trailing,
   action,
   details,
+  className,
   children,
 }: {
   // Accessible name when the cell opens, e.g. "Open work order X".
   label?: string;
   onOpen?: () => void;
+  // Above the title, e.g. a code and status pill.
+  eyebrow?: React.ReactNode;
   title: string;
   // Shown when hovering the title; defaults to the title.
   tooltip?: string;
@@ -33,8 +38,9 @@ export const RowCell = ({
   trailing?: React.ReactNode;
   // Far right of the cell when it doesn't open, e.g. a menu.
   action?: React.ReactNode;
-  // A second line under the meta line.
+  // Under the meta line, e.g. a description or labelled values.
   details?: React.ReactNode;
+  className?: string;
   // The meta line.
   children: React.ReactNode;
 }) => (
@@ -54,15 +60,22 @@ export const RowCell = ({
       },
     })}
     className={cn(
-      "group flex min-w-0 items-center gap-3 rounded-md px-3 py-2.5",
+      "group flex min-w-0 gap-3 rounded-lg px-3 py-2.5",
       onOpen &&
-        "cursor-pointer outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-emerald-500/30",
+        "cursor-pointer outline-none transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500/30",
+      className,
     )}>
     <div className='min-w-0 flex-1'>
-      <div className='flex min-w-0 items-start gap-2'>
+      {eyebrow && (
+        <div className='mb-1 flex h-5 min-w-0 items-center gap-2'>
+          {eyebrow}
+        </div>
+      )}
+      {/* A pill or note that doesn't fit beside the title wraps under it. */}
+      <div className='flex min-w-0 flex-wrap items-start gap-x-2 gap-y-0.5'>
         <span
           className={cn(
-            "min-w-0 break-words text-sm font-medium text-gray-900",
+            "min-w-0 break-words text-sm font-semibold text-gray-900",
             // A record that opens shows its full title on its own page.
             onOpen &&
               "line-clamp-2 transition-colors group-hover:text-emerald-700",
@@ -78,10 +91,10 @@ export const RowCell = ({
         )}
       </div>
       <div className={META_LINE}>{children}</div>
-      {details && <div className={META_LINE}>{details}</div>}
+      {details && <div className='mt-2 text-xs @container'>{details}</div>}
     </div>
     {onOpen ? (
-      <ChevronRight className='size-4 shrink-0 text-gray-300 transition-colors group-hover:text-emerald-600' />
+      <ChevronRight className='size-4 shrink-0 self-center text-gray-300 transition-colors group-hover:text-emerald-600' />
     ) : (
       action && <div className='-mr-1 -mt-1 shrink-0 self-start'>{action}</div>
     )}
@@ -108,22 +121,31 @@ export const MetaItem = ({
   </span>
 );
 
-// A label and its value on the meta line, e.g. "Agreement AGR/23/678".
-export const LabeledItem = ({
-  label,
-  children,
+// Labelled values under a record, each label over its value: two to a line,
+// or all four on one where the cell is wide. A missing value shows a dash,
+// so the columns line up from row to row.
+export const FactGrid = ({
+  facts,
 }: {
-  label: string;
-  children: React.ReactNode;
+  facts: { label: string; value?: string | null }[];
 }) => (
-  <span className='inline-flex min-w-0 items-baseline gap-1'>
-    <span className='shrink-0 text-gray-400'>{label}</span>
-    <span
-      className='truncate font-medium text-gray-700'
-      title={typeof children === "string" ? children : undefined}>
-      {children}
-    </span>
-  </span>
+  <dl className='grid grid-cols-2 gap-x-4 gap-y-2 border-t border-gray-200/80 pt-2 @xl:grid-cols-4'>
+    {facts.map(({ label, value }) => (
+      <div
+        key={label}
+        className='min-w-0'>
+        <dt className='text-[11px] leading-4 text-gray-400'>{label}</dt>
+        <dd
+          className={cn(
+            "truncate leading-5",
+            value ? "font-medium text-gray-700" : "text-gray-300",
+          )}
+          title={value ?? undefined}>
+          {value || "—"}
+        </dd>
+      </div>
+    ))}
+  </dl>
 );
 
 // Text cut to two lines, with a toggle to read the rest when it's longer.
@@ -148,7 +170,7 @@ export const ClampedText = ({ text }: { text: string }) => {
       <p
         ref={ref}
         className={cn(
-          "whitespace-pre-line break-words leading-5 text-gray-600",
+          "whitespace-pre-line break-words leading-5 text-gray-500",
           !isExpanded && "line-clamp-2",
         )}>
         {text}

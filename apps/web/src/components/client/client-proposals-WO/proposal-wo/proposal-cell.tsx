@@ -16,9 +16,9 @@ interface Props {
   proposal: proposalTypes.proposalType;
 }
 
-// A proposal in its row, with everything there is to know about it: title,
-// approval status, code, when it went in, its documents and description.
-// Admins approve, reject and edit it from its menu.
+// A proposal in its row, with everything there is to know about it: its code
+// and approval status over the title, when it went in, its documents and
+// description. Admins approve, reject and edit it from its menu.
 const ProposalCell = ({ proposal }: Props) => {
   const isAdmin = useIsAdmin();
   const documents = toDocuments(proposal?.documents);
@@ -30,10 +30,17 @@ const ProposalCell = ({ proposal }: Props) => {
 
   return (
     <RowCell
-      title={title}
-      aside={
-        <Pill className={cn("shrink-0", status.pill)}>{status.label}</Pill>
+      eyebrow={
+        <>
+          <span
+            className='min-w-0 truncate font-mono text-xs font-medium text-gray-500'
+            title={proposal?.code}>
+            {proposal?.code}
+          </span>
+          <Pill className={cn("shrink-0", status.pill)}>{status.label}</Pill>
+        </>
       }
+      title={title}
       action={
         isAdmin && (
           <ProposalActions
@@ -47,11 +54,6 @@ const ProposalCell = ({ proposal }: Props) => {
           <ClampedText text={capitalFirstLetter(proposal.description)} />
         )
       }>
-      <span
-        className='min-w-0 truncate font-mono font-medium text-gray-700'
-        title={proposal?.code}>
-        {proposal?.code}
-      </span>
       <MetaItem
         Icon={CalendarDays}
         title={added ? `Added on ${format(added, "d MMM yyyy")}` : undefined}>
