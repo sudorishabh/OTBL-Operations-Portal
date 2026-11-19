@@ -77,7 +77,7 @@ const OrderCompletionDocuments = ({ workOrderId, order }: Props) => {
           setOpen(true);
         }}
         className={cn(
-          "mr-1 inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset transition-colors",
+          "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset transition-colors",
           documents.length > 0
             ? "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100"
             : "bg-gray-50 text-gray-500 ring-gray-200 hover:bg-gray-100",
