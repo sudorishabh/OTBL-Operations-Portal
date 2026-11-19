@@ -1,4 +1,15 @@
-import { and, asc, count, desc, eq, like, or, inArray } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  like,
+  or,
+  inArray,
+  sql,
+  sum,
+} from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -728,48 +739,6 @@ export const workOrderQueryRouter = router({
           .where(woSitesWhere)
           .orderBy(desc(workOrderSiteTable.created_at));
 
-        const [sitesUsers, sitesSheets] = await Promise.all([
-          Promise.all(
-            woSites.map((woSite: any) =>
-              ctx.db
-                .select({
-                  user_id: workOrderSiteUserTable.user_id,
-                  user_name: userTable.name,
-                  user_email: userTable.email,
-                  user_contact_number: userTable.contact_number,
-                  user_role: userTable.role,
-                })
-                .from(workOrderSiteUserTable)
-                .leftJoin(
-                  userTable,
-                  eq(workOrderSiteUserTable.user_id, userTable.id),
-                )
-                .where(
-                  eq(
-                    workOrderSiteUserTable.work_order_site_id,
-                    woSite.wo_site_id,
-                  ),
-                ),
-            ),
-          ),
-          Promise.all(
-            woSites.map((woSite: any) =>
-              ctx.db
-                .select()
-                .from(workOrderSiteDocsTable)
-                .where(
-                  and(
-                    eq(
-                      workOrderSiteDocsTable.work_order_site_id,
-                      woSite.wo_site_id,
-                    ),
-                    eq(workOrderSiteDocsTable.type, "measurement_sheet"),
-                  ),
-                ),
-            ),
-          ),
-        ]);
-
         const woSiteIds = woSites.map((s: any) => s.wo_site_id);
 
         // Only bioremediation records soil quantities; restoration tracks its
@@ -803,6 +772,8 @@ export const workOrderQueryRouter = router({
           }
         }
 
+        // Each site's expense totals, added up by the database rather than
+        // read row by row.
         type SiteExpenseAgg = {
           total: number;
           exceededTotal: number;
@@ -811,50 +782,41 @@ export const workOrderQueryRouter = router({
         const siteExpenseMap = new Map<number, SiteExpenseAgg>();
         let woExpenseTotal = 0;
         let woExceededTotal = 0;
-        let expenseRows: {
-          work_order_site_id: number;
-          amount: string | null;
-          is_exceeded: number | null;
-        }[] = [];
+        let woExpenseCount = 0;
 
         if (woSiteIds.length > 0) {
-          expenseRows = await ctx.db
+          const expenseTotals = await ctx.db
             .select({
-              work_order_site_id:
-                workOrderSiteExpenseTable.work_order_site_id,
-              amount: workOrderSiteExpenseTable.amount,
-              is_exceeded: workOrderSiteExpenseTable.is_exceeded,
+              work_order_site_id: workOrderSiteExpenseTable.work_order_site_id,
+              total: sum(workOrderSiteExpenseTable.amount),
+              exceeded: sql<string>`sum(case when ${workOrderSiteExpenseTable.is_exceeded} <> 0 then ${workOrderSiteExpenseTable.amount} else 0 end)`,
+              count: count(),
             })
             .from(workOrderSiteExpenseTable)
-            .where(
-              inArray(
+            .innerJoin(
+              workOrderSiteTable,
+              eq(
                 workOrderSiteExpenseTable.work_order_site_id,
-                woSiteIds,
+                workOrderSiteTable.id,
               ),
-            );
+            )
+            .where(woSitesWhere)
+            .groupBy(workOrderSiteExpenseTable.work_order_site_id);
 
-          for (const row of expenseRows) {
-            const amt = Number(row.amount || 0);
-            const isExceeded = !!row.is_exceeded;
-            woExpenseTotal += amt;
-            if (isExceeded) woExceededTotal += amt;
-
-            let siteAgg = siteExpenseMap.get(row.work_order_site_id);
-            if (!siteAgg) {
-              siteAgg = {
-                total: 0,
-                exceededTotal: 0,
-                count: 0,
-              };
-              siteExpenseMap.set(row.work_order_site_id, siteAgg);
-            }
-            siteAgg.total += amt;
-            if (isExceeded) siteAgg.exceededTotal += amt;
-            siteAgg.count += 1;
+          for (const row of expenseTotals) {
+            const siteAgg = {
+              total: Number(row.total || 0),
+              exceededTotal: Number(row.exceeded || 0),
+              count: Number(row.count || 0),
+            };
+            siteExpenseMap.set(row.work_order_site_id, siteAgg);
+            woExpenseTotal += siteAgg.total;
+            woExceededTotal += siteAgg.exceededTotal;
+            woExpenseCount += siteAgg.count;
           }
         }
 
-        const sitesWithDetails = woSites.map((woSite: any, index: number) => {
+        const sitesWithDetails = woSites.map((woSite: any) => {
           const siteCompletions = allCompletions.filter(
             (e: any) => e.work_order_site_id === woSite.wo_site_id,
           );
@@ -895,8 +857,6 @@ export const workOrderQueryRouter = router({
             expense_entry_count: expAgg.count,
             estimate: estimateBySite.get(woSite.wo_site_id) ?? null,
             created_at: woSite.created_at,
-            users: sitesUsers[index],
-            measurement_sheets: sitesSheets[index],
             completions: siteCompletions,
           };
         });
@@ -933,7 +893,7 @@ export const workOrderQueryRouter = router({
             total_expenses: woExpenseTotal,
             exceeded_total: woExceededTotal,
             regular_total: woExpenseTotal - woExceededTotal,
-            expense_entry_count: expenseRows.length,
+            expense_entry_count: woExpenseCount,
             total_income: totalIncomeFromSites,
             net_surplus: totalIncomeFromSites - woExpenseTotal,
           },
