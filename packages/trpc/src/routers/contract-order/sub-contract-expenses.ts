@@ -4,6 +4,11 @@ import type { DbOrTx } from "./purchase-order-expenses";
 
 const { workOrderSiteExpenseTable } = schema;
 
+// What an expense on a sub-contract requirement costs: the quantity recorded
+// at the site at the requirement's rate per unit, to the paisa.
+export const subContractAmount = (quantity: number, unitRate: number) =>
+  (quantity * unitRate).toFixed(2);
+
 // Expenses recorded at the sites against each of the given requirements, by
 // requirement. Those an order records itself don't count.
 export async function countExpensesByItem(

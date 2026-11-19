@@ -1,4 +1,4 @@
-import { and, eq, ne, sum } from "drizzle-orm";
+import { and, count, eq, ne, sum } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -11,6 +11,7 @@ import {
   getOilZapperStock,
   OIL_ZAPPER_EPSILON,
 } from "../work-order-site/oil-zapper-stock";
+import { subContractAmount } from "../contract-order/sub-contract-expenses";
 
 const {
   workOrderSiteTable,
@@ -183,24 +184,36 @@ const assertNotFromOrder = (expense: { from_order: number }) => {
   }
 };
 
+// What an expense takes from the order requirement it is spent on: the
+// activity key to store, and the rate that prices it, if the requirement has
+// one.
+type OrderItemTerms = {
+  activityKey: string | null;
+  unitRate: number | null;
+};
+
 // An expense spent on a contract order requirement must be for one at its
 // site, under one of that order's vendors. Oil zapper bought this way is
-// procured oil zapper; nothing else is. Returns the activity key to store.
+// procured oil zapper; nothing else is. A single-expense sub-contract's
+// requirement takes only one, besides the one being edited.
 async function resolveOrderItem(
   ctx: any,
   siteId: number,
   itemId: number | null | undefined,
   contractorId: number | null | undefined,
   activityKey: string | null | undefined,
-): Promise<string | null> {
-  if (!itemId) return activityKey ?? null;
+  editingId?: number,
+): Promise<OrderItemTerms> {
+  if (!itemId) return { activityKey: activityKey ?? null, unitRate: null };
 
   const [item] = await ctx.db
     .select({
       work_order_site_id: contractOrderItemTable.work_order_site_id,
       contract_order_id: contractOrderItemTable.contract_order_id,
       item: contractOrderItemTable.item,
+      unit_rate: contractOrderItemTable.unit_rate,
       order_type: contractOrderTable.type,
+      single_expense: contractOrderTable.single_expense,
     })
     .from(contractOrderItemTable)
     .innerJoin(
@@ -235,8 +248,45 @@ async function resolveOrderItem(
     throw businessRule("That vendor isn't on this expense's order.");
   }
 
-  return item.item === OIL_ZAPPER.KEY ? OIL_ZAPPER.KEY : null;
+  if (item.single_expense) {
+    const [recorded] = await ctx.db
+      .select({ total: count() })
+      .from(workOrderSiteExpenseTable)
+      .where(
+        and(
+          eq(workOrderSiteExpenseTable.contract_order_item_id, itemId),
+          eq(workOrderSiteExpenseTable.from_order, 0),
+          editingId ? ne(workOrderSiteExpenseTable.id, editingId) : undefined,
+        ),
+      );
+    if ((recorded?.total ?? 0) > 0) {
+      throw businessRule(
+        "This requirement takes one expense, with its total quantity, and already has it. Edit that expense instead.",
+      );
+    }
+  }
+
+  return {
+    activityKey: item.item === OIL_ZAPPER.KEY ? OIL_ZAPPER.KEY : null,
+    unitRate: item.unit_rate ? Number(item.unit_rate) : null,
+  };
 }
+
+// An expense on a rated requirement costs its quantity at the rate, so it
+// must give one. Null for any other, which keeps the amount entered.
+const pricedAmount = (
+  unitRate: number | null,
+  quantity: string | null | undefined,
+): string | null => {
+  if (unitRate === null) return null;
+  const qty = parseFloat(quantity ?? "");
+  if (!(qty > 0)) {
+    throw businessRule(
+      "Enter the quantity worked, which the requirement's rate prices.",
+    );
+  }
+  return subContractAmount(qty, unitRate);
+};
 
 // A restoration vendor expense is spent on one of its job orders, under one
 // of that job order's vendors; a miscellaneous one is on none.
@@ -443,13 +493,14 @@ export const expenseMutationRouter = router({
           input.contractor_id,
           input.quantity,
         );
-        const activityKey = await resolveOrderItem(
+        const { activityKey, unitRate } = await resolveOrderItem(
           ctx,
           input.work_order_site_id,
           input.contract_order_item_id,
           input.contractor_id,
           input.activity_key,
         );
+        const amount = pricedAmount(unitRate, input.quantity) ?? input.amount;
         await assertJobOrderAllowed(
           ctx,
           input.work_order_site_id,
@@ -472,7 +523,14 @@ export const expenseMutationRouter = router({
 
           const [created] = await ctx.db
             .insert(workOrderSiteExpenseTable)
-            .values(newExpenseRow(input, activityKey, finalExceeded, userId))
+            .values(
+              newExpenseRow(
+                { ...input, amount },
+                activityKey,
+                finalExceeded,
+                userId,
+              ),
+            )
             .$returningId();
 
           if (!created) {
@@ -565,17 +623,21 @@ export const expenseMutationRouter = router({
           updateData.contract_order_item_id !== undefined
             ? updateData.contract_order_item_id
             : prev.contract_order_item_id;
-        const effectiveActivityKey = await resolveOrderItem(
-          ctx,
-          prev.work_order_site_id,
-          effectiveItemId,
-          updateData.contractor_id !== undefined
-            ? updateData.contractor_id
-            : prev.contractor_id,
-          updateData.activity_key !== undefined
-            ? updateData.activity_key
-            : prev.activity_key,
-        );
+        const { activityKey: effectiveActivityKey, unitRate } =
+          await resolveOrderItem(
+            ctx,
+            prev.work_order_site_id,
+            effectiveItemId,
+            updateData.contractor_id !== undefined
+              ? updateData.contractor_id
+              : prev.contractor_id,
+            updateData.activity_key !== undefined
+              ? updateData.activity_key
+              : prev.activity_key,
+            id,
+          );
+        const amount =
+          pricedAmount(unitRate, effectiveQuantity) ?? updateData.amount;
 
         // Checked only when the update touches the vendor or the quantity.
         if (updateData.contractor_id !== undefined || updateData.quantity !== undefined) {
@@ -631,7 +693,7 @@ export const expenseMutationRouter = router({
             setData.is_exceeded = updateData.is_exceeded ? 1 : 0;
           }
           if (updateData.title !== undefined) setData.title = updateData.title;
-          if (updateData.amount !== undefined) setData.amount = updateData.amount;
+          if (amount !== undefined) setData.amount = amount;
           if (updateData.start_date !== undefined) setData.start_date = new Date(updateData.start_date);
           if (updateData.end_date !== undefined) setData.end_date = new Date(updateData.end_date);
           if (updateData.invoice_number !== undefined) setData.invoice_number = updateData.invoice_number;
