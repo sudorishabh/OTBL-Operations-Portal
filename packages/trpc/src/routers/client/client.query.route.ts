@@ -10,6 +10,7 @@ import {
   like,
   or,
   sql,
+  sum,
   type SQL,
 } from "drizzle-orm";
 import { z } from "zod";
@@ -31,11 +32,8 @@ import { escapeLike } from "../../helper/escape-like";
 import { codeMatches } from "../../helper/record-code";
 import { buildPagination, pageOffset } from "../../helper/pagination";
 import { hasPhysicalSite } from "../../helper/restoration";
-import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
-import {
-  CODE_PREFIX,
-  effectiveWorkOrderStatusFromDbOnly,
-} from "@pkg/utils";
+import { sorFullyConsumedSql } from "../work-order/batch-effective-work-order-status";
+import { CODE_PREFIX } from "@pkg/utils";
 
 const {
   parentClientTable,
@@ -703,72 +701,69 @@ export const clientQueryRouter = router({
           )!;
         }
 
-        const workOrders = await ctx.db
-          .select({
-            id: workOrderTable.id,
-            office_id: workOrderTable.office_id,
-            status: workOrderTable.status,
-          })
-          .from(workOrderTable)
-          .where(workOrderWhere);
-
-        const workOrderIds = workOrders.map((w) => w.id);
-
-        const effectiveByWo = await batchEffectiveWorkOrderStatuses(
-          ctx.db,
-          scope,
-          workOrders.map((wo) => ({
-            id: Number(wo.id),
-            office_id: wo.office_id ?? null,
-            status: String(wo.status ?? ""),
-          })),
-        );
-        const completedWorkOrders = workOrders.filter((wo) => {
-          const effective =
-            effectiveByWo.get(Number(wo.id)) ??
-            effectiveWorkOrderStatusFromDbOnly(String(wo.status));
-          return effective === "completed";
-        }).length;
-
-        let siteCount = 0;
-        let totalBudgetAmount = 0;
-        let totalExpenseAmount = 0;
-
-        if (workOrderIds.length > 0) {
-          const woSites = await ctx.db
-            .select({
-              id: workOrderSiteTable.id,
-              site_id: workOrderSiteTable.site_id,
-            })
-            .from(workOrderSiteTable)
-            .where(inArray(workOrderSiteTable.work_order_id, workOrderIds));
-
-          siteCount = woSites.filter((s) => s.site_id != null).length;
-
-          const sors = await ctx.db
-            .select({ total_cost: scheduleOfRatesTable.total_cost })
-            .from(scheduleOfRatesTable)
-            .where(inArray(scheduleOfRatesTable.work_order_id, workOrderIds));
-
-          totalBudgetAmount = sors.reduce((acc, curr) => acc + Number(curr.total_cost || 0), 0);
-
-          if (woSites.length > 0) {
-            const woSiteIds = woSites.map(s => s.id);
-            // Only bioremediation completion earns income; restoration
-            // tracks its expenses alone.
-            const bioremSoilExp = await ctx.db
-              .select({ amount: bioremediationContSoilTable.amount })
-              .from(bioremediationContSoilTable)
+        // The client's totals, counted and added up by the database. A
+        // pending work order whose schedule of rates is used up counts as
+        // completed.
+        const [[completedRow], [siteRow], [budgetRow], [incomeRow]] =
+          await Promise.all([
+            ctx.db
+              .select({ count: count() })
+              .from(workOrderTable)
               .where(
                 and(
-                  inArray(bioremediationContSoilTable.work_order_site_id, woSiteIds),
-                  eq(bioremediationContSoilTable.type, "completion" as any)
-                )
-              );
-
-            totalExpenseAmount = bioremSoilExp.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-          }
-        }
+                  workOrderWhere,
+                  or(
+                    eq(workOrderTable.status, "completed"),
+                    and(
+                      eq(workOrderTable.status, "pending"),
+                      sorFullyConsumedSql(),
+                    ),
+                  ),
+                ),
+              ),
+            ctx.db
+              .select({ count: count() })
+              .from(workOrderSiteTable)
+              .innerJoin(
+                workOrderTable,
+                eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+              )
+              .where(and(workOrderWhere, hasPhysicalSite)),
+            ctx.db
+              .select({ total: sum(scheduleOfRatesTable.total_cost) })
+              .from(scheduleOfRatesTable)
+              .innerJoin(
+                workOrderTable,
+                eq(scheduleOfRatesTable.work_order_id, workOrderTable.id),
+              )
+              .where(workOrderWhere),
+            // Only bioremediation completion earns income; restoration
+            // tracks its expenses alone.
+            ctx.db
+              .select({ total: sum(bioremediationContSoilTable.amount) })
+              .from(bioremediationContSoilTable)
+              .innerJoin(
+                workOrderSiteTable,
+                eq(
+                  bioremediationContSoilTable.work_order_site_id,
+                  workOrderSiteTable.id,
+                ),
+              )
+              .innerJoin(
+                workOrderTable,
+                eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+              )
+              .where(
+                and(
+                  workOrderWhere,
+                  eq(bioremediationContSoilTable.type, "completion"),
+                ),
+              ),
+          ]);
+        const completedWorkOrders = Number(completedRow?.count ?? 0);
+        const siteCount = Number(siteRow?.count ?? 0);
+        const totalBudgetAmount = Number(budgetRow?.total ?? 0);
+        const totalExpenseAmount = Number(incomeRow?.total ?? 0);
 
         return {
           client: client[0],
