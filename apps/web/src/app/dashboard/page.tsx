@@ -1,9 +1,8 @@
 "use client";
-import { useAuthContext, useIsAdmin } from "@/contexts/AuthContext";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { PageWrapper } from "@/components/wrapper/page-wrapper";
 import DashboardPageSkeleton, {
   RecentWorkOrdersSkeleton,
-  StatValueSkeleton,
 } from "@/components/skeleton/dashboard/dashboard-page-skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,38 +14,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { KpiStrip } from "@/components/dashboard/kpi-strip";
+import { ModulesGrid } from "@/components/dashboard/modules-grid";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
-import {
-  ArrowRight,
-  Building2,
-  CheckCircle2,
-  Clock3,
-  LogOut,
-  MapPin,
-  ReceiptIndianRupee,
-  Shield,
-  Tent,
-  UserCheck,
-  Users,
-  Users2,
-  XCircle,
-} from "lucide-react";
+import { ArrowRight, LogOut } from "lucide-react";
 import Link from "next/link";
-import { useMemo, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
-import { capitalFirstLetter } from "@pkg/utils";
+import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
 
 type DashboardWorkOrderRow =
   RouterOutputs["workOrderQuery"]["getAll"]["workOrders"][number];
 
-type StatTone = "default" | "yellow" | "green" | "red";
-
-const STAT_TONES: Record<StatTone, { icon: string; value: string }> = {
-  default: { icon: "text-cyan-700", value: "text-gray-900" },
-  yellow: { icon: "text-yellow-600", value: "text-yellow-700" },
-  green: { icon: "text-emerald-600", value: "text-emerald-700" },
-  red: { icon: "text-rose-500", value: "text-rose-600" },
+// What the overview's figures cover, by how the user's access is scoped.
+const SCOPE_COPY: Record<string, string> = {
+  full: "All offices",
+  office: "Your offices",
 };
+
+// "office_operator" reads "Office Operator".
+const roleLabel = (role: string) => capitalizeEachWord(role.replace(/_/g, " "));
 
 const STATUS_STYLES: Record<string, string> = {
   completed: "bg-green-100 text-green-800 border-green-200",
@@ -67,93 +53,18 @@ function formatShortDate(value: Date | string | null | undefined) {
 
 export default function DashboardPage() {
   const { user, logout, isUserLoading } = useAuthContext();
-  const isAdmin = useIsAdmin();
 
   const layoutQuery = trpc.authQuery.dashboardLayout.useQuery(undefined, {
     retry: false,
   });
-
-  const clientsQuery = trpc.clientQuery.totalClientAndContact.useQuery(
-    undefined,
-    { enabled: !isUserLoading },
-  );
-
-  // Only the totals, not every office.
-  const officesQuery = trpc.officeQuery.getOfficeTotals.useQuery(undefined, {
-    enabled: !isUserLoading,
-  });
-
-  const woTotalQuery = trpc.workOrderQuery.getAll.useQuery(
-    { page: 1, limit: 1, workOrderOrder: "latest" },
-    { enabled: !isUserLoading },
-  );
-
-  const woPendingQuery = trpc.workOrderQuery.getAll.useQuery(
-    { page: 1, limit: 1, status: "pending", workOrderOrder: "latest" },
-    { enabled: !isUserLoading },
-  );
-
-  const woCompletedQuery = trpc.workOrderQuery.getAll.useQuery(
-    { page: 1, limit: 1, status: "completed", workOrderOrder: "latest" },
-    { enabled: !isUserLoading },
-  );
-
-  const woCancelledQuery = trpc.workOrderQuery.getAll.useQuery(
-    { page: 1, limit: 1, status: "cancelled", workOrderOrder: "latest" },
-    { enabled: !isUserLoading },
-  );
 
   const woRecentQuery = trpc.workOrderQuery.getAll.useQuery(
     { page: 1, limit: 8, workOrderOrder: "latest" },
     { enabled: !isUserLoading },
   );
 
-  const officeStats = {
-    officeCount: officesQuery.data?.officeCount ?? 0,
-    siteTotal: officesQuery.data?.siteTotal ?? 0,
-  };
-
-  const scopeCopy = useMemo(() => {
-    const mode = layoutQuery.data?.mode;
-    switch (mode) {
-      case "full":
-        return {
-          title: "Full access",
-          description:
-            "View and manage all offices, clients, and work orders across the organization.",
-        };
-      case "office":
-        return {
-          title: "Office-scoped",
-          description:
-            "Figures are limited to offices and work you are assigned to.",
-        };
-      case "site_only":
-        return {
-          title: "Site assignment",
-          description: "You are routed to your assigned sites.",
-        };
-      case "wo_site_upload":
-        return {
-          title: "Field upload",
-          description:
-            "You are routed to your work order site upload workspace.",
-        };
-      default:
-        return {
-          title: "Access",
-          description: "Loading your access scope…",
-        };
-    }
-  }, [layoutQuery.data?.mode]);
-
-  const statsLoading =
-    clientsQuery.isLoading ||
-    officesQuery.isLoading ||
-    woTotalQuery.isLoading ||
-    woPendingQuery.isLoading ||
-    woCompletedQuery.isLoading ||
-    woCancelledQuery.isLoading;
+  // What the figures on the page cover.
+  const scope = SCOPE_COPY[layoutQuery.data?.mode ?? ""] ?? "";
 
   const recentWorkOrders: DashboardWorkOrderRow[] =
     woRecentQuery.data?.workOrders ?? [];
@@ -175,7 +86,7 @@ export default function DashboardPage() {
       title='Overview'
       description={
         user?.name
-          ? `Signed in as ${user.name} · ${user.role}`
+          ? [user.name, roleLabel(user.role), scope].filter(Boolean).join(" · ")
           : "OTBL Operations Portal"
       }
       button={
@@ -190,113 +101,8 @@ export default function DashboardPage() {
         </Button>
       }>
       <div className='mt-3 space-y-3'>
-        {/* Scope, figures and shortcuts collapsed into one dense card. */}
-        <div className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-          <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5'>
-            <div className='flex min-w-0 items-center gap-2.5'>
-              <div className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-cyan-50 ring-1 ring-inset ring-cyan-100'>
-                <Shield className='size-4 text-cyan-700' />
-              </div>
-              <div className='min-w-0'>
-                <p className='truncate text-[14px] font-semibold leading-tight text-gray-900'>
-                  {scopeCopy.title}
-                </p>
-                <p className='truncate text-[12px] leading-tight text-gray-500'>
-                  {scopeCopy.description}
-                </p>
-              </div>
-            </div>
-            <div className='flex items-center gap-2'>
-              {user?.email && (
-                <span className='hidden truncate text-[12px] text-gray-500 sm:inline'>
-                  {user.email}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className='grid grid-cols-2 divide-x divide-y divide-gray-200 border-y border-gray-200 bg-gray-50/60 sm:grid-cols-4 lg:grid-cols-8 lg:divide-y-0'>
-            <Stat
-              icon={Users2}
-              label='Clients'
-              value={clientsQuery.data?.totalClients}
-              loading={statsLoading}
-            />
-            <Stat
-              icon={UserCheck}
-              label='Contacts'
-              value={clientsQuery.data?.totalContacts}
-              loading={statsLoading}
-            />
-            <Stat
-              icon={Building2}
-              label='Offices'
-              value={officeStats.officeCount}
-              loading={statsLoading}
-            />
-            <Stat
-              icon={MapPin}
-              label='Sites'
-              value={officeStats.siteTotal}
-              loading={statsLoading}
-            />
-            <Stat
-              icon={ReceiptIndianRupee}
-              label='Work orders'
-              value={woTotalQuery.data?.pagination.total}
-              loading={statsLoading}
-            />
-            <Stat
-              icon={Clock3}
-              label='Pending'
-              value={woPendingQuery.data?.pagination.total}
-              loading={statsLoading}
-              tone='yellow'
-            />
-            <Stat
-              icon={CheckCircle2}
-              label='Completed'
-              value={woCompletedQuery.data?.pagination.total}
-              loading={statsLoading}
-              tone='green'
-            />
-            <Stat
-              icon={XCircle}
-              label='Cancelled'
-              value={woCancelledQuery.data?.pagination.total}
-              loading={statsLoading}
-              tone='red'
-            />
-          </div>
-
-          <div className='flex flex-wrap items-center gap-1.5 px-4 py-2'>
-            <span className='text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
-              Go to
-            </span>
-            <QuickLink
-              href='/dashboard/client'
-              icon={Users2}
-              label='Clients'
-            />
-            <QuickLink
-              href='/dashboard/work-order'
-              icon={ReceiptIndianRupee}
-              label='Work orders'
-            />
-            <QuickLink
-              href='/dashboard/office-site'
-              icon={Tent}
-              label='Offices & sites'
-            />
-            {isAdmin && (
-              <QuickLink
-                href='/dashboard/user'
-                icon={Users}
-                label='User management'
-              />
-            )}
-          </div>
-        </div>
+        <KpiStrip />
+        <ModulesGrid />
 
         <div className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
           <div className='flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-2'>
@@ -388,63 +194,5 @@ export default function DashboardPage() {
         </div>
       </div>
     </PageWrapper>
-  );
-}
-
-// Divided metric tile: micro label with icon, headline figure underneath.
-function Stat({
-  icon: Icon,
-  label,
-  value,
-  loading,
-  tone = "default",
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  value: number | undefined;
-  loading: boolean;
-  tone?: StatTone;
-}) {
-  const styles = STAT_TONES[tone];
-
-  return (
-    <div className='min-w-0 px-3 py-2'>
-      <div className='flex items-center gap-1.5'>
-        <Icon className={cn("size-3 shrink-0", styles.icon)} />
-        <span className='truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
-          {label}
-        </span>
-      </div>
-      {loading ? (
-        <StatValueSkeleton />
-      ) : (
-        <p
-          className={cn(
-            "mt-0.5 truncate text-[18px] font-semibold leading-tight tabular-nums",
-            styles.value,
-          )}>
-          {Number(value ?? 0).toLocaleString("en-IN")}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function QuickLink({
-  href,
-  icon: Icon,
-  label,
-}: {
-  href: string;
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className='inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[12px] font-medium text-cyan-900 transition-colors hover:border-cyan-900/20 hover:bg-cyan-50'>
-      <Icon className='size-3.5 text-cyan-700' />
-      {label}
-    </Link>
   );
 }

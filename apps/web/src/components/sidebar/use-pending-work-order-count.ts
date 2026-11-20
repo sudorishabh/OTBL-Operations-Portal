@@ -3,8 +3,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { constants } from "@pkg/utils";
 
-// The overview's Pending tile asks for exactly this, so the two share one
-// cached answer.
+// One row is enough: only the total is read.
 const PENDING_WORK_ORDERS = {
   page: 1,
   limit: 1,
