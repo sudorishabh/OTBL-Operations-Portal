@@ -1,12 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import {
-  FileText,
-  FlaskConical,
-  Trash2,
-  Truck,
-  Upload,
-} from "lucide-react";
+import { FileText, FlaskConical, Trash2, Truck, Upload } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { constants } from "@pkg/utils";
@@ -22,6 +16,17 @@ import DocumentsMenu from "@/components/shared/documents-menu";
 import { SampleRowSkeleton } from "@/components/skeleton/work-order/site-skeletons";
 
 const MOBILIZATION = "mobilization";
+
+const { ZERO_DAY_SAMPLE } = constants;
+
+// When a sample was taken, or failing that, added.
+const sampleDate = (sample: {
+  sampled_on?: string | null;
+  created_at: string;
+}) => new Date(sample.sampled_on ?? sample.created_at);
+
+const formatTph = (value: number) =>
+  value.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 interface Props {
   woSiteId: number;
@@ -150,8 +155,9 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
     trpc.workOrderSiteQuery.getBioremediationData.useQuery({
       work_order_site_id: woSiteId,
     });
-  const sample = bioremediationDataQuery.data?.bioSamples.find(
-    (item: any) => item.application_month === constants.ZERO_DAY_SAMPLE,
+  const samples: any[] = bioremediationDataQuery.data?.bioSamples ?? [];
+  const sample = samples.find(
+    (item) => item.application_month === ZERO_DAY_SAMPLE,
   );
   const sampleDocuments = toDocuments(sample?.documents);
 
@@ -205,7 +211,7 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
         work_order_site_id: woSiteId,
         documents: uploaded.map(toStoredDocument),
         tph_value: tphValue.replace(",", "."),
-        application_month: constants.ZERO_DAY_SAMPLE,
+        application_month: ZERO_DAY_SAMPLE,
       });
     } catch (error) {
       toast.error(
@@ -227,41 +233,18 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
       {bioremediationDataQuery.isLoading ? (
         <SampleRowSkeleton />
       ) : sample ? (
-        <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 text-xs'>
-          <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5'>
-            <span className='rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-emerald-700 ring-1 ring-inset ring-emerald-200'>
-              TPH {sample.tph_value}
-            </span>
-            <DocumentsMenu
-              documents={sampleDocuments}
-              align='start'>
-              <button
-                type='button'
-                className='inline-flex cursor-pointer items-center gap-1.5 font-medium text-gray-700 transition-colors hover:text-emerald-700 hover:underline'>
-                <FileText className='size-3.5 text-gray-400' />
-                {sampleDocuments.length === 1
-                  ? "View report"
-                  : `${sampleDocuments.length} reports`}
-              </button>
-            </DocumentsMenu>
-            <span className='text-gray-500'>
-              Added {format(new Date(sample.created_at), "d MMM yy")}
-            </span>
-          </div>
-          <Button
-            variant='ghost'
-            size='sm'
-            disabled={deleteSample.isPending}
-            onClick={() => {
-              if (confirm("Delete the zero day sample?")) {
-                deleteSample.mutate({ id: sample.id });
-              }
-            }}
-            title='Delete zero day sample'
-            className='h-7 w-7 p-0 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500'>
-            <Trash2 className='size-3.5' />
-          </Button>
-        </div>
+        <SavedSample
+          tph={Number(sample.tph_value)}
+          takenOn={sampleDate(sample)}
+          isSampledOn={!!sample.sampled_on}
+          documents={sampleDocuments}
+          isDeleting={deleteSample.isPending}
+          onDelete={() => {
+            if (confirm("Delete the zero day sample?")) {
+              deleteSample.mutate({ id: sample.id });
+            }
+          }}
+        />
       ) : (
         <>
           <DocumentsField
@@ -308,3 +291,66 @@ export const ZeroDaySample = ({ woSiteId }: Props) => {
     </div>
   );
 };
+
+// The saved zero day sample: a record of the site's baseline TPH, when it
+// was taken, and its report.
+const SavedSample = ({
+  tph,
+  takenOn,
+  isSampledOn,
+  documents,
+  isDeleting,
+  onDelete,
+}: {
+  tph: number;
+  takenOn: Date;
+  isSampledOn: boolean;
+  documents: ReturnType<typeof toDocuments>;
+  isDeleting: boolean;
+  onDelete: () => void;
+}) => (
+  <div className='flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3'>
+    <span className='grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-100'>
+      <FlaskConical className='size-4' />
+    </span>
+    <div className='min-w-0 flex-1'>
+      <p className='text-[11px] font-medium uppercase tracking-wide text-gray-400'>
+        Baseline TPH
+      </p>
+      <p className='flex flex-wrap items-baseline gap-x-2'>
+        <span className='text-xl font-semibold leading-7 tabular-nums text-gray-900'>
+          {formatTph(tph)}
+        </span>
+        <span className='text-xs text-gray-500'>
+          {isSampledOn ? "Sampled" : "Added"} {format(takenOn, "d MMM yyyy")}
+        </span>
+      </p>
+    </div>
+    <div className='flex shrink-0 items-center gap-1'>
+      {documents.length > 0 && (
+        <DocumentsMenu
+          documents={documents}
+          align='end'>
+          <button
+            type='button'
+            className='inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-700 shadow-xs transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700'>
+            <FileText className='size-3.5 text-gray-400' />
+            {documents.length === 1
+              ? "View report"
+              : `${documents.length} reports`}
+          </button>
+        </DocumentsMenu>
+      )}
+      <Button
+        variant='ghost'
+        size='sm'
+        disabled={isDeleting}
+        onClick={onDelete}
+        title='Delete zero day sample'
+        aria-label='Delete zero day sample'
+        className='size-8 p-0 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500'>
+        <Trash2 className='size-3.5' />
+      </Button>
+    </div>
+  </div>
+);

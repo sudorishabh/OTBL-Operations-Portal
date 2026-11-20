@@ -28,17 +28,24 @@ const DocumentBoxSkeleton = () => (
   </div>
 );
 
-// The 0-day bio sample's row: TPH, report link, date and delete.
+// Mirrors the saved zero day sample: its icon, the baseline TPH under its
+// label with the date beside it, then the report button and delete.
 export const SampleRowSkeleton = () => (
   <SkeletonRegion
     label='Loading the sample'
-    className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2'>
-    <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5'>
-      <Skeleton className='h-5 w-20 rounded-full' />
-      <Skeleton className='h-3 w-20' />
-      <Skeleton className='h-3 w-24' />
+    className='flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3'>
+    <Skeleton className='size-9 shrink-0 rounded-lg' />
+    <div className='min-w-0 flex-1'>
+      <div className='flex h-4 items-center'>
+        <Skeleton className='h-2.5 w-20' />
+      </div>
+      <div className='flex h-7 items-center gap-2'>
+        <Skeleton className='h-5 w-12' />
+        <Skeleton className='h-3 w-28' />
+      </div>
     </div>
-    <Skeleton className='size-6' />
+    <Skeleton className='h-8 w-28 shrink-0 rounded-md' />
+    <Skeleton className='size-8 shrink-0 rounded-md' />
   </SkeletonRegion>
 );
 
