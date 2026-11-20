@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { TriangleAlert } from "lucide-react";
 import { formatCurrency } from "@pkg/utils";
 import {
@@ -12,6 +12,7 @@ import {
 import { RankedBars, type RankedBar } from "./ranked-bars";
 import { formatCompactRupees, formatCountOf, formatShare } from "./format";
 import { processLabel, sourceLabel } from "./labels";
+import { SpendingDialog } from "./spending-dialog";
 import { useFinanceSummary } from "./use-dashboard";
 
 const largestFirst = (rows: RankedBar[]) =>
@@ -21,75 +22,83 @@ const largestFirst = (rows: RankedBar[]) =>
 // and how much went over the estimates.
 export const SpendingCard = ({ className }: { className?: string }) => {
   const { data, isPending } = useFinanceSummary();
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <DashboardCard
-      className={className}
-      title='Spending breakdown'
-      description={
-        data
-          ? `${formatCompactRupees(data.spent)} across ${formatCountOf(data.count, "expense")}`
-          : "All expenses"
-      }>
-      {isPending ? (
-        <CardSkeleton
-          rows={6}
-          label='Loading the spending breakdown'
-        />
-      ) : !data ? (
-        <CardMessage tone='error'>{CARD_ERROR}</CardMessage>
-      ) : data.count === 0 ? (
-        <CardMessage>No expenses recorded yet.</CardMessage>
-      ) : (
-        <div className='space-y-4 px-4 py-4'>
-          <div>
-            <SubHeading>By what it was spent through</SubHeading>
-            <RankedBars
-              title='Expenses by what they were spent through'
-              formatValue={formatCompactRupees}
-              rows={largestFirst(
-                data.sources.map((source) => ({
-                  key: source.source,
-                  label: sourceLabel(source.source),
-                  note: formatCountOf(source.count, "expense"),
-                  value: source.total,
-                })),
-              )}
-            />
-          </div>
+    <>
+      <DashboardCard
+        className={className}
+        onExpand={() => setExpanded(true)}
+        title='Spending breakdown'
+        description={
+          data
+            ? `${formatCompactRupees(data.spent)} across ${formatCountOf(data.count, "expense")}`
+            : "All expenses"
+        }>
+        {isPending ? (
+          <CardSkeleton
+            rows={6}
+            label='Loading the spending breakdown'
+          />
+        ) : !data ? (
+          <CardMessage tone='error'>{CARD_ERROR}</CardMessage>
+        ) : data.count === 0 ? (
+          <CardMessage>No expenses recorded yet.</CardMessage>
+        ) : (
+          <div className='space-y-4 px-4 py-4'>
+            <div>
+              <SubHeading>By what it was spent through</SubHeading>
+              <RankedBars
+                title='Expenses by what they were spent through'
+                formatValue={formatCompactRupees}
+                rows={largestFirst(
+                  data.sources.map((source) => ({
+                    key: source.source,
+                    label: sourceLabel(source.source),
+                    note: formatCountOf(source.count, "expense"),
+                    value: source.total,
+                  })),
+                )}
+              />
+            </div>
 
-          <div>
-            <SubHeading>By process</SubHeading>
-            <RankedBars
-              title='Expenses by process'
-              formatValue={formatCompactRupees}
-              rows={largestFirst(
-                Object.entries(data.byProcess).map(([process, total]) => ({
-                  key: process,
-                  label: processLabel(process),
-                  value: total,
-                })),
-              )}
-            />
-          </div>
+            <div>
+              <SubHeading>By process</SubHeading>
+              <RankedBars
+                title='Expenses by process'
+                formatValue={formatCompactRupees}
+                rows={largestFirst(
+                  Object.entries(data.byProcess).map(([process, total]) => ({
+                    key: process,
+                    label: processLabel(process),
+                    value: total,
+                  })),
+                )}
+              />
+            </div>
 
-          <p
-            className='flex items-start gap-1.5 rounded-lg bg-gray-50 px-2.5 py-2 text-[12px] text-gray-600'
-            title={formatCurrency(data.exceeded)}>
-            <TriangleAlert
-              aria-hidden='true'
-              className='mt-0.5 size-3.5 shrink-0 text-amber-600'
-            />
-            <span>
-              <span className='font-semibold text-gray-900'>
-                {formatCompactRupees(data.exceeded)}
-              </span>{" "}
-              spent over the estimates ({formatShare(data.exceeded, data.spent)}{" "}
-              of all expenses)
-            </span>
-          </p>
-        </div>
-      )}
-    </DashboardCard>
+            <p
+              className='flex items-start gap-1.5 rounded-lg bg-gray-50 px-2.5 py-2 text-[12px] text-gray-600'
+              title={formatCurrency(data.exceeded)}>
+              <TriangleAlert
+                aria-hidden='true'
+                className='mt-0.5 size-3.5 shrink-0 text-amber-600'
+              />
+              <span>
+                <span className='font-semibold text-gray-900'>
+                  {formatCompactRupees(data.exceeded)}
+                </span>{" "}
+                spent over the estimates (
+                {formatShare(data.exceeded, data.spent)} of all expenses)
+              </span>
+            </p>
+          </div>
+        )}
+      </DashboardCard>
+      <SpendingDialog
+        open={expanded}
+        onOpenChange={setExpanded}
+      />
+    </>
   );
 };
