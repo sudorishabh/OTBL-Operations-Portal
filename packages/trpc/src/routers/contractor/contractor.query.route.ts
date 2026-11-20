@@ -546,10 +546,10 @@ export const contractorQueryRouter = router({
     }),
   ),
 
-  // What a vendor's expenses can be narrowed by: the work orders, months,
-  // processes and kinds of order they are in, and whether any are over the
-  // estimate. Not narrowed itself, so no choice goes missing as filters
-  // change.
+  // What a vendor's expenses can be narrowed by: the months, processes and
+  // kinds of order they are in, how many work orders (which are searched
+  // separately), and whether any are over the estimate. Not narrowed itself,
+  // so no choice goes missing as filters change.
   getContractorExpenseChoices: protectedProcedure
     .input(z.object({ id: z.number().positive() }))
     .query(
@@ -561,19 +561,14 @@ export const contractorQueryRouter = router({
         const e = workOrderSiteExpenseTable;
 
         try {
-          const [workOrders, months, processes, sources, [exceeded]] =
+          const [[workOrders], months, processes, sources, [exceeded]] =
             await Promise.all([
               withExpensePlaces(
                 ctx.db
-                  .selectDistinct({
-                    id: workOrderTable.id,
-                    code: workOrderTable.code,
-                  })
+                  .select({ count: countDistinct(workOrderTable.id) })
                   .from(e)
                   .$dynamic(),
-              )
-                .where(where)
-                .orderBy(desc(workOrderTable.id)),
+              ).where(where),
               withExpensePlaces(
                 ctx.db
                   .selectDistinct({ month: expenseMonth })
@@ -600,7 +595,7 @@ export const contractorQueryRouter = router({
             ]);
 
           return {
-            work_orders: workOrders,
+            work_order_count: Number(workOrders?.count ?? 0),
             months: months.map((row) => row.month),
             processes: processes.map((row) => row.process),
             sources: EXPENSE_SOURCES.filter((source) =>
@@ -610,6 +605,63 @@ export const contractorQueryRouter = router({
           };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching vendor expense choices");
+        }
+      }),
+    ),
+
+  // The work orders a vendor's expenses are in whose code matches a search,
+  // latest first, a few at a time for the work order filter, with the one
+  // picked, which may not be among them.
+  findContractorExpenseWorkOrders: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().positive(),
+        search: z.string().trim().max(100).optional(),
+        selected_id: z.number().int().positive().optional(),
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        await assertCanUseVendors(ctx);
+        const where = vendorExpenseWhere(input, await visibleWorkOrders(ctx), {
+          withFilters: false,
+        });
+        const e = workOrderSiteExpenseTable;
+        const workOrdersOf = () =>
+          withExpensePlaces(
+            ctx.db
+              .selectDistinct({
+                id: workOrderTable.id,
+                code: workOrderTable.code,
+              })
+              .from(e)
+              .$dynamic(),
+          );
+        const term = input.search ? `%${escapeLike(input.search)}%` : null;
+
+        try {
+          const [rows, selected] = await Promise.all([
+            workOrdersOf()
+              .where(
+                and(where, term ? like(workOrderTable.code, term) : undefined),
+              )
+              .orderBy(desc(workOrderTable.id))
+              .limit(input.limit + 1),
+            input.selected_id
+              ? workOrdersOf()
+                  .where(and(where, eq(workOrderTable.id, input.selected_id)))
+                  .limit(1)
+              : Promise.resolve([]),
+          ]);
+
+          return {
+            work_orders: rows.slice(0, input.limit),
+            has_more: rows.length > input.limit,
+            selected: selected[0] ?? null,
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Searching vendor work orders");
         }
       }),
     ),
