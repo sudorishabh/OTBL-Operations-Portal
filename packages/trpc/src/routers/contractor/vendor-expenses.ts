@@ -116,11 +116,12 @@ export const withExpensePlaces = <T extends MySqlSelect>(query: T) =>
     );
 
 // The vendor's expenses in the work orders the user can see; with the
-// filters, those they leave.
+// filters, those they leave. Without its months, the rest of the filters, so
+// a timeline can show the months around those picked.
 export const vendorExpenseWhere = (
   input: VendorExpenseFilters,
   visible: SQL | undefined,
-  { withFilters = true } = {},
+  { withFilters = true, withMonths = true } = {},
 ) => {
   const base = and(eq(e.contractor_id, input.id), visible);
   if (!withFilters) return base;
@@ -128,10 +129,12 @@ export const vendorExpenseWhere = (
   const term = input.search ? `%${escapeLike(input.search)}%` : null;
   return and(
     base,
-    input.from_month
+    withMonths && input.from_month
       ? gte(e.start_date, firstDayOf(input.from_month))
       : undefined,
-    input.to_month ? lt(e.start_date, firstDayAfter(input.to_month)) : undefined,
+    withMonths && input.to_month
+      ? lt(e.start_date, firstDayAfter(input.to_month))
+      : undefined,
     input.work_order_id
       ? eq(workOrderTable.id, input.work_order_id)
       : undefined,
