@@ -288,6 +288,13 @@
       "when": 1795082047445,
       "tag": "0040_drop_office_manager_role",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1795153579512,
+      "tag": "0041_expense_description",
+      "breakpoints": true
     }
   ]
 }

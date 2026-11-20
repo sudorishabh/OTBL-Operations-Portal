@@ -456,7 +456,7 @@ export const contractOrderQueryRouter = router({
                       workOrderSiteExpenseTable.contract_order_item_id,
                     work_order_site_id:
                       workOrderSiteExpenseTable.work_order_site_id,
-                    title: workOrderSiteExpenseTable.title,
+                    description: workOrderSiteExpenseTable.description,
                     amount: workOrderSiteExpenseTable.amount,
                     quantity: workOrderSiteExpenseTable.quantity,
                     start_date: workOrderSiteExpenseTable.start_date,

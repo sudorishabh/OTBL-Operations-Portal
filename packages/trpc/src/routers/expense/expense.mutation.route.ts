@@ -383,6 +383,9 @@ const amountValidator = z
     message: "Amount must be a positive number",
   });
 
+// What an expense was for. Optional; left blank, it is stored as none.
+const descriptionValidator = z.string().trim().max(500).nullish();
+
 // A new expense's row. Its documents also fill the legacy single-document
 // columns, kept until they are dropped.
 const newExpenseRow = (
@@ -392,7 +395,7 @@ const newExpenseRow = (
     contract_order_item_id?: number | null;
     job_order_id?: number | null;
     quantity?: string | null;
-    title: string;
+    description?: string | null;
     amount: string;
     start_date: string;
     end_date: string;
@@ -410,7 +413,7 @@ const newExpenseRow = (
   activity_key: activityKey,
   quantity: expense.quantity ?? null,
   is_exceeded: isExceeded ? 1 : 0,
-  title: expense.title,
+  description: expense.description || null,
   amount: expense.amount,
   start_date: new Date(expense.start_date),
   end_date: new Date(expense.end_date),
@@ -429,7 +432,7 @@ const createExpenseSchema = z.object({
   activity_key: z.string().max(100).optional().nullable(),
   quantity: z.string().optional().nullable(),
   is_exceeded: z.boolean().optional().default(false),
-  title: z.string().min(1, "Title is required").max(500),
+  description: descriptionValidator,
   amount: amountValidator,
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().min(1, "End date is required"),
@@ -444,7 +447,7 @@ const createJobOrderExpensesSchema = z
     work_order_site_id: z.number().positive(),
     job_order_id: z.number().positive(),
     contractor_id: z.number().positive(),
-    title: z.string().min(1, "Title is required").max(500),
+    description: descriptionValidator,
     start_date: z.string().min(1, "Start date is required"),
     end_date: z.string().min(1, "End date is required"),
     invoice_number: z.string().max(100).optional().nullable(),
@@ -477,7 +480,7 @@ const createOrderExpensesSchema = z
   .object({
     work_order_site_id: z.number().positive(),
     contractor_id: z.number().positive(),
-    title: z.string().min(1, "Title is required").max(500),
+    description: descriptionValidator,
     start_date: z.string().min(1, "Start date is required"),
     end_date: z.string().min(1, "End date is required"),
     invoice_number: z.string().max(100).optional().nullable(),
@@ -510,7 +513,7 @@ const updateExpenseSchema = z.object({
   activity_key: z.string().max(100).optional().nullable(),
   quantity: z.string().optional().nullable(),
   is_exceeded: z.boolean().optional(),
-  title: z.string().min(1).max(500).optional(),
+  description: descriptionValidator,
   amount: z
     .string()
     .refine((v) => Number.isFinite(parseFloat(v)) && parseFloat(v) > 0, {
@@ -798,7 +801,9 @@ export const expenseMutationRouter = router({
           } else if (updateData.is_exceeded !== undefined) {
             setData.is_exceeded = updateData.is_exceeded ? 1 : 0;
           }
-          if (updateData.title !== undefined) setData.title = updateData.title;
+          if (updateData.description !== undefined) {
+            setData.description = updateData.description || null;
+          }
           if (amount !== undefined) setData.amount = amount;
           if (updateData.start_date !== undefined) setData.start_date = new Date(updateData.start_date);
           if (updateData.end_date !== undefined) setData.end_date = new Date(updateData.end_date);

@@ -154,7 +154,7 @@ export async function recordPurchaseOrderExpenses(
       contractor_id: vendor.contractor_id,
       contract_order_item_id: item.id,
       from_order: 1,
-      title: `${order.code}: ${OIL_ZAPPER.LABEL}`,
+      description: `${order.code}: ${OIL_ZAPPER.LABEL}`,
       amount: purchaseOrderAmount(
         Number(item.quantity),
         unitRate,
