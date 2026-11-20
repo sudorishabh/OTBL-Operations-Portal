@@ -39,6 +39,8 @@ const { WO_PROCESS } = constants;
 
 type ExpenseChoices =
   RouterOutputs["contractorQuery"]["getContractorExpenseChoices"];
+type WorkOrderResults =
+  RouterOutputs["contractorQuery"]["findContractorExpenseWorkOrders"];
 
 const PROCESS_LABELS: Record<string, string> = {
   [WO_PROCESS.RESTORATION]: "Restoration",
@@ -65,6 +67,25 @@ const VendorExpensesSection = ({ contractorId }: { contractorId: number }) => {
 
   const choices = choicesQuery.data as ExpenseChoices | undefined;
   const breakdown = breakdownQuery.data;
+
+  // A vendor can work in many work orders: they are searched on the server,
+  // a few at a time, keeping the one picked.
+  const [workOrderSearch, setWorkOrderSearch] = useState("");
+  const debouncedWorkOrderSearch = useDebounce(workOrderSearch.trim(), 300);
+  const workOrdersQuery =
+    trpc.contractorQuery.findContractorExpenseWorkOrders.useQuery(
+      {
+        id: contractorId,
+        search: debouncedWorkOrderSearch || undefined,
+        selected_id:
+          filters.workOrder === ALL ? undefined : Number(filters.workOrder),
+      },
+      {
+        enabled: (choices?.work_order_count ?? 0) > 1,
+        placeholderData: keepPreviousData,
+      },
+    );
+  const workOrderResults = workOrdersQuery.data as WorkOrderResults | undefined;
   const set =
     <K extends keyof VendorExpenseFilters>(key: K) =>
     (value: VendorExpenseFilters[K]) =>
@@ -84,12 +105,16 @@ const VendorExpensesSection = ({ contractorId }: { contractorId: number }) => {
       .filter((month) => filters.from === ALL || month >= filters.from)
       .map((month) => ({ value: month, label: `To ${monthLabel(month)}` })),
   ];
-  const workOrderOptions: FilterOption[] = (choices?.work_orders ?? []).map(
-    (workOrder) => ({
-      value: String(workOrder.id),
-      label: workOrder.code.toUpperCase(),
-    }),
-  );
+  const toWorkOrderOption = (workOrder: { id: number; code: string }) => ({
+    value: String(workOrder.id),
+    label: workOrder.code.toUpperCase(),
+  });
+  const workOrderOptions: FilterOption[] = (
+    workOrderResults?.work_orders ?? []
+  ).map(toWorkOrderOption);
+  const pickedWorkOrder = workOrderResults?.selected
+    ? toWorkOrderOption(workOrderResults.selected)
+    : undefined;
   const offeredSources = (choices?.sources ?? []) as ExpenseSource[];
 
   const heading = (
@@ -146,7 +171,7 @@ const VendorExpensesSection = ({ contractorId }: { contractorId: number }) => {
           onChange={set("to")}
           options={toOptions}
         />
-        {workOrderOptions.length > 1 && (
+        {(choices?.work_order_count ?? 0) > 1 && (
           <ComboboxFilter
             label='Work order'
             allLabel='All work orders'
@@ -154,7 +179,11 @@ const VendorExpensesSection = ({ contractorId }: { contractorId: number }) => {
             value={filters.workOrder}
             onChange={set("workOrder")}
             options={workOrderOptions}
-            searchPlaceholder='Search work orders'
+            isLoading={workOrdersQuery.isLoading}
+            searchPlaceholder='Search work orders by code'
+            onSearchChange={setWorkOrderSearch}
+            selectedOption={pickedWorkOrder}
+            hasMore={!!workOrderResults?.has_more}
           />
         )}
         {(choices?.processes.length ?? 0) > 1 && (
