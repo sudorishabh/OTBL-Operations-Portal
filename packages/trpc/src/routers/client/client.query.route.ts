@@ -12,6 +12,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import { z } from "zod";
 import { schema, type Database } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -327,6 +328,101 @@ export const clientQueryRouter = router({
           .orderBy(asc(clientTable.name), asc(clientTable.id));
       } catch (error) {
         throw fromDatabaseError(error, "Fetching client options");
+      }
+    }),
+  ),
+
+  // A few of the clients the user can see, matching a search on their code,
+  // name, city or main client, for a picker that searches as you type. The
+  // one already picked comes too, so its name shows whatever the search.
+  findClientOptions: protectedProcedure
+    .input(
+      z.object({
+        search: z.string().trim().max(100).optional(),
+        selected_id: z.number().int().positive().optional(),
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
+        const visible = clientListWhere({}, scope, clientIds);
+        const option = {
+          id: clientTable.id,
+          code: clientTable.code,
+          name: clientTable.name,
+          city: clientTable.city,
+          state: clientTable.state,
+          parent_client_name: parentClientTable.name,
+        };
+        const fromClients = () =>
+          ctx.db
+            .select(option)
+            .from(clientTable)
+            .leftJoin(
+              parentClientTable,
+              eq(parentClientTable.id, clientTable.parent_client_id),
+            );
+
+        try {
+          const [matches, selected] = await Promise.all([
+            fromClients()
+              .where(
+                clientListWhere(
+                  { searchQuery: input.search || undefined },
+                  scope,
+                  clientIds,
+                ),
+              )
+              .orderBy(asc(clientTable.name), asc(clientTable.id))
+              // One more than shown tells whether there are more.
+              .limit(input.limit + 1),
+            input.selected_id
+              ? fromClients()
+                  .where(and(visible, eq(clientTable.id, input.selected_id)))
+                  .limit(1)
+              : Promise.resolve([]),
+          ]);
+
+          return {
+            clients: matches.slice(0, input.limit),
+            has_more: matches.length > input.limit,
+            selected: selected[0] ?? null,
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Finding client options");
+        }
+      }),
+    ),
+
+  // The states the user's clients are in, each once, for a filter.
+  getClientStates: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const scope = await getAccessScope(
+        ctx.db,
+        Number(ctx.user!.sub),
+        ctx.user!.role,
+      );
+      const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
+
+      try {
+        const rows = await ctx.db
+          .selectDistinct({ state: clientTable.state })
+          .from(clientTable)
+          .leftJoin(
+            parentClientTable,
+            eq(parentClientTable.id, clientTable.parent_client_id),
+          )
+          .where(clientListWhere({}, scope, clientIds))
+          .orderBy(asc(clientTable.state));
+        return rows.map((row) => row.state).filter(Boolean);
+      } catch (error) {
+        throw fromDatabaseError(error, "Fetching client states");
       }
     }),
   ),
