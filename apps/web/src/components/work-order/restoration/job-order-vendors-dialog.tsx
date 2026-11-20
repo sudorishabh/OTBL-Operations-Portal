@@ -56,6 +56,7 @@ const JobOrderVendorsDialog = ({
         }),
         utils.restorationQuery.getRestoration.invalidate(),
         utils.contractorQuery.getContractorWork.invalidate(),
+        utils.contractorQuery.getContractorJobOrders.invalidate(),
       ]);
       onClose();
     },

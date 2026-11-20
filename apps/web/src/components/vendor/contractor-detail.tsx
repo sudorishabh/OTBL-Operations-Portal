@@ -9,7 +9,10 @@ import {
   constants,
   formatCurrency,
 } from "@pkg/utils";
+import { type UseQueryResult } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
 import { cn } from "@/lib/utils";
 import { VendorDetailSkeleton } from "@/components/skeleton/vendor/vendor-skeletons";
 import {
@@ -29,7 +32,7 @@ interface Props {
   contractorId: number;
 }
 
-// Rows as getContractorWork returns them.
+// Rows as getContractorOrders and getContractorJobOrders return them.
 type WorkRow = {
   id: number;
   work_order_id: number;
@@ -50,6 +53,8 @@ type JobOrderRow = WorkRow & {
   end_date: string | Date;
 };
 
+const PAGE_SIZE = 20;
+
 const headClass = "h-9 px-4 text-xs font-medium text-gray-500";
 const cellClass = "px-4 py-2.5 text-sm text-gray-700";
 
@@ -64,7 +69,13 @@ const WorkOrderLink = ({ id, code }: { id: number; code: string }) => (
   </Link>
 );
 
-const Summary = ({ label, value }: { label: string; value: React.ReactNode }) => (
+const Summary = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) => (
   <div className='px-4 py-3'>
     <p className='text-xs text-gray-500'>{label}</p>
     <p className='mt-0.5 text-base font-semibold tabular-nums text-gray-900'>
@@ -79,21 +90,50 @@ const ContractorDetail = ({ contractorId }: Props) => {
   const contractorQuery = trpc.contractorQuery.getContractor.useQuery({
     id: contractorId,
   });
+  // The totals, then each table a page at a time.
   const workQuery = trpc.contractorQuery.getContractorWork.useQuery({
     id: contractorId,
   });
-
-  const contractor = contractorQuery.data?.contractor;
-  const contractOrders = (workQuery.data?.contractOrders ??
-    []) as ContractOrderRow[];
-  const jobOrders = (workQuery.data?.jobOrders ?? []) as JobOrderRow[];
-  const totalSpent = [...contractOrders, ...jobOrders].reduce(
-    (sum, row) => sum + row.spent,
-    0,
+  const ordersInput = { id: contractorId, limit: PAGE_SIZE };
+  const { pages: orderPages, loadMore: loadMoreOrders } =
+    useLoadMorePages(ordersInput);
+  const orderQueries: UseQueryResult<{
+    orders: ContractOrderRow[];
+    pagination: { hasMore: boolean };
+  }>[] = trpc.useQueries((t: any) =>
+    orderPages.map((page) =>
+      t.contractorQuery.getContractorOrders({ ...ordersInput, page }),
+    ),
+  );
+  const { pages: jobOrderPages, loadMore: loadMoreJobOrders } =
+    useLoadMorePages(ordersInput);
+  const jobOrderQueries: UseQueryResult<{
+    jobOrders: JobOrderRow[];
+    pagination: { hasMore: boolean };
+  }>[] = trpc.useQueries((t: any) =>
+    jobOrderPages.map((page) =>
+      t.contractorQuery.getContractorJobOrders({ ...ordersInput, page }),
+    ),
   );
 
+  const contractor = contractorQuery.data?.contractor;
+  const contractOrders = orderQueries.flatMap(
+    (query) => query.data?.orders ?? [],
+  );
+  const jobOrders = jobOrderQueries.flatMap(
+    (query) => query.data?.jobOrders ?? [],
+  );
+  const orderCount = workQuery.data?.order_count ?? 0;
+  const jobOrderCount = workQuery.data?.job_order_count ?? 0;
+  const totalSpent = workQuery.data?.total_spent ?? 0;
+
   // Wait for the orders too, or their counts and tables would read as empty.
-  if (contractorQuery.isLoading || workQuery.isLoading) {
+  if (
+    contractorQuery.isLoading ||
+    workQuery.isLoading ||
+    orderQueries[0]?.isLoading ||
+    jobOrderQueries[0]?.isLoading
+  ) {
     return <VendorDetailSkeleton />;
   }
   if (!contractor) {
@@ -133,10 +173,22 @@ const ContractorDetail = ({ contractorId }: Props) => {
           </div>
         </div>
         <div className='grid grid-cols-2 divide-x border-t bg-gray-50/60 sm:grid-cols-4'>
-          <Summary label='GST' value={contractor.gst_number || "—"} />
-          <Summary label='Orders' value={contractOrders.length} />
-          <Summary label='Job orders' value={jobOrders.length} />
-          <Summary label='Spent with them' value={formatCurrency(totalSpent)} />
+          <Summary
+            label='GST'
+            value={contractor.gst_number || "—"}
+          />
+          <Summary
+            label='Orders'
+            value={orderCount}
+          />
+          <Summary
+            label='Job orders'
+            value={jobOrderCount}
+          />
+          <Summary
+            label='Spent with them'
+            value={formatCurrency(totalSpent)}
+          />
         </div>
       </div>
 
@@ -158,13 +210,16 @@ const ContractorDetail = ({ contractorId }: Props) => {
                   <TableHead className={headClass}>Type</TableHead>
                   <TableHead className={headClass}>Date</TableHead>
                   <TableHead className={headClass}>Work order</TableHead>
-                  <TableHead className={cn(headClass, "text-right")}>Spent</TableHead>
+                  <TableHead className={cn(headClass, "text-right")}>
+                    Spent
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {contractOrders.map((order) => (
                   <TableRow key={order.id}>
-                    <TableCell className={cn(cellClass, "font-mono font-medium")}>
+                    <TableCell
+                      className={cn(cellClass, "font-mono font-medium")}>
                       {order.code}
                     </TableCell>
                     <TableCell className={cellClass}>
@@ -188,7 +243,8 @@ const ContractorDetail = ({ contractorId }: Props) => {
                         code={order.work_order_code}
                       />
                     </TableCell>
-                    <TableCell className={cn(cellClass, "text-right tabular-nums")}>
+                    <TableCell
+                      className={cn(cellClass, "text-right tabular-nums")}>
                       {formatCurrency(order.spent)}
                       <span className='ml-1 text-xs text-gray-400'>
                         ({order.expense_count})
@@ -199,6 +255,13 @@ const ContractorDetail = ({ contractorId }: Props) => {
               </TableBody>
             </Table>
           </div>
+        )}
+        {orderQueries.at(-1)?.data?.pagination.hasMore && (
+          <LoadMoreBtn
+            onClick={loadMoreOrders}
+            loading={orderPages.length > 1 && !!orderQueries.at(-1)?.isLoading}
+            className='pt-2'
+          />
         )}
       </section>
 
@@ -219,7 +282,9 @@ const ContractorDetail = ({ contractorId }: Props) => {
                   <TableHead className={headClass}>Job order</TableHead>
                   <TableHead className={headClass}>Dates</TableHead>
                   <TableHead className={headClass}>Work order</TableHead>
-                  <TableHead className={cn(headClass, "text-right")}>Spent</TableHead>
+                  <TableHead className={cn(headClass, "text-right")}>
+                    Spent
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -243,7 +308,8 @@ const ContractorDetail = ({ contractorId }: Props) => {
                         code={jobOrder.work_order_code}
                       />
                     </TableCell>
-                    <TableCell className={cn(cellClass, "text-right tabular-nums")}>
+                    <TableCell
+                      className={cn(cellClass, "text-right tabular-nums")}>
                       {formatCurrency(jobOrder.spent)}
                       <span className='ml-1 text-xs text-gray-400'>
                         ({jobOrder.expense_count})
@@ -254,6 +320,15 @@ const ContractorDetail = ({ contractorId }: Props) => {
               </TableBody>
             </Table>
           </div>
+        )}
+        {jobOrderQueries.at(-1)?.data?.pagination.hasMore && (
+          <LoadMoreBtn
+            onClick={loadMoreJobOrders}
+            loading={
+              jobOrderPages.length > 1 && !!jobOrderQueries.at(-1)?.isLoading
+            }
+            className='pt-2'
+          />
         )}
       </section>
     </div>
