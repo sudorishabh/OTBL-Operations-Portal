@@ -1,7 +1,5 @@
 "use client";
-import React from "react";
-import Link from "next/link";
-import { capitalFirstLetter, formatCurrency } from "@pkg/utils";
+import React, { useState } from "react";
 import {
   CARD_ERROR,
   CardLink,
@@ -9,92 +7,46 @@ import {
   CardSkeleton,
   DashboardCard,
 } from "./dashboard-card";
-import { formatCompactRupees, formatCount, formatCountOf } from "./format";
-import { StatusStripe } from "./status-parts";
+import { formatCountOf } from "./format";
+import { OfficeTable } from "./office-table";
+import { OfficesDialog } from "./offices-dialog";
 import { useOfficeBreakdown } from "./use-dashboard";
-
-const HEAD =
-  "px-4 py-1.5 text-[11px] font-semibold tracking-[0.08em] text-gray-400 uppercase";
 
 // The offices with the most pending work: their work orders by status,
 // their sites and what has been spent in their work orders.
 export const OfficesCard = ({ className }: { className?: string }) => {
   const { data, isPending } = useOfficeBreakdown();
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <DashboardCard
-      className={className}
-      title='Busiest offices'
-      description={
-        data && data.officeCount > 0
-          ? `Most pending work orders, of ${formatCountOf(data.officeCount, "office")} with work`
-          : "Most pending work orders"
-      }
-      action={<CardLink href='/dashboard/office-site'>All offices</CardLink>}>
-      {isPending ? (
-        <CardSkeleton
-          rows={6}
-          label='Loading offices'
-        />
-      ) : !data ? (
-        <CardMessage tone='error'>{CARD_ERROR}</CardMessage>
-      ) : data.offices.length === 0 ? (
-        <CardMessage>No office has work orders yet.</CardMessage>
-      ) : (
-        <div className='overflow-x-auto'>
-          <table className='w-full min-w-[34rem] text-[13px]'>
-            <thead className='border-b border-gray-200 bg-gray-50/60 text-left'>
-              <tr>
-                <th className={HEAD}>Office</th>
-                <th className={HEAD}>Work orders</th>
-                <th className={`${HEAD} text-right`}>Sites</th>
-                <th className={`${HEAD} text-right`}>Spent</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.offices.map((office) => (
-                <tr
-                  key={office.id}
-                  className='border-b border-gray-100 last:border-0'>
-                  <td className='max-w-[14rem] px-4 py-2'>
-                    <Link
-                      href={`/dashboard/office-site/${office.id}`}
-                      className='block truncate font-medium text-gray-800 hover:text-emerald-700 hover:underline'>
-                      {capitalFirstLetter(office.name)}
-                    </Link>
-                    <span className='block truncate text-[11px] text-gray-400'>
-                      {office.code} · {capitalFirstLetter(office.city)}
-                    </span>
-                  </td>
-                  <td className='w-[40%] px-4 py-2'>
-                    <span className='text-[12px] text-gray-600'>
-                      <span className='font-semibold text-gray-900'>
-                        {formatCount(office.pending)}
-                      </span>{" "}
-                      pending · {formatCount(office.completed)} completed
-                      {office.cancelled > 0 &&
-                        ` · ${formatCount(office.cancelled)} cancelled`}
-                    </span>
-                    <StatusStripe
-                      pending={office.pending}
-                      completed={office.completed}
-                      cancelled={office.cancelled}
-                    />
-                  </td>
-                  <td className='px-4 py-2 text-right tabular-nums text-gray-700'>
-                    {formatCount(office.sites)}
-                  </td>
-                  <td
-                    className='px-4 py-2 text-right tabular-nums text-gray-900'
-                    title={formatCurrency(office.spent)}>
-                    {formatCompactRupees(office.spent)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </DashboardCard>
+    <>
+      <DashboardCard
+        className={className}
+        onExpand={() => setExpanded(true)}
+        title='Busiest offices'
+        description={
+          data && data.officeCount > 0
+            ? `Most pending work orders, of ${formatCountOf(data.officeCount, "office")} with work`
+            : "Most pending work orders"
+        }
+        action={<CardLink href='/dashboard/office-site'>All offices</CardLink>}>
+        {isPending ? (
+          <CardSkeleton
+            rows={6}
+            label='Loading offices'
+          />
+        ) : !data ? (
+          <CardMessage tone='error'>{CARD_ERROR}</CardMessage>
+        ) : data.offices.length === 0 ? (
+          <CardMessage>No office has work orders yet.</CardMessage>
+        ) : (
+          <OfficeTable offices={data.offices} />
+        )}
+      </DashboardCard>
+      <OfficesDialog
+        open={expanded}
+        onOpenChange={setExpanded}
+      />
+    </>
   );
 };
