@@ -18,6 +18,9 @@ import { KpiStrip } from "@/components/dashboard/kpi-strip";
 import { ModulesGrid } from "@/components/dashboard/modules-grid";
 import { MonthlyExpensesCard } from "@/components/dashboard/monthly-expenses-card";
 import { WorkOrderStatusCard } from "@/components/dashboard/work-order-status-card";
+import { AttentionCard } from "@/components/dashboard/attention-card";
+import { SpendingCard } from "@/components/dashboard/spending-card";
+import { TopVendorsCard } from "@/components/dashboard/top-vendors-card";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { ArrowRight, LogOut } from "lucide-react";
 import Link from "next/link";
@@ -109,6 +112,15 @@ export default function DashboardPage() {
         <div className='grid gap-3 lg:grid-cols-3'>
           <MonthlyExpensesCard className='lg:col-span-2' />
           <WorkOrderStatusCard />
+        </div>
+
+        <div className='grid gap-3 lg:grid-cols-3'>
+          <AttentionCard className='lg:col-span-2' />
+          <SpendingCard />
+        </div>
+
+        <div className='grid gap-3 lg:grid-cols-3'>
+          <TopVendorsCard />
         </div>
 
         <div className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
