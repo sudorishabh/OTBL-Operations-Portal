@@ -8,7 +8,6 @@ import {
   gte,
   inArray,
   isNull,
-  lt,
   sql,
   sum,
   type SQL,
@@ -37,6 +36,8 @@ import {
 } from "../contractor/vendor-expenses";
 import {
   countWhere,
+  deadlineWhere,
+  ENDING_SOON_DAYS,
   e,
   hasDocuments,
   notCancelled,
@@ -73,9 +74,6 @@ const TREND_MONTHS = 12;
 
 // How many of the vendors most was spent with are listed.
 const TOP_VENDORS = 5;
-
-// How far ahead a pending work order's end date counts as coming up.
-const ENDING_SOON_DAYS = 30;
 
 // How many overdue and ending work orders are listed of each.
 const DEADLINE_ROWS = 5;
@@ -356,122 +354,126 @@ export const dashboardQueryRouter = router({
   // What needs following up across the visible work orders that are not
   // cancelled: pending work orders past their end date or ending soon, job
   // orders still to be certified or invoiced, and contract orders whose
-  // completion documents are still to come.
-  getAttention: protectedProcedure.query(
-    handleQuery(async ({ ctx }) => {
-      const visible = await visibleWorkOrders(ctx);
+  // completion documents are still to come. The filters narrow all of it.
+  getAttention: protectedProcedure
+    .input(
+      z
+        .object({
+          ...workOrderFilters,
+          // How far ahead counts as ending soon.
+          days: z.number().int().min(1).max(365).optional(),
+        })
+        .optional(),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const visible = and(
+          await visibleWorkOrders(ctx),
+          workOrderFilterWhere(input),
+        );
+        const days = input?.days ?? ENDING_SOON_DAYS;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const soon = new Date(today);
-      soon.setDate(soon.getDate() + ENDING_SOON_DAYS + 1);
+        const overdue = and(visible, deadlineWhere("overdue", days));
+        const endingSoon = and(visible, deadlineWhere("ending", days));
 
-      const overdue = and(visible, stillPending(), lt(wo.end_date, today));
-      const endingSoon = and(
-        visible,
-        stillPending(),
-        gte(wo.end_date, today),
-        lt(wo.end_date, soon),
-      );
-
-      // A few of the work orders a condition matches, those ending first
-      // first.
-      const deadlineRows = (where: SQL | undefined) =>
-        ctx.db
-          .select({
-            id: wo.id,
-            code: wo.code,
-            purchase_order_code: wo.purchase_order_code,
-            client_name: clientTable.name,
-            office_name: officeTable.name,
-            end_date: wo.end_date,
-          })
-          .from(wo)
-          .leftJoin(clientTable, eq(wo.client_id, clientTable.id))
-          .leftJoin(officeTable, eq(wo.office_id, officeTable.id))
-          .where(where)
-          .orderBy(asc(wo.end_date), asc(wo.id))
-          .limit(DEADLINE_ROWS);
-
-      const jo = jobOrderTable;
-      const certified = hasDocuments(jo.documents);
-      const co = contractOrderTable;
-
-      try {
-        const [
-          [overdueCount],
-          overdueRows,
-          [endingSoonCount],
-          endingSoonRows,
-          [jobOrders],
-          orderRows,
-        ] = await Promise.all([
-          ctx.db.select({ count: count() }).from(wo).where(overdue),
-          deadlineRows(overdue),
-          ctx.db.select({ count: count() }).from(wo).where(endingSoon),
-          deadlineRows(endingSoon),
+        // A few of the work orders a condition matches, those ending first
+        // first.
+        const deadlineRows = (where: SQL | undefined) =>
           ctx.db
             .select({
-              total: count(),
-              closed: countWhere(certified),
-              // Its work done saved, its certificate still to come.
-              work_done: countWhere(
-                sql`not ${certified} and ${jo.completion_activities} is not null`,
-              ),
-              not_invoiced: countWhere(
-                sql`${certified} and not ${hasDocuments(jo.invoices)}`,
-              ),
+              id: wo.id,
+              code: wo.code,
+              purchase_order_code: wo.purchase_order_code,
+              client_name: clientTable.name,
+              office_name: officeTable.name,
+              end_date: wo.end_date,
             })
-            .from(jo)
-            .innerJoin(wos, eq(jo.work_order_site_id, wos.id))
-            .innerJoin(wo, eq(wos.work_order_id, wo.id))
-            .where(and(visible, notCancelled)),
-          ctx.db
-            .select({
-              type: co.type,
-              total: count(),
-              completed: countWhere(hasDocuments(co.completion_documents)),
-            })
-            .from(co)
-            .innerJoin(wo, eq(co.work_order_id, wo.id))
-            .where(and(visible, notCancelled))
-            .groupBy(co.type),
-        ]);
+            .from(wo)
+            .leftJoin(clientTable, eq(wo.client_id, clientTable.id))
+            .leftJoin(officeTable, eq(wo.office_id, officeTable.id))
+            .where(where)
+            .orderBy(asc(wo.end_date), asc(wo.id))
+            .limit(DEADLINE_ROWS);
 
-        const jobOrderTotal = Number(jobOrders?.total ?? 0);
-        const closed = Number(jobOrders?.closed ?? 0);
-        const workDone = Number(jobOrders?.work_done ?? 0);
+        const jo = jobOrderTable;
+        const certified = hasDocuments(jo.documents);
+        const co = contractOrderTable;
 
-        return {
-          overdue: {
-            count: Number(overdueCount?.count ?? 0),
-            workOrders: overdueRows,
-          },
-          endingSoon: {
-            days: ENDING_SOON_DAYS,
-            count: Number(endingSoonCount?.count ?? 0),
-            workOrders: endingSoonRows,
-          },
-          jobOrders: {
-            total: jobOrderTotal,
-            open: jobOrderTotal - closed - workDone,
-            awaitingCertificate: workDone,
-            closed,
-            awaitingInvoice: Number(jobOrders?.not_invoiced ?? 0),
-          },
-          // Each kind of contract order, with those completed.
-          contractOrders: Object.fromEntries(
-            orderRows.map((row) => [
-              row.type,
-              { total: Number(row.total), completed: Number(row.completed) },
-            ]),
-          ) as Record<string, { total: number; completed: number }>,
-        };
-      } catch (error) {
-        throw fromDatabaseError(error, "Finding work that needs attention");
-      }
-    }),
-  ),
+        try {
+          const [
+            [overdueCount],
+            overdueRows,
+            [endingSoonCount],
+            endingSoonRows,
+            [jobOrders],
+            orderRows,
+          ] = await Promise.all([
+            ctx.db.select({ count: count() }).from(wo).where(overdue),
+            deadlineRows(overdue),
+            ctx.db.select({ count: count() }).from(wo).where(endingSoon),
+            deadlineRows(endingSoon),
+            ctx.db
+              .select({
+                total: count(),
+                closed: countWhere(certified),
+                // Its work done saved, its certificate still to come.
+                work_done: countWhere(
+                  sql`not ${certified} and ${jo.completion_activities} is not null`,
+                ),
+                not_invoiced: countWhere(
+                  sql`${certified} and not ${hasDocuments(jo.invoices)}`,
+                ),
+              })
+              .from(jo)
+              .innerJoin(wos, eq(jo.work_order_site_id, wos.id))
+              .innerJoin(wo, eq(wos.work_order_id, wo.id))
+              .where(and(visible, notCancelled)),
+            ctx.db
+              .select({
+                type: co.type,
+                total: count(),
+                completed: countWhere(hasDocuments(co.completion_documents)),
+              })
+              .from(co)
+              .innerJoin(wo, eq(co.work_order_id, wo.id))
+              .where(and(visible, notCancelled))
+              .groupBy(co.type),
+          ]);
+
+          const jobOrderTotal = Number(jobOrders?.total ?? 0);
+          const closed = Number(jobOrders?.closed ?? 0);
+          const workDone = Number(jobOrders?.work_done ?? 0);
+
+          return {
+            overdue: {
+              count: Number(overdueCount?.count ?? 0),
+              workOrders: overdueRows,
+            },
+            endingSoon: {
+              days,
+              count: Number(endingSoonCount?.count ?? 0),
+              workOrders: endingSoonRows,
+            },
+            jobOrders: {
+              total: jobOrderTotal,
+              open: jobOrderTotal - closed - workDone,
+              awaitingCertificate: workDone,
+              closed,
+              awaitingInvoice: Number(jobOrders?.not_invoiced ?? 0),
+            },
+            // Each kind of contract order, with those completed.
+            contractOrders: Object.fromEntries(
+              orderRows.map((row) => [
+                row.type,
+                { total: Number(row.total), completed: Number(row.completed) },
+              ]),
+            ) as Record<string, { total: number; completed: number }>,
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Finding work that needs attention");
+        }
+      }),
+    ),
 
   // How many records each module holds that the user can see: proposals by
   // status and main clients; vendors, for those who can see them; and users

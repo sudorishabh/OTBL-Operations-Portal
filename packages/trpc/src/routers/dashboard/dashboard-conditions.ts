@@ -137,6 +137,22 @@ export const trendMonths = (count: number, now = new Date()) =>
     monthKey(new Date(now.getFullYear(), now.getMonth() - (count - 1 - index))),
   );
 
+// How far ahead a pending work order's end date counts as coming up, unless
+// asked otherwise.
+export const ENDING_SOON_DAYS = 30;
+
+// Pending work orders against their end date: those past it, or those
+// ending within the next `days` days, today included.
+export const deadlineWhere = (kind: "overdue" | "ending", days: number) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (kind === "overdue") return and(stillPending(), lt(wo.end_date, today))!;
+
+  const until = new Date(today);
+  until.setDate(until.getDate() + days + 1);
+  return and(stillPending(), gte(wo.end_date, today), lt(wo.end_date, until))!;
+};
+
 // A page of a dialog's list.
 export const pageInput = (limit: number) => ({
   page: z.number().int().min(1).default(1),
