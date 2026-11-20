@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { TriangleAlert } from "lucide-react";
-import { constants, formatCurrency } from "@pkg/utils";
+import { formatCurrency } from "@pkg/utils";
 import {
   CARD_ERROR,
   CardMessage,
@@ -10,22 +10,8 @@ import {
 } from "./dashboard-card";
 import { RankedBars, type RankedBar } from "./ranked-bars";
 import { formatCompactRupees, formatCountOf, formatShare } from "./format";
+import { processLabel, sourceLabel } from "./labels";
 import { useFinanceSummary } from "./use-dashboard";
-
-const { WO_PROCESS } = constants;
-
-// What an expense was spent through, as the vendor page names it.
-const SOURCE_LABELS: Record<string, string> = {
-  job_order: "Restoration job orders",
-  sub_contract: "Sub-contracts",
-  purchase_order: "Purchase orders",
-  none: "Not under an order",
-};
-
-const PROCESS_LABELS: Record<string, string> = {
-  [WO_PROCESS.BIOREMEDIATION]: "Bioremediation",
-  [WO_PROCESS.RESTORATION]: "Restoration",
-};
 
 const Heading = ({ children }: { children: React.ReactNode }) => (
   <h3 className='mb-2 text-[11px] font-semibold tracking-[0.08em] text-gray-400 uppercase'>
@@ -69,7 +55,7 @@ export const SpendingCard = ({ className }: { className?: string }) => {
               rows={largestFirst(
                 data.sources.map((source) => ({
                   key: source.source,
-                  label: SOURCE_LABELS[source.source] ?? source.source,
+                  label: sourceLabel(source.source),
                   note: formatCountOf(source.count, "expense"),
                   value: source.total,
                 })),
@@ -85,7 +71,7 @@ export const SpendingCard = ({ className }: { className?: string }) => {
               rows={largestFirst(
                 Object.entries(data.byProcess).map(([process, total]) => ({
                   key: process,
-                  label: PROCESS_LABELS[process] ?? process,
+                  label: processLabel(process),
                   value: total,
                 })),
               )}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { ExpandButton } from "./section-dialog";
 
 // The white card each part of the overview sits in: a title, an optional
 // line under it and a link on the right, then its content.
@@ -10,12 +11,15 @@ export const DashboardCard = ({
   title,
   description,
   action,
+  onExpand,
   className,
   children,
 }: {
   title: string;
   description?: React.ReactNode;
   action?: React.ReactNode;
+  // Opens the section large in its dialog.
+  onExpand?: () => void;
   className?: string;
   children: React.ReactNode;
 }) => (
@@ -36,7 +40,17 @@ export const DashboardCard = ({
           </p>
         )}
       </div>
-      {action && <div className='shrink-0'>{action}</div>}
+      {(action || onExpand) && (
+        <div className='flex shrink-0 items-center gap-2'>
+          {action}
+          {onExpand && (
+            <ExpandButton
+              title={title}
+              onClick={onExpand}
+            />
+          )}
+        </div>
+      )}
     </header>
     <div className='flex flex-1 flex-col'>{children}</div>
   </section>

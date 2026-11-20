@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import { CheckCircle2, Clock3, XCircle } from "lucide-react";
-import { constants } from "@pkg/utils";
 import {
   CARD_ERROR,
   CardLink,
@@ -12,19 +11,8 @@ import {
 import { MeterRow } from "./meter";
 import { SegmentedBar, type Segment } from "./segmented-bar";
 import { formatCount, formatCountOf } from "./format";
+import { WORK_ORDER_PROCESSES } from "./labels";
 import { useWorkOrderSummary } from "./use-dashboard";
-
-const { WO_PROCESS } = constants;
-
-// Each process, in the order the work order form lists them.
-const PROCESSES = [
-  { key: WO_PROCESS.BIOREMEDIATION, label: "Bioremediation" },
-  { key: WO_PROCESS.RESTORATION, label: "Restoration" },
-  {
-    key: WO_PROCESS.BIOREMEDIATION_RESTORATION,
-    label: "Bioremediation & restoration",
-  },
-];
 
 // The small headings splitting the card's lists.
 const Heading = ({ children }: { children: React.ReactNode }) => (
@@ -98,7 +86,7 @@ export const WorkOrderStatusCard = ({ className }: { className?: string }) => {
           <div>
             <Heading>Completed by process</Heading>
             <div className='space-y-2.5'>
-              {PROCESSES.map(({ key, label }) => {
+              {WORK_ORDER_PROCESSES.map(({ value: key, label }) => {
                 const counts = data.byProcess[key];
                 if (!counts) return null;
                 return (
