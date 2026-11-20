@@ -1,5 +1,6 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
+import { keepPreviousData, type UseQueryResult } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   FileText,
@@ -12,9 +13,13 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { constants } from "@pkg/utils";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useApiError } from "@/hooks/useApiError";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
+import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
+import { ALL, type FilterOption } from "@/components/filters/list-filters";
 import { useIsViewer } from "@/contexts/AuthContext";
 import { toDocuments } from "@/lib/documents";
 import CustomButton from "@/components/shared/btn";
@@ -32,12 +37,10 @@ import ContractOrderDetailsDialog from "./contract-order-details-dialog";
 import ContractOrderFilterBar from "./contract-order-filter-bar";
 import {
   NO_ORDER_FILTERS,
-  countByType,
-  filterChoices,
-  filterOrders,
   hasOrderFilters,
   type OrderFilters,
   type OrderSort,
+  type OrderType,
 } from "./contract-order-filters";
 import {
   ORDER_TYPES,
@@ -53,6 +56,21 @@ import OrderCompletionDocuments from "./order-completion-documents";
 import ContractOrdersSkeleton from "@/components/skeleton/work-order/contract-orders-skeleton";
 
 const { OIL_ZAPPER } = constants;
+
+const PAGE_SIZE = 20;
+
+type OrdersPage = RouterOutputs["contractOrderQuery"]["getContractOrders"];
+
+// A site or vendor the orders name, as a filter choice.
+const toChoice = (row: {
+  id: number;
+  name: string | null;
+  code: string | null;
+}): FilterOption => ({
+  value: String(row.id),
+  label: row.name ?? "Site",
+  hint: row.code ?? undefined,
+});
 
 interface Props {
   workOrderId: number;
@@ -83,10 +101,42 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
   const [filters, setFilters] = useState<OrderFilters>(NO_ORDER_FILTERS);
   const [sort, setSort] = useState<OrderSort>("newest");
 
-  const ordersQuery = trpc.contractOrderQuery.getContractOrders.useQuery({
+  // The server filters, counts, totals and pages the orders.
+  const debouncedSearch = useDebounce(filters.search.trim(), 300);
+  const queryInput = {
     work_order_id: workOrderId,
-  });
-  const orders = (ordersQuery.data ?? []) as ContractOrder[];
+    limit: PAGE_SIZE,
+    type: filters.type === ALL ? undefined : filters.type,
+    search: debouncedSearch || undefined,
+    work_order_site_id: filters.site === ALL ? undefined : Number(filters.site),
+    vendor_id: filters.vendor === ALL ? undefined : Number(filters.vendor),
+    completion: filters.completion === ALL ? undefined : filters.completion,
+    from: filters.from,
+    to: filters.to,
+    sort,
+  };
+  const { pages, loadMore } = useLoadMorePages(queryInput);
+
+  // Each page is its own query, so adding, editing or completing an order
+  // refreshes the loaded pages in place. A new filter keeps the last orders
+  // in view until its first page arrives.
+  const pageQueries: UseQueryResult<OrdersPage>[] = trpc.useQueries((t: any) =>
+    pages.map((page) =>
+      t.contractOrderQuery.getContractOrders(
+        { ...queryInput, page },
+        { placeholderData: page === 1 ? keepPreviousData : undefined },
+      ),
+    ),
+  );
+  const firstPage = pageQueries[0]?.data;
+  const lastPage = pageQueries.at(-1)?.data;
+  const shownOrders = pageQueries.flatMap(
+    (query) => (query.data?.orders ?? []) as ContractOrder[],
+  );
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
+  // Every order of the work order, and those the filters leave.
+  const totalOrders = firstPage?.total_orders ?? 0;
+  const shownTotal = firstPage?.pagination.total ?? 0;
 
   const deleteOrder =
     trpc.contractOrderMutation.deleteContractOrder.useMutation({
@@ -113,21 +163,19 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
     setReturnToId(null);
   };
 
-  const shownOrders = useMemo(
-    () => filterOrders(orders, filters, sort),
-    [orders, filters, sort],
-  );
-  const typeCounts = useMemo(
-    () => countByType(orders, filters),
-    [orders, filters],
-  );
-  const choices = useMemo(() => filterChoices(orders), [orders]);
+  const typeCounts: Record<OrderType, number> = {
+    [ALL]: firstPage?.counts.all ?? 0,
+    purchase_order: firstPage?.counts.purchase_order ?? 0,
+    sub_contract: firstPage?.counts.sub_contract ?? 0,
+  };
+  const choices = {
+    sites: (firstPage?.sites ?? []).map(toChoice),
+    vendors: (firstPage?.vendors ?? []).map(toChoice),
+  };
   const isFiltered = hasOrderFilters(filters);
-  // What the purchase orders shown cost in all, with GST.
-  const purchaseTotal = shownOrders.reduce(
-    (sum, order) => sum + (purchaseOrderCost(order)?.total ?? 0),
-    0,
-  );
+  // What every purchase order the filters leave costs in all, with GST, not
+  // only those loaded.
+  const purchaseTotal = firstPage?.purchase_total ?? 0;
   const clearFilters = () =>
     setFilters({ ...NO_ORDER_FILTERS, type: filters.type });
 
@@ -143,9 +191,9 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
     />
   );
 
-  const table = ordersQuery.isLoading ? (
+  const table = pageQueries[0]?.isLoading ? (
     <ContractOrdersSkeleton />
-  ) : orders.length === 0 ? (
+  ) : totalOrders === 0 ? (
     <p className='rounded-lg border border-dashed py-6 text-center text-xs text-gray-500'>
       No orders yet. Add a purchase order to buy material, or a sub-contract to
       give out work.
@@ -371,9 +419,10 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
         </div>
         <div className='flex min-h-10 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-gray-200 bg-gray-50/60 px-4 py-2 text-xs text-gray-500'>
           <span>
-            {shownOrders.length === orders.length
-              ? `${orders.length} order${orders.length !== 1 ? "s" : ""}`
-              : `Showing ${shownOrders.length} of ${orders.length} orders`}
+            {shownOrders.length < shownTotal
+              ? `Showing ${shownOrders.length} of ${shownTotal} orders`
+              : `${shownTotal} order${shownTotal !== 1 ? "s" : ""}`}
+            {shownTotal !== totalOrders && ` (of ${totalOrders})`}
           </span>
           {purchaseTotal > 0 && (
             <span>
@@ -386,12 +435,19 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
           )}
         </div>
       </div>
+      {lastPage?.pagination.hasMore && (
+        <LoadMoreBtn
+          onClick={loadMore}
+          loading={isFetchingMore}
+          className='pt-4'
+        />
+      )}
     </div>
   );
 
   return (
     <>
-      {children({ actions, table, count: orders.length })}
+      {children({ actions, table, count: totalOrders })}
 
       <ContractOrderDialog
         workOrderId={workOrderId}

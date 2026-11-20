@@ -1,4 +1,19 @@
-import { and, asc, count, desc, eq, inArray, like, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  like,
+  lt,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
+import type { z } from "zod";
 import { schema } from "@pkg/db";
 import { CODE_PREFIX, constants } from "@pkg/utils";
 import { contractOrderSchemas } from "@pkg/schema";
@@ -86,6 +101,116 @@ async function itemsOfOrders(ctx: TrpcContext, orderIds: number[]) {
     .orderBy(asc(siteTable.name), asc(contractOrderItemTable.id));
 }
 
+// A day's midnight in the server's time zone, as order dates are kept.
+const startOfDay = (day: string) => new Date(`${day}T00:00:00`);
+const dayAfter = (day: string) => {
+  const date = startOfDay(day);
+  date.setDate(date.getDate() + 1);
+  return date;
+};
+
+// What an order must meet besides its work order and type: the search, the
+// site, the vendor, whether completed and when dated.
+function orderFilters(
+  ctx: TrpcContext,
+  input: z.infer<typeof contractOrderSchemas.getContractOrdersSchema>,
+): (SQL | undefined)[] {
+  const o = contractOrderTable;
+  const items = contractOrderItemTable;
+  const orderVendors = contractOrderContractorTable;
+  const conditions: (SQL | undefined)[] = [];
+
+  const term = input.search?.trim();
+  if (term) {
+    const pattern = `%${escapeLike(term)}%`;
+    // The items whose names match, such as "JCB" for its key.
+    const itemKeys = constants.CONTRACT_ORDER_ITEMS.filter((item) =>
+      item.label.toLowerCase().includes(term.toLowerCase()),
+    ).map((item) => item.key);
+    conditions.push(
+      or(
+        like(o.code, pattern),
+        like(o.order_number, pattern),
+        like(o.invoice_number, pattern),
+        like(o.description, pattern),
+        inArray(
+          o.id,
+          ctx.db
+            .select({ id: orderVendors.contract_order_id })
+            .from(orderVendors)
+            .innerJoin(
+              contractorTable,
+              eq(orderVendors.contractor_id, contractorTable.id),
+            )
+            .where(
+              or(
+                like(contractorTable.name, pattern),
+                like(contractorTable.code, pattern),
+              ),
+            ),
+        ),
+        inArray(
+          o.id,
+          ctx.db
+            .select({ id: items.contract_order_id })
+            .from(items)
+            .innerJoin(
+              workOrderSiteTable,
+              eq(items.work_order_site_id, workOrderSiteTable.id),
+            )
+            .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+            .where(
+              or(
+                like(siteTable.name, pattern),
+                like(siteTable.code, pattern),
+                like(items.description, pattern),
+                itemKeys.length > 0 ? inArray(items.item, itemKeys) : undefined,
+              ),
+            ),
+        ),
+      ),
+    );
+  }
+  if (input.work_order_site_id) {
+    conditions.push(
+      inArray(
+        o.id,
+        ctx.db
+          .select({ id: items.contract_order_id })
+          .from(items)
+          .where(eq(items.work_order_site_id, input.work_order_site_id)),
+      ),
+    );
+  }
+  if (input.vendor_id) {
+    conditions.push(
+      inArray(
+        o.id,
+        ctx.db
+          .select({ id: orderVendors.contract_order_id })
+          .from(orderVendors)
+          .where(eq(orderVendors.contractor_id, input.vendor_id)),
+      ),
+    );
+  }
+  // Completed once its completion documents are in.
+  if (input.completion === "completed") {
+    conditions.push(sql`json_length(${o.completion_documents}) > 0`);
+  } else if (input.completion === "pending") {
+    conditions.push(
+      sql`coalesce(json_length(${o.completion_documents}), 0) = 0`,
+    );
+  }
+  // One day picked is that day alone.
+  if (input.from) {
+    conditions.push(
+      gte(o.order_date, startOfDay(input.from)),
+      lt(o.order_date, dayAfter(input.to ?? input.from)),
+    );
+  }
+  return conditions;
+}
+
 export const contractOrderQueryRouter = router({
   // A page of the work order's bioremediation sites an order can be for, by
   // name, so an order form never loads them all at once.
@@ -165,27 +290,132 @@ export const contractOrderQueryRouter = router({
           input.work_order_id,
         );
 
+        const { page, limit, sort } = input;
+        const offset = (page - 1) * limit;
+        const o = contractOrderTable;
+        const inWorkOrder = eq(o.work_order_id, input.work_order_id);
+        // Every filter but the type, so the type tabs count what they leave.
+        const filtersWhere = and(inWorkOrder, ...orderFilters(ctx, input));
+        const where = and(
+          filtersWhere,
+          input.type ? eq(o.type, input.type) : undefined,
+        );
+
         try {
+          const [typeCounts, [allRow], [totalRow], [purchaseRow], sites, vendors] =
+            await Promise.all([
+              ctx.db
+                .select({ type: o.type, count: count() })
+                .from(o)
+                .where(filtersWhere)
+                .groupBy(o.type),
+              ctx.db.select({ count: count() }).from(o).where(inWorkOrder),
+              ctx.db.select({ count: count() }).from(o).where(where),
+              // What the purchase orders the filters leave cost in all, with
+              // GST: each one's oil zapper at its rate.
+              ctx.db
+                .select({
+                  total: sql<string>`sum(coalesce(${contractOrderItemTable.quantity}, 0) * ${o.unit_rate} * (1 + coalesce(${o.gst_percentage}, 0) / 100))`,
+                })
+                .from(contractOrderItemTable)
+                .innerJoin(o, eq(contractOrderItemTable.contract_order_id, o.id))
+                .where(
+                  and(
+                    where,
+                    eq(o.type, constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER),
+                    isNotNull(o.unit_rate),
+                  ),
+                ),
+              // The sites and vendors the work order's orders name, to filter
+              // by.
+              ctx.db
+                .selectDistinct({
+                  id: workOrderSiteTable.id,
+                  name: siteTable.name,
+                  code: siteTable.code,
+                })
+                .from(contractOrderItemTable)
+                .innerJoin(o, eq(contractOrderItemTable.contract_order_id, o.id))
+                .innerJoin(
+                  workOrderSiteTable,
+                  eq(
+                    contractOrderItemTable.work_order_site_id,
+                    workOrderSiteTable.id,
+                  ),
+                )
+                .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+                .where(inWorkOrder)
+                .orderBy(asc(siteTable.name)),
+              ctx.db
+                .selectDistinct({
+                  id: contractorTable.id,
+                  name: contractorTable.name,
+                  code: contractorTable.code,
+                })
+                .from(contractOrderContractorTable)
+                .innerJoin(
+                  o,
+                  eq(contractOrderContractorTable.contract_order_id, o.id),
+                )
+                .innerJoin(
+                  contractorTable,
+                  eq(contractOrderContractorTable.contractor_id, contractorTable.id),
+                )
+                .where(inWorkOrder)
+                .orderBy(asc(contractorTable.name)),
+            ]);
+
           const orders = await ctx.db
             .select()
-            .from(contractOrderTable)
-            .where(eq(contractOrderTable.work_order_id, input.work_order_id))
+            .from(o)
+            .where(where)
             .orderBy(
-              desc(contractOrderTable.order_date),
-              desc(contractOrderTable.id),
-            );
+              ...(sort === "oldest"
+                ? [asc(o.order_date), asc(o.id)]
+                : [desc(o.order_date), desc(o.id)]),
+            )
+            .limit(limit)
+            .offset(offset);
           const orderIds = orders.map((order) => order.id);
-          if (orderIds.length === 0) return [];
+          const [items, vendorsOf] = await Promise.all([
+            itemsOfOrders(ctx, orderIds),
+            vendorsByOrder(ctx, orderIds),
+          ]);
 
-          const items = await itemsOfOrders(ctx, orderIds);
-          const vendors = await vendorsByOrder(ctx, orderIds);
+          const countOf = (type: string) =>
+            Number(typeCounts.find((row) => row.type === type)?.count ?? 0);
+          const total = Number(totalRow?.count ?? 0);
 
-          return orders.map((order) => ({
-            ...order,
-            single_expense: !!order.single_expense,
-            items: items.filter((item) => item.contract_order_id === order.id),
-            vendors: vendors.get(order.id) ?? [],
-          }));
+          return {
+            orders: orders.map((order) => ({
+              ...order,
+              single_expense: !!order.single_expense,
+              items: items.filter(
+                (item) => item.contract_order_id === order.id,
+              ),
+              vendors: vendorsOf.get(order.id) ?? [],
+            })),
+            // Every order of the work order, whatever the filters.
+            total_orders: Number(allRow?.count ?? 0),
+            // How many of each type the other filters leave.
+            counts: {
+              all: typeCounts.reduce((sum, row) => sum + Number(row.count), 0),
+              purchase_order: countOf(
+                constants.CONTRACT_ORDER_TYPE.PURCHASE_ORDER,
+              ),
+              sub_contract: countOf(constants.CONTRACT_ORDER_TYPE.SUB_CONTRACT),
+            },
+            purchase_total: Number(purchaseRow?.total ?? 0),
+            sites,
+            vendors,
+            pagination: {
+              page,
+              limit,
+              total,
+              totalPages: Math.ceil(total / limit),
+              hasMore: offset + orders.length < total,
+            },
+          };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching contract orders");
         }
