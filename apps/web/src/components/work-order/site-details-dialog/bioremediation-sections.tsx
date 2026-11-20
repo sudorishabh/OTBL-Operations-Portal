@@ -11,19 +11,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2,
   Plus,
@@ -32,6 +31,25 @@ import {
   FlaskConical,
   Droplet,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { useIsViewer } from "@/contexts/AuthContext";
+import CustomButton from "@/components/shared/btn";
+import {
+  LIST_CELL,
+  LIST_FRAME,
+  LIST_HEAD,
+  LIST_HEAD_ROW,
+  LIST_ROW,
+  LIST_SUBTEXT,
+  RowActionsButton,
+} from "@/components/shared/list-table";
 import toast from "react-hot-toast";
 import DocumentsField from "@/components/shared/documents-field";
 import DocumentsMenu from "@/components/shared/documents-menu";
@@ -428,140 +446,182 @@ interface CombinedItem {
   original: any;
 }
 
+type ActivityFilter = "all" | CombinedItem["type"];
+
+// How each kind of activity is named and marked.
+const KINDS = {
+  bio: {
+    label: "Bio sample",
+    plural: "Bio samples",
+    Icon: FlaskConical,
+    tone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  },
+  oil: {
+    label: "Oil zapping",
+    plural: "Oil zapping",
+    Icon: Droplet,
+    tone: "bg-sky-50 text-sky-700 ring-sky-100",
+  },
+} as const;
+
+const formatNumber = (value: number) =>
+  value.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+
+// A site's bio samples and oil zapping, newest first, in the portal's list
+// table look: what it was, its reading, when, its documents and a menu.
 const CombinedList = ({
   items,
+  total,
+  canDelete,
   onDeleteBio,
   onDeleteOil,
 }: {
   items: CombinedItem[];
+  // How many there are before the type tabs narrow them.
+  total: number;
+  canDelete: boolean;
   onDeleteBio: (id: number) => void;
   onDeleteOil: (id: number) => void;
-}) => {
-  return (
-    <div className='border rounded-lg overflow-hidden bg-gray-100/50 border-slate-200 mt-4'>
-      <Table className='w-full text-xs'>
-        <TableHeader className='bg-slate-50/80'>
-          <TableRow className='border-b hover:bg-transparent'>
-            <TableHead className='w-[140px] font-semibold text-slate-600 pl-4'>
-              Type
-            </TableHead>
-            <TableHead className='text-center font-semibold text-slate-600'>
-              Key Metric
-            </TableHead>
-            <TableHead className='text-center font-semibold text-slate-600'>
-              Month
-            </TableHead>
-            <TableHead className='text-center w-[150px] font-semibold text-slate-600'>
-              Document
-            </TableHead>
-            <TableHead className='text-center w-[120px] font-semibold text-slate-600'>
-              Date
-            </TableHead>
-            <TableHead className='w-[50px]'></TableHead>
+}) => (
+  <div className={LIST_FRAME}>
+    <Table>
+      <TableHeader>
+        <TableRow className={LIST_HEAD_ROW}>
+          <TableHead className={LIST_HEAD}>Activity</TableHead>
+          <TableHead className={LIST_HEAD}>Reading</TableHead>
+          <TableHead className={LIST_HEAD}>Dated</TableHead>
+          <TableHead className={LIST_HEAD}>Documents</TableHead>
+          <TableHead className={cn(LIST_HEAD, "w-px")}>
+            <span className='sr-only'>Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.length === 0 ? (
+          <TableRow className={cn(LIST_ROW, "hover:bg-transparent")}>
+            <TableCell
+              colSpan={5}
+              className='py-8 text-center text-xs text-gray-500'>
+              {total === 0
+                ? "No bio samples or oil zapping recorded yet."
+                : "None of this kind recorded yet."}
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody className='divide-y'>
-          {items.length === 0 ? (
-            <TableRow>
-              <TableCell
-                colSpan={6}
-                className='text-center py-8 text-slate-400 italic'>
-                No bioremediation data added yet.
-              </TableCell>
-            </TableRow>
-          ) : (
-            items.map((item) => (
+        ) : (
+          items.map((item) => {
+            const kind = KINDS[item.type];
+            const name =
+              item.type === "bio" && item.application_month
+                ? `${kind.label}, ${item.application_month}`
+                : kind.label;
+            return (
               <TableRow
                 key={`${item.type}-${item.id}`}
-                className='group hover:bg-slate-50/50 transition-colors'>
-                <TableCell className='pl-4 py-3 font-medium'>
-                  <div className='flex items-center gap-2'>
-                    <div
-                      className={`p-1.5 rounded-md ${item.type === "bio" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>
-                      {item.type === "bio" ? (
-                        <FlaskConical className='w-3.5 h-3.5' />
-                      ) : (
-                        <Droplet className='w-3.5 h-3.5' />
-                      )}
-                    </div>
-                    <div className='flex flex-col'>
-                      <span
-                        className={`${item.type === "bio" ? "text-emerald-700" : "text-blue-700"}`}>
-                        {item.type === "bio" ? "Bio Sample" : "Oil Zapping"}
-                      </span>
-                      {item.type === "bio" && item.application_month && (
-                        <span className='text-[10px] font-normal text-slate-400'>
-                          {item.application_month}
-                        </span>
-                      )}
+                className={LIST_ROW}>
+                <TableCell className={LIST_CELL}>
+                  <div className='flex items-center gap-3'>
+                    <span
+                      className={cn(
+                        "grid size-8 shrink-0 place-items-center rounded-md ring-1 ring-inset",
+                        kind.tone,
+                      )}>
+                      <kind.Icon className='size-4' />
+                    </span>
+                    <div className='min-w-0'>
+                      <p className='font-medium text-gray-900'>{kind.label}</p>
+                      <p className={LIST_SUBTEXT}>
+                        {item.type === "bio"
+                          ? (item.application_month ?? "Monthly sample")
+                          : "Oil zapper applied"}
+                      </p>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className='text-center font-mono text-slate-600'>
+                <TableCell className={cn(LIST_CELL, "whitespace-nowrap")}>
                   {item.type === "bio" ? (
-                    <span className='inline-flex items-center px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] border border-emerald-100'>
-                      TPH: {item.tph_value}
-                    </span>
+                    <>
+                      <span className='mr-1.5 text-xs text-gray-500'>TPH</span>
+                      <span className='font-semibold tabular-nums text-gray-900'>
+                        {item.tph_value ?? "—"}
+                      </span>
+                    </>
                   ) : (
-                    <span className='inline-flex items-center px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] border border-blue-100'>
-                      Applied: {item.estimated_quantity ?? "-"}{" "}
-                      {constants.OIL_ZAPPER.UNIT.toUpperCase()}
-                    </span>
+                    <>
+                      <span className='font-semibold tabular-nums text-gray-900'>
+                        {item.estimated_quantity
+                          ? formatNumber(Number(item.estimated_quantity))
+                          : "—"}
+                      </span>
+                      <span className='ml-1 text-xs text-gray-500'>
+                        {constants.OIL_ZAPPER.UNIT}
+                      </span>
+                    </>
                   )}
                 </TableCell>
-                <TableCell className='text-center text-slate-600 font-medium'>
-                  {format(new Date(item.date), "MMM yyyy")}
+                <TableCell
+                  className={cn(LIST_CELL, "whitespace-nowrap text-gray-600")}>
+                  {format(new Date(item.date), "d MMM yyyy")}
                 </TableCell>
-                <TableCell className='text-center'>
+                <TableCell className={LIST_CELL}>
                   {item.documents.length > 0 ? (
                     <DocumentsMenu
                       documents={item.documents}
-                      align='center'>
+                      align='start'>
                       <button
                         type='button'
-                        className='inline-flex cursor-pointer items-center gap-1.5 text-blue-600 hover:text-blue-800 hover:underline transition-colors justify-center'>
-                        <FileText className='w-3.5 h-3.5' />
-                        <span className='truncate max-w-[100px]'>
-                          {item.documents.length === 1
-                            ? "View Doc"
-                            : `${item.documents.length} Docs`}
-                        </span>
+                        className='inline-flex cursor-pointer items-center gap-1.5 text-gray-700 transition-colors hover:text-emerald-700 hover:underline'>
+                        <FileText className='size-3.5 text-gray-400' />
+                        {item.documents.length === 1
+                          ? item.type === "bio"
+                            ? "View report"
+                            : "View document"
+                          : `${item.documents.length} documents`}
                       </button>
                     </DocumentsMenu>
                   ) : (
-                    <span className='text-slate-300'>-</span>
+                    <span className='text-gray-300'>—</span>
                   )}
                 </TableCell>
-                <TableCell className='text-center text-slate-500'>
-                  {format(new Date(item.date), "dd MMM yyyy")}
-                </TableCell>
-                <TableCell className='text-center pr-2'>
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    onClick={() =>
-                      item.type === "bio"
-                        ? onDeleteBio(item.id)
-                        : onDeleteOil(item.id)
-                    }
-                    className='text-slate-400 hover:text-red-500 hover:bg-red-50 h-8 w-8 p-0 transition-colors'>
-                    <Trash2 className='w-4 h-4' />
-                  </Button>
+                <TableCell className={cn(LIST_CELL, "py-2 text-right sm:py-2")}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <RowActionsButton label={`Actions for ${name}`} />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
+                      <DropdownMenuItem
+                        disabled={!canDelete}
+                        onClick={() =>
+                          item.type === "bio"
+                            ? onDeleteBio(item.id)
+                            : onDeleteOil(item.id)
+                        }
+                        className='text-red-600 focus:text-red-600'>
+                        <Trash2 className='mr-2 h-4 w-4' />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            );
+          })
+        )}
+      </TableBody>
+    </Table>
+    <div className='border-t border-gray-200 bg-gray-50/60 px-4 py-2 text-xs text-gray-500'>
+      {items.length === total
+        ? `${total} ${total === 1 ? "activity" : "activities"}`
+        : `Showing ${items.length} of ${total} activities`}
     </div>
-  );
-};
+  </div>
+);
 
 export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
   const utils = trpc.useUtils();
+  const isViewer = useIsViewer();
   const [bioDialogOpen, setBioDialogOpen] = useState(false);
   const [oilDialogOpen, setOilDialogOpen] = useState(false);
-  const [filterType, setFilterType] = useState<"all" | "bio" | "oil">("all");
+  const [filterType, setFilterType] = useState<ActivityFilter>("all");
 
   const bioremediationDataQuery =
     trpc.workOrderSiteQuery.getBioremediationData.useQuery(
@@ -643,100 +703,126 @@ export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
       documents: toDocuments(item.documents),
       original: item,
     })),
-  ].sort(
-    (a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const filteredItems = combinedItems.filter((item) => {
     if (filterType === "all") return true;
     return item.type === filterType;
   });
 
+  const counts: Record<ActivityFilter, number> = {
+    all: combinedItems.length,
+    bio: bioSamples.length,
+    oil: oilZapping.length,
+  };
+  const applied = oilZapping.reduce(
+    (sum: number, item: any) => sum + (Number(item.estimated_quantity) || 0),
+    0,
+  );
+
   return (
-    <div className='space-y-6'>
-      <div className='flex flex-col sm:flex-row items-center justify-between mb-6 gap-4'>
-        <div>
-          <h3 className='text-sm font-semibold tracking-wide text-slate-700'>
-            Bioremediation Activities
+    <div className='space-y-4'>
+      {/* What has been recorded, and adding to it. */}
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='min-w-0'>
+          <h3 className='text-sm font-semibold text-gray-900'>
+            Bioremediation activities
           </h3>
-          <p className='text-xs text-slate-500'>
-            Enter bio samples and oil zapping activities for this site.
+          <p className='mt-0.5 text-xs text-gray-500'>
+            {counts.bio} bio sample{counts.bio !== 1 ? "s" : ""}
+            <span className='text-gray-300'> · </span>
+            <span className='font-semibold tabular-nums text-gray-900'>
+              {formatNumber(applied)} {constants.OIL_ZAPPER.UNIT}
+            </span>{" "}
+            of oil zapper applied over {counts.oil}{" "}
+            {counts.oil === 1 ? "entry" : "entries"}
           </p>
         </div>
-        <div className='flex items-center gap-3 w-full sm:w-auto overflow-x-auto'>
-          <Select
-            value={filterType}
-            onValueChange={(val: "all" | "bio" | "oil") => setFilterType(val)}>
-            <SelectTrigger className='h-8 w-[140px] text-xs bg-white'>
-              <SelectValue placeholder='Filter Activities' />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='all'>All Activities</SelectItem>
-              <SelectItem value='bio'>Bio Samples Only</SelectItem>
-              <SelectItem value='oil'>Oil Zapping Only</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Dialog
-            open={bioDialogOpen}
-            onOpenChange={setBioDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size='sm'
-                variant='outline'
-                className='border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition-colors whitespace-nowrap h-8 text-xs'>
-                <Plus className='w-3.5 h-3.5 mr-2' />
-                Add Bio Sampling
-              </Button>
-            </DialogTrigger>
-            <DialogContent className='sm:max-w-md'>
-              <DialogHeader>
-                <DialogTitle className='flex items-center gap-2 text-emerald-700'>
-                  <FlaskConical className='w-5 h-5' />
-                  Add Bio Sample
-                </DialogTitle>
-              </DialogHeader>
-              <BioSampleForm
-                woSiteId={woSiteId}
-                onSuccess={() => setBioDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
-
-          <Dialog
-            open={oilDialogOpen}
-            onOpenChange={setOilDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size='sm'
-                variant='outline'
-                className='border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 transition-colors whitespace-nowrap h-8 text-xs'>
-                <Plus className='w-3.5 h-3.5 mr-2' />
-                Add Oil Zapping
-              </Button>
-            </DialogTrigger>
-            <DialogContent className='sm:max-w-md'>
-              <DialogHeader>
-                <DialogTitle className='flex items-center gap-2 text-blue-700'>
-                  <Droplet className='w-5 h-5' />
-                  Add Oil Zapping Entry
-                </DialogTitle>
-              </DialogHeader>
-              <OilZappingForm
-                woSiteId={woSiteId}
-                onSuccess={() => setOilDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
+        <div className='flex flex-wrap items-center gap-2'>
+          <CustomButton
+            text='Add bio sample'
+            variant='outline'
+            Icon={FlaskConical}
+            onClick={() => setBioDialogOpen(true)}
+            className='h-8 text-xs'
+            disableForViewer
+          />
+          <CustomButton
+            text='Add oil zapping'
+            variant='primary'
+            Icon={Droplet}
+            onClick={() => setOilDialogOpen(true)}
+            className='h-8 text-xs'
+            disableForViewer
+          />
         </div>
       </div>
 
+      {combinedItems.length > 0 && (
+        <Tabs
+          value={filterType}
+          onValueChange={(value) => setFilterType(value as ActivityFilter)}>
+          <TabsList className='h-8'>
+            {(["all", "bio", "oil"] as const).map((value) => {
+              const Icon = value === "all" ? null : KINDS[value].Icon;
+              return (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className='gap-1.5 px-2.5 text-xs text-gray-800'>
+                  {Icon && <Icon className='size-3.5 text-gray-500' />}
+                  {value === "all" ? "All" : KINDS[value].plural}
+                  <span className='tabular-nums text-gray-400'>
+                    {counts[value]}
+                  </span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+      )}
+
       <CombinedList
         items={filteredItems}
+        total={combinedItems.length}
+        canDelete={!isViewer}
         onDeleteBio={handleDeleteBioSample}
         onDeleteOil={handleDeleteOilZapping}
       />
+
+      <Dialog
+        open={bioDialogOpen}
+        onOpenChange={setBioDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-emerald-700'>
+              <FlaskConical className='w-5 h-5' />
+              Add Bio Sample
+            </DialogTitle>
+          </DialogHeader>
+          <BioSampleForm
+            woSiteId={woSiteId}
+            onSuccess={() => setBioDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={oilDialogOpen}
+        onOpenChange={setOilDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-blue-700'>
+              <Droplet className='w-5 h-5' />
+              Add Oil Zapping Entry
+            </DialogTitle>
+          </DialogHeader>
+          <OilZappingForm
+            woSiteId={woSiteId}
+            onSuccess={() => setOilDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

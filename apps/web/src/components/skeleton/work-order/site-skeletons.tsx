@@ -11,6 +11,7 @@ import {
   TextLine,
   type SkeletonColumn,
 } from "../parts";
+import { LIST_CELL, LIST_HEAD } from "@/components/shared/list-table";
 
 // A file box from the document sections: a saved file over the upload row.
 const DocumentBoxSkeleton = () => (
@@ -91,70 +92,46 @@ export const ExpenseGroupsSkeleton = () => (
   </SkeletonRegion>
 );
 
-const ACTIVITY_HEAD = "font-semibold text-slate-600";
-
+// Mirrors the activities table, in the shared list table look: what it was,
+// its reading, when, its documents and its menu.
 const ACTIVITY_COLUMNS: SkeletonColumn[] = [
-  {
-    label: "Type",
-    headClassName: `w-[140px] pl-4 ${ACTIVITY_HEAD}`,
-    cellClassName: "pl-4",
-    bar: "w-20",
-    sub: "w-12",
-  },
-  {
-    label: "Key Metric",
-    headClassName: `text-center ${ACTIVITY_HEAD}`,
-    shape: "pill",
-    bar: ["w-20", "w-24"],
-    align: "center",
-  },
-  {
-    label: "Month",
-    headClassName: `text-center ${ACTIVITY_HEAD}`,
-    bar: "w-16",
-    align: "center",
-  },
-  {
-    label: "Document",
-    headClassName: `w-[150px] text-center ${ACTIVITY_HEAD}`,
-    bar: "w-16",
-    align: "center",
-  },
-  {
-    label: "Date",
-    headClassName: `w-[120px] text-center ${ACTIVITY_HEAD}`,
-    bar: "w-20",
-    align: "center",
-  },
-  { headClassName: "w-[50px]", bar: "w-4", align: "center" },
-];
+  { label: "Activity", bar: "w-24", sub: "w-16" },
+  { label: "Reading", bar: ["w-16", "w-20"] },
+  { label: "Dated", bar: "w-20" },
+  { label: "Documents", bar: "w-20" },
+  { headClassName: "w-px", shape: "menu" },
+].map((column) => ({
+  ...column,
+  headClassName: `${LIST_HEAD} ${column.headClassName ?? ""}`,
+  cellClassName: LIST_CELL,
+})) as SkeletonColumn[];
 
-// The bio samples and oil zapping table of a bioremediation site.
+// A bioremediation site's activities: the heading with its summary and add
+// buttons, the type tabs, then the table.
 export const ActivitiesSkeleton = () => (
   <SkeletonRegion
     label='Loading activities'
-    className='space-y-6'>
-    <div className='mb-6 flex flex-col items-center justify-between gap-4 sm:flex-row'>
-      <div>
-        <p className='text-sm font-semibold tracking-wide text-slate-700'>
-          Bioremediation Activities
+    className='space-y-4'>
+    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+      <div className='min-w-0'>
+        <p className='text-sm font-semibold text-gray-900'>
+          Bioremediation activities
         </p>
-        <p className='text-xs text-slate-500'>
-          Enter bio samples and oil zapping activities for this site.
-        </p>
+        <div className='mt-0.5 flex h-4 items-center'>
+          <Skeleton className='h-3 w-72 max-w-full' />
+        </div>
       </div>
-      <div className='flex items-center gap-3'>
-        <Skeleton className='h-8 w-[140px]' />
-        <Skeleton className='h-8 w-36' />
-        <Skeleton className='h-8 w-36' />
+      <div className='flex items-center gap-2'>
+        <Skeleton className='h-8 w-32' />
+        <Skeleton className='h-8 w-32' />
       </div>
     </div>
+    <Skeleton className='h-8 w-72 max-w-full' />
     <TableSkeleton
       columns={ACTIVITY_COLUMNS}
       rows={6}
-      className='mt-4 border-slate-200'
-      headRowClassName='bg-slate-50/80'
-      rowClassName='h-[52px]'
+      className='border-gray-200'
+      headRowClassName='bg-gray-50'
     />
   </SkeletonRegion>
 );
