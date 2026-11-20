@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/table";
 import { KpiStrip } from "@/components/dashboard/kpi-strip";
 import { ModulesGrid } from "@/components/dashboard/modules-grid";
+import { MonthlyExpensesCard } from "@/components/dashboard/monthly-expenses-card";
+import { WorkOrderStatusCard } from "@/components/dashboard/work-order-status-card";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { ArrowRight, LogOut } from "lucide-react";
 import Link from "next/link";
@@ -103,6 +105,11 @@ export default function DashboardPage() {
       <div className='mt-3 space-y-3'>
         <KpiStrip />
         <ModulesGrid />
+
+        <div className='grid gap-3 lg:grid-cols-3'>
+          <MonthlyExpensesCard className='lg:col-span-2' />
+          <WorkOrderStatusCard />
+        </div>
 
         <div className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
           <div className='flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-2'>
