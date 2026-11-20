@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import RecordCode from "@/components/shared/record-code";
 import { jobOrderPlace } from "@/components/work-order/restoration/restoration-display";
+import VendorExpensesSection from "./expenses/vendor-expenses-section";
 
 const { CONTRACT_ORDER_TYPE } = constants;
 
@@ -84,8 +85,8 @@ const Summary = ({
   </div>
 );
 
-// A vendor's own page: who they are, and every order and job order they are
-// on with what has been spent under each.
+// A vendor's own page: who they are, everything spent with them, and every
+// order and job order they are on with what has been spent under each.
 const ContractorDetail = ({ contractorId }: Props) => {
   const contractorQuery = trpc.contractorQuery.getContractor.useQuery({
     id: contractorId,
@@ -191,6 +192,8 @@ const ContractorDetail = ({ contractorId }: Props) => {
           />
         </div>
       </div>
+
+      <VendorExpensesSection contractorId={contractorId} />
 
       <section className='space-y-2'>
         <h3 className='flex items-center gap-2 text-sm font-semibold text-gray-800'>
