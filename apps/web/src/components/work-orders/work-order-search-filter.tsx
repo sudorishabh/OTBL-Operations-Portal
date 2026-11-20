@@ -1,7 +1,9 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { ArrowUpDown, Building2, FlaskConical, Landmark } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   ALL,
   ClearFiltersButton,
@@ -49,6 +51,12 @@ const SORT_OPTIONS = [
 ];
 
 const idValue = (id: number | undefined) => (id ? String(id) : ALL);
+
+const toClientOption = (client: ClientOption) => ({
+  value: String(client.id),
+  label: client.name,
+  hint: [client.parent_client_name, client.city].filter(Boolean).join(" · "),
+});
 const idFilter = (value: string) => (value === ALL ? undefined : Number(value));
 
 // The work orders list's search, filters and order.
@@ -64,7 +72,17 @@ const WorkOrderSearchNFilter = () => {
   } = useWorkOrderManagementContext();
 
   const officesQuery = trpc.officeQuery.getOfficeOptions.useQuery();
-  const clientsQuery = trpc.clientQuery.getClientOptions.useQuery();
+  // Clients are many, so the picker searches them on the server, a few at a
+  // time, keeping the one picked.
+  const [clientSearch, setClientSearch] = useState("");
+  const debouncedClientSearch = useDebounce(clientSearch.trim(), 300);
+  const clientsQuery = trpc.clientQuery.findClientOptions.useQuery(
+    {
+      search: debouncedClientSearch || undefined,
+      selected_id: filters.client_id,
+    },
+    { placeholderData: keepPreviousData },
+  );
 
   const officeOptions = ((officesQuery.data ?? []) as OfficeOption[]).map(
     (office) => ({
@@ -73,15 +91,12 @@ const WorkOrderSearchNFilter = () => {
       hint: [office.city, office.state].filter(Boolean).join(", "),
     }),
   );
-  const clientOptions = ((clientsQuery.data ?? []) as ClientOption[]).map(
-    (client) => ({
-      value: String(client.id),
-      label: client.name,
-      hint: [client.parent_client_name, client.city]
-        .filter(Boolean)
-        .join(" · "),
-    }),
-  );
+  const clientOptions = (
+    (clientsQuery.data?.clients ?? []) as ClientOption[]
+  ).map(toClientOption);
+  const selectedClient = clientsQuery.data?.selected
+    ? toClientOption(clientsQuery.data.selected as ClientOption)
+    : undefined;
 
   const setFilter = (next: Partial<WorkOrderFilters>) =>
     setFilters({ ...filters, ...next });
@@ -126,6 +141,9 @@ const WorkOrderSearchNFilter = () => {
         options={clientOptions}
         isLoading={clientsQuery.isLoading}
         searchPlaceholder='Search clients, main clients, cities...'
+        onSearchChange={setClientSearch}
+        selectedOption={selectedClient}
+        hasMore={!!clientsQuery.data?.has_more}
       />
       <SelectFilter
         label='Process'

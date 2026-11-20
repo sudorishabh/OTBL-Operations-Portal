@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from "react";
+import React from "react";
 import { ArrowUpDown, MapPin, Network } from "lucide-react";
 import {
   ALL,
@@ -14,8 +14,6 @@ import {
   type ClientFilters,
 } from "@/contexts/ClientManagementContext";
 import { trpc } from "@/lib/trpc";
-
-type ClientOption = { id: number; state: string };
 
 const STATUS_OPTIONS = [
   { label: "All statuses", value: ALL },
@@ -41,21 +39,16 @@ const ClientSearchFilter = () => {
   } = useClientManagementContext();
 
   const parentClientsQuery = trpc.clientQuery.getParentClients.useQuery();
-  const clientOptionsQuery = trpc.clientQuery.getClientOptions.useQuery();
-  const clientOptions = (clientOptionsQuery.data ?? []) as ClientOption[];
+  const statesQuery = trpc.clientQuery.getClientStates.useQuery();
 
   const parentClientOptions = (
     (parentClientsQuery.data ?? []) as { id: number; name: string }[]
   ).map((parent) => ({ value: String(parent.id), label: parent.name }));
 
-  const stateOptions = useMemo(
-    () =>
-      [...new Set(clientOptions.map((client) => client.state))]
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b))
-        .map((state) => ({ value: state, label: state })),
-    [clientOptions],
-  );
+  const stateOptions = ((statesQuery.data ?? []) as string[]).map((state) => ({
+    value: state,
+    label: state,
+  }));
 
   const setFilter = (next: Partial<ClientFilters>) =>
     setClientFilters({ ...clientFilters, ...next });
@@ -100,7 +93,7 @@ const ClientSearchFilter = () => {
         value={clientFilters.state}
         onChange={(state) => setFilter({ state })}
         options={stateOptions}
-        isLoading={clientOptionsQuery.isLoading}
+        isLoading={statesQuery.isLoading}
         searchPlaceholder='Search states...'
       />
       <SelectFilter
