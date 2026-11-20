@@ -7,14 +7,16 @@ import {
   inArray,
   like,
   lte,
+  not,
   or,
   sql,
+  sum,
+  type SQL,
 } from "drizzle-orm";
 import { schema, type Database } from "@pkg/db";
 import {
   CODE_PREFIX,
   constants,
-  effectiveWorkOrderStatusFromDbOnly,
   type EffectiveWorkOrderStatus,
 } from "@pkg/utils";
 import { router } from "../../trpc";
@@ -33,7 +35,7 @@ import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { codeMatches } from "../../helper/record-code";
 import { buildPagination, pageOffset } from "../../helper/pagination";
-import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
+import { sorFullyConsumedSql } from "../work-order/batch-effective-work-order-status";
 
 const {
   officeTable,
@@ -340,63 +342,47 @@ export const officeQueryRouter = router({
           if (row.status === STATUS.ACTIVE) sites.active += row.count;
         }
 
-        // The same work orders the work order list shows for this office.
-        const officeWorkOrders = await ctx.db
-          .select({
-            id: workOrderTable.id,
-            office_id: workOrderTable.office_id,
-            status: workOrderTable.status,
-          })
-          .from(workOrderTable)
-          .where(
-            andScope(
-              eq(workOrderTable.office_id, officeId),
-              workOrderScopeWhere(scope),
-            ),
-          );
-
-        const effectiveById = await batchEffectiveWorkOrderStatuses(
-          ctx.db,
-          scope,
-          officeWorkOrders.map((workOrder) => ({
-            id: Number(workOrder.id),
-            office_id: workOrder.office_id ?? null,
-            status: String(workOrder.status ?? ""),
-          })),
+        // The same work orders the work order list shows for this office,
+        // counted by status and added up by the database. A pending work
+        // order whose schedule of rates is used up counts as completed.
+        const officeWorkOrders = andScope(
+          eq(workOrderTable.office_id, officeId),
+          workOrderScopeWhere(scope),
         );
+        const consumed = sorFullyConsumedSql();
+        const tally = (condition: SQL) =>
+          sql<string>`coalesce(sum(case when ${condition} then 1 else 0 end), 0)`;
 
-        const workOrders: Record<EffectiveWorkOrderStatus | "total", number> = {
-          total: officeWorkOrders.length,
-          pending: 0,
-          completed: 0,
-          cancelled: 0,
-        };
-        for (const workOrder of officeWorkOrders) {
-          const status =
-            effectiveById.get(Number(workOrder.id)) ??
-            effectiveWorkOrderStatusFromDbOnly(String(workOrder.status));
-          workOrders[status] += 1;
-        }
-
-        // Budget and activity spend, counted as the client page counts them.
-        let totalBudgetAmount = 0;
-        let totalExpenseAmount = 0;
-        const workOrderIds = officeWorkOrders.map((workOrder) => workOrder.id);
-
-        if (workOrderIds.length > 0) {
-          const rates = await ctx.db
-            .select({ total_cost: scheduleOfRatesTable.total_cost })
+        const [[statusRow], [budgetRow], [incomeRow]] = await Promise.all([
+          ctx.db
+            .select({
+              total: count(),
+              cancelled: tally(eq(workOrderTable.status, "cancelled")),
+              completed: tally(
+                or(
+                  eq(workOrderTable.status, "completed"),
+                  and(eq(workOrderTable.status, "pending"), consumed),
+                )!,
+              ),
+              pending: tally(
+                and(eq(workOrderTable.status, "pending"), not(consumed))!,
+              ),
+            })
+            .from(workOrderTable)
+            .where(officeWorkOrders),
+          // Budget and activity spend, counted as the client page counts them.
+          ctx.db
+            .select({ total: sum(scheduleOfRatesTable.total_cost) })
             .from(scheduleOfRatesTable)
-            .where(inArray(scheduleOfRatesTable.work_order_id, workOrderIds));
-          totalBudgetAmount = rates.reduce(
-            (sum, rate) => sum + Number(rate.total_cost || 0),
-            0,
-          );
-
+            .innerJoin(
+              workOrderTable,
+              eq(scheduleOfRatesTable.work_order_id, workOrderTable.id),
+            )
+            .where(officeWorkOrders),
           // Only bioremediation completion earns income; restoration tracks
           // its expenses alone.
-          const completions = await ctx.db
-            .select({ amount: bioremediationContSoilTable.amount })
+          ctx.db
+            .select({ total: sum(bioremediationContSoilTable.amount) })
             .from(bioremediationContSoilTable)
             .innerJoin(
               workOrderSiteTable,
@@ -405,17 +391,26 @@ export const officeQueryRouter = router({
                 workOrderSiteTable.id,
               ),
             )
+            .innerJoin(
+              workOrderTable,
+              eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+            )
             .where(
               and(
-                inArray(workOrderSiteTable.work_order_id, workOrderIds),
+                officeWorkOrders,
                 eq(bioremediationContSoilTable.type, "completion"),
               ),
-            );
-          totalExpenseAmount = completions.reduce(
-            (sum, completion) => sum + Number(completion.amount || 0),
-            0,
-          );
-        }
+            ),
+        ]);
+
+        const workOrders: Record<EffectiveWorkOrderStatus | "total", number> = {
+          total: Number(statusRow?.total ?? 0),
+          pending: Number(statusRow?.pending ?? 0),
+          completed: Number(statusRow?.completed ?? 0),
+          cancelled: Number(statusRow?.cancelled ?? 0),
+        };
+        const totalBudgetAmount = Number(budgetRow?.total ?? 0);
+        const totalExpenseAmount = Number(incomeRow?.total ?? 0);
 
         return {
           office,
