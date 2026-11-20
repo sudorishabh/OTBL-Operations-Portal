@@ -668,7 +668,7 @@ export const contractorQueryRouter = router({
 
   // What a vendor's expenses come to, of those the filters leave: in all, by
   // what they were spent on, and the work orders most was spent in. By month,
-  // every month the other filters leave, so those picked show in their
+  // every month the other filters leave, so the days picked show in their
   // timeline.
   getContractorExpenseBreakdown: protectedProcedure
     .input(z.object(vendorExpenseFilters))
@@ -677,8 +677,8 @@ export const contractorQueryRouter = router({
         await assertCanUseVendors(ctx);
         const visible = await visibleWorkOrders(ctx);
         const where = vendorExpenseWhere(input, visible);
-        const anyMonth = vendorExpenseWhere(input, visible, {
-          withMonths: false,
+        const anyDay = vendorExpenseWhere(input, visible, {
+          withDates: false,
         });
         const e = workOrderSiteExpenseTable;
         const spent = sum(e.amount);
@@ -702,7 +702,7 @@ export const contractorQueryRouter = router({
                 .from(e)
                 .$dynamic(),
             )
-              .where(anyMonth)
+              .where(anyDay)
               .groupBy(expenseMonth)
               .orderBy(desc(expenseMonth)),
             withExpensePlaces(
@@ -739,7 +739,7 @@ export const contractorQueryRouter = router({
             exceeded: Number(totals?.exceeded ?? 0),
             count: Number(totals?.count ?? 0),
             work_order_count: Number(totals?.work_order_count ?? 0),
-            // Newest first, whatever months are picked.
+            // Newest first, whatever days are picked.
             months: months.map(toTotals),
             // Every kind, in a fixed order, those with none at nothing.
             sources: EXPENSE_SOURCES.map((source) => {

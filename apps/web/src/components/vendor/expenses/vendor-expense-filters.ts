@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { endOfMonth, format } from "date-fns";
 import { constants } from "@pkg/utils";
 import type { RouterOutputs } from "@/lib/trpc";
 import { ALL, type FilterOption } from "@/components/filters/list-filters";
@@ -35,9 +35,9 @@ export const SPEND_FADED_COLOR = "#b7d3f6";
 
 export type VendorExpenseFilters = {
   search: string;
-  /** ALL or a month, as "2026-04", the first and last to include. */
-  from: string;
-  to: string;
+  /** YYYY-MM-DD, the first and last day an expense may start on; either may be open. */
+  from?: string;
+  to?: string;
   /** ALL or a work order's id. */
   workOrder: string;
   /** ALL or a process. */
@@ -50,8 +50,6 @@ export type VendorExpenseFilters = {
 
 export const NO_FILTERS: VendorExpenseFilters = {
   search: "",
-  from: ALL,
-  to: ALL,
   workOrder: ALL,
   process: ALL,
   source: ALL,
@@ -61,13 +59,11 @@ export const NO_FILTERS: VendorExpenseFilters = {
 export const isFiltered = (filters: VendorExpenseFilters) =>
   filters.search.trim() !== "" ||
   filters.exceeded ||
-  [
-    filters.from,
-    filters.to,
-    filters.workOrder,
-    filters.process,
-    filters.source,
-  ].some((value) => value !== ALL);
+  !!filters.from ||
+  !!filters.to ||
+  [filters.workOrder, filters.process, filters.source].some(
+    (value) => value !== ALL,
+  );
 
 const picked = (value: string) => (value === ALL ? undefined : value);
 
@@ -79,8 +75,8 @@ export const toInput = (
 ) => ({
   id,
   search: search.trim() || undefined,
-  from_month: picked(filters.from),
-  to_month: picked(filters.to),
+  from: filters.from,
+  to: filters.to,
   work_order_id:
     filters.workOrder === ALL ? undefined : Number(filters.workOrder),
   process: picked(filters.process) as
@@ -118,13 +114,18 @@ export const monthsBetween = (first: string, last: string) => {
   return months;
 };
 
-// Whether a month is inside the range the filters pick.
-export const inPickedMonths = (
+// A month's first and last day, YYYY-MM-DD.
+export const firstDayOf = (month: string) => `${month}-01`;
+export const lastDayOf = (month: string) =>
+  format(endOfMonth(new Date(`${month}-01T00:00:00`)), "yyyy-MM-dd");
+
+// Whether any day of a month is inside the days the filters pick.
+export const inPickedDays = (
   month: string,
   filters: Pick<VendorExpenseFilters, "from" | "to">,
 ) =>
-  (filters.from === ALL || month >= filters.from) &&
-  (filters.to === ALL || month <= filters.to);
+  (!filters.from || lastDayOf(month) >= filters.from) &&
+  (!filters.to || firstDayOf(month) <= filters.to);
 
 // To the paisa, as an expense was recorded.
 export const formatExactAmount = (value: number) =>
