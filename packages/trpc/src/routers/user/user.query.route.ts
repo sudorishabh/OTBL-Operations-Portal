@@ -441,7 +441,9 @@ export const userQueryRouter = router({
           })
           .from(userTable)
           .where(condition)
-          .orderBy(asc(userTable.name))
+          // The id breaks ties, so users of one name never repeat or go
+          // missing across pages.
+          .orderBy(asc(userTable.name), asc(userTable.id))
           .limit(limit)
           .offset(offset);
 
