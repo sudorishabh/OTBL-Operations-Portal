@@ -17,7 +17,7 @@ const VendorDetailPage = ({ contractorId }: { contractorId: number }) => {
   return (
     <PageWrapper
       title='Vendor'
-      description='Every order and job order this vendor is on'
+      description='What was spent with this vendor, and every order and job order they are on'
       breadcrumbs={recordTrail(
         "vendors",
         name ? capitalFirstLetter(name) : "Vendor",

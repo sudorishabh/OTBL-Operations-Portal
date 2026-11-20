@@ -7,6 +7,7 @@ import {
   eq,
   exists,
   like,
+  ne,
   not,
   or,
   sql,
@@ -25,6 +26,17 @@ import { codeMatches } from "../../helper/record-code";
 import { CODE_PREFIX } from "@pkg/utils";
 import { getAccessScope, workOrderScopeWhere } from "../../access-scope";
 import type { TrpcContext } from "../../context";
+import { siteNameOrRestoration } from "../../helper/restoration";
+import {
+  EXPENSE_SOURCES,
+  VENDOR_EXPENSE_SORTS,
+  exceededAmount,
+  expenseMonth,
+  expenseSource,
+  vendorExpenseFilters,
+  vendorExpenseWhere,
+  withExpensePlaces,
+} from "./vendor-expenses";
 
 const {
   contractorTable,
@@ -107,6 +119,23 @@ const WORK_ORDER_OF_SITE = eq(
   workOrderSiteTable.work_order_id,
   workOrderTable.id,
 );
+
+// The work orders a vendor's expense breakdown names; the rest are counted.
+const TOP_WORK_ORDERS = 6;
+
+const vendorExpenseOrder = (sort: (typeof VENDOR_EXPENSE_SORTS)[number]) => {
+  const e = workOrderSiteExpenseTable;
+  switch (sort) {
+    case "oldest":
+      return [asc(e.start_date), asc(e.id)];
+    case "amount_desc":
+      return [desc(e.amount), desc(e.start_date), desc(e.id)];
+    case "amount_asc":
+      return [asc(e.amount), desc(e.start_date), desc(e.id)];
+    default:
+      return [desc(e.start_date), desc(e.id)];
+  }
+};
 
 const toSpent = <T extends { spent: string | null }>(row: T) => ({
   ...row,
@@ -310,10 +339,9 @@ export const contractorQueryRouter = router({
         }
       }),
     ),
-  // The purchase orders, sub-contracts and job orders a vendor is on, in
-  // work orders the user can see, each with what has been spent under them.
-  // What a vendor's page sums up: how many orders and job orders they are on
-  // and what has been spent under them, of the work orders the user can see.
+  // What a vendor's page sums up, of the work orders the user can see: how
+  // many orders and job orders they are on, and all that has been spent
+  // with them.
   getContractorWork: protectedProcedure
     .input(z.object({ id: z.number().positive() }))
     .query(
@@ -322,7 +350,7 @@ export const contractorQueryRouter = router({
         const visible = await visibleWorkOrders(ctx);
 
         try {
-          const [[orderRow], [jobOrderRow], [orderSpent], [jobOrderSpent]] =
+          const [[orderRow], [jobOrderRow], [spent]] =
             await Promise.all([
               ctx.db
                 .select({
@@ -351,81 +379,20 @@ export const contractorQueryRouter = router({
                     visible,
                   ),
                 ),
-              // The vendor's expenses on the requirements of orders they are
-              // on, and on job orders they are on.
-              ctx.db
-                .select({ total: sum(workOrderSiteExpenseTable.amount) })
-                .from(workOrderSiteExpenseTable)
-                .innerJoin(
-                  contractOrderItemTable,
-                  eq(
-                    workOrderSiteExpenseTable.contract_order_item_id,
-                    contractOrderItemTable.id,
-                  ),
-                )
-                .innerJoin(
-                  contractOrderTable,
-                  eq(
-                    contractOrderItemTable.contract_order_id,
-                    contractOrderTable.id,
-                  ),
-                )
-                .innerJoin(
-                  contractOrderContractorTable,
-                  and(
-                    eq(
-                      contractOrderContractorTable.contract_order_id,
-                      contractOrderTable.id,
-                    ),
-                    eq(contractOrderContractorTable.contractor_id, input.id),
-                  ),
-                )
-                .innerJoin(
-                  workOrderTable,
-                  eq(contractOrderTable.work_order_id, workOrderTable.id),
-                )
-                .where(
-                  and(
-                    eq(workOrderSiteExpenseTable.contractor_id, input.id),
-                    visible,
-                  ),
-                ),
-              ctx.db
-                .select({ total: sum(workOrderSiteExpenseTable.amount) })
-                .from(workOrderSiteExpenseTable)
-                .innerJoin(
-                  jobOrderTable,
-                  eq(workOrderSiteExpenseTable.job_order_id, jobOrderTable.id),
-                )
-                .innerJoin(
-                  jobOrderContractorTable,
-                  and(
-                    eq(jobOrderContractorTable.job_order_id, jobOrderTable.id),
-                    eq(jobOrderContractorTable.contractor_id, input.id),
-                  ),
-                )
-                .innerJoin(
-                  workOrderSiteTable,
-                  eq(jobOrderTable.work_order_site_id, workOrderSiteTable.id),
-                )
-                .innerJoin(
-                  workOrderTable,
-                  eq(workOrderSiteTable.work_order_id, workOrderTable.id),
-                )
-                .where(
-                  and(
-                    eq(workOrderSiteExpenseTable.contractor_id, input.id),
-                    visible,
-                  ),
-                ),
+              // Everything recorded under the vendor, on an order, a job
+              // order or neither, as their expenses list it.
+              withExpensePlaces(
+                ctx.db
+                  .select({ total: sum(workOrderSiteExpenseTable.amount) })
+                  .from(workOrderSiteExpenseTable)
+                  .$dynamic(),
+              ).where(vendorExpenseWhere(input, visible, { withFilters: false })),
             ]);
 
           return {
             order_count: Number(orderRow?.count ?? 0),
             job_order_count: Number(jobOrderRow?.count ?? 0),
-            total_spent:
-              Number(orderSpent?.total ?? 0) +
-              Number(jobOrderSpent?.total ?? 0),
+            total_spent: Number(spent?.total ?? 0),
           };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching contractor work");
@@ -578,4 +545,241 @@ export const contractorQueryRouter = router({
       }
     }),
   ),
+
+  // What a vendor's expenses can be narrowed by: the work orders, months,
+  // processes and kinds of order they are in, and whether any are over the
+  // estimate. Not narrowed itself, so no choice goes missing as filters
+  // change.
+  getContractorExpenseChoices: protectedProcedure
+    .input(z.object({ id: z.number().positive() }))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        await assertCanUseVendors(ctx);
+        const where = vendorExpenseWhere(input, await visibleWorkOrders(ctx), {
+          withFilters: false,
+        });
+        const e = workOrderSiteExpenseTable;
+
+        try {
+          const [workOrders, months, processes, sources, [exceeded]] =
+            await Promise.all([
+              withExpensePlaces(
+                ctx.db
+                  .selectDistinct({
+                    id: workOrderTable.id,
+                    code: workOrderTable.code,
+                  })
+                  .from(e)
+                  .$dynamic(),
+              )
+                .where(where)
+                .orderBy(desc(workOrderTable.id)),
+              withExpensePlaces(
+                ctx.db
+                  .selectDistinct({ month: expenseMonth })
+                  .from(e)
+                  .$dynamic(),
+              )
+                .where(where)
+                .orderBy(desc(expenseMonth)),
+              withExpensePlaces(
+                ctx.db
+                  .selectDistinct({ process: workOrderSiteTable.process_type })
+                  .from(e)
+                  .$dynamic(),
+              ).where(where),
+              withExpensePlaces(
+                ctx.db
+                  .selectDistinct({ source: expenseSource })
+                  .from(e)
+                  .$dynamic(),
+              ).where(where),
+              withExpensePlaces(
+                ctx.db.select({ count: count() }).from(e).$dynamic(),
+              ).where(and(where, ne(e.is_exceeded, 0))),
+            ]);
+
+          return {
+            work_orders: workOrders,
+            months: months.map((row) => row.month),
+            processes: processes.map((row) => row.process),
+            sources: EXPENSE_SOURCES.filter((source) =>
+              sources.some((row) => row.source === source),
+            ),
+            has_exceeded: Number(exceeded?.count ?? 0) > 0,
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching vendor expense choices");
+        }
+      }),
+    ),
+
+  // What a vendor's expenses come to, of those the filters leave: in all, by
+  // what they were spent on, and the work orders most was spent in. By month,
+  // every month the other filters leave, so those picked show in their
+  // timeline.
+  getContractorExpenseBreakdown: protectedProcedure
+    .input(z.object(vendorExpenseFilters))
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        await assertCanUseVendors(ctx);
+        const visible = await visibleWorkOrders(ctx);
+        const where = vendorExpenseWhere(input, visible);
+        const anyMonth = vendorExpenseWhere(input, visible, {
+          withMonths: false,
+        });
+        const e = workOrderSiteExpenseTable;
+        const spent = sum(e.amount);
+
+        try {
+          const [[totals], months, sources, workOrders] = await Promise.all([
+            withExpensePlaces(
+              ctx.db
+                .select({
+                  total: spent,
+                  exceeded: exceededAmount,
+                  count: count(),
+                  work_order_count: countDistinct(workOrderTable.id),
+                })
+                .from(e)
+                .$dynamic(),
+            ).where(where),
+            withExpensePlaces(
+              ctx.db
+                .select({ month: expenseMonth, total: spent, count: count() })
+                .from(e)
+                .$dynamic(),
+            )
+              .where(anyMonth)
+              .groupBy(expenseMonth)
+              .orderBy(desc(expenseMonth)),
+            withExpensePlaces(
+              ctx.db
+                .select({ source: expenseSource, total: spent, count: count() })
+                .from(e)
+                .$dynamic(),
+            )
+              .where(where)
+              .groupBy(expenseSource),
+            withExpensePlaces(
+              ctx.db
+                .select({
+                  id: workOrderTable.id,
+                  code: workOrderTable.code,
+                  total: spent,
+                  count: count(),
+                })
+                .from(e)
+                .$dynamic(),
+            )
+              .where(where)
+              .groupBy(workOrderTable.id)
+              .orderBy(desc(spent), desc(workOrderTable.id))
+              .limit(TOP_WORK_ORDERS),
+          ]);
+
+          const toTotals = <T extends { total: string | null; count: number }>(
+            row: T,
+          ) => ({ ...row, total: Number(row.total ?? 0), count: Number(row.count) });
+
+          return {
+            total: Number(totals?.total ?? 0),
+            exceeded: Number(totals?.exceeded ?? 0),
+            count: Number(totals?.count ?? 0),
+            work_order_count: Number(totals?.work_order_count ?? 0),
+            // Newest first, whatever months are picked.
+            months: months.map(toTotals),
+            // Every kind, in a fixed order, those with none at nothing.
+            sources: EXPENSE_SOURCES.map((source) => {
+              const row = sources.find((r) => r.source === source);
+              return {
+                source,
+                total: Number(row?.total ?? 0),
+                count: Number(row?.count ?? 0),
+              };
+            }),
+            // Most spent first; work_order_count says how many there are.
+            work_orders: workOrders.map(toTotals),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching vendor expense breakdown");
+        }
+      }),
+    ),
+
+  // A page of a vendor's expenses, of those the filters leave, newest first
+  // unless sorted otherwise, each with where it was spent.
+  getContractorExpenses: protectedProcedure
+    .input(
+      z.object({
+        ...vendorExpenseFilters,
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(25),
+        sort: z.enum(VENDOR_EXPENSE_SORTS).default("newest"),
+      }),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        await assertCanUseVendors(ctx);
+        const where = vendorExpenseWhere(input, await visibleWorkOrders(ctx));
+        const e = workOrderSiteExpenseTable;
+        const offset = (input.page - 1) * input.limit;
+
+        try {
+          const [[totalRow], rows] = await Promise.all([
+            withExpensePlaces(
+              ctx.db.select({ count: count() }).from(e).$dynamic(),
+            ).where(where),
+            withExpensePlaces(
+              ctx.db
+                .select({
+                  id: e.id,
+                  description: e.description,
+                  amount: e.amount,
+                  quantity: e.quantity,
+                  start_date: e.start_date,
+                  end_date: e.end_date,
+                  invoice_number: e.invoice_number,
+                  documents: e.documents,
+                  is_exceeded: e.is_exceeded,
+                  from_order: e.from_order,
+                  activity_key: e.activity_key,
+                  source: expenseSource,
+                  work_order_id: workOrderTable.id,
+                  work_order_code: workOrderTable.code,
+                  work_order_site_id: workOrderSiteTable.id,
+                  site_name: siteNameOrRestoration,
+                  process_type: workOrderSiteTable.process_type,
+                  order_id: contractOrderTable.id,
+                  order_code: contractOrderTable.code,
+                  item: contractOrderItemTable.item,
+                  item_description: contractOrderItemTable.description,
+                  item_unit: contractOrderItemTable.unit,
+                  job_order_id: jobOrderTable.id,
+                  jo_number: jobOrderTable.jo_number,
+                })
+                .from(e)
+                .$dynamic(),
+            )
+              .where(where)
+              .orderBy(...vendorExpenseOrder(input.sort))
+              .limit(input.limit)
+              .offset(offset),
+          ]);
+
+          const total = Number(totalRow?.count ?? 0);
+          return {
+            expenses: rows.map((row) => ({
+              ...row,
+              amount: Number(row.amount ?? 0),
+              is_exceeded: !!row.is_exceeded,
+              from_order: !!row.from_order,
+            })),
+            pagination: pageOf(input, total, rows.length),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching vendor expenses");
+        }
+      }),
+    ),
 });
