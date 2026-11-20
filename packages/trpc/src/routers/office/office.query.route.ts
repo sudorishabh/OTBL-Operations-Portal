@@ -13,6 +13,7 @@ import {
   sum,
   type SQL,
 } from "drizzle-orm";
+import { z } from "zod";
 import { schema, type Database } from "@pkg/db";
 import {
   CODE_PREFIX,
@@ -297,32 +298,42 @@ export const officeQueryRouter = router({
   ),
 
   // Every office the user can see, with only what list filters show and
-  // search by; also gives the states offices are in.
-  getOfficeOptions: protectedProcedure.query(
-    handleQuery(async ({ ctx }) => {
-      const scope = await getAccessScope(
-        ctx.db,
-        Number(ctx.user!.sub),
-        ctx.user!.role,
-      );
+  // search by; also gives the states offices are in. Pickers can ask for
+  // active offices only.
+  getOfficeOptions: protectedProcedure
+    .input(z.object({ active_only: z.boolean().optional() }).optional())
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
 
-      try {
-        return await ctx.db
-          .select({
-            id: officeTable.id,
-            code: officeTable.code,
-            name: officeTable.name,
-            city: officeTable.city,
-            state: officeTable.state,
-          })
-          .from(officeTable)
-          .where(await visibleOfficesWhere(ctx.db, scope))
-          .orderBy(asc(officeTable.name), asc(officeTable.id));
-      } catch (error) {
-        throw fromDatabaseError(error, "Fetching office options");
-      }
-    }),
-  ),
+        try {
+          return await ctx.db
+            .select({
+              id: officeTable.id,
+              code: officeTable.code,
+              name: officeTable.name,
+              city: officeTable.city,
+              state: officeTable.state,
+            })
+            .from(officeTable)
+            .where(
+              and(
+                await visibleOfficesWhere(ctx.db, scope),
+                input?.active_only
+                  ? eq(officeTable.status, STATUS.ACTIVE)
+                  : undefined,
+              ),
+            )
+            .orderBy(asc(officeTable.name), asc(officeTable.id));
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching office options");
+        }
+      }),
+    ),
 
   // One office for its own page: its details and office operators,
   // and totals across its sites and work orders.
