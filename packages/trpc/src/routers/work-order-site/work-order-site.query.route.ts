@@ -45,14 +45,85 @@ const {
   bioOilZappingTable,
 } = schema;
 
+const { WO_PROCESS } = constants;
+
+const UPLOAD_SORTS = ["newest", "oldest", "site", "file"] as const;
+
+const operatorUploadsByWorkOrderSchema = z.object({
+  work_order_id: z.number().positive(),
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+  process_type: z
+    .enum([WO_PROCESS.RESTORATION, WO_PROCESS.BIOREMEDIATION])
+    .optional(),
+  work_order_site_id: z.number().int().positive().optional(),
+  sort: z.enum(UPLOAD_SORTS).default("newest"),
+});
+
+// Each sort ends on the newest first, then the id, so pages never repeat or
+// skip an upload.
+const uploadOrder = (sort: (typeof UPLOAD_SORTS)[number]) => {
+  const newest = [
+    desc(workOrderSiteOperatorUploadTable.created_at),
+    desc(workOrderSiteOperatorUploadTable.id),
+  ];
+  switch (sort) {
+    case "oldest":
+      return [
+        asc(workOrderSiteOperatorUploadTable.created_at),
+        asc(workOrderSiteOperatorUploadTable.id),
+      ];
+    case "site":
+      return [asc(siteNameOrRestoration), ...newest];
+    case "file":
+      return [asc(workOrderSiteOperatorUploadTable.file_name), ...newest];
+    default:
+      return newest;
+  }
+};
+
 export const workOrderSiteQueryRouter = router({
-  // Everything field operators uploaded across a work order, newest first,
-  // each with the restoration or site it was uploaded to.
-  getOperatorUploadsByWorkOrder: protectedProcedure
+  // How many documents field operators have uploaded across a work order.
+  countOperatorUploadsByWorkOrder: protectedProcedure
     .input(z.object({ work_order_id: z.number().positive() }))
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { work_order_id } = input;
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        await assertCanAccessWorkOrder(ctx.db, scope, input.work_order_id);
+
+        try {
+          const [row] = await ctx.db
+            .select({ count: count() })
+            .from(workOrderSiteOperatorUploadTable)
+            .innerJoin(
+              workOrderSiteTable,
+              eq(
+                workOrderSiteOperatorUploadTable.work_order_site_id,
+                workOrderSiteTable.id,
+              ),
+            )
+            .where(eq(workOrderSiteTable.work_order_id, input.work_order_id));
+          return { count: Number(row?.count ?? 0) };
+        } catch (error) {
+          throw fromDatabaseError(error, "Counting operator uploads");
+        }
+      }),
+    ),
+
+  // Everything field operators uploaded across a work order, a page at a
+  // time, each with the restoration or site it was uploaded to. Narrowed by
+  // process and site and sorted by date, site or file name, with the counts
+  // and sites the filters offer.
+  getOperatorUploadsByWorkOrder: protectedProcedure
+    .input(operatorUploadsByWorkOrderSchema)
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const { work_order_id, page, limit, process_type, sort } = input;
+        const offset = (page - 1) * limit;
 
         try {
           const scope = await getAccessScope(
@@ -61,6 +132,72 @@ export const workOrderSiteQueryRouter = router({
             ctx.user!.role,
           );
           await assertCanAccessWorkOrder(ctx.db, scope, work_order_id);
+
+          const inWorkOrder = eq(
+            workOrderSiteTable.work_order_id,
+            work_order_id,
+          );
+          const inProcess = and(
+            inWorkOrder,
+            process_type
+              ? eq(workOrderSiteTable.process_type, process_type)
+              : undefined,
+          );
+          const where = and(
+            inProcess,
+            input.work_order_site_id
+              ? eq(
+                  workOrderSiteOperatorUploadTable.work_order_site_id,
+                  input.work_order_site_id,
+                )
+              : undefined,
+          );
+
+          const [processCounts, sites, [totalRow]] = await Promise.all([
+            ctx.db
+              .select({
+                process_type: workOrderSiteTable.process_type,
+                count: count(),
+              })
+              .from(workOrderSiteOperatorUploadTable)
+              .innerJoin(
+                workOrderSiteTable,
+                eq(
+                  workOrderSiteOperatorUploadTable.work_order_site_id,
+                  workOrderSiteTable.id,
+                ),
+              )
+              .where(inWorkOrder)
+              .groupBy(workOrderSiteTable.process_type),
+            // The sites with uploads in the chosen process, by name.
+            ctx.db
+              .selectDistinct({
+                id: workOrderSiteTable.id,
+                name: siteNameOrRestoration,
+              })
+              .from(workOrderSiteOperatorUploadTable)
+              .innerJoin(
+                workOrderSiteTable,
+                eq(
+                  workOrderSiteOperatorUploadTable.work_order_site_id,
+                  workOrderSiteTable.id,
+                ),
+              )
+              .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+              .where(inProcess)
+              .orderBy(asc(siteNameOrRestoration)),
+            ctx.db
+              .select({ count: count() })
+              .from(workOrderSiteOperatorUploadTable)
+              .innerJoin(
+                workOrderSiteTable,
+                eq(
+                  workOrderSiteOperatorUploadTable.work_order_site_id,
+                  workOrderSiteTable.id,
+                ),
+              )
+              .where(where),
+          ]);
 
           const uploads = await ctx.db
             .select({
@@ -94,11 +231,41 @@ export const workOrderSiteQueryRouter = router({
                 userTable.id,
               ),
             )
-            .where(eq(workOrderSiteTable.work_order_id, work_order_id))
-            .orderBy(desc(workOrderSiteOperatorUploadTable.created_at));
+            .where(where)
+            .orderBy(...uploadOrder(sort))
+            .limit(limit)
+            .offset(offset);
 
-          return uploads;
+          const countOf = (process: string) =>
+            Number(
+              processCounts.find((row) => row.process_type === process)
+                ?.count ?? 0,
+            );
+          const total = Number(totalRow?.count ?? 0);
+
+          return {
+            uploads,
+            counts: {
+              all: processCounts.reduce(
+                (sum, row) => sum + Number(row.count),
+                0,
+              ),
+              [WO_PROCESS.RESTORATION]: countOf(WO_PROCESS.RESTORATION),
+              [WO_PROCESS.BIOREMEDIATION]: countOf(WO_PROCESS.BIOREMEDIATION),
+            },
+            sites,
+            pagination: {
+              page,
+              limit,
+              total,
+              totalPages: Math.ceil(total / limit),
+              hasMore: offset + uploads.length < total,
+            },
+          };
         } catch (error) {
+          if (error && typeof error === "object" && "errorCode" in error) {
+            throw error;
+          }
           throw fromDatabaseError(
             error,
             "Fetching operator uploads for work order",
@@ -493,15 +660,19 @@ export const workOrderSiteQueryRouter = router({
       }),
     ),
 
+  // What field operators uploaded at a site, newest first, a page at a time.
   getOperatorUploads: protectedProcedure
     .input(
       z.object({
         work_order_site_id: z.number().positive(),
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(20),
       }),
     )
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { work_order_site_id } = input;
+        const { work_order_site_id, page, limit } = input;
+        const offset = (page - 1) * limit;
 
         try {
           const scope = await getAccessScope(
@@ -515,36 +686,56 @@ export const workOrderSiteQueryRouter = router({
             work_order_site_id,
           );
 
-          const uploads = await ctx.db
-            .select({
-              id: workOrderSiteOperatorUploadTable.id,
-              work_order_site_id:
-                workOrderSiteOperatorUploadTable.work_order_site_id,
-              description: workOrderSiteOperatorUploadTable.description,
-              file_name: workOrderSiteOperatorUploadTable.file_name,
-              document_url: workOrderSiteOperatorUploadTable.document_url,
-              document_id: workOrderSiteOperatorUploadTable.document_id,
-              created_at: workOrderSiteOperatorUploadTable.created_at,
-              uploaded_by_name: userTable.name,
-            })
-            .from(workOrderSiteOperatorUploadTable)
-            .innerJoin(
-              userTable,
-              eq(
-                workOrderSiteOperatorUploadTable.uploaded_by_user_id,
-                userTable.id,
-              ),
-            )
-            .where(
-              eq(
-                workOrderSiteOperatorUploadTable.work_order_site_id,
-                work_order_site_id,
-              ),
-            )
-            .orderBy(desc(workOrderSiteOperatorUploadTable.created_at));
+          const atSite = eq(
+            workOrderSiteOperatorUploadTable.work_order_site_id,
+            work_order_site_id,
+          );
+          const [[totalRow], uploads] = await Promise.all([
+            ctx.db
+              .select({ count: count() })
+              .from(workOrderSiteOperatorUploadTable)
+              .where(atSite),
+            ctx.db
+              .select({
+                id: workOrderSiteOperatorUploadTable.id,
+                work_order_site_id:
+                  workOrderSiteOperatorUploadTable.work_order_site_id,
+                description: workOrderSiteOperatorUploadTable.description,
+                file_name: workOrderSiteOperatorUploadTable.file_name,
+                document_url: workOrderSiteOperatorUploadTable.document_url,
+                document_id: workOrderSiteOperatorUploadTable.document_id,
+                created_at: workOrderSiteOperatorUploadTable.created_at,
+                uploaded_by_name: userTable.name,
+              })
+              .from(workOrderSiteOperatorUploadTable)
+              .innerJoin(
+                userTable,
+                eq(
+                  workOrderSiteOperatorUploadTable.uploaded_by_user_id,
+                  userTable.id,
+                ),
+              )
+              .where(atSite)
+              .orderBy(...uploadOrder("newest"))
+              .limit(limit)
+              .offset(offset),
+          ]);
 
-          return uploads;
+          const total = Number(totalRow?.count ?? 0);
+          return {
+            uploads,
+            pagination: {
+              page,
+              limit,
+              total,
+              totalPages: Math.ceil(total / limit),
+              hasMore: offset + uploads.length < total,
+            },
+          };
         } catch (error) {
+          if (error && typeof error === "object" && "errorCode" in error) {
+            throw error;
+          }
           throw fromDatabaseError(error, "Fetching operator uploads");
         }
       }),

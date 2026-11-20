@@ -11,6 +11,7 @@ import {
   like,
   isNull,
   count,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import { schema } from "@pkg/db";
@@ -304,26 +305,6 @@ export const expenseQueryRouter = router({
         await assertCanAccessWorkOrderSite(ctx.db, scope, work_order_site_id);
 
         try {
-          const [totalRow] = await ctx.db
-            .select({ total: sum(workOrderSiteExpenseTable.amount) })
-            .from(workOrderSiteExpenseTable)
-            .leftJoin(
-              contractorTable,
-              eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
-            )
-            .where(where);
-          const grandTotal = Number(totalRow?.total ?? 0);
-
-          const exceededRows = await ctx.db
-            .select({ total: sum(workOrderSiteExpenseTable.amount) })
-            .from(workOrderSiteExpenseTable)
-            .leftJoin(
-              contractorTable,
-              eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
-            )
-            .where(and(where, ne(workOrderSiteExpenseTable.is_exceeded, 0)));
-          const exceededTotal = Number(exceededRows[0]?.total ?? 0);
-          const regularTotal = grandTotal - exceededTotal;
 
           // Only bioremediation completion earns income; restoration tracks
           // its expenses alone.
@@ -338,23 +319,35 @@ export const expenseQueryRouter = router({
             );
           const incomeTotal = Number(income?.total ?? 0);
 
+          // The expenses added up by the database, a row for each activity,
+          // vendor, order item, job order and exceeded flag they share,
+          // however many expenses there are.
+          const e = workOrderSiteExpenseTable;
           const activityRows = await ctx.db
             .select({
-              activity_key: workOrderSiteExpenseTable.activity_key,
-              quantity: workOrderSiteExpenseTable.quantity,
-              is_exceeded: workOrderSiteExpenseTable.is_exceeded,
-              contractor_id: workOrderSiteExpenseTable.contractor_id,
-              contract_order_item_id:
-                workOrderSiteExpenseTable.contract_order_item_id,
-              job_order_id: workOrderSiteExpenseTable.job_order_id,
-              amount: workOrderSiteExpenseTable.amount,
+              activity_key: e.activity_key,
+              is_exceeded: e.is_exceeded,
+              contractor_id: e.contractor_id,
+              contract_order_item_id: e.contract_order_item_id,
+              job_order_id: e.job_order_id,
+              amount: sum(e.amount),
+              quantity: sum(e.quantity),
+              count: count(),
             })
-            .from(workOrderSiteExpenseTable)
-            .leftJoin(
-              contractorTable,
-              eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
-            )
-            .where(where);
+            .from(e)
+            .leftJoin(contractorTable, eq(e.contractor_id, contractorTable.id))
+            .where(where)
+            .groupBy(
+              e.activity_key,
+              e.is_exceeded,
+              e.contractor_id,
+              e.contract_order_item_id,
+              e.job_order_id,
+            );
+
+          let grandTotal = 0;
+          let exceededTotal = 0;
+          let expenseCount = 0;
 
           const byActivity: Record<string, { totalAmount: number; exceededAmount: number; totalQuantity: number; count: number }> = {};
           // Totals per contractor id; expenses under none are keyed "none".
@@ -368,6 +361,10 @@ export const expenseQueryRouter = router({
           const byJobOrderVendor: Record<string, number> = {};
 
           for (const row of activityRows) {
+            grandTotal += Number(row.amount || 0);
+            if (row.is_exceeded) exceededTotal += Number(row.amount || 0);
+            expenseCount += Number(row.count || 0);
+
             const contractorKey = row.contractor_id
               ? String(row.contractor_id)
               : "none";
@@ -398,7 +395,7 @@ export const expenseQueryRouter = router({
             const amt = Number(row.amount || 0);
             byActivity[row.activity_key]!.totalAmount += amt;
             if (row.is_exceeded) byActivity[row.activity_key]!.exceededAmount += amt;
-            byActivity[row.activity_key]!.count += 1;
+            byActivity[row.activity_key]!.count += Number(row.count || 0);
             // Each expense's quantity is used up from its activity.
             byActivity[row.activity_key]!.totalQuantity += Number(row.quantity || 0);
           }
@@ -406,8 +403,8 @@ export const expenseQueryRouter = router({
           return {
             grandTotal,
             // How many expenses the totals are of.
-            expenseCount: activityRows.length,
-            regularTotal,
+            expenseCount,
+            regularTotal: grandTotal - exceededTotal,
             exceededTotal,
             incomeTotal,
             byActivity,
@@ -423,8 +420,21 @@ export const expenseQueryRouter = router({
       }),
     ),
 
+  // Every expense across a work order's restoration and sites, a page at a
+  // time, newest first. Narrowed by a search, a site or the exceeded ones,
+  // with the totals of all that match and the sites that have expenses.
   getExpensesByWorkOrder: protectedProcedure
-    .input(z.object({ work_order_id: z.number().positive() }))
+    .input(
+      z.object({
+        work_order_id: z.number().positive(),
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(25),
+        // Matches the title, invoice number, vendor, site or activity.
+        search: z.string().trim().max(100).optional(),
+        work_order_site_id: z.number().int().positive().optional(),
+        exceeded_only: z.boolean().optional(),
+      }),
+    )
     .query(
       handleQuery(async ({ input, ctx }) => {
         const scope = await getAccessScope(
@@ -434,7 +444,66 @@ export const expenseQueryRouter = router({
         );
         await assertCanAccessWorkOrder(ctx.db, scope, input.work_order_id);
 
+        const { page, limit } = input;
+        const offset = (page - 1) * limit;
+        const e = workOrderSiteExpenseTable;
+        const inWorkOrder = eq(
+          workOrderSiteTable.work_order_id,
+          input.work_order_id,
+        );
+        const term = input.search ? `%${escapeLike(input.search)}%` : null;
+        const where = and(
+          inWorkOrder,
+          input.work_order_site_id
+            ? eq(e.work_order_site_id, input.work_order_site_id)
+            : undefined,
+          input.exceeded_only ? ne(e.is_exceeded, 0) : undefined,
+          term
+            ? or(
+                like(e.title, term),
+                like(e.invoice_number, term),
+                like(e.activity_key, term),
+                like(contractorTable.name, term),
+                like(siteNameOrRestoration, term),
+              )
+            : undefined,
+        );
+
         try {
+          const [[totalsRow], sites] = await Promise.all([
+            ctx.db
+              .select({
+                total: sum(e.amount),
+                exceeded: sql<string>`sum(case when ${e.is_exceeded} <> 0 then ${e.amount} else 0 end)`,
+                count: count(),
+              })
+              .from(e)
+              .innerJoin(
+                workOrderSiteTable,
+                eq(e.work_order_site_id, workOrderSiteTable.id),
+              )
+              .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+              .leftJoin(
+                contractorTable,
+                eq(e.contractor_id, contractorTable.id),
+              )
+              .where(where),
+            // The restoration and sites with expenses, by name.
+            ctx.db
+              .selectDistinct({
+                id: workOrderSiteTable.id,
+                name: siteNameOrRestoration,
+              })
+              .from(e)
+              .innerJoin(
+                workOrderSiteTable,
+                eq(e.work_order_site_id, workOrderSiteTable.id),
+              )
+              .leftJoin(siteTable, eq(workOrderSiteTable.site_id, siteTable.id))
+              .where(inWorkOrder)
+              .orderBy(asc(siteNameOrRestoration)),
+          ]);
+
           const expenses = await ctx.db
             .select({
               id: workOrderSiteExpenseTable.id,
@@ -467,10 +536,33 @@ export const expenseQueryRouter = router({
               contractorTable,
               eq(workOrderSiteExpenseTable.contractor_id, contractorTable.id),
             )
-            .where(eq(workOrderSiteTable.work_order_id, input.work_order_id))
-            .orderBy(desc(workOrderSiteExpenseTable.start_date));
+            .where(where)
+            .orderBy(...expenseOrder("newest"))
+            .limit(limit)
+            .offset(offset);
 
-          return { expenses };
+          const total = Number(totalsRow?.count ?? 0);
+          const amount = Number(totalsRow?.total ?? 0);
+          const exceeded = Number(totalsRow?.exceeded ?? 0);
+
+          return {
+            expenses,
+            // Of every expense the filters leave, not only this page.
+            totals: {
+              total: amount,
+              exceeded,
+              regular: amount - exceeded,
+              count: total,
+            },
+            sites,
+            pagination: {
+              page,
+              limit,
+              total,
+              totalPages: Math.ceil(total / limit),
+              hasMore: offset + expenses.length < total,
+            },
+          };
         } catch (error) {
           throw fromDatabaseError(error, "Fetching work order expenses");
         }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { MapPin, ReceiptIndianRupee, Wallet } from "lucide-react";
 import {
   Table,
@@ -73,6 +73,9 @@ interface Props {
 
 // Within this of nothing, a quantity counts as used up.
 const QTY_EPSILON = 0.001;
+
+// How many more sites the Sites table lists at a time.
+const SITES_STEP = 20;
 
 const formatCurrency = (amount: string | number) =>
   new Intl.NumberFormat("en-IN", {
@@ -203,6 +206,8 @@ const ScheduleOfRatesTable = ({
   const { getParam, deleteParam } = useHandleParams();
   const isAdmin = useIsAdmin();
   const isDialogOpen = getParam("dialog") === "schedule-of-rates";
+  // The sites listed so far; the totals are always of every site.
+  const [visibleSites, setVisibleSites] = useState(SITES_STEP);
 
   const allSites = sites ?? [];
   const restoration = restorationSiteOf(allSites);
@@ -649,7 +654,7 @@ const ScheduleOfRatesTable = ({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    siteRows.map((site) => {
+                    siteRows.slice(0, visibleSites).map((site) => {
                       const isRestoration =
                         site.wo_site_id === restoration?.wo_site_id;
                       const estimate = isBioremediationSite(site)
@@ -762,6 +767,17 @@ const ScheduleOfRatesTable = ({
                 )}
               </Table>
             </div>
+            {siteRows.length > visibleSites && (
+              <div className='border-t border-gray-100 py-2.5 text-center'>
+                <button
+                  type='button'
+                  onClick={() => setVisibleSites((count) => count + SITES_STEP)}
+                  className='cursor-pointer text-xs font-medium text-emerald-700 hover:underline'>
+                  Show {Math.min(SITES_STEP, siteRows.length - visibleSites)}{" "}
+                  more of {siteRows.length} sites
+                </button>
+              </div>
+            )}
           </div>
         </section>
       </div>

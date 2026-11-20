@@ -1,8 +1,9 @@
 "use client";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, type UseQueryResult } from "@tanstack/react-query";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import { capitalFirstLetter, constants } from "@pkg/utils";
 import {
   Table,
@@ -81,6 +82,12 @@ import {
   type ExpenseListFilters,
   type ExpenseSort,
 } from "./expense-list-filters";
+
+// A page of the site's expenses, as the server sends it.
+type ExpensesPage = {
+  expenses: Expense[];
+  pagination: { total: number; totalPages: number; hasMore: boolean };
+};
 
 type ExpenseRecord = {
   id: number;
@@ -274,8 +281,6 @@ const SiteExpensesSection = ({
     [filters, debouncedSearch],
   );
   const isFiltered = hasApiFilters(apiFilters);
-  // Changes whenever the server's list would.
-  const listKey = JSON.stringify({ ...apiFilters, sort });
   // What a new expense starts under, when added from a vendor or from
   // Miscellaneous.
   const [addUnder, setAddUnder] = useState<number | "miscellaneous" | null>(null);
@@ -290,21 +295,6 @@ const SiteExpensesSection = ({
   // The tab open when expenses are shown in tabs; the first until one is
   // chosen.
   const [groupedTab, setGroupedTab] = useState<string | null>(null);
-
-  const [expensePage, setExpensePage] = useState(1);
-  const [expensesList, setExpensesList] = useState<Expense[]>([]);
-  const [expensesPagination, setExpensesPagination] = useState<{ total: number; totalPages: number; hasMore: boolean } | null>(null);
-
-  const resetExpenseList = () => {
-    setExpensePage(1);
-    setExpensesList([]);
-    setExpensesPagination(null);
-  };
-
-  // Another site, filter or order starts the list again.
-  useEffect(() => {
-    resetExpenseList();
-  }, [woSiteId, listKey]);
 
   const siteActivitiesQuery = trpc.workOrderSiteQuery.getSiteActivities.useQuery(
     { work_order_site_id: woSiteId },
@@ -330,22 +320,29 @@ const SiteExpensesSection = ({
   );
   const jobOrders = (jobOrdersQuery.data ?? []) as JobOrder[];
 
-  const expensesQuery = trpc.expenseQuery.getExpenses.useQuery(
-    { work_order_site_id: woSiteId, page: expensePage, ...apiFilters, sort },
-    { enabled: !!woSiteId },
+  // The expenses, a page at a time. Each page is its own query, so adding,
+  // editing or deleting one refreshes the loaded pages in place; another
+  // site, filter or order starts again at the first page.
+  const expensesInput = { work_order_site_id: woSiteId, ...apiFilters, sort };
+  const { pages: expensePages, loadMore: loadMoreExpenses } =
+    useLoadMorePages(expensesInput);
+  const expenseQueries: UseQueryResult<ExpensesPage>[] = trpc.useQueries(
+    (t: any) =>
+      expensePages.map((page) =>
+        t.expenseQuery.getExpenses(
+          { ...expensesInput, page },
+          { enabled: !!woSiteId },
+        ),
+      ),
   );
-
-  useEffect(() => {
-    if (!expensesQuery.isLoading && expensesQuery.data?.expenses && expensesQuery.data.pagination?.page === expensePage) {
-      const fetched = expensesQuery.data.expenses as Expense[];
-      if (expensePage === 1) {
-        setExpensesList(fetched);
-      } else {
-        setExpensesList(prev => [...prev, ...fetched]);
-      }
-      setExpensesPagination(expensesQuery.data.pagination);
-    }
-  }, [expensesQuery.dataUpdatedAt, expensePage]);
+  const expensesList = expenseQueries.flatMap(
+    (query) => (query.data?.expenses ?? []) as Expense[],
+  );
+  const expensesPagination =
+    expenseQueries.at(-1)?.data?.pagination ?? null;
+  const isLoadingExpenses = !!expenseQueries[0]?.isLoading;
+  const isLoadingMoreExpenses =
+    expensePages.length > 1 && !!expenseQueries.at(-1)?.isLoading;
 
   const summaryQuery = trpc.expenseQuery.getExpenseSummary.useQuery(
     { work_order_site_id: woSiteId },
@@ -447,7 +444,6 @@ const SiteExpensesSection = ({
     if (deletingId === null) return;
     try {
       await deleteExpenseMutation.mutateAsync({ id: deletingId });
-      resetExpenseList();
       await utils.expenseQuery.getExpenses.invalidate({ work_order_site_id: woSiteId });
       await utils.expenseQuery.getExpenseSummary.invalidate({ work_order_site_id: woSiteId });
       utils.expenseQuery.getVendorMonthlyExpenses.invalidate({ work_order_site_id: woSiteId });
@@ -1486,7 +1482,7 @@ const SiteExpensesSection = ({
         />
       )}
 
-      {expensesQuery.isLoading && expensePage === 1 ? (
+      {isLoadingExpenses ? (
         <ExpenseGroupsSkeleton />
       ) : isBioremediation ? (
         renderGroupedExpenses({
@@ -1581,15 +1577,14 @@ const SiteExpensesSection = ({
 
       {expensesPagination?.hasMore && (
         <LoadMoreBtn
-          onClick={() => setExpensePage(prev => prev + 1)}
-          loading={expensesQuery.isLoading && expensePage > 1}
+          onClick={loadMoreExpenses}
+          loading={isLoadingMoreExpenses}
         />
       )}
 
       <AddExpenseDialog
         open={dialogOpen}
         onClose={handleCloseDialog}
-        onSuccess={resetExpenseList}
         workOrderSiteId={woSiteId}
         editingExpense={editingExpense}
         usedQtyByActivity={usedQtyByActivity}

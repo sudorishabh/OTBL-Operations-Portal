@@ -1,6 +1,10 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
+import { keepPreviousData, type UseQueryResult } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
+import LoadMoreBtn from "@/components/loading/LoadMoreBtn";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useLoadMorePages } from "@/hooks/useLoadMorePages";
 import DocumentsMenu from "@/components/shared/documents-menu";
 import { toDocuments } from "@/lib/documents";
 import { formatDateRange } from "@/lib/wo-site-display";
@@ -14,7 +18,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import DialogWindow from "@/components/shared/dialog-window";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
 import { formatCurrency } from "@pkg/utils";
 import { Input } from "@/components/ui/input";
@@ -39,6 +43,10 @@ interface Props {
   workOrderCode?: string;
 }
 
+const PAGE_SIZE = 25;
+
+type ExpensesPage = RouterOutputs["expenseQuery"]["getExpensesByWorkOrder"];
+
 const formatActivityLabel = (key: string) =>
   key
     .split("_")
@@ -55,64 +63,56 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
   const [search, setSearch] = useState("");
   const [siteFilter, setSiteFilter] = useState<string>("__all__");
   const [onlyExceeded, setOnlyExceeded] = useState(false);
+  const debouncedSearch = useDebounce(search.trim(), 300);
 
-  const query = trpc.expenseQuery.getExpensesByWorkOrder.useQuery(
-    { work_order_id: workOrderId },
-    { enabled: isOpen && workOrderId > 0 },
+  // The server filters, totals and pages the expenses.
+  const queryInput = {
+    work_order_id: workOrderId,
+    limit: PAGE_SIZE,
+    search: debouncedSearch || undefined,
+    work_order_site_id:
+      siteFilter === "__all__" ? undefined : Number(siteFilter),
+    exceeded_only: onlyExceeded || undefined,
+  };
+  const { pages, loadMore } = useLoadMorePages(queryInput);
+
+  // Each page is its own query, so a refresh updates the rows in place. A
+  // new filter keeps the last rows in view until its first page arrives.
+  const pageQueries: UseQueryResult<ExpensesPage>[] = trpc.useQueries(
+    (t: any) =>
+      pages.map((page) =>
+        t.expenseQuery.getExpensesByWorkOrder(
+          { ...queryInput, page },
+          {
+            enabled: isOpen && workOrderId > 0,
+            placeholderData: page === 1 ? keepPreviousData : undefined,
+          },
+        ),
+      ),
   );
 
-  const expenses = query.data?.expenses ?? [];
+  const firstPage = pageQueries[0]?.data;
+  const lastPage = pageQueries.at(-1)?.data;
+  const filtered = pageQueries.flatMap((query) => query.data?.expenses ?? []);
+  const isLoading = !!pageQueries[0]?.isLoading;
+  const isFetchingMore = pages.length > 1 && !!pageQueries.at(-1)?.isLoading;
+  const isFiltered =
+    !!debouncedSearch || siteFilter !== "__all__" || onlyExceeded;
 
-  const siteOptions = useMemo(() => {
-    const seen = new Map<number, string>();
-    for (const e of expenses as any[]) {
-      if (e.work_order_site_id && !seen.has(e.work_order_site_id)) {
-        seen.set(e.work_order_site_id, e.site_name || `Site ${e.site_id}`);
-      }
-    }
-    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
-  }, [expenses]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return expenses.filter((e: any) => {
-      if (siteFilter !== "__all__" && String(e.work_order_site_id) !== siteFilter)
-        return false;
-      if (onlyExceeded && !e.is_exceeded) return false;
-      if (!q) return true;
-      const hay = [
-        e.title,
-        e.contractor_name,
-        e.invoice_number,
-        e.site_name,
-        e.activity_key,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    });
-  }, [expenses, search, siteFilter, onlyExceeded]);
-
-  const totals = useMemo(() => {
-    let total = 0;
-    let exceeded = 0;
-    for (const e of filtered) {
-      const amt = Number(e.amount || 0);
-      total += amt;
-      if (e.is_exceeded) exceeded += amt;
-    }
-    return {
-      total,
-      exceeded,
-      regular: total - exceeded,
-      count: filtered.length,
-    };
-  }, [filtered]);
+  const siteOptions = firstPage?.sites ?? [];
+  const totals = firstPage?.totals ?? {
+    total: 0,
+    exceeded: 0,
+    regular: 0,
+    count: 0,
+  };
 
   const handleClose = (open: boolean) => {
     if (open) return;
     setIsFullScreen(false);
+    setSearch("");
+    setSiteFilter("__all__");
+    setOnlyExceeded(false);
     deleteParams(["dialog"]);
   };
 
@@ -137,7 +137,7 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
       size='2xl'
       isFullScreen={isFullScreen}
       onToggleFullScreen={() => setIsFullScreen((v) => !v)}
-      isLoading={query.isLoading}
+      isLoading={isLoading}
       loadingSkeleton='list'>
       <div className='space-y-4 py-3'>
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
@@ -187,14 +187,18 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
             />
           </div>
 
-          <Select value={siteFilter} onValueChange={setSiteFilter}>
+          <Select
+            value={siteFilter}
+            onValueChange={setSiteFilter}>
             <SelectTrigger className='h-9 text-xs w-[180px]'>
               <SelectValue placeholder='Site' />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value='__all__'>All sites</SelectItem>
               {siteOptions.map((s) => (
-                <SelectItem key={s.id} value={String(s.id)}>
+                <SelectItem
+                  key={s.id}
+                  value={String(s.id)}>
                   {s.name}
                 </SelectItem>
               ))}
@@ -250,11 +254,9 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
                   <TableCell
                     colSpan={8}
                     className='text-center py-10 text-slate-400 italic'>
-                    {query.isLoading
-                      ? "Loading…"
-                      : expenses.length === 0
-                        ? "No expenses logged for this work order yet."
-                        : "No expenses match the current filters."}
+                    {isFiltered
+                      ? "No expenses match the current filters."
+                      : "No expenses logged for this work order yet."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -329,6 +331,21 @@ const WorkOrderExpensesDialog = ({ workOrderId, workOrderCode }: Props) => {
               )}
             </TableBody>
           </Table>
+          {filtered.length > 0 && (
+            <div className='border-t px-3 py-2.5'>
+              <p className='text-center text-xs text-slate-500'>
+                Showing {filtered.length.toLocaleString("en-IN")} of{" "}
+                {totals.count.toLocaleString("en-IN")}
+              </p>
+              {lastPage?.pagination.hasMore && (
+                <LoadMoreBtn
+                  onClick={loadMore}
+                  loading={isFetchingMore}
+                  className='pt-2'
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
     </DialogWindow>
