@@ -9,13 +9,11 @@ import {
   inArray,
   isNull,
   lt,
-  ne,
-  not,
   sql,
   sum,
   type SQL,
-  type SQLWrapper,
 } from "drizzle-orm";
+import { z } from "zod";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
@@ -25,7 +23,6 @@ import {
   getAccessScope,
   parentClientIdsOfClients,
   proposalIdsVisibleToScope,
-  workOrderScopeWhere,
 } from "../../access-scope";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
@@ -38,15 +35,23 @@ import {
   expenseSource,
   withExpensePlaces,
 } from "../contractor/vendor-expenses";
-import type { TrpcContext } from "../../context";
+import {
+  countWhere,
+  e,
+  hasDocuments,
+  notCancelled,
+  stillPending,
+  visibleWorkOrders,
+  wo,
+  workOrderFilterWhere,
+  workOrderFilters,
+  wos,
+} from "./dashboard-conditions";
 
 // The overview's figures, each limited to what the user can see.
 
 const {
-  workOrderTable,
-  workOrderSiteTable,
   scheduleOfRatesTable,
-  workOrderSiteExpenseTable,
   contractorTable,
   clientTable,
   officeTable,
@@ -58,10 +63,6 @@ const {
   userTable,
 } = schema;
 const { PROPOSAL_STATUS, ROLES, WORK_ORDER_STATUS } = constants;
-
-const wo = workOrderTable;
-const wos = workOrderSiteTable;
-const e = workOrderSiteExpenseTable;
 
 // How many months the expense trend covers, this one included.
 const TREND_MONTHS = 12;
@@ -108,107 +109,121 @@ const noWorkOrders = (): WorkOrderStatusCounts => ({
 // Done and still open, of a kind of work order site.
 type SiteProgress = { total: number; completed: number };
 
-// The work orders the user can see, as a condition on workOrderTable.
-export const visibleWorkOrders = async (ctx: TrpcContext) =>
-  workOrderScopeWhere(
-    await getAccessScope(ctx.db, Number(ctx.user!.sub), ctx.user!.role),
-  );
-
-// Work orders that are not cancelled; their sites and rates still count.
-const notCancelled = ne(wo.status, WORK_ORDER_STATUS.CANCELLED);
-
-// Work orders still pending, as the work order list counts them: not those
-// whose schedule of rates is used up.
-const stillPending = () =>
-  and(eq(wo.status, WORK_ORDER_STATUS.PENDING), not(sorFullyConsumedSql()))!;
-
-// Whether a record's list of uploaded documents has any in it.
-const hasDocuments = (column: SQLWrapper) =>
-  sql`coalesce(json_length(${column}), 0) > 0`;
-
-// How many rows meet a condition, inside a grouped or totalled query.
-const countWhere = (condition: SQL) =>
-  sql<string>`sum(case when ${condition} then 1 else 0 end)`;
-
 export const dashboardQueryRouter = router({
-  // The visible work orders by status, overall and by process; how far their
-  // sites and restorations have got; and what their schedules of rates are
-  // worth. A pending work order whose schedule of rates is used up counts as
-  // completed, as it does in the work order list.
-  getWorkOrderSummary: protectedProcedure.query(
-    handleQuery(async ({ ctx }) => {
-      const visible = await visibleWorkOrders(ctx);
+  // The visible work orders by status, overall, by process and by financial
+  // year; how far their sites and restorations have got; and what their
+  // schedules of rates are worth. A pending work order whose schedule of
+  // rates is used up counts as completed, as it does in the work order list.
+  // The filters narrow every figure.
+  getWorkOrderSummary: protectedProcedure
+    .input(z.object(workOrderFilters).optional())
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const visible = and(
+          await visibleWorkOrders(ctx),
+          workOrderFilterWhere(input),
+        );
 
-      try {
-        const [statusRows, siteRows, [rates]] = await Promise.all([
-          ctx.db
-            .select({
-              process_type: wo.process_type,
-              status: wo.status,
-              count: count(),
-              used_up: countWhere(sorFullyConsumedSql()),
-            })
-            .from(wo)
-            .where(visible)
-            .groupBy(wo.process_type, wo.status),
-          ctx.db
-            .select({
-              is_restoration: sql<number>`${isNull(wos.site_id)}`,
-              is_completed: wos.is_completed,
-              count: count(),
-            })
-            .from(wos)
-            .innerJoin(wo, eq(wos.work_order_id, wo.id))
-            .where(and(visible, notCancelled))
-            .groupBy(isNull(wos.site_id), wos.is_completed),
-          ctx.db
-            .select({ total: sum(scheduleOfRatesTable.total_cost) })
-            .from(scheduleOfRatesTable)
-            .innerJoin(wo, eq(scheduleOfRatesTable.work_order_id, wo.id))
-            .where(and(visible, notCancelled)),
-        ]);
+        try {
+          const [statusRows, siteRows, [rates]] = await Promise.all([
+            ctx.db
+              .select({
+                process_type: wo.process_type,
+                financial_year: wo.financial_year,
+                status: wo.status,
+                count: count(),
+                used_up: countWhere(sorFullyConsumedSql()),
+              })
+              .from(wo)
+              .where(visible)
+              .groupBy(wo.process_type, wo.financial_year, wo.status),
+            ctx.db
+              .select({
+                is_restoration: sql<number>`${isNull(wos.site_id)}`,
+                is_completed: wos.is_completed,
+                count: count(),
+              })
+              .from(wos)
+              .innerJoin(wo, eq(wos.work_order_id, wo.id))
+              .where(and(visible, notCancelled))
+              .groupBy(isNull(wos.site_id), wos.is_completed),
+            ctx.db
+              .select({ total: sum(scheduleOfRatesTable.total_cost) })
+              .from(scheduleOfRatesTable)
+              .innerJoin(wo, eq(scheduleOfRatesTable.work_order_id, wo.id))
+              .where(and(visible, notCancelled)),
+          ]);
 
-        const overall = noWorkOrders();
-        const byProcess: Record<string, WorkOrderStatusCounts> = {};
+          const overall = noWorkOrders();
+          const byProcess: Record<string, WorkOrderStatusCounts> = {};
+          const byYear: Record<string, WorkOrderStatusCounts> = {};
 
-        for (const row of statusRows) {
-          const rowCount = Number(row.count);
-          const usedUp =
-            row.status === WORK_ORDER_STATUS.PENDING ? Number(row.used_up) : 0;
-          const process = (byProcess[row.process_type] ??= noWorkOrders());
+          for (const row of statusRows) {
+            const rowCount = Number(row.count);
+            const usedUp =
+              row.status === WORK_ORDER_STATUS.PENDING
+                ? Number(row.used_up)
+                : 0;
+            const process = (byProcess[row.process_type] ??= noWorkOrders());
+            const year = (byYear[row.financial_year] ??= noWorkOrders());
 
-          for (const counts of [overall, process]) {
-            counts.total += rowCount;
-            if (row.status === WORK_ORDER_STATUS.PENDING) {
-              counts.pending += rowCount - usedUp;
-              counts.completed += usedUp;
-            } else if (row.status === WORK_ORDER_STATUS.COMPLETED) {
-              counts.completed += rowCount;
-            } else if (row.status === WORK_ORDER_STATUS.CANCELLED) {
-              counts.cancelled += rowCount;
+            for (const counts of [overall, process, year]) {
+              counts.total += rowCount;
+              if (row.status === WORK_ORDER_STATUS.PENDING) {
+                counts.pending += rowCount - usedUp;
+                counts.completed += usedUp;
+              } else if (row.status === WORK_ORDER_STATUS.COMPLETED) {
+                counts.completed += rowCount;
+              } else if (row.status === WORK_ORDER_STATUS.CANCELLED) {
+                counts.cancelled += rowCount;
+              }
             }
           }
-        }
 
-        const sites: SiteProgress = { total: 0, completed: 0 };
-        const restorations: SiteProgress = { total: 0, completed: 0 };
-        for (const row of siteRows) {
-          const progress = Number(row.is_restoration) ? restorations : sites;
-          progress.total += Number(row.count);
-          if (row.is_completed) progress.completed += Number(row.count);
-        }
+          const sites: SiteProgress = { total: 0, completed: 0 };
+          const restorations: SiteProgress = { total: 0, completed: 0 };
+          for (const row of siteRows) {
+            const progress = Number(row.is_restoration) ? restorations : sites;
+            progress.total += Number(row.count);
+            if (row.is_completed) progress.completed += Number(row.count);
+          }
 
-        return {
-          ...overall,
-          byProcess,
-          sites,
-          restorations,
-          // What the schedules of rates of work orders not cancelled add up
-          // to: the income they are worth.
-          sorTotal: Number(rates?.total ?? 0),
-        };
+          return {
+            ...overall,
+            byProcess,
+            // Newest financial year first.
+            byFinancialYear: Object.entries(byYear)
+              .sort(([a], [b]) => b.localeCompare(a))
+              .map(([financial_year, counts]) => ({
+                financial_year,
+                ...counts,
+              })),
+            sites,
+            restorations,
+            // What the schedules of rates of work orders not cancelled add up
+            // to: the income they are worth.
+            sorTotal: Number(rates?.total ?? 0),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Summarising work orders");
+        }
+      }),
+    ),
+
+  // What the dialogs' filters offer: the financial years the visible work
+  // orders start in, newest first.
+  getFilterOptions: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const visible = await visibleWorkOrders(ctx);
+      try {
+        const years = await ctx.db
+          .selectDistinct({ financial_year: wo.financial_year })
+          .from(wo)
+          .where(visible)
+          .orderBy(desc(wo.financial_year));
+        return { financialYears: years.map((row) => row.financial_year) };
       } catch (error) {
-        throw fromDatabaseError(error, "Summarising work orders");
+        throw fromDatabaseError(error, "Listing filter options");
       }
     }),
   ),
