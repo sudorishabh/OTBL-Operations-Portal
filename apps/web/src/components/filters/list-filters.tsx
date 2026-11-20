@@ -161,6 +161,7 @@ export const ComboboxFilter = ({
   onSearchChange,
   selectedOption,
   hasMore = false,
+  appearance = "filter",
 }: {
   label: string;
   /** Shown when nothing is picked, e.g. "All clients". */
@@ -184,6 +185,8 @@ export const ComboboxFilter = ({
   selectedOption?: FilterOption;
   /** Whether the server has more matches than the options loaded. */
   hasMore?: boolean;
+  /** A filter over a list, or a form field: full width, input height. */
+  appearance?: "filter" | "field";
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -254,8 +257,10 @@ export const ComboboxFilter = ({
           disabled={isLoading}
           className={cn(
             controlClass,
-            "flex w-full cursor-pointer items-center gap-1.5 border-input px-2.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:max-w-56",
-            isApplied && activeClass,
+            "flex w-full cursor-pointer items-center gap-1.5 border-input px-2.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-wait disabled:opacity-60",
+            appearance === "field"
+              ? "h-9! text-sm"
+              : cn("sm:w-auto sm:max-w-56", isApplied && activeClass),
             className,
           )}>
           {Icon && <Icon className='size-3.5 shrink-0 text-gray-400' />}
