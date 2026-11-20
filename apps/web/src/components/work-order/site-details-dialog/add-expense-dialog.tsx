@@ -47,6 +47,12 @@ import ExpenseActivityLines, {
   remainingQuantity,
   type ActivityLine,
 } from "./expense-activity-lines";
+import ExpenseOrderItemLines, {
+  emptyOrderItemLine,
+  orderItemLineAmount,
+  pickedOrderItemsTotal,
+  type PickedOrderItems,
+} from "./expense-order-item-lines";
 
 export interface ActivityOption {
   key: string;
@@ -161,10 +167,24 @@ const AddExpenseDialog = ({
 }: Props) => {
   // What the expense is spent on, when it is on an order or job order.
   const spentOn = order ?? jobOrder;
-  // The order requirement picked, by id.
+  // A new expense on a single-expense sub-contract can be for several of its
+  // requirements, each recorded as its one expense with its total.
+  const takesSeveralItems =
+    !!order &&
+    !editingExpense &&
+    order.items.some((item) => item.singleExpense);
+  const [pickedItems, setPickedItems] = useState<PickedOrderItems>({});
+  const pickedItemList = takesSeveralItems
+    ? order.items.filter((item) => pickedItems[item.id])
+    : [];
+  const pickedItemsTotal = takesSeveralItems
+    ? pickedOrderItemsTotal(order.items, pickedItems)
+    : 0;
+  // The order requirement picked, by id, when the expense is for one.
   const [orderItemId, setOrderItemId] = useState("");
-  const orderItem =
-    order?.items.find((item) => String(item.id) === orderItemId) ?? null;
+  const orderItem = takesSeveralItems
+    ? null
+    : (order?.items.find((item) => String(item.id) === orderItemId) ?? null);
   // The rate that prices the expense from its quantity, on a rated
   // sub-contract requirement.
   const orderRate = orderItem?.unitRate ?? null;
@@ -275,6 +295,11 @@ const AddExpenseDialog = ({
       // several, ask.
       const openItems = order?.items.filter((item) => !item.isTaken) ?? [];
       setOrderItemId(openItems.length === 1 ? String(openItems[0]!.id) : "");
+      setPickedItems(
+        openItems.length === 1
+          ? { [openItems[0]!.id]: emptyOrderItemLine() }
+          : {},
+      );
       setQuantity("");
       setTitle("");
       setStartDate(toDateInput());
@@ -376,6 +401,16 @@ const AddExpenseDialog = ({
         ),
       onError: (e: any) => toast.error(e.message || "Failed to record expenses"),
     });
+  const createOrderExpensesMutation =
+    trpc.expenseMutation.createOrderExpenses.useMutation({
+      onSuccess: (data: { ids: number[] }) =>
+        handleSaved(
+          data.ids.length > 1
+            ? `${data.ids.length} expenses recorded`
+            : "Expense recorded",
+        ),
+      onError: (e: any) => toast.error(e.message || "Failed to record expenses"),
+    });
   const updateExpenseMutation = trpc.expenseMutation.updateExpense.useMutation({
     onSuccess: () => handleSaved("Expense updated"),
     onError: (e: any) => toast.error(e.message || "Failed to update expense"),
@@ -415,8 +450,26 @@ const AddExpenseDialog = ({
     return null;
   };
 
+  // What stops the picked requirements being recorded, if anything.
+  const itemsProblem = () => {
+    if (pickedItemList.length === 0) {
+      return "Choose the items this expense is for";
+    }
+    if (!expenseContractorId) {
+      return "Give the sub-contract its vendor first, to record expenses under it";
+    }
+    for (const item of pickedItemList) {
+      if (orderItemLineAmount(item, pickedItems[item.id]!) === null) {
+        return item.unitRate !== null
+          ? `Enter ${item.label}'s total quantity, in ${item.unit}`
+          : `Enter ${item.label}'s amount`;
+      }
+    }
+    return null;
+  };
+
   const handleSubmit = async () => {
-    if (order && !orderItem) {
+    if (order && !takesSeveralItems && !orderItem) {
       toast.error("Choose the item this expense is for");
       return;
     }
@@ -428,6 +481,12 @@ const AddExpenseDialog = ({
       const problem = expenseContractorId
         ? linesProblem()
         : "Give the job order its vendors first, to record expenses under them";
+      if (problem) {
+        toast.error(problem);
+        return;
+      }
+    } else if (takesSeveralItems) {
+      const problem = itemsProblem();
       if (problem) {
         toast.error(problem);
         return;
@@ -500,6 +559,28 @@ const AddExpenseDialog = ({
       return;
     }
 
+    if (takesSeveralItems && expenseContractorId) {
+      createOrderExpensesMutation.mutate({
+        work_order_site_id: workOrderSiteId,
+        contractor_id: expenseContractorId,
+        title: title.trim(),
+        start_date: new Date(startDate).toISOString(),
+        end_date: new Date(lastDate).toISOString(),
+        invoice_number: invoiceNumber.trim() || null,
+        documents,
+        // Priced again by the server from each requirement's rate.
+        items: pickedItemList.map((item) => {
+          const line = pickedItems[item.id]!;
+          return {
+            contract_order_item_id: item.id,
+            quantity: item.unitRate !== null ? line.quantity : null,
+            amount: orderItemLineAmount(item, line)!.toFixed(2),
+          };
+        }),
+      });
+      return;
+    }
+
     const payload = {
       contractor_id: expenseContractorId,
       contract_order_item_id: orderItem?.id ?? null,
@@ -532,6 +613,7 @@ const AddExpenseDialog = ({
   const isSaving =
     createExpenseMutation.isPending ||
     createJobOrderExpensesMutation.isPending ||
+    createOrderExpensesMutation.isPending ||
     updateExpenseMutation.isPending ||
     isUploadingDoc;
 
@@ -659,9 +741,17 @@ const AddExpenseDialog = ({
 
         <div className='flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0'>
 
+          {takesSeveralItems && (
+            <ExpenseOrderItemLines
+              items={order.items}
+              picked={pickedItems}
+              onChange={setPickedItems}
+            />
+          )}
+
           {/* What on the order the expense is for. A single-expense
               requirement that has its one can't take another. */}
-          {order && (
+          {order && !takesSeveralItems && (
             <div className='space-y-1.5'>
               <Label className='text-xs font-medium text-gray-700'>
                 Item <span className='text-red-500'>*</span>
@@ -991,6 +1081,26 @@ const AddExpenseDialog = ({
             {/* Each activity line has its own amount. */}
             {takesSeveralActivities ? (
               singleDateField
+            ) : takesSeveralItems ? (
+              <div className='space-y-1.5'>
+                <Label className='text-xs font-medium text-gray-700'>Amount</Label>
+                <p className='flex h-9 items-center gap-1.5 rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 text-sm tabular-nums'>
+                  {pickedItemsTotal > 0 ? (
+                    <>
+                      <span className='font-medium text-gray-900'>
+                        {formatAmount(pickedItemsTotal)}
+                      </span>
+                      {pickedItemList.length > 1 && (
+                        <span className='text-xs text-gray-400'>
+                          for {pickedItemList.length} items
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className='text-gray-400'>Each item&apos;s total</span>
+                  )}
+                </p>
+              </div>
             ) : orderRate !== null ? (
               <div className='space-y-1.5'>
                 <Label className='text-xs font-medium text-gray-700'>Amount</Label>
@@ -1092,9 +1202,11 @@ const AddExpenseDialog = ({
                   ? "Save Changes"
                   : takesSeveralActivities && lines.length > 1
                     ? `Record ${lines.length} Expenses`
-                    : isExceededMode
-                      ? "Record Exceeded Expense"
-                      : "Record Expense"
+                    : takesSeveralItems && pickedItemList.length > 1
+                      ? `Record ${pickedItemList.length} Expenses`
+                      : isExceededMode
+                        ? "Record Exceeded Expense"
+                        : "Record Expense"
             }
             variant='primary'
             Icon={Save}
