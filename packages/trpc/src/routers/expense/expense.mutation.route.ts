@@ -2,7 +2,12 @@ import { and, count, eq, ne, sum } from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { businessRule, fromDatabaseError, notFound } from "../../errors";
+import {
+  businessRule,
+  fromDatabaseError,
+  isAppError,
+  notFound,
+} from "../../errors";
 import { handleMutation } from "../../helper/typed-handler";
 import { z } from "zod";
 import { validators } from "@pkg/schema";
@@ -185,11 +190,12 @@ const assertNotFromOrder = (expense: { from_order: number }) => {
 };
 
 // What an expense takes from the order requirement it is spent on: the
-// activity key to store, and the rate that prices it, if the requirement has
-// one.
+// activity key to store, the rate that prices it, if the requirement has
+// one, and the order it is on.
 type OrderItemTerms = {
   activityKey: string | null;
   unitRate: number | null;
+  orderId: number | null;
 };
 
 // An expense spent on a contract order requirement must be for one at its
@@ -204,7 +210,9 @@ async function resolveOrderItem(
   activityKey: string | null | undefined,
   editingId?: number,
 ): Promise<OrderItemTerms> {
-  if (!itemId) return { activityKey: activityKey ?? null, unitRate: null };
+  if (!itemId) {
+    return { activityKey: activityKey ?? null, unitRate: null, orderId: null };
+  }
 
   const [item] = await ctx.db
     .select({
@@ -269,6 +277,7 @@ async function resolveOrderItem(
   return {
     activityKey: item.item === OIL_ZAPPER.KEY ? OIL_ZAPPER.KEY : null,
     unitRate: item.unit_rate ? Number(item.unit_rate) : null,
+    orderId: item.contract_order_id,
   };
 }
 
@@ -461,6 +470,38 @@ const createJobOrderExpensesSchema = z
     { message: "Give each activity one line", path: ["lines"] },
   );
 
+// Several of a sub-contract's requirements at the site recorded at once,
+// under one of its vendors: one expense for each, sharing the rest. A
+// single-expense sub-contract's requirements each take their total this way.
+const createOrderExpensesSchema = z
+  .object({
+    work_order_site_id: z.number().positive(),
+    contractor_id: z.number().positive(),
+    title: z.string().min(1, "Title is required").max(500),
+    start_date: z.string().min(1, "Start date is required"),
+    end_date: z.string().min(1, "End date is required"),
+    invoice_number: z.string().max(100).optional().nullable(),
+    documents: validators.optionalDocumentsValidator.optional(),
+    items: z
+      .array(
+        z.object({
+          contract_order_item_id: z.number().positive(),
+          quantity: z.string().optional().nullable(),
+          // Priced again from the requirement's rate, when it has one.
+          amount: amountValidator,
+        }),
+      )
+      .min(1, "Choose at least one item")
+      .max(50),
+  })
+  .refine(endsOnOrAfterStart, endDateIssue)
+  .refine(
+    (value) =>
+      new Set(value.items.map((item) => item.contract_order_item_id)).size ===
+      value.items.length,
+    { message: "Give each item one line", path: ["items"] },
+  );
+
 const updateExpenseSchema = z.object({
   id: z.number().positive(),
   contractor_id: z.number().positive().optional().nullable(),
@@ -592,6 +633,71 @@ export const expenseMutationRouter = router({
           return { success: true, ids };
         } catch (error) {
           throw fromDatabaseError(error, "Recording job order expenses");
+        }
+      }),
+    ),
+
+  createOrderExpenses: protectedProcedure
+    .input(createOrderExpensesSchema)
+    .mutation(
+      handleMutation(async ({ input, ctx }) => {
+        const userId = ctx.user ? Number(ctx.user.sub) : null;
+        const { items, ...shared } = input;
+
+        try {
+          // All of them or none. Each requirement is checked as a lone
+          // expense on it would be, and all must be on one order.
+          const ids = await ctx.db.transaction(async (tx) => {
+            const txCtx = { ...ctx, db: tx };
+            const created: number[] = [];
+            let orderId: number | null = null;
+            for (const item of items) {
+              const terms = await resolveOrderItem(
+                txCtx,
+                input.work_order_site_id,
+                item.contract_order_item_id,
+                input.contractor_id,
+                null,
+              );
+              if (orderId !== null && terms.orderId !== orderId) {
+                throw businessRule("Record the items of one order at a time.");
+              }
+              orderId = terms.orderId;
+
+              const autoExceeded = await computeIsExceeded(
+                txCtx,
+                input.work_order_site_id,
+                terms.activityKey,
+                item.quantity,
+              );
+              const [row] = await tx
+                .insert(workOrderSiteExpenseTable)
+                .values(
+                  newExpenseRow(
+                    {
+                      ...shared,
+                      contract_order_item_id: item.contract_order_item_id,
+                      quantity: item.quantity || null,
+                      amount:
+                        pricedAmount(terms.unitRate, item.quantity) ??
+                        item.amount,
+                    },
+                    terms.activityKey,
+                    !!autoExceeded,
+                    userId,
+                  ),
+                )
+                .$returningId();
+              if (row) created.push(row.id);
+            }
+            return created;
+          });
+
+          return { success: true, ids };
+        } catch (error) {
+          // A requirement it can't be recorded on keeps its own message.
+          if (isAppError(error)) throw error;
+          throw fromDatabaseError(error, "Recording order expenses");
         }
       }),
     ),
