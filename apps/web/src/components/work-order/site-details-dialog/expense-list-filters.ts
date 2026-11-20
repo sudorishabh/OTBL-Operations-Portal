@@ -45,9 +45,9 @@ export const toApiFilters = (filters: ExpenseListFilters, search: string) => ({
       : filters.vendor === NONE
         ? ("none" as const)
         : Number(filters.vendor),
+  // Either end may be open: a start date alone is that day on.
   from: filters.from,
-  // One day picked is that day alone, as the date filter shows it.
-  to: filters.to ?? filters.from,
+  to: filters.to,
   activity: filters.activity === ALL ? undefined : filters.activity,
   exceeded_only: filters.exceeded === ALL ? undefined : true,
 });
