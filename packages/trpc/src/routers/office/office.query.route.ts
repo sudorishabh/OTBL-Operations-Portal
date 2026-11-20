@@ -266,6 +266,36 @@ export const officeQueryRouter = router({
     }),
   ),
 
+  // How many offices the user can see and how many sites those hold, for the
+  // overview, without reading the offices themselves.
+  getOfficeTotals: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const scope = await getAccessScope(
+        ctx.db,
+        Number(ctx.user!.sub),
+        ctx.user!.role,
+      );
+      const visible = await visibleOfficesWhere(ctx.db, scope);
+
+      try {
+        const [[officeRow], [siteRow]] = await Promise.all([
+          ctx.db.select({ count: count() }).from(officeTable).where(visible),
+          ctx.db
+            .select({ count: count() })
+            .from(siteTable)
+            .innerJoin(officeTable, eq(siteTable.office_id, officeTable.id))
+            .where(visible),
+        ]);
+        return {
+          officeCount: Number(officeRow?.count ?? 0),
+          siteTotal: Number(siteRow?.count ?? 0),
+        };
+      } catch (error) {
+        throw fromDatabaseError(error, "Counting offices");
+      }
+    }),
+  ),
+
   // Every office the user can see, with only what list filters show and
   // search by; also gives the states offices are in.
   getOfficeOptions: protectedProcedure.query(
