@@ -1,5 +1,7 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useDebounce } from "@/hooks/useDebounce";
 import { ArrowUpDown, MapPin, Network } from "lucide-react";
 import {
   ALL,
@@ -38,12 +40,37 @@ const ClientSearchFilter = () => {
     resetClientFilters,
   } = useClientManagementContext();
 
-  const parentClientsQuery = trpc.clientQuery.getParentClients.useQuery();
+  // Main clients are many, so the filter searches them on the server, a few
+  // at a time, keeping the one picked.
+  const [parentSearch, setParentSearch] = useState("");
+  const debouncedParentSearch = useDebounce(parentSearch.trim(), 300);
+  const pickedParentId =
+    clientFilters.parentClientId === ALL ||
+    clientFilters.parentClientId === "none"
+      ? undefined
+      : Number(clientFilters.parentClientId);
+  const parentClientsQuery = trpc.clientQuery.findParentClientOptions.useQuery(
+    {
+      search: debouncedParentSearch || undefined,
+      selected_id: pickedParentId,
+    },
+    { placeholderData: keepPreviousData },
+  );
   const statesQuery = trpc.clientQuery.getClientStates.useQuery();
 
+  const toParentOption = (parent: { id: number; name: string }) => ({
+    value: String(parent.id),
+    label: parent.name,
+  });
   const parentClientOptions = (
-    (parentClientsQuery.data ?? []) as { id: number; name: string }[]
-  ).map((parent) => ({ value: String(parent.id), label: parent.name }));
+    (parentClientsQuery.data?.parentClients ?? []) as {
+      id: number;
+      name: string;
+    }[]
+  ).map(toParentOption);
+  const pickedParent = parentClientsQuery.data?.selected
+    ? toParentOption(parentClientsQuery.data.selected)
+    : undefined;
 
   const stateOptions = ((statesQuery.data ?? []) as string[]).map((state) => ({
     value: state,
@@ -85,6 +112,9 @@ const ClientSearchFilter = () => {
         pinnedOptions={[{ value: "none", label: "No main client" }]}
         isLoading={parentClientsQuery.isLoading}
         searchPlaceholder='Search main clients...'
+        onSearchChange={setParentSearch}
+        selectedOption={pickedParent}
+        hasMore={!!parentClientsQuery.data?.has_more}
       />
       <ComboboxFilter
         label='State'
