@@ -1,4 +1,16 @@
-import { and, asc, count, eq, gte, like, or, sum } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  gte,
+  like,
+  or,
+  sql,
+  sum,
+} from "drizzle-orm";
 import { z } from "zod";
 import { schema } from "@pkg/db";
 import { protectedProcedure } from "../../core";
@@ -6,6 +18,7 @@ import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
 import { buildPagination, pageOffset } from "../../helper/pagination";
+import { assertCanUseVendors } from "../contractor/vendor-access";
 import {
   exceededAmount,
   expenseMonth,
@@ -25,13 +38,16 @@ import {
   workOrderFilters,
 } from "./dashboard-conditions";
 
-const { clientTable, officeTable } = schema;
+const { clientTable, contractorTable, officeTable } = schema;
 
 // What the overview's dialogs show beyond its cards: longer and narrower
 // views of the same figures. Spread into the dashboard router.
 
 // How many months an expense trend can cover.
 const TREND_LENGTHS = [6, 12, 24, 36] as const;
+
+// What the vendor list can be sorted by, each most first but the name.
+const VENDOR_SORTS = ["spent", "expenses", "name"] as const;
 
 export const dashboardListProcedures = {
   // What was spent in each of the last few months, with how much of it went
@@ -169,6 +185,112 @@ export const dashboardListProcedures = {
           };
         } catch (error) {
           throw fromDatabaseError(error, "Listing work orders by deadline");
+        }
+      }),
+    ),
+
+  // A page of the vendors anything has been spent with, most spent first
+  // unless sorted otherwise: each with what was spent, how much of it over
+  // the estimates, across how many expenses and work orders, and when last.
+  // Narrowed by the expense filters and a search of their names and codes.
+  getVendorSpend: protectedProcedure
+    .input(
+      z.object({
+        search: z.string().trim().max(100).optional(),
+        sort: z.enum(VENDOR_SORTS).default("spent"),
+        ...expenseFilters,
+        ...pageInput(10),
+      }),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        await assertCanUseVendors(ctx);
+        const term = input.search ? `%${escapeLike(input.search)}%` : null;
+        const where = and(
+          await visibleWorkOrders(ctx),
+          expenseFilterWhere(input),
+          term
+            ? or(
+                like(contractorTable.name, term),
+                like(contractorTable.code, term),
+              )
+            : undefined,
+        );
+        const spent = sum(e.amount);
+        const order = {
+          spent: [desc(spent)],
+          expenses: [desc(count()), desc(spent)],
+          name: [],
+        }[input.sort];
+
+        try {
+          const [rows, [totals]] = await Promise.all([
+            withExpensePlaces(
+              ctx.db
+                .select({
+                  id: contractorTable.id,
+                  code: contractorTable.code,
+                  name: contractorTable.name,
+                  state: contractorTable.state,
+                  total: spent,
+                  exceeded: exceededAmount,
+                  count: count(),
+                  work_order_count: countDistinct(wo.id),
+                  // The day the latest expense starts on, as YYYY-MM-DD.
+                  last_spent_on: sql<string>`date_format(max(${e.start_date}), '%Y-%m-%d')`,
+                })
+                .from(e)
+                .$dynamic(),
+            )
+              .innerJoin(
+                contractorTable,
+                eq(e.contractor_id, contractorTable.id),
+              )
+              .where(where)
+              .groupBy(contractorTable.id)
+              .orderBy(
+                ...order,
+                asc(contractorTable.name),
+                asc(contractorTable.id),
+              )
+              .limit(input.limit)
+              .offset(pageOffset(input.page, input.limit)),
+            withExpensePlaces(
+              ctx.db
+                .select({
+                  vendors: countDistinct(e.contractor_id),
+                  total: spent,
+                })
+                .from(e)
+                .$dynamic(),
+            )
+              .innerJoin(
+                contractorTable,
+                eq(e.contractor_id, contractorTable.id),
+              )
+              .where(where),
+          ]);
+
+          const vendorCount = Number(totals?.vendors ?? 0);
+          return {
+            vendors: rows.map((row) => ({
+              ...row,
+              total: Number(row.total ?? 0),
+              exceeded: Number(row.exceeded ?? 0),
+              count: Number(row.count),
+              work_order_count: Number(row.work_order_count),
+            })),
+            // What was spent with every vendor the filters leave.
+            total: Number(totals?.total ?? 0),
+            pagination: buildPagination({
+              page: input.page,
+              limit: input.limit,
+              total: vendorCount,
+              shown: rows.length,
+            }),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Listing spending by vendor");
         }
       }),
     ),

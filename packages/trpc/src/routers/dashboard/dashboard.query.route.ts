@@ -8,6 +8,8 @@ import {
   gte,
   inArray,
   isNull,
+  like,
+  or,
   sql,
   sum,
   type SQL,
@@ -25,6 +27,8 @@ import {
 } from "../../access-scope";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
+import { escapeLike } from "../../helper/escape-like";
+import { buildPagination, pageOffset } from "../../helper/pagination";
 import { sorFullyConsumedSql } from "../work-order/batch-effective-work-order-status";
 import { canUseVendors } from "../contractor/vendor-access";
 import {
@@ -46,6 +50,7 @@ import {
   wo,
   expenseFilterWhere,
   expenseFilters,
+  pageInput,
   trendMonths,
   workOrderFilterWhere,
   workOrderFilters,
@@ -80,6 +85,9 @@ const DEADLINE_ROWS = 5;
 
 // How many of the offices with the most pending work are listed.
 const TOP_OFFICES = 6;
+
+// What the office breakdown can be sorted by, each most first but the name.
+const OFFICE_SORTS = ["pending", "total", "spent", "name"] as const;
 
 // Work orders by status, as the work order list counts them.
 export type WorkOrderStatusCounts = {
@@ -564,83 +572,133 @@ export const dashboardQueryRouter = router({
     }),
   ),
 
-  // The offices with the most pending work among the visible work orders,
-  // each with its work orders by status, its sites and what has been spent
-  // in its work orders; and how many offices have work orders at all.
-  getOfficeBreakdown: protectedProcedure.query(
-    handleQuery(async ({ ctx }) => {
-      const visible = await visibleWorkOrders(ctx);
-      const pending = countWhere(stillPending());
+  // A page of the offices with visible work orders, those with the most
+  // pending work first unless sorted otherwise, each with its work orders by
+  // status, its sites and what has been spent in its work orders; and how
+  // many offices match. Narrowed by a search of their names, codes and
+  // cities, and by state.
+  getOfficeBreakdown: protectedProcedure
+    .input(
+      z
+        .object({
+          search: z.string().trim().max(100).optional(),
+          state: z.string().trim().min(1).max(100).optional(),
+          sort: z.enum(OFFICE_SORTS).default("pending"),
+          ...pageInput(TOP_OFFICES),
+        })
+        .optional(),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const visible = await visibleWorkOrders(ctx);
+        const { page = 1, limit = TOP_OFFICES, sort = "pending" } = input ?? {};
+        const term = input?.search ? `%${escapeLike(input.search)}%` : null;
+        const where = and(
+          visible,
+          input?.state ? eq(officeTable.state, input.state) : undefined,
+          term
+            ? or(
+                like(officeTable.name, term),
+                like(officeTable.code, term),
+                like(officeTable.city, term),
+              )
+            : undefined,
+        );
 
-      try {
-        const [officeRows, [officeCount]] = await Promise.all([
-          ctx.db
-            .select({
-              id: officeTable.id,
-              code: officeTable.code,
-              name: officeTable.name,
-              city: officeTable.city,
-              state: officeTable.state,
-              total: count(),
-              pending,
-              cancelled: countWhere(eq(wo.status, WORK_ORDER_STATUS.CANCELLED)),
-            })
-            .from(wo)
-            .innerJoin(officeTable, eq(wo.office_id, officeTable.id))
-            .where(visible)
-            .groupBy(officeTable.id)
-            .orderBy(desc(pending), desc(count()), asc(officeTable.name))
-            .limit(TOP_OFFICES),
-          ctx.db
-            .select({ count: countDistinct(wo.office_id) })
-            .from(wo)
-            .where(visible),
-        ]);
+        // What has been spent in each office's visible work orders, so the
+        // offices can be sorted by it.
+        const officeSpend = ctx.db
+          .select({
+            office_id: wo.office_id,
+            spent: sum(e.amount).as("spent"),
+          })
+          .from(e)
+          .innerJoin(wos, eq(e.work_order_site_id, wos.id))
+          .innerJoin(wo, eq(wos.work_order_id, wo.id))
+          .where(visible)
+          .groupBy(wo.office_id)
+          .as("office_spend");
 
-        const officeIds = officeRows.map((row) => row.id);
-        if (officeIds.length === 0) return { offices: [], officeCount: 0 };
+        const pending = countWhere(stillPending());
+        const spent = sql<string>`coalesce(max(${officeSpend.spent}), 0)`;
+        const order = {
+          pending: [desc(pending), desc(count())],
+          total: [desc(count()), desc(pending)],
+          spent: [desc(spent)],
+          name: [],
+        }[sort];
 
-        const [siteRows, spendRows] = await Promise.all([
-          ctx.db
-            .select({ office_id: siteTable.office_id, count: count() })
-            .from(siteTable)
-            .where(inArray(siteTable.office_id, officeIds))
-            .groupBy(siteTable.office_id),
-          withExpensePlaces(
+        try {
+          const [officeRows, [officeCount]] = await Promise.all([
             ctx.db
-              .select({ office_id: wo.office_id, total: sum(e.amount) })
-              .from(e)
-              .$dynamic(),
-          )
-            .where(and(visible, inArray(wo.office_id, officeIds)))
-            .groupBy(wo.office_id),
-        ]);
+              .select({
+                id: officeTable.id,
+                code: officeTable.code,
+                name: officeTable.name,
+                city: officeTable.city,
+                state: officeTable.state,
+                total: count(),
+                pending,
+                cancelled: countWhere(
+                  eq(wo.status, WORK_ORDER_STATUS.CANCELLED),
+                ),
+                spent,
+              })
+              .from(wo)
+              .innerJoin(officeTable, eq(wo.office_id, officeTable.id))
+              .leftJoin(officeSpend, eq(officeSpend.office_id, officeTable.id))
+              .where(where)
+              .groupBy(officeTable.id)
+              .orderBy(...order, asc(officeTable.name), asc(officeTable.id))
+              .limit(limit)
+              .offset(pageOffset(page, limit)),
+            ctx.db
+              .select({ count: countDistinct(wo.office_id) })
+              .from(wo)
+              .innerJoin(officeTable, eq(wo.office_id, officeTable.id))
+              .where(where),
+          ]);
 
-        return {
-          offices: officeRows.map((row) => {
-            const total = Number(row.total);
-            const pendingCount = Number(row.pending);
-            const cancelled = Number(row.cancelled);
-            return {
-              ...row,
+          const total = Number(officeCount?.count ?? 0);
+          const officeIds = officeRows.map((row) => row.id);
+          const siteRows =
+            officeIds.length === 0
+              ? []
+              : await ctx.db
+                  .select({ office_id: siteTable.office_id, count: count() })
+                  .from(siteTable)
+                  .where(inArray(siteTable.office_id, officeIds))
+                  .groupBy(siteTable.office_id);
+
+          return {
+            offices: officeRows.map((row) => {
+              const workOrders = Number(row.total);
+              const pendingCount = Number(row.pending);
+              const cancelled = Number(row.cancelled);
+              return {
+                ...row,
+                total: workOrders,
+                pending: pendingCount,
+                completed: workOrders - pendingCount - cancelled,
+                cancelled,
+                sites: Number(
+                  siteRows.find((site) => site.office_id === row.id)?.count ??
+                    0,
+                ),
+                spent: Number(row.spent),
+              };
+            }),
+            officeCount: total,
+            pagination: buildPagination({
+              page,
+              limit,
               total,
-              pending: pendingCount,
-              completed: total - pendingCount - cancelled,
-              cancelled,
-              sites: Number(
-                siteRows.find((site) => site.office_id === row.id)?.count ?? 0,
-              ),
-              spent: Number(
-                spendRows.find((spend) => spend.office_id === row.id)?.total ??
-                  0,
-              ),
-            };
-          }),
-          officeCount: Number(officeCount?.count ?? 0),
-        };
-      } catch (error) {
-        throw fromDatabaseError(error, "Breaking work down by office");
-      }
-    }),
-  ),
+              shown: officeRows.length,
+            }),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Breaking work down by office");
+        }
+      }),
+    ),
 });
