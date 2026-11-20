@@ -6,6 +6,7 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   isNull,
   lt,
   ne,
@@ -19,7 +20,13 @@ import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
-import { getAccessScope, workOrderScopeWhere } from "../../access-scope";
+import {
+  clientIdsVisibleToScope,
+  getAccessScope,
+  parentClientIdsOfClients,
+  proposalIdsVisibleToScope,
+  workOrderScopeWhere,
+} from "../../access-scope";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 import { sorFullyConsumedSql } from "../work-order/batch-effective-work-order-status";
@@ -45,8 +52,12 @@ const {
   officeTable,
   jobOrderTable,
   contractOrderTable,
+  proposalTable,
+  parentClientTable,
+  siteTable,
+  userTable,
 } = schema;
-const { WORK_ORDER_STATUS } = constants;
+const { PROPOSAL_STATUS, ROLES, WORK_ORDER_STATUS } = constants;
 
 const wo = workOrderTable;
 const wos = workOrderSiteTable;
@@ -63,6 +74,9 @@ const ENDING_SOON_DAYS = 30;
 
 // How many overdue and ending work orders are listed of each.
 const DEADLINE_ROWS = 5;
+
+// How many of the offices with the most pending work are listed.
+const TOP_OFFICES = 6;
 
 // A month as "2026-04", as expenseMonth gives it.
 const monthKey = (date: Date) =>
@@ -106,7 +120,7 @@ const notCancelled = ne(wo.status, WORK_ORDER_STATUS.CANCELLED);
 // Work orders still pending, as the work order list counts them: not those
 // whose schedule of rates is used up.
 const stillPending = () =>
-  and(eq(wo.status, WORK_ORDER_STATUS.PENDING), not(sorFullyConsumedSql()));
+  and(eq(wo.status, WORK_ORDER_STATUS.PENDING), not(sorFullyConsumedSql()))!;
 
 // Whether a record's list of uploaded documents has any in it.
 const hasDocuments = (column: SQLWrapper) =>
@@ -132,7 +146,7 @@ export const dashboardQueryRouter = router({
               process_type: wo.process_type,
               status: wo.status,
               count: count(),
-              used_up: sql<string>`sum(case when ${sorFullyConsumedSql()} then 1 else 0 end)`,
+              used_up: countWhere(sorFullyConsumedSql()),
             })
             .from(wo)
             .where(visible)
@@ -433,6 +447,175 @@ export const dashboardQueryRouter = router({
         };
       } catch (error) {
         throw fromDatabaseError(error, "Finding work that needs attention");
+      }
+    }),
+  ),
+
+  // How many records each module holds that the user can see: proposals by
+  // status and main clients; vendors, for those who can see them; and users
+  // by role, for admins.
+  getModuleCounts: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const scope = await getAccessScope(
+        ctx.db,
+        Number(ctx.user!.sub),
+        ctx.user!.role,
+      );
+      const isAdmin = ctx.user!.role === ROLES.ADMIN;
+
+      try {
+        const [proposalIds, clientIds, showVendors] = await Promise.all([
+          proposalIdsVisibleToScope(ctx.db, scope),
+          clientIdsVisibleToScope(ctx.db, scope),
+          canUseVendors(ctx),
+        ]);
+
+        // The access helpers give null for every one.
+        const proposalWhere =
+          proposalIds === null
+            ? undefined
+            : proposalIds.length > 0
+              ? inArray(proposalTable.id, proposalIds)
+              : sql`0=1`;
+
+        const [proposalRows, mainClients, vendors, userRows] =
+          await Promise.all([
+            ctx.db
+              .select({ status: proposalTable.status, count: count() })
+              .from(proposalTable)
+              .where(proposalWhere)
+              .groupBy(proposalTable.status),
+            clientIds === null
+              ? ctx.db
+                  .select({ count: count() })
+                  .from(parentClientTable)
+                  .then(([row]) => Number(row?.count ?? 0))
+              : parentClientIdsOfClients(ctx.db, clientIds).then(
+                  (ids) => ids.length,
+                ),
+            showVendors
+              ? ctx.db
+                  .select({ count: count() })
+                  .from(contractorTable)
+                  .then(([row]) => Number(row?.count ?? 0))
+              : Promise.resolve(null),
+            isAdmin
+              ? ctx.db
+                  .select({ role: userTable.role, count: count() })
+                  .from(userTable)
+                  .groupBy(userTable.role)
+              : Promise.resolve(null),
+          ]);
+
+        const proposals = {
+          total: 0,
+          [PROPOSAL_STATUS.PENDING]: 0,
+          [PROPOSAL_STATUS.APPROVED]: 0,
+          [PROPOSAL_STATUS.REJECTED]: 0,
+        };
+        for (const row of proposalRows) {
+          proposals[row.status] += Number(row.count);
+          proposals.total += Number(row.count);
+        }
+
+        return {
+          proposals,
+          mainClients,
+          // Null when the user can't see vendors.
+          vendors,
+          // Null for anyone but an admin.
+          users: userRows && {
+            total: userRows.reduce(
+              (total, row) => total + Number(row.count),
+              0,
+            ),
+            byRole: Object.fromEntries(
+              userRows.map((row) => [row.role, Number(row.count)]),
+            ) as Record<string, number>,
+          },
+        };
+      } catch (error) {
+        throw fromDatabaseError(error, "Counting records");
+      }
+    }),
+  ),
+
+  // The offices with the most pending work among the visible work orders,
+  // each with its work orders by status, its sites and what has been spent
+  // in its work orders; and how many offices have work orders at all.
+  getOfficeBreakdown: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const visible = await visibleWorkOrders(ctx);
+      const pending = countWhere(stillPending());
+
+      try {
+        const [officeRows, [officeCount]] = await Promise.all([
+          ctx.db
+            .select({
+              id: officeTable.id,
+              code: officeTable.code,
+              name: officeTable.name,
+              city: officeTable.city,
+              state: officeTable.state,
+              total: count(),
+              pending,
+              cancelled: countWhere(eq(wo.status, WORK_ORDER_STATUS.CANCELLED)),
+            })
+            .from(wo)
+            .innerJoin(officeTable, eq(wo.office_id, officeTable.id))
+            .where(visible)
+            .groupBy(officeTable.id)
+            .orderBy(desc(pending), desc(count()), asc(officeTable.name))
+            .limit(TOP_OFFICES),
+          ctx.db
+            .select({ count: countDistinct(wo.office_id) })
+            .from(wo)
+            .where(visible),
+        ]);
+
+        const officeIds = officeRows.map((row) => row.id);
+        if (officeIds.length === 0) return { offices: [], officeCount: 0 };
+
+        const [siteRows, spendRows] = await Promise.all([
+          ctx.db
+            .select({ office_id: siteTable.office_id, count: count() })
+            .from(siteTable)
+            .where(inArray(siteTable.office_id, officeIds))
+            .groupBy(siteTable.office_id),
+          withExpensePlaces(
+            ctx.db
+              .select({ office_id: wo.office_id, total: sum(e.amount) })
+              .from(e)
+              .$dynamic(),
+          )
+            .where(and(visible, inArray(wo.office_id, officeIds)))
+            .groupBy(wo.office_id),
+        ]);
+
+        return {
+          offices: officeRows.map((row) => {
+            const total = Number(row.total);
+            const pendingCount = Number(row.pending);
+            const cancelled = Number(row.cancelled);
+            return {
+              ...row,
+              total,
+              pending: pendingCount,
+              completed: total - pendingCount - cancelled,
+              cancelled,
+              sites: Number(
+                siteRows.find((site) => site.office_id === row.id)?.count ?? 0,
+              ),
+              spent: Number(
+                spendRows.find((spend) => spend.office_id === row.id)?.total ??
+                  0,
+              ),
+            };
+          }),
+          officeCount: Number(officeCount?.count ?? 0),
+        };
+      } catch (error) {
+        throw fromDatabaseError(error, "Breaking work down by office");
       }
     }),
   ),
