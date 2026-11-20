@@ -9,7 +9,7 @@ import {
   CardSkeleton,
   DashboardCard,
 } from "./dashboard-card";
-import { formatCompactRupees, formatCount } from "./format";
+import { formatCompactRupees, formatCount, formatCountOf } from "./format";
 import { useOfficeBreakdown } from "./use-dashboard";
 
 // A work order count's share of the office's, as a thin bar with no text:
@@ -57,7 +57,7 @@ export const OfficesCard = ({ className }: { className?: string }) => {
       title='Busiest offices'
       description={
         data && data.officeCount > 0
-          ? `Most pending work orders, of ${formatCount(data.officeCount)} offices with work`
+          ? `Most pending work orders, of ${formatCountOf(data.officeCount, "office")} with work`
           : "Most pending work orders"
       }
       action={<CardLink href='/dashboard/office-site'>All offices</CardLink>}>

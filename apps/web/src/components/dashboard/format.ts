@@ -14,6 +14,13 @@ export const formatCompactRupees = (amount: number) =>
 // A count in full, such as 1,24,500.
 export const formatCount = (value: number) => value.toLocaleString("en-IN");
 
+// A count with what it counts, singular for one: "1 office", "12 offices".
+export const formatCountOf = (
+  value: number,
+  singular: string,
+  plural = `${singular}s`,
+) => `${formatCount(value)} ${value === 1 ? singular : plural}`;
+
 // A part as a whole-number share of its whole, such as 46%; 0% of nothing.
 export const formatShare = (part: number, whole: number) =>
   `${whole > 0 ? Math.round((part / whole) * 100) : 0}%`;

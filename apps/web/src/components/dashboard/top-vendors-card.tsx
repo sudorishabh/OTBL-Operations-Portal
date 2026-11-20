@@ -9,7 +9,7 @@ import {
   DashboardCard,
 } from "./dashboard-card";
 import { RankedBars } from "./ranked-bars";
-import { formatCompactRupees, formatCount } from "./format";
+import { formatCompactRupees, formatCount, formatCountOf } from "./format";
 import { useFinanceSummary } from "./use-dashboard";
 
 // The vendors most has been spent with, each leading to its page. Shows
@@ -41,13 +41,15 @@ export const TopVendorsCard = ({ className }: { className?: string }) => {
             rows={data.topVendors.map((vendor) => ({
               key: String(vendor.id),
               label: capitalFirstLetter(vendor.name),
-              note: `${vendor.code} · ${formatCount(vendor.count)} expenses`,
+              note: `${vendor.code} · ${formatCountOf(vendor.count, "expense")}`,
               value: vendor.total,
               href: `/dashboard/vendor/${vendor.id}`,
             }))}
           />
           <p className='mt-3 text-[11px] text-gray-400'>
-            {formatCount(data.vendorCount)} vendors have been paid in all.
+            {data.vendorCount === 1
+              ? "1 vendor has been paid in all."
+              : `${formatCount(data.vendorCount)} vendors have been paid in all.`}
           </p>
         </div>
       )}

@@ -58,7 +58,9 @@ export const StatTile = ({
             {value}
           </p>
           {hint && (
-            <p className='mt-0.5 truncate text-[12px] text-gray-500'>{hint}</p>
+            <p className='mt-0.5 text-[12px] leading-snug text-gray-500'>
+              {hint}
+            </p>
           )}
         </>
       )}

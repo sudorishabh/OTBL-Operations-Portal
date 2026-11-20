@@ -9,7 +9,7 @@ import {
   DashboardCard,
 } from "./dashboard-card";
 import { RankedBars, type RankedBar } from "./ranked-bars";
-import { formatCompactRupees, formatCount, formatShare } from "./format";
+import { formatCompactRupees, formatCountOf, formatShare } from "./format";
 import { useFinanceSummary } from "./use-dashboard";
 
 const { WO_PROCESS } = constants;
@@ -47,7 +47,7 @@ export const SpendingCard = ({ className }: { className?: string }) => {
       title='Spending breakdown'
       description={
         data
-          ? `${formatCompactRupees(data.spent)} across ${formatCount(data.count)} expenses`
+          ? `${formatCompactRupees(data.spent)} across ${formatCountOf(data.count, "expense")}`
           : "All expenses"
       }>
       {isPending ? (
@@ -70,7 +70,7 @@ export const SpendingCard = ({ className }: { className?: string }) => {
                 data.sources.map((source) => ({
                   key: source.source,
                   label: SOURCE_LABELS[source.source] ?? source.source,
-                  note: `${formatCount(source.count)} expenses`,
+                  note: formatCountOf(source.count, "expense"),
                   value: source.total,
                 })),
               )}

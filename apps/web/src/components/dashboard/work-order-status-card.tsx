@@ -11,7 +11,7 @@ import {
 } from "./dashboard-card";
 import { MeterRow } from "./meter";
 import { SegmentedBar, type Segment } from "./segmented-bar";
-import { formatCount } from "./format";
+import { formatCount, formatCountOf } from "./format";
 import { useWorkOrderSummary } from "./use-dashboard";
 
 const { WO_PROCESS } = constants;
@@ -76,7 +76,7 @@ export const WorkOrderStatusCard = ({ className }: { className?: string }) => {
       className={className}
       title='Work order status'
       description={
-        data ? `${formatCount(data.total)} work orders` : "All work orders"
+        data ? formatCountOf(data.total, "work order") : "All work orders"
       }
       action={<CardLink href='/dashboard/work-order'>View all</CardLink>}>
       {isPending ? (

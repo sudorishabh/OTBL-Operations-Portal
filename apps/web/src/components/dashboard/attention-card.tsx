@@ -106,7 +106,7 @@ const DeadlineSection = ({
   late: boolean;
   emptyText: string;
 }) => (
-  <div>
+  <div className='min-w-0'>
     <div className='flex items-center justify-between gap-2 text-[12px]'>
       <span className='flex items-center gap-1.5 font-medium text-gray-700'>
         <Icon

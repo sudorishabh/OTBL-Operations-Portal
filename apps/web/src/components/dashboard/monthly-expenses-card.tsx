@@ -50,7 +50,7 @@ const ColumnChart = ({ months }: { months: Month[] }) => {
   );
 
   return (
-    <div className='flex flex-1 flex-col px-4 pt-4 pb-3'>
+    <div className='flex flex-1 flex-col px-4 pt-6 pb-3'>
       <div className='relative min-h-48 flex-1'>
         {/* Gridlines with their figures, the baseline darker. */}
         {ticks.map((tick) => (
@@ -126,7 +126,11 @@ const ColumnChart = ({ months }: { months: Month[] }) => {
         {months.map((m, index) => (
           <span
             key={m.month}
-            className='flex-1 truncate text-center text-[10px] text-gray-500'>
+            className={cn(
+              "flex-1 text-center text-[10px] whitespace-nowrap text-gray-500",
+              // Narrow, every other month is named, so names don't run together.
+              index % 2 === 1 && "max-sm:invisible",
+            )}>
             {columnLabel(m.month, index)}
           </span>
         ))}
