@@ -255,6 +255,78 @@ export const clientQueryRouter = router({
     }),
   ),
 
+  // A few of the main clients the user can see, matching a search on their
+  // code or name, for pickers that search as you type. The one already
+  // picked comes too, so its name shows whatever the search.
+  findParentClientOptions: protectedProcedure
+    .input(
+      z.object({
+        search: z.string().trim().max(100).optional(),
+        selected_id: z.number().int().positive().optional(),
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        const clientIds = await clientIdsVisibleToScope(ctx.db, scope);
+        if (scope.kind !== "full" && (!clientIds || clientIds.length === 0)) {
+          return { parentClients: [], has_more: false, selected: null };
+        }
+
+        const option = {
+          id: parentClientTable.id,
+          code: parentClientTable.code,
+          name: parentClientTable.name,
+        };
+        // A full-access user sees every main client; others, those of the
+        // clients they can see.
+        const fromParents = (where: SQL | undefined) =>
+          scope.kind === "full"
+            ? ctx.db.select(option).from(parentClientTable).where(where)
+            : ctx.db
+                .selectDistinct(option)
+                .from(parentClientTable)
+                .innerJoin(
+                  clientTable,
+                  eq(clientTable.parent_client_id, parentClientTable.id),
+                )
+                .where(and(where, inArray(clientTable.id, clientIds!)));
+
+        const term = input.search?.trim();
+        const matching = term
+          ? or(
+              codeMatches(parentClientTable.code, CODE_PREFIX.MAIN_CLIENT, term),
+              like(parentClientTable.name, `%${escapeLike(term)}%`),
+            )
+          : undefined;
+
+        try {
+          const [matches, selected] = await Promise.all([
+            fromParents(matching)
+              .orderBy(asc(parentClientTable.name), asc(parentClientTable.id))
+              // One more than shown tells whether there are more.
+              .limit(input.limit + 1),
+            input.selected_id
+              ? fromParents(eq(parentClientTable.id, input.selected_id)).limit(1)
+              : Promise.resolve([]),
+          ]);
+
+          return {
+            parentClients: matches.slice(0, input.limit),
+            has_more: matches.length > input.limit,
+            selected: selected[0] ?? null,
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Finding main client options");
+        }
+      }),
+    ),
+
   // A main client's details and contact persons.
   getParentClient: protectedProcedure
     .input(clientSchemas.getParentClientSchema)
