@@ -10,38 +10,8 @@ import {
   DashboardCard,
 } from "./dashboard-card";
 import { formatCompactRupees, formatCount, formatCountOf } from "./format";
+import { StatusStripe } from "./status-parts";
 import { useOfficeBreakdown } from "./use-dashboard";
-
-// A work order count's share of the office's, as a thin bar with no text:
-// the figures beside it say what it is. Statuses wear the portal's status
-// colours, in the order the status card uses.
-const StatusBar = ({
-  pending,
-  completed,
-  cancelled,
-}: {
-  pending: number;
-  completed: number;
-  cancelled: number;
-}) => (
-  <div
-    aria-hidden='true'
-    className='mt-1 flex h-1.5 w-full gap-0.5'>
-    {[
-      { value: pending, className: "bg-amber-500" },
-      { value: completed, className: "bg-emerald-600" },
-      { value: cancelled, className: "bg-rose-600" },
-    ]
-      .filter((part) => part.value > 0)
-      .map((part) => (
-        <span
-          key={part.className}
-          className={`h-full rounded-full ${part.className}`}
-          style={{ flexGrow: part.value, flexBasis: 0 }}
-        />
-      ))}
-  </div>
-);
 
 const HEAD =
   "px-4 py-1.5 text-[11px] font-semibold tracking-[0.08em] text-gray-400 uppercase";
@@ -105,7 +75,7 @@ export const OfficesCard = ({ className }: { className?: string }) => {
                       {office.cancelled > 0 &&
                         ` · ${formatCount(office.cancelled)} cancelled`}
                     </span>
-                    <StatusBar
+                    <StatusStripe
                       pending={office.pending}
                       completed={office.completed}
                       cancelled={office.cancelled}

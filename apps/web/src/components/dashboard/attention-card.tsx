@@ -20,6 +20,7 @@ import {
   CardMessage,
   CardSkeleton,
   DashboardCard,
+  SubHeading,
 } from "./dashboard-card";
 import { formatCount, formatDay } from "./format";
 import { useAttention, useModuleCounts } from "./use-dashboard";
@@ -218,9 +219,7 @@ export const AttentionCard = ({ className }: { className?: string }) => {
           </div>
 
           <div>
-            <h3 className='mb-2 text-[11px] font-semibold tracking-[0.08em] text-gray-400 uppercase'>
-              Waiting on paperwork
-            </h3>
+            <SubHeading>Waiting on paperwork</SubHeading>
             <ul className='grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3'>
               <FollowUp
                 icon={FileClock}

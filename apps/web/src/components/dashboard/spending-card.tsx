@@ -7,17 +7,12 @@ import {
   CardMessage,
   CardSkeleton,
   DashboardCard,
+  SubHeading,
 } from "./dashboard-card";
 import { RankedBars, type RankedBar } from "./ranked-bars";
 import { formatCompactRupees, formatCountOf, formatShare } from "./format";
 import { processLabel, sourceLabel } from "./labels";
 import { useFinanceSummary } from "./use-dashboard";
-
-const Heading = ({ children }: { children: React.ReactNode }) => (
-  <h3 className='mb-2 text-[11px] font-semibold tracking-[0.08em] text-gray-400 uppercase'>
-    {children}
-  </h3>
-);
 
 const largestFirst = (rows: RankedBar[]) =>
   [...rows].sort((a, b) => b.value - a.value);
@@ -48,7 +43,7 @@ export const SpendingCard = ({ className }: { className?: string }) => {
       ) : (
         <div className='space-y-4 px-4 py-4'>
           <div>
-            <Heading>By what it was spent through</Heading>
+            <SubHeading>By what it was spent through</SubHeading>
             <RankedBars
               title='Expenses by what they were spent through'
               formatValue={formatCompactRupees}
@@ -64,7 +59,7 @@ export const SpendingCard = ({ className }: { className?: string }) => {
           </div>
 
           <div>
-            <Heading>By process</Heading>
+            <SubHeading>By process</SubHeading>
             <RankedBars
               title='Expenses by process'
               formatValue={formatCompactRupees}

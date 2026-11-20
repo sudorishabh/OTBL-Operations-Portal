@@ -56,6 +56,13 @@ export const DashboardCard = ({
   </section>
 );
 
+// The small heading splitting a card's or dialog's content into parts.
+export const SubHeading = ({ children }: { children: React.ReactNode }) => (
+  <h3 className='mb-2 text-[11px] font-semibold tracking-[0.08em] text-gray-400 uppercase'>
+    {children}
+  </h3>
+);
+
 // "View all" and the like, at the top right of a card.
 export const CardLink = ({
   href,
