@@ -8,6 +8,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { formatCurrency } from "@pkg/utils";
+import { CardRow } from "./card-row";
 import { StatTile } from "./stat-tile";
 import { formatCompactRupees, formatCount, formatShare } from "./format";
 import { useFinanceSummary, useWorkOrderSummary } from "./use-dashboard";
@@ -32,7 +33,7 @@ export const KpiStrip = () => {
   const sitesOpen = summary ? summary.sites.total - summary.sites.completed : 0;
 
   return (
-    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5'>
+    <CardRow label='Headline figures'>
       <StatTile
         icon={ReceiptIndianRupee}
         label='Work orders'
@@ -93,6 +94,6 @@ export const KpiStrip = () => {
             : (summaryQuery.isError || financeQuery.isError) && NOT_LOADED
         }
       />
-    </div>
+    </CardRow>
   );
 };

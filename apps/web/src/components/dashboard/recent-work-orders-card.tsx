@@ -64,7 +64,7 @@ export const RecentWorkOrdersCard = () => {
               <TableHead className='h-8 px-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
                 Code
               </TableHead>
-              <TableHead className='h-8 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
+              <TableHead className='hidden h-8 px-3 sm:table-cell text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
                 Purchase order
               </TableHead>
               <TableHead className='h-8 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400'>
@@ -94,7 +94,7 @@ export const RecentWorkOrdersCard = () => {
                   </Link>
                 </TableCell>
                 <TableCell
-                  className='max-w-[220px] truncate px-3 py-1.5 font-mono text-gray-700'
+                  className='hidden max-w-[220px] truncate px-3 sm:table-cell py-1.5 font-mono text-gray-700'
                   title={wo.purchase_order_code ?? undefined}>
                   {wo.purchase_order_code ?? <Empty />}
                 </TableCell>
