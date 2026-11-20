@@ -2,6 +2,7 @@ import {
   and,
   asc,
   count,
+  countDistinct,
   desc,
   eq,
   getTableColumns,
@@ -552,17 +553,22 @@ export const clientQueryRouter = router({
         };
 
         try {
-          // Main clients are few, so all of them are read and sliced here.
-          // Unfiltered, a full-access user also sees ones without branches.
-          // All columns are selected, as DISTINCT can only order by them.
+          // Main clients come first, a page at a time from the database, then
+          // clients without one. Unfiltered, a full-access user also sees
+          // main clients without branches. All columns are selected, as
+          // DISTINCT can only order by them.
           const parentColumns = getTableColumns(parentClientTable);
-          const parentClients =
-            scope.kind === "full" && !isFiltered
-              ? await ctx.db
+          const offset = pageOffset(page, limit);
+          const allParents = scope.kind === "full" && !isFiltered;
+          const [pageParents, [parentCountRow]] = await Promise.all([
+            allParents
+              ? ctx.db
                   .select(parentColumns)
                   .from(parentClientTable)
                   .orderBy(...parentClientOrder(sort))
-              : await ctx.db
+                  .limit(limit)
+                  .offset(offset)
+              : ctx.db
                   .selectDistinct(parentColumns)
                   .from(parentClientTable)
                   .innerJoin(
@@ -570,12 +576,23 @@ export const clientQueryRouter = router({
                     eq(clientTable.parent_client_id, parentClientTable.id),
                   )
                   .where(clientWhere)
-                  .orderBy(...parentClientOrder(sort));
-
-          const offset = pageOffset(page, limit);
-          const pageParents = parentClients.slice(offset, offset + limit);
+                  .orderBy(...parentClientOrder(sort))
+                  .limit(limit)
+                  .offset(offset),
+            allParents
+              ? ctx.db.select({ count: count() }).from(parentClientTable)
+              : ctx.db
+                  .select({ count: countDistinct(parentClientTable.id) })
+                  .from(parentClientTable)
+                  .innerJoin(
+                    clientTable,
+                    eq(clientTable.parent_client_id, parentClientTable.id),
+                  )
+                  .where(clientWhere),
+          ]);
+          const parentTotal = Number(parentCountRow?.count ?? 0);
           const standaloneLimit = limit - pageParents.length;
-          const standaloneOffset = Math.max(0, offset - parentClients.length);
+          const standaloneOffset = Math.max(0, offset - parentTotal);
 
           const branchRows =
             pageParents.length === 0
@@ -640,7 +657,7 @@ export const clientQueryRouter = router({
             pagination: buildPagination({
               page,
               limit,
-              total: parentClients.length + standaloneTotal,
+              total: parentTotal + standaloneTotal,
               shown: pageParents.length + standaloneRows.length,
             }),
           };
