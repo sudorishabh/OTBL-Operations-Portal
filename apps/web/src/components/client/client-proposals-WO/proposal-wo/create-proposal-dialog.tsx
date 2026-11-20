@@ -78,9 +78,10 @@ const CreateProposalDialog = ({ clientId }: Props) => {
     conflictBehavior: "rename",
   });
 
+  // Only what the picker shows, not each office's members and counts.
   const { data: officesData, isLoading: isLoadingOffices } =
-    trpc.officeQuery.getOffices.useQuery(
-      { searchQuery: "", status: "active" },
+    trpc.officeQuery.getOfficeOptions.useQuery(
+      { active_only: true },
       { enabled: isOpenDialog },
     );
 
@@ -183,7 +184,7 @@ const CreateProposalDialog = ({ clientId }: Props) => {
     addProposal.mutate({ ...values, client_id: clientId, documents });
   }
 
-  const offices = officesData?.offices ?? [];
+  const offices = officesData ?? [];
   const isSubmitting =
     form.formState.isSubmitting ||
     addProposal.isPending ||

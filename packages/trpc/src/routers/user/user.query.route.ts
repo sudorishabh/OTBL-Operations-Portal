@@ -258,8 +258,9 @@ export const userQueryRouter = router({
             )
             .where(inArray(officeUserTable.user_id, userIds));
 
+          // Each user's sites once, however many work orders they share.
           allSites = await ctx.db
-            .select({
+            .selectDistinct({
               userId: workOrderSiteUserTable.user_id,
               id: siteTable.id,
               code: siteTable.code,
@@ -441,7 +442,9 @@ export const userQueryRouter = router({
           })
           .from(userTable)
           .where(condition)
-          .orderBy(asc(userTable.name))
+          // The id breaks ties, so users of one name never repeat or go
+          // missing across pages.
+          .orderBy(asc(userTable.name), asc(userTable.id))
           .limit(limit)
           .offset(offset);
 

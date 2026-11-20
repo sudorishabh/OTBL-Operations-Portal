@@ -2,6 +2,7 @@ import {
   and,
   asc,
   count,
+  countDistinct,
   desc,
   eq,
   exists,
@@ -23,6 +24,7 @@ import { assertCanUseVendors, canUseVendors } from "./vendor-access";
 import { codeMatches } from "../../helper/record-code";
 import { CODE_PREFIX } from "@pkg/utils";
 import { getAccessScope, workOrderScopeWhere } from "../../access-scope";
+import type { TrpcContext } from "../../context";
 
 const {
   contractorTable,
@@ -71,6 +73,58 @@ const vendorOrder = (sort: "name_asc" | "name_desc" | "newest" | "oldest") => {
   }
 };
 
+// A vendor's orders and job orders are read a page at a time.
+const vendorWorkPageSchema = z.object({
+  id: z.number().positive(),
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+});
+
+// The work orders the user can see, as a condition on workOrderTable.
+const visibleWorkOrders = async (ctx: TrpcContext) =>
+  workOrderScopeWhere(
+    await getAccessScope(ctx.db, Number(ctx.user!.sub), ctx.user!.role),
+  );
+
+// How a vendor's orders and job orders join their work orders.
+const ORDER_OF_VENDOR = eq(
+  contractOrderContractorTable.contract_order_id,
+  contractOrderTable.id,
+);
+const WORK_ORDER_OF_ORDER = eq(
+  contractOrderTable.work_order_id,
+  workOrderTable.id,
+);
+const JOB_ORDER_OF_VENDOR = eq(
+  jobOrderContractorTable.job_order_id,
+  jobOrderTable.id,
+);
+const SITE_OF_JOB_ORDER = eq(
+  jobOrderTable.work_order_site_id,
+  workOrderSiteTable.id,
+);
+const WORK_ORDER_OF_SITE = eq(
+  workOrderSiteTable.work_order_id,
+  workOrderTable.id,
+);
+
+const toSpent = <T extends { spent: string | null }>(row: T) => ({
+  ...row,
+  spent: Number(row.spent ?? 0),
+});
+
+const pageOf = (
+  input: { page: number; limit: number },
+  total: number,
+  shown: number,
+) => ({
+  page: input.page,
+  limit: input.limit,
+  total,
+  totalPages: Math.ceil(total / input.limit),
+  hasMore: (input.page - 1) * input.limit + shown < total,
+});
+
 export const contractorQueryRouter = router({
   // Every vendor, paginated, for the vendors page.
   getVendors: protectedProcedure
@@ -106,7 +160,11 @@ export const contractorQueryRouter = router({
         // vendor's own page.
         const visibleWorkOrders = usage
           ? workOrderScopeWhere(
-              await getAccessScope(ctx.db, Number(ctx.user!.sub), ctx.user!.role),
+              await getAccessScope(
+                ctx.db,
+                Number(ctx.user!.sub),
+                ctx.user!.role,
+              ),
             )
           : undefined;
 
@@ -128,7 +186,10 @@ export const contractorQueryRouter = router({
               )
               .where(
                 and(
-                  eq(contractOrderContractorTable.contractor_id, contractorTable.id),
+                  eq(
+                    contractOrderContractorTable.contractor_id,
+                    contractorTable.id,
+                  ),
                   type ? eq(contractOrderTable.type, type) : undefined,
                   visibleWorkOrders,
                 ),
@@ -251,20 +312,151 @@ export const contractorQueryRouter = router({
     ),
   // The purchase orders, sub-contracts and job orders a vendor is on, in
   // work orders the user can see, each with what has been spent under them.
+  // What a vendor's page sums up: how many orders and job orders they are on
+  // and what has been spent under them, of the work orders the user can see.
   getContractorWork: protectedProcedure
     .input(z.object({ id: z.number().positive() }))
     .query(
       handleQuery(async ({ input, ctx }) => {
         await assertCanUseVendors(ctx);
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
-        const visibleWorkOrders = workOrderScopeWhere(scope);
+        const visible = await visibleWorkOrders(ctx);
 
         try {
-          const contractOrders = await ctx.db
+          const [[orderRow], [jobOrderRow], [orderSpent], [jobOrderSpent]] =
+            await Promise.all([
+              ctx.db
+                .select({
+                  count: countDistinct(contractOrderTable.id),
+                })
+                .from(contractOrderContractorTable)
+                .innerJoin(contractOrderTable, ORDER_OF_VENDOR)
+                .innerJoin(workOrderTable, WORK_ORDER_OF_ORDER)
+                .where(
+                  and(
+                    eq(contractOrderContractorTable.contractor_id, input.id),
+                    visible,
+                  ),
+                ),
+              ctx.db
+                .select({
+                  count: countDistinct(jobOrderTable.id),
+                })
+                .from(jobOrderContractorTable)
+                .innerJoin(jobOrderTable, JOB_ORDER_OF_VENDOR)
+                .innerJoin(workOrderSiteTable, SITE_OF_JOB_ORDER)
+                .innerJoin(workOrderTable, WORK_ORDER_OF_SITE)
+                .where(
+                  and(
+                    eq(jobOrderContractorTable.contractor_id, input.id),
+                    visible,
+                  ),
+                ),
+              // The vendor's expenses on the requirements of orders they are
+              // on, and on job orders they are on.
+              ctx.db
+                .select({ total: sum(workOrderSiteExpenseTable.amount) })
+                .from(workOrderSiteExpenseTable)
+                .innerJoin(
+                  contractOrderItemTable,
+                  eq(
+                    workOrderSiteExpenseTable.contract_order_item_id,
+                    contractOrderItemTable.id,
+                  ),
+                )
+                .innerJoin(
+                  contractOrderTable,
+                  eq(
+                    contractOrderItemTable.contract_order_id,
+                    contractOrderTable.id,
+                  ),
+                )
+                .innerJoin(
+                  contractOrderContractorTable,
+                  and(
+                    eq(
+                      contractOrderContractorTable.contract_order_id,
+                      contractOrderTable.id,
+                    ),
+                    eq(contractOrderContractorTable.contractor_id, input.id),
+                  ),
+                )
+                .innerJoin(
+                  workOrderTable,
+                  eq(contractOrderTable.work_order_id, workOrderTable.id),
+                )
+                .where(
+                  and(
+                    eq(workOrderSiteExpenseTable.contractor_id, input.id),
+                    visible,
+                  ),
+                ),
+              ctx.db
+                .select({ total: sum(workOrderSiteExpenseTable.amount) })
+                .from(workOrderSiteExpenseTable)
+                .innerJoin(
+                  jobOrderTable,
+                  eq(workOrderSiteExpenseTable.job_order_id, jobOrderTable.id),
+                )
+                .innerJoin(
+                  jobOrderContractorTable,
+                  and(
+                    eq(jobOrderContractorTable.job_order_id, jobOrderTable.id),
+                    eq(jobOrderContractorTable.contractor_id, input.id),
+                  ),
+                )
+                .innerJoin(
+                  workOrderSiteTable,
+                  eq(jobOrderTable.work_order_site_id, workOrderSiteTable.id),
+                )
+                .innerJoin(
+                  workOrderTable,
+                  eq(workOrderSiteTable.work_order_id, workOrderTable.id),
+                )
+                .where(
+                  and(
+                    eq(workOrderSiteExpenseTable.contractor_id, input.id),
+                    visible,
+                  ),
+                ),
+            ]);
+
+          return {
+            order_count: Number(orderRow?.count ?? 0),
+            job_order_count: Number(jobOrderRow?.count ?? 0),
+            total_spent:
+              Number(orderSpent?.total ?? 0) +
+              Number(jobOrderSpent?.total ?? 0),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching contractor work");
+        }
+      }),
+    ),
+
+  // A page of the purchase orders and sub-contracts a vendor is on, newest
+  // first, each with what the vendor has spent under it.
+  getContractorOrders: protectedProcedure.input(vendorWorkPageSchema).query(
+    handleQuery(async ({ input, ctx }) => {
+      await assertCanUseVendors(ctx);
+      const visible = await visibleWorkOrders(ctx);
+      const offset = (input.page - 1) * input.limit;
+
+      try {
+        const [[totalRow], rows] = await Promise.all([
+          ctx.db
+            .select({
+              count: countDistinct(contractOrderTable.id),
+            })
+            .from(contractOrderContractorTable)
+            .innerJoin(contractOrderTable, ORDER_OF_VENDOR)
+            .innerJoin(workOrderTable, WORK_ORDER_OF_ORDER)
+            .where(
+              and(
+                eq(contractOrderContractorTable.contractor_id, input.id),
+                visible,
+              ),
+            ),
+          ctx.db
             .select({
               id: contractOrderTable.id,
               type: contractOrderTable.type,
@@ -277,20 +469,14 @@ export const contractorQueryRouter = router({
               expense_count: count(workOrderSiteExpenseTable.id),
             })
             .from(contractOrderContractorTable)
-            .innerJoin(
-              contractOrderTable,
-              eq(
-                contractOrderContractorTable.contract_order_id,
-                contractOrderTable.id,
-              ),
-            )
-            .innerJoin(
-              workOrderTable,
-              eq(contractOrderTable.work_order_id, workOrderTable.id),
-            )
+            .innerJoin(contractOrderTable, ORDER_OF_VENDOR)
+            .innerJoin(workOrderTable, WORK_ORDER_OF_ORDER)
             .leftJoin(
               contractOrderItemTable,
-              eq(contractOrderItemTable.contract_order_id, contractOrderTable.id),
+              eq(
+                contractOrderItemTable.contract_order_id,
+                contractOrderTable.id,
+              ),
             )
             .leftJoin(
               workOrderSiteExpenseTable,
@@ -305,13 +491,51 @@ export const contractorQueryRouter = router({
             .where(
               and(
                 eq(contractOrderContractorTable.contractor_id, input.id),
-                visibleWorkOrders,
+                visible,
               ),
             )
             .groupBy(contractOrderTable.id, workOrderTable.id)
-            .orderBy(desc(contractOrderTable.order_date));
+            .orderBy(
+              desc(contractOrderTable.order_date),
+              desc(contractOrderTable.id),
+            )
+            .limit(input.limit)
+            .offset(offset),
+        ]);
 
-          const jobOrders = await ctx.db
+        const total = Number(totalRow?.count ?? 0);
+        return {
+          orders: rows.map(toSpent),
+          pagination: pageOf(input, total, rows.length),
+        };
+      } catch (error) {
+        throw fromDatabaseError(error, "Fetching contractor orders");
+      }
+    }),
+  ),
+
+  // A page of the restoration job orders a vendor is on, latest first, each
+  // with what the vendor has spent under it.
+  getContractorJobOrders: protectedProcedure.input(vendorWorkPageSchema).query(
+    handleQuery(async ({ input, ctx }) => {
+      await assertCanUseVendors(ctx);
+      const visible = await visibleWorkOrders(ctx);
+      const offset = (input.page - 1) * input.limit;
+
+      try {
+        const [[totalRow], rows] = await Promise.all([
+          ctx.db
+            .select({
+              count: countDistinct(jobOrderTable.id),
+            })
+            .from(jobOrderContractorTable)
+            .innerJoin(jobOrderTable, JOB_ORDER_OF_VENDOR)
+            .innerJoin(workOrderSiteTable, SITE_OF_JOB_ORDER)
+            .innerJoin(workOrderTable, WORK_ORDER_OF_SITE)
+            .where(
+              and(eq(jobOrderContractorTable.contractor_id, input.id), visible),
+            ),
+          ctx.db
             .select({
               id: jobOrderTable.id,
               jo_number: jobOrderTable.jo_number,
@@ -325,18 +549,9 @@ export const contractorQueryRouter = router({
               expense_count: count(workOrderSiteExpenseTable.id),
             })
             .from(jobOrderContractorTable)
-            .innerJoin(
-              jobOrderTable,
-              eq(jobOrderContractorTable.job_order_id, jobOrderTable.id),
-            )
-            .innerJoin(
-              workOrderSiteTable,
-              eq(jobOrderTable.work_order_site_id, workOrderSiteTable.id),
-            )
-            .innerJoin(
-              workOrderTable,
-              eq(workOrderSiteTable.work_order_id, workOrderTable.id),
-            )
+            .innerJoin(jobOrderTable, JOB_ORDER_OF_VENDOR)
+            .innerJoin(workOrderSiteTable, SITE_OF_JOB_ORDER)
+            .innerJoin(workOrderTable, WORK_ORDER_OF_SITE)
             .leftJoin(
               workOrderSiteExpenseTable,
               and(
@@ -345,26 +560,22 @@ export const contractorQueryRouter = router({
               ),
             )
             .where(
-              and(
-                eq(jobOrderContractorTable.contractor_id, input.id),
-                visibleWorkOrders,
-              ),
+              and(eq(jobOrderContractorTable.contractor_id, input.id), visible),
             )
             .groupBy(jobOrderTable.id, workOrderTable.id)
-            .orderBy(desc(jobOrderTable.start_date));
+            .orderBy(desc(jobOrderTable.start_date), desc(jobOrderTable.id))
+            .limit(input.limit)
+            .offset(offset),
+        ]);
 
-          const toSpent = <T extends { spent: string | null }>(row: T) => ({
-            ...row,
-            spent: Number(row.spent ?? 0),
-          });
-
-          return {
-            contractOrders: contractOrders.map(toSpent),
-            jobOrders: jobOrders.map(toSpent),
-          };
-        } catch (error) {
-          throw fromDatabaseError(error, "Fetching contractor work");
-        }
-      }),
-    ),
+        const total = Number(totalRow?.count ?? 0);
+        return {
+          jobOrders: rows.map(toSpent),
+          pagination: pageOf(input, total, rows.length),
+        };
+      } catch (error) {
+        throw fromDatabaseError(error, "Fetching contractor job orders");
+      }
+    }),
+  ),
 });

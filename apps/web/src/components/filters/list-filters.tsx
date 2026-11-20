@@ -158,6 +158,10 @@ export const ComboboxFilter = ({
   searchPlaceholder,
   Icon,
   className,
+  onSearchChange,
+  selectedOption,
+  hasMore = false,
+  appearance = "filter",
 }: {
   label: string;
   /** Shown when nothing is picked, e.g. "All clients". */
@@ -172,27 +176,46 @@ export const ComboboxFilter = ({
   searchPlaceholder: string;
   Icon?: LucideIcon;
   className?: string;
+  /**
+   * Searches on the server: given the typed search, the parent loads the
+   * matching `options`, which are then shown as they are.
+   */
+  onSearchChange?: (search: string) => void;
+  /** The picked choice, when the loaded options may not include it. */
+  selectedOption?: FilterOption;
+  /** Whether the server has more matches than the options loaded. */
+  hasMore?: boolean;
+  /** A filter over a list, or a form field: full width, input height. */
+  appearance?: "filter" | "field";
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const searchesServer = !!onSearchChange;
 
-  const selected = [...pinnedOptions, ...options].find(
-    (option) => option.value === value,
-  );
+  const selected = [
+    ...pinnedOptions,
+    ...options,
+    ...(selectedOption ? [selectedOption] : []),
+  ].find((option) => option.value === value);
   const isApplied = value !== ALL;
 
   const matches = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return options;
+    if (!term || searchesServer) return options;
     return options.filter((option) =>
       `${option.label} ${option.hint ?? ""}`.toLowerCase().includes(term),
     );
-  }, [options, search]);
+  }, [options, search, searchesServer]);
+
+  const changeSearch = (next: string) => {
+    setSearch(next);
+    onSearchChange?.(next);
+  };
 
   const choose = (next: string) => {
     onChange(next);
     setOpen(false);
-    setSearch("");
+    changeSearch("");
   };
 
   const renderOption = (option: FilterOption) => {
@@ -224,7 +247,7 @@ export const ComboboxFilter = ({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setSearch("");
+        if (!next) changeSearch("");
       }}>
       <PopoverTrigger asChild>
         <button
@@ -234,8 +257,10 @@ export const ComboboxFilter = ({
           disabled={isLoading}
           className={cn(
             controlClass,
-            "flex w-full cursor-pointer items-center gap-1.5 border-input px-2.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:max-w-56",
-            isApplied && activeClass,
+            "flex w-full cursor-pointer items-center gap-1.5 border-input px-2.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-wait disabled:opacity-60",
+            appearance === "field"
+              ? "h-9! text-sm"
+              : cn("sm:w-auto sm:max-w-56", isApplied && activeClass),
             className,
           )}>
           {Icon && <Icon className='size-3.5 shrink-0 text-gray-400' />}
@@ -253,7 +278,7 @@ export const ComboboxFilter = ({
           <input
             autoFocus
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => changeSearch(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && matches[0]) {
                 event.preventDefault();
@@ -281,6 +306,11 @@ export const ComboboxFilter = ({
         {matches.length > MAX_SHOWN && (
           <p className='border-t px-3 py-1.5 text-[11px] text-gray-400'>
             Showing {MAX_SHOWN} of {matches.length}. Type to narrow down.
+          </p>
+        )}
+        {hasMore && matches.length <= MAX_SHOWN && (
+          <p className='border-t px-3 py-1.5 text-[11px] text-gray-400'>
+            Showing the first {matches.length}. Type to narrow down.
           </p>
         )}
       </PopoverContent>

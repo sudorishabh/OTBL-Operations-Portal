@@ -7,6 +7,7 @@ import {
   like,
   or,
   inArray,
+  not,
   sql,
   sum,
 } from "drizzle-orm";
@@ -39,7 +40,10 @@ import {
   siteNameOrRestoration,
 } from "../../helper/restoration";
 import { USER_ROLES } from "../../authorization";
-import { batchEffectiveWorkOrderStatuses } from "./batch-effective-work-order-status";
+import {
+  batchEffectiveWorkOrderStatuses,
+  sorFullyConsumedSql,
+} from "./batch-effective-work-order-status";
 import { CODE_PREFIX, effectiveWorkOrderStatusFromDbOnly } from "@pkg/utils";
 import { codeMatches } from "../../helper/record-code";
 
@@ -88,12 +92,21 @@ export const workOrderQueryRouter = router({
       const useEffectiveStatusFilter =
         statusFilter === "pending" || statusFilter === "completed";
 
+      // A pending work order whose schedule of rates is used up counts as
+      // completed. The database decides, so the list pages and counts there.
       if (statusFilter === "pending") {
-        conditions = and(conditions, eq(workOrderTable.status, "pending"));
+        conditions = and(
+          conditions,
+          eq(workOrderTable.status, "pending"),
+          not(sorFullyConsumedSql()),
+        );
       } else if (statusFilter === "completed") {
         conditions = and(
           conditions,
-          inArray(workOrderTable.status, ["pending", "completed"]),
+          or(
+            eq(workOrderTable.status, "completed"),
+            and(eq(workOrderTable.status, "pending"), sorFullyConsumedSql()),
+          ),
         );
       } else if (statusFilter) {
         conditions = and(conditions, eq(workOrderTable.status, statusFilter));
@@ -149,72 +162,6 @@ export const workOrderQueryRouter = router({
       ];
 
       try {
-        if (useEffectiveStatusFilter) {
-          const candidates = await ctx.db
-            .select({
-              id: workOrderTable.id,
-              code: workOrderTable.code,
-              purchase_order_code: workOrderTable.purchase_order_code,
-              client_id: workOrderTable.client_id,
-              client_name: clientTable.name,
-              office_id: workOrderTable.office_id,
-              office_name: officeTable.name,
-              start_date: workOrderTable.start_date,
-              end_date: workOrderTable.end_date,
-              handing_over_date: workOrderTable.handing_over_date,
-              agreement_number: workOrderTable.agreement_number,
-              status: workOrderTable.status,
-              created_at: workOrderTable.created_at,
-              updated_at: workOrderTable.updated_at,
-            })
-            .from(workOrderTable)
-            .leftJoin(clientTable, eq(workOrderTable.client_id, clientTable.id))
-            .leftJoin(officeTable, eq(workOrderTable.office_id, officeTable.id))
-            .where(conditions)
-            .orderBy(...orderBy);
-
-          const effectiveMap = await batchEffectiveWorkOrderStatuses(
-            ctx.db,
-            scope,
-            candidates.map((wo) => ({
-              id: Number(wo.id),
-              office_id: wo.office_id ?? null,
-              status: String(wo.status ?? ""),
-            })),
-          );
-
-          const filtered = candidates.filter((wo) => {
-            const effective =
-              effectiveMap.get(Number(wo.id)) ??
-              effectiveWorkOrderStatusFromDbOnly(String(wo.status));
-            return effective === statusFilter;
-          });
-
-          const total = filtered.length;
-          const offset = (page - 1) * limit;
-          const pageSlice = filtered.slice(offset, offset + limit);
-          const workOrdersWithEffectiveStatus = pageSlice.map((wo) => ({
-            ...wo,
-            status:
-              effectiveMap.get(Number(wo.id)) ??
-              effectiveWorkOrderStatusFromDbOnly(String(wo.status)),
-          }));
-
-          const totalPages = Math.ceil(total / limit) || 0;
-          const hasMore = offset + pageSlice.length < total;
-
-          return {
-            workOrders: workOrdersWithEffectiveStatus,
-            pagination: {
-              page,
-              limit,
-              total,
-              hasMore,
-              totalPages,
-            },
-          };
-        }
-
         const [totalResult] = await ctx.db
           .select({ count: count() })
           .from(workOrderTable)
@@ -267,21 +214,26 @@ export const workOrderQueryRouter = router({
         const totalPages = Math.ceil(total / limit);
         const hasMore = offset + workOrders.length < total;
 
-        const effectiveMap = await batchEffectiveWorkOrderStatuses(
-          ctx.db,
-          scope,
-          workOrders.map((wo) => ({
-            id: Number(wo.id),
-            office_id: wo.office_id ?? null,
-            status: String(wo.status ?? ""),
-          })),
-        );
+        // Filtered by pending or completed, each row has that status;
+        // otherwise the page's statuses are worked out.
+        const effectiveMap = useEffectiveStatusFilter
+          ? null
+          : await batchEffectiveWorkOrderStatuses(
+              ctx.db,
+              scope,
+              workOrders.map((wo) => ({
+                id: Number(wo.id),
+                office_id: wo.office_id ?? null,
+                status: String(wo.status ?? ""),
+              })),
+            );
 
         const workOrdersWithEffectiveStatus = workOrders.map((wo) => ({
           ...wo,
-          status:
-            effectiveMap.get(Number(wo.id)) ??
-            effectiveWorkOrderStatusFromDbOnly(String(wo.status)),
+          status: useEffectiveStatusFilter
+            ? statusFilter
+            : (effectiveMap?.get(Number(wo.id)) ??
+              effectiveWorkOrderStatusFromDbOnly(String(wo.status))),
         }));
 
         return {

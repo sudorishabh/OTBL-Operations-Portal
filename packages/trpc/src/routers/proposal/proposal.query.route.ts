@@ -1,4 +1,18 @@
-import { and, desc, eq, gte, inArray, like, lt, or } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  like,
+  lt,
+  not,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { schema } from "@pkg/db";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
@@ -14,7 +28,10 @@ import { handleQuery } from "../../helper/typed-handler";
 import { proposalSchemas } from "@pkg/schema";
 import { USER_ROLES } from "../../authorization";
 import { escapeLike } from "../../helper/escape-like";
-import { batchEffectiveWorkOrderStatuses } from "../work-order/batch-effective-work-order-status";
+import {
+  batchEffectiveWorkOrderStatuses,
+  sorFullyConsumedSql,
+} from "../work-order/batch-effective-work-order-status";
 
 const { proposalTable, workOrderTable } = schema;
 
@@ -124,76 +141,84 @@ export const proposalQueryRouter = router({
             desc(proposalTable.id),
           ];
 
-          // Every match, light: a work order's status is worked out from
-          // its schedule of rates, not stored, so it's grouped here.
-          const candidates = await ctx.db
-            .select({
-              id: proposalTable.id,
-              workOrderId: workOrderTable.id,
-              workOrderOfficeId: workOrderTable.office_id,
-              workOrderStatus: workOrderTable.status,
-            })
+          // A work order's status is worked out from its schedule of rates,
+          // not stored, so the database groups the rows by it: none, its
+          // stored completed or cancelled, or completed once its schedule of
+          // rates is used up, else pending.
+          const hasNoWorkOrder = isNull(workOrderTable.id);
+          const isCancelled = eq(workOrderTable.status, "cancelled");
+          const isCompleted = or(
+            eq(workOrderTable.status, "completed"),
+            and(eq(workOrderTable.status, "pending"), sorFullyConsumedSql()),
+          )!;
+          const isPending = and(
+            eq(workOrderTable.status, "pending"),
+            not(sorFullyConsumedSql()),
+          )!;
+          const groupWhere: Record<WorkOrderGroup | "all", SQL | undefined> = {
+            all: undefined,
+            none: hasNoWorkOrder,
+            pending: isPending,
+            completed: isCompleted,
+            cancelled: isCancelled,
+          };
+          const where = and(conditions, groupWhere[workOrderFilter]);
+          const tally = (condition: SQL) =>
+            sql<string>`coalesce(sum(case when ${condition} then 1 else 0 end), 0)`;
+
+          const [[countRow], [totalRow]] = await Promise.all([
+            // How many rows each work order tab would list. Cancelled work
+            // orders have no tab, so they count towards "all" only.
+            ctx.db
+              .select({
+                all: count(),
+                none: tally(hasNoWorkOrder),
+                pending: tally(isPending),
+                completed: tally(isCompleted),
+              })
+              .from(proposalTable)
+              .leftJoin(workOrderTable, workOrderJoinOn)
+              .where(conditions),
+            ctx.db
+              .select({ count: count() })
+              .from(proposalTable)
+              .leftJoin(workOrderTable, workOrderJoinOn)
+              .where(where),
+          ]);
+          const counts = {
+            all: Number(countRow?.all ?? 0),
+            none: Number(countRow?.none ?? 0),
+            pending: Number(countRow?.pending ?? 0),
+            completed: Number(countRow?.completed ?? 0),
+          };
+          const total = Number(totalRow?.count ?? 0);
+          const offset = (page - 1) * limit;
+
+          // Full rows for this page only.
+          const rows = await ctx.db
+            .select({ proposal: proposalTable, workOrder: workOrderTable })
             .from(proposalTable)
             .leftJoin(workOrderTable, workOrderJoinOn)
-            .where(conditions)
-            .orderBy(...newestFirst);
+            .where(where)
+            .orderBy(...newestFirst)
+            .limit(limit)
+            .offset(offset);
 
           const effectiveStatuses = await batchEffectiveWorkOrderStatuses(
             ctx.db,
             scope,
-            candidates.flatMap((row) =>
-              row.workOrderId == null
+            rows.flatMap((row) =>
+              row.workOrder == null
                 ? []
                 : [
                     {
-                      id: row.workOrderId,
-                      office_id: row.workOrderOfficeId,
-                      status: String(row.workOrderStatus),
+                      id: row.workOrder.id,
+                      office_id: row.workOrder.office_id,
+                      status: String(row.workOrder.status),
                     },
                   ],
             ),
           );
-
-          const groupOf = (row: (typeof candidates)[number]): WorkOrderGroup =>
-            row.workOrderId == null
-              ? "none"
-              : (effectiveStatuses.get(row.workOrderId) ??
-                row.workOrderStatus ??
-                "pending");
-
-          // How many rows each work order tab would list. Cancelled work
-          // orders have no tab, so they count towards "all" only.
-          const counts = {
-            all: candidates.length,
-            none: 0,
-            pending: 0,
-            completed: 0,
-          };
-          for (const row of candidates) {
-            const group = groupOf(row);
-            if (group !== "cancelled") counts[group] += 1;
-          }
-
-          const matching =
-            workOrderFilter === "all"
-              ? candidates
-              : candidates.filter((row) => groupOf(row) === workOrderFilter);
-          const total = matching.length;
-          const offset = (page - 1) * limit;
-          const pageIds = matching
-            .slice(offset, offset + limit)
-            .map((row) => row.id);
-
-          // Full rows for this page only.
-          const rows =
-            pageIds.length === 0
-              ? []
-              : await ctx.db
-                  .select({ proposal: proposalTable, workOrder: workOrderTable })
-                  .from(proposalTable)
-                  .leftJoin(workOrderTable, workOrderJoinOn)
-                  .where(and(conditions, inArray(proposalTable.id, pageIds)))
-                  .orderBy(...newestFirst);
 
           // Send the status the work order pages show, not the stored one.
           const proposals = rows.map((row) => ({
@@ -213,7 +238,7 @@ export const proposalQueryRouter = router({
               limit,
               total,
               totalPages: Math.ceil(total / limit),
-              hasMore: offset + pageIds.length < total,
+              hasMore: offset + rows.length < total,
             },
           };
         } catch (error) {

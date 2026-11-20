@@ -38,8 +38,6 @@ import { capitalFirstLetter } from "@pkg/utils";
 
 type DashboardWorkOrderRow =
   RouterOutputs["workOrderQuery"]["getAll"]["workOrders"][number];
-type DashboardOfficeRow =
-  RouterOutputs["officeQuery"]["getOffices"]["offices"][number];
 
 type StatTone = "default" | "yellow" | "green" | "red";
 
@@ -80,10 +78,10 @@ export default function DashboardPage() {
     { enabled: !isUserLoading },
   );
 
-  const officesQuery = trpc.officeQuery.getOffices.useQuery(
-    {},
-    { enabled: !isUserLoading },
-  );
+  // Only the totals, not every office.
+  const officesQuery = trpc.officeQuery.getOfficeTotals.useQuery(undefined, {
+    enabled: !isUserLoading,
+  });
 
   const woTotalQuery = trpc.workOrderQuery.getAll.useQuery(
     { page: 1, limit: 1, workOrderOrder: "latest" },
@@ -110,14 +108,10 @@ export default function DashboardPage() {
     { enabled: !isUserLoading },
   );
 
-  const officeStats = useMemo(() => {
-    const offices: DashboardOfficeRow[] = officesQuery.data?.offices ?? [];
-    const siteTotal = offices.reduce(
-      (sum: number, o: DashboardOfficeRow) => sum + (Number(o.siteCount) || 0),
-      0,
-    );
-    return { officeCount: offices.length, siteTotal };
-  }, [officesQuery.data]);
+  const officeStats = {
+    officeCount: officesQuery.data?.officeCount ?? 0,
+    siteTotal: officesQuery.data?.siteTotal ?? 0,
+  };
 
   const scopeCopy = useMemo(() => {
     const mode = layoutQuery.data?.mode;

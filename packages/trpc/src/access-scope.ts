@@ -203,23 +203,25 @@ export async function clientIdsVisibleToScope(
   if (scope.kind === "full") return null;
   if (scope.kind === "restricted" && scope.ui === "site_only") return [];
 
+  // Each client once from the database, not once per work order or proposal.
   const ids = new Set<number>();
   if (scope.officeIds.length > 0) {
-    const rows = await db
-      .select({ client_id: workOrderTable.client_id })
-      .from(workOrderTable)
-      .where(inArray(workOrderTable.office_id, scope.officeIds));
-    rows.forEach((r) => ids.add(r.client_id));
-
-    const proposalClients = await db
-      .select({ client_id: proposalTable.client_id })
-      .from(proposalTable)
-      .where(inArray(proposalTable.office_id, scope.officeIds));
+    const [workOrderClients, proposalClients] = await Promise.all([
+      db
+        .selectDistinct({ client_id: workOrderTable.client_id })
+        .from(workOrderTable)
+        .where(inArray(workOrderTable.office_id, scope.officeIds)),
+      db
+        .selectDistinct({ client_id: proposalTable.client_id })
+        .from(proposalTable)
+        .where(inArray(proposalTable.office_id, scope.officeIds)),
+    ]);
+    workOrderClients.forEach((r) => ids.add(r.client_id));
     proposalClients.forEach((r) => ids.add(r.client_id));
   }
   if (scope.workOrderIdsFromSiteAssignment.length > 0) {
     const rows = await db
-      .select({ client_id: workOrderTable.client_id })
+      .selectDistinct({ client_id: workOrderTable.client_id })
       .from(workOrderTable)
       .where(
         inArray(workOrderTable.id, scope.workOrderIdsFromSiteAssignment),
