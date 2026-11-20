@@ -14,6 +14,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -36,6 +37,7 @@ export interface EditableScheduleOfRate {
   estimated_quantity: string;
   rc_unit_rate: string;
   gst_percentage: string;
+  total_cost?: string;
   transportation_slabs?: workOrderTypes.TransportationSlabs | null;
 }
 
@@ -51,6 +53,8 @@ interface RowDraft {
 
 interface Props {
   scheduleOfRates: EditableScheduleOfRate[];
+  // How much of an activity the work has used, once known.
+  usedQuantity?: (activity: string) => number;
 }
 
 const isTransport = (activity: string) =>
@@ -99,6 +103,15 @@ const draftRate = (row: RowDraft) =>
 
 const DECIMAL_INPUT = /^[0-9]*[.]?[0-9]*$/;
 
+// Within this of each other, two amounts or quantities are the same.
+const EPSILON = 0.005;
+
+const rateIncGstOf = (row: RowDraft) => draftRate(row) * (1 + row.gst / 100);
+
+// A row's total, rounded to the paisa as it is saved.
+const rowTotalOf = (row: RowDraft) =>
+  Math.round(rateIncGstOf(row) * draftQuantity(row) * 100) / 100;
+
 const formatAmount = (amount: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -110,7 +123,10 @@ const headClass =
 
 // Lets an admin correct the quantity and rate of each schedule of rates row.
 // The rate including GST and the total are worked out again on save.
-const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
+const EditScheduleOfRatesDialog = ({
+  scheduleOfRates,
+  usedQuantity,
+}: Props) => {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<RowDraft[]>([]);
   const { handleError } = useApiError();
@@ -184,6 +200,13 @@ const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
 
   if (!workOrderId) return null;
 
+  const savedTotal = scheduleOfRates.reduce(
+    (sum, rate) => sum + (Number(rate.total_cost) || 0),
+    0,
+  );
+  const newTotal = rows.reduce((sum, row) => sum + rowTotalOf(row), 0);
+  const totalChanged = Math.abs(newTotal - savedTotal) > EPSILON;
+
   return (
     <>
       <CustomButton
@@ -230,7 +253,9 @@ const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
                 {rows.map((row) => {
                   const quantity = draftQuantity(row);
                   const rate = draftRate(row);
-                  const rateIncGst = rate * (1 + row.gst / 100);
+                  const rateIncGst = rateIncGstOf(row);
+                  const used = usedQuantity?.(row.activity) ?? 0;
+                  const belowUsed = used - quantity > EPSILON;
                   return (
                     <TableRow
                       key={row.id}
@@ -279,6 +304,12 @@ const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
                             className='h-8 text-xs'
                           />
                         )}
+                        {belowUsed && (
+                          <p className='mt-1 text-[10px] font-medium text-rose-600'>
+                            Below the {used.toLocaleString("en-IN")} already
+                            used
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell className='px-3 py-2'>
                         {/* A transport row's slab rates, beside their
@@ -325,12 +356,29 @@ const EditScheduleOfRatesDialog = ({ scheduleOfRates }: Props) => {
                         </span>
                       </TableCell>
                       <TableCell className='px-3 py-2 text-right text-xs font-semibold text-gray-900'>
-                        {formatAmount(rateIncGst * quantity)}
+                        {formatAmount(rowTotalOf(row))}
                       </TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
+              <TableFooter className='border-gray-200 bg-gray-50'>
+                <TableRow className='hover:bg-gray-50'>
+                  <TableCell
+                    colSpan={4}
+                    className='px-3 py-2 text-right text-xs font-medium text-gray-700'>
+                    SOR total (incl. GST)
+                  </TableCell>
+                  <TableCell className='px-3 py-2 text-right text-xs font-semibold text-emerald-700'>
+                    {formatAmount(newTotal)}
+                    {totalChanged && (
+                      <span className='block text-[10px] font-normal text-gray-400'>
+                        was {formatAmount(savedTotal)}
+                      </span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
             </Table>
           </div>
 

@@ -16,6 +16,7 @@ import Error from "@/components/shared/error";
 import NoFetchData from "@/components/shared/no-fetch-data";
 import BioremediationSection from "./work-order-sites/bioremediation-section";
 import RestorationSection from "./restoration/restoration-section";
+import { restorationSiteOf, sorUsage, sorUsedValue } from "./sor-usage";
 
 const { WO_PROCESS } = constants;
 
@@ -48,6 +49,13 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
   const sites = workOrderData?.sites ?? [];
   const stats = workOrderData?.stats ?? ({} as any);
   const scheduleOfRates = workOrderData?.scheduleOfRates ?? [];
+
+  // Restoration's usage is what its job orders' certificates certify.
+  const restorationSite = restorationSiteOf(sites as any[]);
+  const { data: jobOrders = [] } = trpc.jobOrderQuery.getJobOrders.useQuery(
+    { work_order_site_id: restorationSite?.wo_site_id ?? 0 },
+    { enabled: !!restorationSite },
+  );
 
   const derivedWorkOrder = useMemo(() => {
     if (!workOrder) return undefined;
@@ -89,12 +97,11 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
       0,
     ) || 0;
 
-  const totalCompletionAmount =
-    (sites || []).reduce(
-      (acc: number, curr: any) =>
-        acc + Number(curr.total_completion_amount || 0),
-      0,
-    ) || 0;
+  // What the work has used of the schedule of rates, as its dialog shows.
+  const totalCompletionAmount = sorUsedValue(
+    scheduleOfRates,
+    sorUsage(sites as any[], jobOrders),
+  );
 
   const expenseSummary = workOrderData?.work_order_expense_summary;
   const totalExpensesAgg = expenseSummary?.total_expenses ?? 0;
