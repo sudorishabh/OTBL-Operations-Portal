@@ -53,7 +53,7 @@ const ExpenseFilterBar = ({
     <FilterBar>
       <SearchFilter
         label='Search expenses'
-        placeholder='Search by title, invoice or vendor'
+        placeholder='Search by description, invoice or vendor'
         value={filters.search}
         onChange={set("search")}
       />

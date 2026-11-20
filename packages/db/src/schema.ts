@@ -842,7 +842,8 @@ export const workOrderSiteExpenseTable = mysqlTable(
     job_order_id: int("job_order_id").references(() => jobOrderTable.id, {
       onDelete: "set null",
     }),
-    title: varchar("title", { length: 500 }).notNull(),
+    // What the expense was for, if given.
+    description: varchar("description", { length: 500 }),
     amount: decimal("amount", { precision: 20, scale: 2 }).notNull(),
     // The days the expense covers; one day when they match.
     start_date: timestamp("start_date").notNull(),

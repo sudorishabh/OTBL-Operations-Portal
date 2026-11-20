@@ -89,7 +89,11 @@ const MonthEntries = ({ expenses }: { expenses: MonthlyExpense[] }) => (
           {vendorName(expense)}
         </span>
         <span className='min-w-0'>
-          <span className='block truncate text-gray-800'>{expense.title}</span>
+          <span className='block truncate text-gray-800'>
+            {expense.description ?? (
+              <span className='text-gray-400'>No description</span>
+            )}
+          </span>
           <span className='mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-400'>
             <span className='sm:hidden'>{vendorName(expense)}</span>
             <span>{orderLabel(expense)}</span>
@@ -352,7 +356,7 @@ const VendorMonthlyExpensesDialog = ({
           <FilterBar>
             <SearchFilter
               label='Search expenses'
-              placeholder='Search by title, invoice, vendor or order'
+              placeholder='Search by description, invoice, vendor or order'
               value={filters.search}
               onChange={setFilter("search")}
             />

@@ -98,7 +98,7 @@ type ExpenseRecord = {
   endDate: string | Date;
   quantity: string | null;
   isExceeded: boolean;
-  title: string;
+  description: string | null;
   contractorId: number | null;
   contractorName: string | null;
   contractOrderItemId: number | null;
@@ -491,7 +491,7 @@ const SiteExpensesSection = ({
         endDate: exp.end_date,
         quantity: exp.quantity ?? null,
         isExceeded: !!exp.is_exceeded,
-        title: exp.title,
+        description: exp.description || null,
         contractorId: exp.contractor_id ?? null,
         contractorName: exp.contractor_name ?? null,
         contractOrderItemId: exp.contract_order_item_id ?? null,
@@ -555,18 +555,23 @@ const SiteExpensesSection = ({
               {formatDateRange(record.startDate, record.endDate)}
             </button>
           </TableCell>
-          {/* What was spent on, and against which activity. */}
+          {/* What was spent on, and against which activity. Without a
+              description, the activity names it. */}
           <TableCell className={cn(cellClass, "min-w-48")}>
-            <p className='text-[13px] font-medium text-gray-900'>{record.title}</p>
-            <p className='mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500'>
-              <span>{record.activityLabel}</span>
-              {isExceeded && (
-                <span className='inline-flex items-center gap-1 font-medium text-orange-600'>
-                  <AlertTriangle className='size-3' />
-                  Exceeded
-                </span>
-              )}
+            <p className='text-[13px] font-medium text-gray-900'>
+              {record.description ?? record.activityLabel}
             </p>
+            {(record.description || isExceeded) && (
+              <p className='mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500'>
+                {record.description && <span>{record.activityLabel}</span>}
+                {isExceeded && (
+                  <span className='inline-flex items-center gap-1 font-medium text-orange-600'>
+                    <AlertTriangle className='size-3' />
+                    Exceeded
+                  </span>
+                )}
+              </p>
+            )}
           </TableCell>
           {showQty && (
             <TableCell className={cn(cellClass, "whitespace-nowrap text-right text-xs tabular-nums")}>
@@ -659,8 +664,10 @@ const SiteExpensesSection = ({
               colSpan={columnCount}
               className='px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1'>
               <dl className='grid grid-cols-2 gap-x-6 gap-y-3 pl-5 sm:grid-cols-4'>
-                <Detail label='Title' className='col-span-2 sm:col-span-4'>
-                  <span className='whitespace-pre-wrap break-words'>{record.title}</span>
+                <Detail label='Description' className='col-span-2 sm:col-span-4'>
+                  <span className='whitespace-pre-wrap break-words'>
+                    {record.description ?? "None"}
+                  </span>
                 </Detail>
                 <Detail label='Under'>{record.contractorName ?? "Miscellaneous"}</Detail>
                 <Detail label='Activity'>{record.activityLabel}</Detail>

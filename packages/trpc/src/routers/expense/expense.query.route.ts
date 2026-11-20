@@ -44,7 +44,7 @@ const dayValidator = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 // How a site's expenses are narrowed; each filter is optional.
 const expenseFilters = {
-  // Matches the title, invoice number or vendor.
+  // Matches the description, invoice number or vendor.
   search: z.string().trim().max(100).optional(),
   // A vendor's id, or "none" for those under no vendor.
   vendor: z.union([z.number().int().positive(), z.literal("none")]).optional(),
@@ -79,7 +79,7 @@ const expenseWhere = (workOrderSiteId: number, filters: ExpenseFilters) => {
   if (filters.search) {
     const term = `%${escapeLike(filters.search)}%`;
     conditions.push(
-      or(like(e.title, term), like(e.invoice_number, term), like(contractorTable.name, term)),
+      or(like(e.description, term), like(e.invoice_number, term), like(contractorTable.name, term)),
     );
   }
   if (filters.vendor === "none") conditions.push(isNull(e.contractor_id));
@@ -169,7 +169,7 @@ export const expenseQueryRouter = router({
               activity_key: workOrderSiteExpenseTable.activity_key,
               quantity: workOrderSiteExpenseTable.quantity,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
-              title: workOrderSiteExpenseTable.title,
+              description: workOrderSiteExpenseTable.description,
               amount: workOrderSiteExpenseTable.amount,
               start_date: workOrderSiteExpenseTable.start_date,
               end_date: workOrderSiteExpenseTable.end_date,
@@ -224,7 +224,7 @@ export const expenseQueryRouter = router({
           const rows = await ctx.db
             .select({
               id: workOrderSiteExpenseTable.id,
-              title: workOrderSiteExpenseTable.title,
+              description: workOrderSiteExpenseTable.description,
               amount: workOrderSiteExpenseTable.amount,
               start_date: workOrderSiteExpenseTable.start_date,
               end_date: workOrderSiteExpenseTable.end_date,
@@ -429,7 +429,7 @@ export const expenseQueryRouter = router({
         work_order_id: z.number().positive(),
         page: z.number().int().min(1).default(1),
         limit: z.number().int().min(1).max(100).default(25),
-        // Matches the title, invoice number, vendor, site or activity.
+        // Matches the description, invoice number, vendor, site or activity.
         search: z.string().trim().max(100).optional(),
         work_order_site_id: z.number().int().positive().optional(),
         exceeded_only: z.boolean().optional(),
@@ -460,7 +460,7 @@ export const expenseQueryRouter = router({
           input.exceeded_only ? ne(e.is_exceeded, 0) : undefined,
           term
             ? or(
-                like(e.title, term),
+                like(e.description, term),
                 like(e.invoice_number, term),
                 like(e.activity_key, term),
                 like(contractorTable.name, term),
@@ -515,7 +515,7 @@ export const expenseQueryRouter = router({
               activity_key: workOrderSiteExpenseTable.activity_key,
               quantity: workOrderSiteExpenseTable.quantity,
               is_exceeded: workOrderSiteExpenseTable.is_exceeded,
-              title: workOrderSiteExpenseTable.title,
+              description: workOrderSiteExpenseTable.description,
               amount: workOrderSiteExpenseTable.amount,
               start_date: workOrderSiteExpenseTable.start_date,
               end_date: workOrderSiteExpenseTable.end_date,
