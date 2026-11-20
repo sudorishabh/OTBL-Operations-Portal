@@ -47,9 +47,9 @@ export const expenseMonth = sql<string>`date_format(${e.start_date}, '%Y-%m')`;
 
 export const exceededAmount = sql<string>`sum(case when ${e.is_exceeded} <> 0 then ${e.amount} else 0 end)`;
 
-const monthValidator = z
+const dayValidator = z
   .string()
-  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Give a month as YYYY-MM");
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Give a day as YYYY-MM-DD");
 
 // How a vendor's expenses are narrowed; each filter is optional.
 export const vendorExpenseFilters = {
@@ -57,9 +57,10 @@ export const vendorExpenseFilters = {
   // Matches the description, invoice number, order, job order, site or work
   // order.
   search: z.string().trim().max(100).optional(),
-  // The first and last month, as "2026-04", an expense may start in.
-  from_month: monthValidator.optional(),
-  to_month: monthValidator.optional(),
+  // The first and last day, YYYY-MM-DD, an expense may start on; either
+  // may be left open.
+  from: dayValidator.optional(),
+  to: dayValidator.optional(),
   work_order_id: z.number().int().positive().optional(),
   process: z
     .enum([WO_PROCESS.RESTORATION, WO_PROCESS.BIOREMEDIATION])
@@ -83,12 +84,11 @@ export const VENDOR_EXPENSE_SORTS = [
   "amount_asc",
 ] as const;
 
-// A month's first day at midnight, in the server's time zone, as expense
-// dates are kept.
-const firstDayOf = (month: string) => new Date(`${month}-01T00:00:00`);
-const firstDayAfter = (month: string) => {
-  const date = firstDayOf(month);
-  date.setMonth(date.getMonth() + 1);
+// A day's midnight in the server's time zone, as expense dates are kept.
+const startOfDay = (day: string) => new Date(`${day}T00:00:00`);
+const dayAfter = (day: string) => {
+  const date = startOfDay(day);
+  date.setDate(date.getDate() + 1);
   return date;
 };
 
@@ -116,12 +116,12 @@ export const withExpensePlaces = <T extends MySqlSelect>(query: T) =>
     );
 
 // The vendor's expenses in the work orders the user can see; with the
-// filters, those they leave. Without its months, the rest of the filters, so
-// a timeline can show the months around those picked.
+// filters, those they leave. Without its dates, the rest of the filters, so
+// a timeline can show the months around the days picked.
 export const vendorExpenseWhere = (
   input: VendorExpenseFilters,
   visible: SQL | undefined,
-  { withFilters = true, withMonths = true } = {},
+  { withFilters = true, withDates = true } = {},
 ) => {
   const base = and(eq(e.contractor_id, input.id), visible);
   if (!withFilters) return base;
@@ -129,12 +129,10 @@ export const vendorExpenseWhere = (
   const term = input.search ? `%${escapeLike(input.search)}%` : null;
   return and(
     base,
-    withMonths && input.from_month
-      ? gte(e.start_date, firstDayOf(input.from_month))
+    withDates && input.from
+      ? gte(e.start_date, startOfDay(input.from))
       : undefined,
-    withMonths && input.to_month
-      ? lt(e.start_date, firstDayAfter(input.to_month))
-      : undefined,
+    withDates && input.to ? lt(e.start_date, dayAfter(input.to)) : undefined,
     input.work_order_id
       ? eq(workOrderTable.id, input.work_order_id)
       : undefined,

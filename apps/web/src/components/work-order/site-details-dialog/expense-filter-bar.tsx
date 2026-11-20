@@ -10,7 +10,7 @@ import {
   SelectFilter,
   type FilterOption,
 } from "@/components/filters/list-filters";
-import DateRangeFilter from "@/components/filters/date-range-filter";
+import StartEndDateFilter from "@/components/filters/start-end-date-filter";
 import {
   EXPENSE_SORT_OPTIONS,
   NONE,
@@ -67,9 +67,8 @@ const ExpenseFilterBar = ({
         pinnedOptions={hasNoVendor ? [{ value: NONE, label: "No vendor" }] : []}
         searchPlaceholder='Search vendors'
       />
-      <DateRangeFilter
-        label='Dated'
-        align='start'
+      {/* The days an expense may start on. */}
+      <StartEndDateFilter
         from={filters.from}
         to={filters.to}
         onChange={(from, to) => onChange({ ...filters, from, to })}

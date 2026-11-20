@@ -10,7 +10,9 @@ import {
   SPEND_COLOR,
   SPEND_FADED_COLOR,
   formatCompactAmount,
-  inPickedMonths,
+  firstDayOf,
+  inPickedDays,
+  lastDayOf,
   monthLabel,
   monthsBetween,
   type ExpenseSource,
@@ -92,11 +94,11 @@ const slotStyle = { minWidth: MIN_SLOT_WIDTH, flex: "1 1 0" };
 const MonthChart = ({
   months,
   filters,
-  onPickMonths,
+  onPickDays,
 }: {
   months: VendorExpenseBreakdown["months"];
   filters: VendorExpenseFilters;
-  onPickMonths: (from: string, to: string) => void;
+  onPickDays: (from?: string, to?: string) => void;
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -113,7 +115,7 @@ const MonthChart = ({
     (best, row) => (!best || row.total > best.total ? row : best),
     null,
   );
-  const isRangePicked = filters.from !== ALL || filters.to !== ALL;
+  const isRangePicked = !!filters.from || !!filters.to;
   const readout = hovered ? byMonth.get(hovered) : undefined;
 
   // The newest months are the ones usually wanted: start scrolled to them.
@@ -122,15 +124,23 @@ const MonthChart = ({
     if (scroller) scroller.scrollLeft = scroller.scrollWidth;
   }, [timeline.length]);
 
+  // A month picks its first to its last day; that month again clears the
+  // dates, and with shift it stretches the days picked to take it in.
   const pick = (month: string, extend: boolean) => {
-    const single = filters.from !== ALL && filters.from === filters.to;
-    if (single && filters.from === month) {
-      onPickMonths(ALL, ALL);
-    } else if (extend && filters.from !== ALL) {
-      const ends = [filters.from, month].sort();
-      onPickMonths(ends[0]!, ends[1]!);
+    const first = firstDayOf(month);
+    const last = lastDayOf(month);
+    if (filters.from === first && filters.to === last) {
+      onPickDays(undefined, undefined);
+    } else if (extend && (filters.from || filters.to)) {
+      const days = [filters.from, filters.to, first, last].filter(
+        (day): day is string => !!day,
+      );
+      onPickDays(
+        days.reduce((a, b) => (a < b ? a : b)),
+        days.reduce((a, b) => (a > b ? a : b)),
+      );
     } else {
-      onPickMonths(month, month);
+      onPickDays(first, last);
     }
   };
 
@@ -208,7 +218,7 @@ const MonthChart = ({
                       );
                     }
                     const isPicked =
-                      !isRangePicked || inPickedMonths(month, filters);
+                      !isRangePicked || inPickedDays(month, filters);
                     const isHovered = hovered === month;
                     const height = Math.max(2, (row.total / top) * PLOT_HEIGHT);
                     return (
@@ -482,7 +492,7 @@ const VendorExpenseBreakdownView = ({
       <MonthChart
         months={breakdown.months}
         filters={filters}
-        onPickMonths={(from, to) => onChange({ ...filters, from, to })}
+        onPickDays={(from, to) => onChange({ ...filters, from, to })}
       />
 
       <div className='grid gap-4 lg:grid-cols-2'>

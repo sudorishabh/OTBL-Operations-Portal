@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  CalendarRange,
   ClipboardList,
   Layers,
   ReceiptIndianRupee,
@@ -22,13 +21,13 @@ import {
   SelectFilter,
   type FilterOption,
 } from "@/components/filters/list-filters";
+import StartEndDateFilter from "@/components/filters/start-end-date-filter";
 import VendorExpenseBreakdownView from "./vendor-expense-breakdown";
 import VendorExpenseList from "./vendor-expense-list";
 import {
   NO_FILTERS,
   SOURCES,
   isFiltered,
-  monthLabel,
   toInput,
   type ExpenseSource,
   type VendorExpenseFilters,
@@ -92,19 +91,6 @@ const VendorExpensesSection = ({ contractorId }: { contractorId: number }) => {
       setFilters((current) => ({ ...current, [key]: value }));
 
   const months = choices?.months ?? [];
-  const fromOptions: FilterOption[] = [
-    { value: ALL, label: "From the first month" },
-    ...[...months]
-      .reverse()
-      .filter((month) => filters.to === ALL || month <= filters.to)
-      .map((month) => ({ value: month, label: `From ${monthLabel(month)}` })),
-  ];
-  const toOptions: FilterOption[] = [
-    { value: ALL, label: "To the latest month" },
-    ...months
-      .filter((month) => filters.from === ALL || month >= filters.from)
-      .map((month) => ({ value: month, label: `To ${monthLabel(month)}` })),
-  ];
   const toWorkOrderOption = (workOrder: { id: number; code: string }) => ({
     value: String(workOrder.id),
     label: workOrder.code.toUpperCase(),
@@ -157,19 +143,14 @@ const VendorExpensesSection = ({ contractorId }: { contractorId: number }) => {
           value={filters.search}
           onChange={set("search")}
         />
-        <SelectFilter
-          label='From month'
-          Icon={CalendarRange}
-          value={filters.from}
-          onChange={set("from")}
-          options={fromOptions}
-        />
-        <SelectFilter
-          label='To month'
-          Icon={CalendarRange}
-          value={filters.to}
-          onChange={set("to")}
-          options={toOptions}
+        {/* The days an expense may start on; a month in the chart below
+            picks its own. */}
+        <StartEndDateFilter
+          from={filters.from}
+          to={filters.to}
+          onChange={(from, to) =>
+            setFilters((current) => ({ ...current, from, to }))
+          }
         />
         {(choices?.work_order_count ?? 0) > 1 && (
           <ComboboxFilter
