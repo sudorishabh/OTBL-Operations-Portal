@@ -10,14 +10,13 @@ import { CheckCircle2, Mail, Search, Users, X } from "lucide-react";
 import toast from "react-hot-toast";
 import Input from "@/components/shared/input";
 import { useApiError } from "@/hooks/useApiError";
+import { useOfficeOperatorPages } from "@/hooks/useOfficeOperatorPages";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { officeSchemas, officeTypes } from "@pkg/schema";
-import { capitalizeEachWord, constants } from "@pkg/utils";
+import { capitalizeEachWord } from "@pkg/utils";
 import useHandleParams from "@/hooks/useHandleParams";
 import OfficeInfoFields from "./office-info-fields";
-
-const { ROLES } = constants;
 
 const CreateOfficeDialog = () => {
   const { getParam, deleteParam } = useHandleParams();
@@ -33,8 +32,6 @@ const CreateOfficeDialog = () => {
   >([]);
 
   const [operatorSearch, setOperatorSearch] = useState("");
-  const [operatorPage, setOperatorPage] = useState(1);
-  const itemsPerPage = 50;
   const utils = trpc.useUtils();
   const { handleError } = useApiError();
 
@@ -51,24 +48,20 @@ const CreateOfficeDialog = () => {
     },
   });
 
-  const { data: operatorsData, isLoading: isLoadingOperators } =
-    trpc.userQuery.getUsersByRole.useQuery({
-      role: ROLES.OFFICE_OPERATOR,
-      page: operatorPage,
-      limit: itemsPerPage,
-      search: operatorSearch,
-    });
-
-  const operators = operatorsData?.users || [];
-  const hasMoreOperators = operatorsData?.pagination?.hasMore || false;
-  const isLoadingUserData = isLoadingOperators;
+  // Earlier pages stay listed as more load.
+  const {
+    operators,
+    hasMore: hasMoreOperators,
+    isLoading: isLoadingUserData,
+    isLoadingMore: isLoadingMoreOperators,
+    loadMore: loadMoreOperators,
+  } = useOfficeOperatorPages(operatorSearch, isOpenDialog);
 
   const handleClose = useCallback(() => {
     deleteParam("dialog");
     form.reset();
     setSelectedOperatorUsers([]);
     setOperatorSearch("");
-    setOperatorPage(1);
   }, [deleteParam, form]);
 
   const createOffice = trpc.officeMutation.createOffice.useMutation({
@@ -139,10 +132,7 @@ const CreateOfficeDialog = () => {
                     mode='standalone'
                     placeholder='Search office operators...'
                     value={operatorSearch}
-                    onChange={(value) => {
-                      setOperatorSearch(value);
-                      setOperatorPage(1);
-                    }}
+                    onChange={setOperatorSearch}
                     inputIcon={Search}
                     className='w-[20rem]'
                   />
@@ -227,9 +217,12 @@ const CreateOfficeDialog = () => {
                     {hasMoreOperators && (
                       <button
                         type='button'
-                        onClick={() => setOperatorPage((p) => p + 1)}
-                        className='w-full py-2.5 text-xs font-medium text-gray-500 hover:text-[#035864] hover:bg-gray-50 border border-dashed rounded-md transition-colors'>
-                        Load more operators...
+                        onClick={loadMoreOperators}
+                        disabled={isLoadingMoreOperators}
+                        className='w-full py-2.5 text-xs font-medium text-gray-500 hover:text-[#035864] hover:bg-gray-50 border border-dashed rounded-md transition-colors disabled:cursor-wait disabled:opacity-60'>
+                        {isLoadingMoreOperators
+                          ? "Loading operators..."
+                          : "Load more operators..."}
                       </button>
                     )}
                   </div>

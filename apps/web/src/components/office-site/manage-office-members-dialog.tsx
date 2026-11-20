@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import DialogWindow from "@/components/shared/dialog-window";
 import useHandleParams from "@/hooks/useHandleParams";
 import { trpc } from "@/lib/trpc";
@@ -10,13 +10,12 @@ import { useIsViewer } from "@/contexts/AuthContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle2, Mail, Search, UserMinus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { capitalizeEachWord, constants } from "@pkg/utils";
+import { capitalizeEachWord } from "@pkg/utils";
 import toast from "react-hot-toast";
 import { useApiError } from "@/hooks/useApiError";
+import { useOfficeOperatorPages } from "@/hooks/useOfficeOperatorPages";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonRegion } from "@/components/skeleton/parts";
-
-const { ROLES } = constants;
 
 type PickedUser = { id: number; name: string; email: string };
 
@@ -32,45 +31,20 @@ const ManageOfficeMembersDialog = () => {
   const { handleError } = useApiError();
 
   const [operatorSearch, setOperatorSearch] = useState("");
-  const [operatorPage, setOperatorPage] = useState(1);
-  const [operatorResults, setOperatorResults] = useState<any[]>([]);
-  const itemsPerPage = 50;
 
-  const { data, isLoading, isFetching } = trpc.officeQuery.getOfficeUsers.useQuery(
-    { office_id },
-    { enabled: isOpen && office_id > 0 },
-  );
-
-  const { data: operatorsData, isLoading: loadingOperators } =
-    trpc.userQuery.getUsersByRole.useQuery(
-      {
-        role: ROLES.OFFICE_OPERATOR,
-        page: operatorPage,
-        limit: itemsPerPage,
-        search: operatorSearch,
-      },
-      { enabled: isOpen, refetchOnMount: "always" },
+  const { data, isLoading, isFetching } =
+    trpc.officeQuery.getOfficeUsers.useQuery(
+      { office_id },
+      { enabled: isOpen && office_id > 0 },
     );
 
-  useEffect(() => {
-    setOperatorPage(1);
-    setOperatorResults([]);
-  }, [operatorSearch]);
-
-  useEffect(() => {
-    if (!operatorsData?.users) return;
-    if (operatorPage === 1) {
-      setOperatorResults(operatorsData.users);
-    } else {
-      setOperatorResults((prev) => {
-        const ids = new Set(prev.map((u: { id: number }) => u.id));
-        const next = operatorsData.users.filter(
-          (u: { id: number }) => !ids.has(u.id),
-        );
-        return [...prev, ...next];
-      });
-    }
-  }, [operatorsData?.users, operatorPage]);
+  const {
+    operators,
+    hasMore: hasMoreOperators,
+    isLoading: loadingOperators,
+    isLoadingMore: loadingMoreOperators,
+    loadMore: loadMoreOperators,
+  } = useOfficeOperatorPages(operatorSearch, isOpen);
 
   const removeUser = trpc.officeMutation.removeUserFromOffice.useMutation();
   const assignUser = trpc.officeMutation.assignUserToOffice.useMutation();
@@ -84,7 +58,6 @@ const ManageOfficeMembersDialog = () => {
   const handleClose = useCallback(() => {
     deleteParams(["dialog", "officeId", "officeName"]);
     setOperatorSearch("");
-    setOperatorPage(1);
   }, [deleteParams]);
 
   const onRemove = async (userId: number, label: string) => {
@@ -110,14 +83,8 @@ const ManageOfficeMembersDialog = () => {
     }
   };
 
-  const operators = operatorResults;
-  const hasMoreOperators = operatorsData?.pagination?.hasMore ?? false;
-
   const busy =
-    removeUser.isPending ||
-    assignUser.isPending ||
-    isFetching ||
-    isLoading;
+    removeUser.isPending || assignUser.isPending || isFetching || isLoading;
 
   const operatorIds = new Set(
     (data?.operators ?? []).map((o: { id: number }) => o.id),
@@ -166,25 +133,25 @@ const ManageOfficeMembersDialog = () => {
                     {(data?.operators?.length ?? 0) === 0 ? (
                       <span className='text-xs text-slate-500'>None</span>
                     ) : (
-                      data?.operators.map((op: { id: number; name: string }) => (
-                        <span
-                          key={op.id}
-                          className='inline-flex items-center gap-2 rounded-full border bg-white pl-2 pr-1 py-1 text-xs'>
-                          <span className='font-medium'>
-                            {capitalizeEachWord(op.name || "")}
+                      data?.operators.map(
+                        (op: { id: number; name: string }) => (
+                          <span
+                            key={op.id}
+                            className='inline-flex items-center gap-2 rounded-full border bg-white pl-2 pr-1 py-1 text-xs'>
+                            <span className='font-medium'>
+                              {capitalizeEachWord(op.name || "")}
+                            </span>
+                            <button
+                              type='button'
+                              disabled={busy || isViewer}
+                              onClick={() => onRemove(op.id, "Operator")}
+                              className='rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
+                              aria-label={`Remove ${op.name}`}>
+                              <UserMinus className='h-3.5 w-3.5' />
+                            </button>
                           </span>
-                          <button
-                            type='button'
-                            disabled={busy || isViewer}
-                            onClick={() =>
-                              onRemove(op.id, "Operator")
-                            }
-                            className='rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50'
-                            aria-label={`Remove ${op.name}`}>
-                            <UserMinus className='h-3.5 w-3.5' />
-                          </button>
-                        </span>
-                      ))
+                        ),
+                      )
                     )}
                   </div>
                 </div>
@@ -199,10 +166,7 @@ const ManageOfficeMembersDialog = () => {
                   mode='standalone'
                   placeholder='Search office operators...'
                   value={operatorSearch}
-                  onChange={(value) => {
-                    setOperatorSearch(value);
-                    setOperatorPage(1);
-                  }}
+                  onChange={setOperatorSearch}
                   inputIcon={Search}
                   className='w-[20rem] max-w-full'
                 />
@@ -279,9 +243,12 @@ const ManageOfficeMembersDialog = () => {
                   {hasMoreOperators && (
                     <button
                       type='button'
-                      onClick={() => setOperatorPage((p) => p + 1)}
-                      className='col-span-full py-2.5 text-xs font-medium text-gray-500 hover:text-[#035864] border border-dashed rounded-md'>
-                      Load more operators...
+                      onClick={loadMoreOperators}
+                      disabled={loadingMoreOperators}
+                      className='col-span-full py-2.5 text-xs font-medium text-gray-500 hover:text-[#035864] border border-dashed rounded-md disabled:cursor-wait disabled:opacity-60'>
+                      {loadingMoreOperators
+                        ? "Loading operators..."
+                        : "Load more operators..."}
                     </button>
                   )}
                 </div>
