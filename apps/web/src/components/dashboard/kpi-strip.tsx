@@ -37,7 +37,7 @@ export const KpiStrip = () => {
         icon={ReceiptIndianRupee}
         label='Work orders'
         href='/dashboard/work-order'
-        loading={summaryQuery.isLoading}
+        loading={summaryQuery.isPending}
         value={summary ? formatCount(summary.total) : "—"}
         hint={
           summary
@@ -49,7 +49,7 @@ export const KpiStrip = () => {
         icon={MapPin}
         iconClassName='bg-sky-50 text-sky-700 ring-sky-100'
         label='Sites in progress'
-        loading={summaryQuery.isLoading}
+        loading={summaryQuery.isPending}
         value={summary ? formatCount(sitesOpen) : "—"}
         hint={
           summary
@@ -61,7 +61,7 @@ export const KpiStrip = () => {
         icon={TrendingUp}
         iconClassName='bg-emerald-50 text-emerald-700 ring-emerald-100'
         label='Income (SOR total)'
-        loading={summaryQuery.isLoading}
+        loading={summaryQuery.isPending}
         value={summary ? <Rupees amount={income} /> : "—"}
         hint={
           summary
@@ -73,7 +73,7 @@ export const KpiStrip = () => {
         icon={Wallet}
         iconClassName='bg-rose-50 text-rose-700 ring-rose-100'
         label='Expenses'
-        loading={financeQuery.isLoading}
+        loading={financeQuery.isPending}
         value={finance ? <Rupees amount={spent} /> : "—"}
         hint={
           finance
@@ -85,7 +85,7 @@ export const KpiStrip = () => {
         icon={Scale}
         iconClassName='bg-violet-50 text-violet-700 ring-violet-100'
         label='Margin'
-        loading={summaryQuery.isLoading || financeQuery.isLoading}
+        loading={summaryQuery.isPending || financeQuery.isPending}
         value={summary && finance ? <Rupees amount={income - spent} /> : "—"}
         hint={
           summary && finance

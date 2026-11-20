@@ -59,12 +59,18 @@ const ModuleCard = ({
       </span>
       <ArrowRight className='size-3.5 shrink-0 text-gray-300 transition-colors group-hover:text-cyan-700' />
     </div>
-    <dl className={cn("mt-2.5 grid gap-2", FIGURE_COLUMNS[figures.length])}>
+    <dl
+      className={cn(
+        "mt-2.5 grid items-end gap-2",
+        FIGURE_COLUMNS[figures.length],
+      )}>
       {figures.map((figure) => (
         <div
           key={figure.label}
           className='min-w-0'>
-          <dt className='truncate text-[11px] text-gray-500'>{figure.label}</dt>
+          <dt className='text-[11px] leading-tight text-gray-500'>
+            {figure.label}
+          </dt>
           <dd className='text-[16px] font-semibold leading-tight tabular-nums text-gray-900'>
             {loading ? (
               <Skeleton className='mt-1 h-4 w-10' />
@@ -103,7 +109,7 @@ export const ModulesGrid = () => {
         href='/dashboard/work-order'
         icon={ReceiptIndianRupee}
         title='Work orders'
-        loading={summary.isLoading || attention.isLoading}
+        loading={summary.isPending || attention.isPending}
         figures={[
           { label: "Work orders", value: summary.data?.total },
           {
@@ -124,7 +130,7 @@ export const ModulesGrid = () => {
         href='/dashboard/client'
         icon={Webhook}
         title='Clients'
-        loading={clients.isLoading || counts.isLoading}
+        loading={clients.isPending || counts.isPending}
         figures={[
           { label: "Main clients", value: counts.data?.mainClients },
           { label: "Branches", value: clients.data?.totalClients },
@@ -136,7 +142,7 @@ export const ModulesGrid = () => {
         href='/dashboard/office-site'
         icon={Tent}
         title='Offices & sites'
-        loading={offices.isLoading}
+        loading={offices.isPending}
         figures={[
           { label: "Offices", value: offices.data?.officeCount },
           { label: "Sites", value: offices.data?.siteTotal },
@@ -147,7 +153,7 @@ export const ModulesGrid = () => {
           href='/dashboard/vendor'
           icon={HardHat}
           title='Vendors'
-          loading={counts.isLoading || finance.isLoading}
+          loading={counts.isPending || finance.isPending}
           figures={[
             { label: "Vendors", value: vendors },
             // Those anything has been spent with.
@@ -160,16 +166,20 @@ export const ModulesGrid = () => {
           href='/dashboard/user'
           icon={Users}
           title='Users'
-          loading={counts.isLoading}
+          loading={counts.isPending}
           figures={[
             { label: "Users", value: users?.total },
             {
               label: "Office operators",
-              value: users && (users.byRole[ROLES.OFFICE_OPERATOR] ?? 0),
+              value: users
+                ? (users.byRole[ROLES.OFFICE_OPERATOR] ?? 0)
+                : undefined,
             },
             {
               label: "Site operators",
-              value: users && (users.byRole[ROLES.SITE_OPERATOR] ?? 0),
+              value: users
+                ? (users.byRole[ROLES.SITE_OPERATOR] ?? 0)
+                : undefined,
             },
           ]}
         />

@@ -1,43 +1,63 @@
 "use client";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
 
 // The overview's figures, each asked for once the signed-in user is known.
 // Cards that need the same figures share one cached answer.
 
+type Dashboard = RouterOutputs["dashboardQuery"];
+
+// `trpc` is untyped in the web app, so each hook names what it returns.
+const typed = <T>(query: unknown) => query as UseQueryResult<T>;
+
 const useUserKnown = () => !useAuthContext().isUserLoading;
 
 export const useWorkOrderSummary = () =>
-  trpc.dashboardQuery.getWorkOrderSummary.useQuery(undefined, {
-    enabled: useUserKnown(),
-  });
+  typed<Dashboard["getWorkOrderSummary"]>(
+    trpc.dashboardQuery.getWorkOrderSummary.useQuery(undefined, {
+      enabled: useUserKnown(),
+    }),
+  );
 
 export const useFinanceSummary = () =>
-  trpc.dashboardQuery.getFinanceSummary.useQuery(undefined, {
-    enabled: useUserKnown(),
-  });
+  typed<Dashboard["getFinanceSummary"]>(
+    trpc.dashboardQuery.getFinanceSummary.useQuery(undefined, {
+      enabled: useUserKnown(),
+    }),
+  );
 
 export const useAttention = () =>
-  trpc.dashboardQuery.getAttention.useQuery(undefined, {
-    enabled: useUserKnown(),
-  });
+  typed<Dashboard["getAttention"]>(
+    trpc.dashboardQuery.getAttention.useQuery(undefined, {
+      enabled: useUserKnown(),
+    }),
+  );
 
 export const useModuleCounts = () =>
-  trpc.dashboardQuery.getModuleCounts.useQuery(undefined, {
-    enabled: useUserKnown(),
-  });
+  typed<Dashboard["getModuleCounts"]>(
+    trpc.dashboardQuery.getModuleCounts.useQuery(undefined, {
+      enabled: useUserKnown(),
+    }),
+  );
 
 export const useOfficeBreakdown = () =>
-  trpc.dashboardQuery.getOfficeBreakdown.useQuery(undefined, {
-    enabled: useUserKnown(),
-  });
+  typed<Dashboard["getOfficeBreakdown"]>(
+    trpc.dashboardQuery.getOfficeBreakdown.useQuery(undefined, {
+      enabled: useUserKnown(),
+    }),
+  );
 
 export const useClientTotals = () =>
-  trpc.clientQuery.totalClientAndContact.useQuery(undefined, {
-    enabled: useUserKnown(),
-  });
+  typed<RouterOutputs["clientQuery"]["totalClientAndContact"]>(
+    trpc.clientQuery.totalClientAndContact.useQuery(undefined, {
+      enabled: useUserKnown(),
+    }),
+  );
 
 export const useOfficeTotals = () =>
-  trpc.officeQuery.getOfficeTotals.useQuery(undefined, {
-    enabled: useUserKnown(),
-  });
+  typed<RouterOutputs["officeQuery"]["getOfficeTotals"]>(
+    trpc.officeQuery.getOfficeTotals.useQuery(undefined, {
+      enabled: useUserKnown(),
+    }),
+  );
