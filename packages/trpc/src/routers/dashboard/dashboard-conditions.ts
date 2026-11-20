@@ -126,6 +126,17 @@ export const expenseFilterWhere = (
       : undefined,
   );
 
+// A month as "2026-04", as expenseMonth gives it.
+export const monthKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+// The last `count` months, this one included, oldest first, in the server's
+// time zone.
+export const trendMonths = (count: number, now = new Date()) =>
+  Array.from({ length: count }, (_, index) =>
+    monthKey(new Date(now.getFullYear(), now.getMonth() - (count - 1 - index))),
+  );
+
 // A page of a dialog's list.
 export const pageInput = (limit: number) => ({
   page: z.number().int().min(1).default(1),
