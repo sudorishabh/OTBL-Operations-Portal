@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
 import {
@@ -85,7 +86,7 @@ export interface Expense {
   activity_key: string | null;
   quantity: string | null;
   is_exceeded: number | boolean | null;
-  title: string;
+  description: string | null;
   amount: string;
   start_date: string | Date;
   end_date: string | Date;
@@ -212,7 +213,8 @@ const AddExpenseDialog = ({
   const [selectedActivityKey, setSelectedActivityKey] = useState<string>("");
   const [isActivityPickerOpen, setIsActivityPickerOpen] = useState(false);
   const [quantity, setQuantity] = useState<string>("");
-  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const descriptionId = useId();
   const [startDate, setStartDate] = useState(() => toDateInput());
   const [endDate, setEndDate] = useState(() => toDateInput());
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -271,7 +273,7 @@ const AddExpenseDialog = ({
           : "",
       );
       setQuantity(editingExpense.quantity ?? "");
-      setTitle(editingExpense.title);
+      setDescription(editingExpense.description ?? "");
       setStartDate(toDateInput(editingExpense.start_date));
       setEndDate(toDateInput(editingExpense.end_date));
       setInvoiceNumber(editingExpense.invoice_number ?? "");
@@ -301,7 +303,7 @@ const AddExpenseDialog = ({
           : {},
       );
       setQuantity("");
-      setTitle("");
+      setDescription("");
       setStartDate(toDateInput());
       setEndDate(toDateInput());
       setInvoiceNumber("");
@@ -509,7 +511,6 @@ const AddExpenseDialog = ({
         }
       }
     }
-    if (!title.trim()) { toast.error("Title is required"); return; }
     const lastDate = isOneDay ? startDate : endDate;
     if (!startDate || !lastDate) {
       toast.error(
@@ -540,7 +541,7 @@ const AddExpenseDialog = ({
         work_order_site_id: workOrderSiteId,
         job_order_id: jobOrder.id,
         contractor_id: expenseContractorId,
-        title: title.trim(),
+        description: description.trim() || null,
         start_date: new Date(startDate).toISOString(),
         end_date: new Date(lastDate).toISOString(),
         invoice_number: invoiceNumber.trim() || null,
@@ -563,7 +564,7 @@ const AddExpenseDialog = ({
       createOrderExpensesMutation.mutate({
         work_order_site_id: workOrderSiteId,
         contractor_id: expenseContractorId,
-        title: title.trim(),
+        description: description.trim() || null,
         start_date: new Date(startDate).toISOString(),
         end_date: new Date(lastDate).toISOString(),
         invoice_number: invoiceNumber.trim() || null,
@@ -589,7 +590,7 @@ const AddExpenseDialog = ({
       quantity:
         (canEnterQuantity || orderRate !== null) && quantity ? quantity : null,
       is_exceeded: isExceededMode,
-      title: title.trim(),
+      description: description.trim() || null,
       // Priced again by the server from the requirement's rate.
       amount: pricedAmount !== null ? pricedAmount.toFixed(2) : amount,
       start_date: new Date(startDate).toISOString(),
@@ -1066,14 +1067,19 @@ const AddExpenseDialog = ({
           )}
 
           <div className='space-y-1.5'>
-            <Label className='text-xs font-medium text-gray-700'>
-              Title <span className='text-red-500'>*</span>
+            <Label
+              htmlFor={descriptionId}
+              className='text-xs font-medium text-gray-700'>
+              Description <span className='text-gray-400'>(optional)</span>
             </Label>
-            <Input
+            <Textarea
+              id={descriptionId}
               placeholder='e.g. Excavation labour for week 2'
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className='h-9 text-sm'
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={500}
+              rows={2}
+              className='max-h-32 resize-none text-sm'
             />
           </div>
 

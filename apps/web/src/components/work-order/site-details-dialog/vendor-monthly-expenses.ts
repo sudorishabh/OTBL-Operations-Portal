@@ -101,7 +101,7 @@ export const filterExpenses = (
       (filters.exceeded === ALL || expense.is_exceeded) &&
       (!term ||
         [
-          expense.title,
+          expense.description,
           expense.invoice_number,
           expense.vendor_name,
           expense.jo_number,

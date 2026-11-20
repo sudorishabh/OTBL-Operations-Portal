@@ -35,7 +35,7 @@ interface OrderExpense {
   id: number;
   contract_order_item_id: number | null;
   work_order_site_id: number;
-  title: string;
+  description: string | null;
   amount: number;
   quantity: number | null;
   start_date: string | Date;
@@ -631,7 +631,11 @@ const ContractOrderDetailsDialog = ({
                           </td>
                           <td className={cn(cellClass, "min-w-[12rem]")}>
                             <p className='text-sm text-gray-900'>
-                              {expense.title}
+                              {expense.description ?? (
+                                <span className='text-gray-400'>
+                                  No description
+                                </span>
+                              )}
                             </p>
                             <div className='mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500'>
                               {expense.invoice_number && (
