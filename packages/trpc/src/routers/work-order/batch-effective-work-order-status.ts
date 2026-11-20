@@ -1,7 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { Database } from "@pkg/db";
 import { schema } from "@pkg/db";
 import {
+  constants,
+  SOR_ACTIVITY_TO_COMPLETION_ACTIVITY,
   getEffectiveWorkOrderStatus,
   type EffectiveWorkOrderStatus,
   type ScheduleOfRateRow,
@@ -10,10 +12,44 @@ import {
 import type { AccessScope } from "../../access-scope";
 
 const {
+  workOrderTable,
   workOrderSiteTable,
   scheduleOfRatesTable,
   bioremediationContSoilTable,
 } = schema;
+
+const { WO_PROCESS, allActivityOptions } = constants;
+
+// Restoration's activities, done once the restoration is marked complete.
+const RESTORATION_ACTIVITIES = allActivityOptions
+  .filter((option) => !option.isBioremediation)
+  .map((option) => option.value);
+
+// The schedule of rates activities bioremediation completions use up.
+const BIOREMEDIATION_COMPLETION = "biorem_cont_soil";
+const BIOREMEDIATION_ACTIVITIES = [
+  BIOREMEDIATION_COMPLETION,
+  ...Object.entries(SOR_ACTIVITY_TO_COMPLETION_ACTIVITY)
+    .filter(([, completion]) => completion === BIOREMEDIATION_COMPLETION)
+    .map(([activity]) => activity),
+];
+
+// Whether a work order's schedule of rates is used up, as
+// computeSorFullyConsumed works it out, for a query on workOrderTable: it has
+// rows, and none with a quantity is left. A restoration row is used up once a
+// restoration is complete, a bioremediation one once the completions reach
+// its quantity, and any other never. Every site counts, whoever is looking.
+export const sorFullyConsumedSql = () => {
+  const r = scheduleOfRatesTable;
+  const s = workOrderSiteTable;
+  const c = bioremediationContSoilTable;
+  const wo = workOrderTable;
+
+  const restorationDone = sql`exists (select 1 from ${s} where ${s.work_order_id} = ${wo.id} and ${s.process_type} = ${WO_PROCESS.RESTORATION} and ${s.is_completed} = true)`;
+  const bioremediationUsed = sql`(select coalesce(sum(${c.estimated_quantity}), 0) from ${c} inner join ${s} on ${s.id} = ${c.work_order_site_id} where ${s.work_order_id} = ${wo.id} and ${c.type} = 'completion')`;
+
+  return sql`(exists (select 1 from ${r} where ${r.work_order_id} = ${wo.id}) and not exists (select 1 from ${r} where ${r.work_order_id} = ${wo.id} and ${r.estimated_quantity} > 0 and ((${inArray(r.activity, RESTORATION_ACTIVITIES)} and not ${restorationDone}) or (${inArray(r.activity, BIOREMEDIATION_ACTIVITIES)} and ${bioremediationUsed} + 0.000001 < ${r.estimated_quantity}) or ${notInArray(r.activity, [...RESTORATION_ACTIVITIES, ...BIOREMEDIATION_ACTIVITIES])})))`;
+};
 
 type WoRow = { id: number; office_id: number | null; status: string };
 
