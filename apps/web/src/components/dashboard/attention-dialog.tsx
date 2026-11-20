@@ -75,6 +75,7 @@ const KindTabs = ({
         {
           value: "overdue",
           label: "Past their end date",
+          short: "Overdue",
           count: overdue,
           Icon: TriangleAlert,
           iconClass: "text-rose-600",
@@ -82,6 +83,7 @@ const KindTabs = ({
         {
           value: "ending",
           label: `Ending in ${days} days`,
+          short: "Ending soon",
           count: ending,
           Icon: CalendarClock,
           iconClass: "text-amber-600",
@@ -95,17 +97,18 @@ const KindTabs = ({
         aria-selected={kind === tab.value}
         onClick={() => onChange(tab.value)}
         className={cn(
-          "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
+          "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 sm:px-3 text-[12px] font-medium transition-colors",
           kind === tab.value
             ? "bg-white text-gray-900 shadow-sm"
             : "text-gray-500 hover:text-gray-700",
         )}>
         <tab.Icon
           aria-hidden='true'
-          className={cn("size-3.5", tab.iconClass)}
+          className={cn("size-3.5 shrink-0", tab.iconClass)}
         />
-        <span className='truncate'>{tab.label}</span>
-        <span className='rounded-full bg-gray-200/80 px-1.5 text-[11px] tabular-nums text-gray-700'>
+        <span className='truncate sm:hidden'>{tab.short}</span>
+        <span className='hidden truncate sm:inline'>{tab.label}</span>
+        <span className='shrink-0 rounded-full bg-gray-200/80 px-1.5 text-[11px] tabular-nums text-gray-700'>
           {formatCount(tab.count)}
         </span>
       </button>
@@ -139,7 +142,7 @@ const DeadlineTable = ({
             <td className='px-5 py-2'>
               <Link
                 href={`/dashboard/work-order/${row.id}`}
-                className='font-mono font-medium text-cyan-700 hover:underline'>
+                className='font-mono font-medium whitespace-nowrap text-cyan-700 hover:underline'>
                 {row.code.toUpperCase()}
               </Link>
               {row.purchase_order_code && (

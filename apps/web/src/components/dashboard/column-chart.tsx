@@ -72,7 +72,7 @@ export const ColumnChart = ({ months }: { months: ChartMonth[] }) => {
         <ul
           aria-label='Expenses by month'
           className='absolute inset-y-0 right-0 left-14 flex items-end'>
-          {months.map((m) => {
+          {months.map((m, index) => {
             const height = (m.total / top) * 100;
             const isPeak = m === peak && m.total > 0;
             const tip = `${formatMonth(m.month, "long")}: ${formatCurrency(m.total)}`;
@@ -106,8 +106,17 @@ export const ColumnChart = ({ months }: { months: ChartMonth[] }) => {
                 )}
                 <span
                   role='tooltip'
-                  className='pointer-events-none absolute z-10 hidden -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-[11px] whitespace-nowrap text-white shadow-md group-hover:block group-focus-visible:block'
-                  style={{ bottom: `calc(${height}% + 6px)`, left: "50%" }}>
+                  className={cn(
+                    "pointer-events-none absolute z-10 hidden rounded-md bg-gray-900 px-2 py-1 text-[11px] whitespace-nowrap text-white shadow-md group-hover:block group-focus-visible:block",
+                    // Near either end it lines up with the column's outer
+                    // edge, so it stays inside the chart.
+                    index < 2
+                      ? "left-0"
+                      : index >= months.length - 2
+                        ? "right-0"
+                        : "left-1/2 -translate-x-1/2",
+                  )}
+                  style={{ bottom: `calc(${height}% + 6px)` }}>
                   <span className='block text-gray-300'>
                     {formatMonth(m.month, "long")}
                   </span>
