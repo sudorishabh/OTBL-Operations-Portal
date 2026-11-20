@@ -197,8 +197,24 @@ export const contractOrderIdSchema = z.object({
   id: positiveIntValidator,
 });
 
+const dayValidator = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+// A page of the work order's purchase orders and sub-contracts, narrowed by
+// type, a search, a site, a vendor, whether completed and when dated.
 export const getContractOrdersSchema = z.object({
   work_order_id: positiveIntValidator,
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+  type: contractOrderTypeEnum.optional(),
+  // Matches its code, references, description, vendors, sites and items.
+  search: z.string().trim().max(100).optional(),
+  work_order_site_id: positiveIntValidator.optional(),
+  vendor_id: positiveIntValidator.optional(),
+  completion: z.enum(["completed", "pending"]).optional(),
+  // The first and last day, YYYY-MM-DD, an order may be dated.
+  from: dayValidator.optional(),
+  to: dayValidator.optional(),
+  sort: z.enum(["newest", "oldest"]).default("newest"),
 });
 
 // A page of the work order's sites an order can be for, optionally narrowed
