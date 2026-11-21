@@ -2,11 +2,8 @@
 import React, { ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import RouteSkeleton from "@/components/skeleton/route-skeleton";
-import {
-  useAuthContext,
-  useHasRole,
-  useHasAnyRole,
-} from "@/contexts/AuthContext";
+import type { Permissions } from "@pkg/auth/permissions";
+import { useAuthContext, useCan, useHasAnyRole } from "@/contexts/AuthContext";
 
 type ProtectedRouteProps = {
   children: ReactNode;
@@ -46,20 +43,21 @@ export const ProtectedRoute = ({
   return <>{children}</>;
 };
 
-type RoleProtectedRouteProps = ProtectedRouteProps & {
-  requiredRole: string;
+type PermissionRouteProps = ProtectedRouteProps & {
+  permissions: Permissions;
 };
 
-export const RoleProtectedRoute = ({
+// Shows the page to a signed-in user whose role grants `permissions`.
+export const PermissionRoute = ({
   children,
-  requiredRole,
+  permissions,
   redirectTo = "/login",
   loadingComponent = <DefaultLoading />,
   forbiddenComponent = <DefaultForbidden />,
-}: RoleProtectedRouteProps) => {
+}: PermissionRouteProps) => {
   const router = useRouter();
   const { isAuthenticated, isUserLoading } = useAuthContext();
-  const hasRequiredRole = useHasRole(requiredRole);
+  const hasRequiredRole = useCan(permissions);
 
   useEffect(() => {
     if (isUserLoading || isAuthenticated) return;
@@ -130,15 +128,16 @@ export const MultiRoleProtectedRoute = ({
   return <>{children}</>;
 };
 
+// Pages for setting the portal up, such as managing users.
 export const AdminRoute = ({
   children,
   ...props
-}: Omit<RoleProtectedRouteProps, "requiredRole">) => (
-  <RoleProtectedRoute
-    requiredRole='admin'
+}: Omit<PermissionRouteProps, "permissions">) => (
+  <PermissionRoute
+    permissions={{ portal: ["administer"] }}
     {...props}>
     {children}
-  </RoleProtectedRoute>
+  </PermissionRoute>
 );
 
 // The page's backdrop and shape rather than a spinner on a blank screen.

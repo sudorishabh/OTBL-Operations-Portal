@@ -47,13 +47,16 @@ export const appEnv = {
   MOBILE_CLIENT: getEnv("MOBILE_CLIENT"),
   WEB_CLIENT: getEnv("WEB_CLIENT"),
   BASE_PATH: getEnv("BASE_PATH", "/api/v1"),
-  JWT: {
-    SECRET: getEnv("JWT_SECRET"),
-    EXPIRES_IN: getEnv("JWT_EXPIRATION", "30m"),
-    REFRESH_SECRET: getEnv("JWT_REFRESH_SECRET"),
-    REFRESH_EXPIRES_IN: getEnv("JWT_REFRESH_EXPIRATION", "7d"),
-    RESET_PASSWORD_SECRET: getEnv("JWT_RESET_PASSWORD_SECRET"),
-    RESET_PASSWORD_EXPIRES_IN: getEnv("JWT_RESET_PASSWORD_EXPIRATION", "1h"),
+  // Better Auth. The secret signs session cookies; Better Auth refuses to
+  // start in production without one. The URL is where its routes are
+  // reached, such as https://otbl.co.in, the API itself in development.
+  AUTH: {
+    SECRET: process.env.BETTER_AUTH_SECRET,
+    URL:
+      process.env.BETTER_AUTH_URL ||
+      (process.env.NODE_ENV === "production"
+        ? undefined
+        : `http://localhost:${process.env.PORT || "7200"}`),
   },
   SHAREPOINT_TENANT_ID: getEnv("SHAREPOINT_TENANT_ID"),
   SHAREPOINT_CLIENT_ID: getEnv("SHAREPOINT_CLIENT_ID"),

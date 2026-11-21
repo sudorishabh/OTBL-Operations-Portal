@@ -51,7 +51,13 @@ export const userTable = mysqlTable(
     code: varchar("code", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     email: varchar("email", { length: 320 }).notNull().unique(),
-    password: varchar("password", { length: 255 }).notNull(),
+    // Better Auth's own fields. Passwords live in `accounts`; the portal
+    // doesn't verify emails, ban users or show pictures, so these stay unused.
+    email_verified: boolean("email_verified").notNull().default(false),
+    image: varchar("image", { length: 500 }),
+    banned: boolean("banned").default(false),
+    ban_reason: text("ban_reason"),
+    ban_expires: timestamp("ban_expires"),
     contact_number: varchar("contact_number", { length: 15 }),
     role: varchar("role", {
       length: 50,
@@ -77,6 +83,67 @@ export const userTable = mysqlTable(
 // A main client (e.g. ONGC) groups its branches, which are clients, and has
 // the same details as one. Main clients added before they had details have
 // none, so those columns are nullable here.
+// A signed-in browser or device: Better Auth's session, found by the token in
+// its cookie. It ends at `expires_at`, or when the user signs out.
+export const sessionTable = mysqlTable(
+  "sessions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    token: varchar("token", { length: 255 }).notNull().unique(),
+    expires_at: timestamp("expires_at").notNull(),
+    ip_address: varchar("ip_address", { length: 64 }),
+    user_agent: text("user_agent"),
+    user_id: int("user_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "cascade" }),
+    // Set by Better Auth's admin plugin when an admin signs in as someone
+    // else, which the portal doesn't do.
+    impersonated_by: int("impersonated_by"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [index("sessions_user_id_idx").on(table.user_id)],
+);
+
+// How a user signs in. Every user has one `credential` account holding their
+// password's hash, with their user id as `account_id`.
+export const accountTable = mysqlTable(
+  "accounts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    account_id: varchar("account_id", { length: 255 }).notNull(),
+    provider_id: varchar("provider_id", { length: 255 }).notNull(),
+    user_id: int("user_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "cascade" }),
+    access_token: text("access_token"),
+    refresh_token: text("refresh_token"),
+    id_token: text("id_token"),
+    access_token_expires_at: timestamp("access_token_expires_at"),
+    refresh_token_expires_at: timestamp("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [index("accounts_user_id_idx").on(table.user_id)],
+);
+
+// Short-lived values Better Auth checks a request against, such as a
+// password reset token.
+export const verificationTable = mysqlTable(
+  "verifications",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    identifier: varchar("identifier", { length: 255 }).notNull(),
+    value: text("value").notNull(),
+    expires_at: timestamp("expires_at").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => [index("verifications_identifier_idx").on(table.identifier)],
+);
+
 export const parentClientTable = mysqlTable("parent_clients", {
   id: int("id").autoincrement().primaryKey(),
   // The main client's own code, such as MCL-0002, numbered as it is added.

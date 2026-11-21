@@ -24,7 +24,8 @@ A Turborepo + pnpm monorepo.
 | `packages/trpc` | `@pkg/trpc` | tRPC routers and business logic, including the SharePoint document integration. |
 | `packages/db` | `@pkg/db` | Drizzle ORM schema, MySQL connection, and migrations. |
 | `packages/schema` | `@pkg/schema` | Zod validation schemas shared by web and API. |
-| `packages/utils` | `@pkg/utils` | Shared helpers (auth/JWT, password hashing, dates). |
+| `packages/auth` | `@pkg/auth` | Better Auth: sign-in, sessions, and the roles and permissions both apps check. |
+| `packages/utils` | `@pkg/utils` | Shared helpers (roles, codes, dates). |
 | `packages/ui` | `@repo/ui` | Starter component library (not currently used by `web`). |
 | `packages/eslint-config` | `@repo/eslint-config` | Shared ESLint config. |
 | `packages/typescript-config` | `@repo/typescript-config` | Shared `tsconfig` bases. |
@@ -33,7 +34,7 @@ A Turborepo + pnpm monorepo.
 ## Tech stack
 
 - **Frontend:** Next.js 16, React 19, Tailwind CSS 4, Radix UI, TanStack Query, React Hook Form
-- **API:** tRPC 11 on Express 5, JWT auth, Helmet, rate limiting
+- **API:** tRPC 11 on Express 5, Better Auth (sessions, roles and permissions), Helmet, rate limiting
 - **Database:** MySQL with Drizzle ORM
 - **Validation:** Zod 4
 - **File storage:** SharePoint (Microsoft Graph)
@@ -65,30 +66,26 @@ There is no `.env.example`, so create these files by hand.
 | `DATABASE_URL` | yes | | MySQL connection string, e.g. `mysql://user:pass@localhost:3306/otbl` |
 | `WEB_CLIENT` | yes | | Web app origin allowed by CORS, e.g. `http://localhost:3000` |
 | `MOBILE_CLIENT` | yes | | Second allowed CORS origin |
-| `JWT_SECRET` | yes | | Access-token signing secret |
-| `JWT_REFRESH_SECRET` | yes | | Refresh-token signing secret |
-| `JWT_RESET_PASSWORD_SECRET` | yes | | Password-reset token secret |
+| `BETTER_AUTH_SECRET` | in production | | Signs session cookies. At least 32 random characters, e.g. `openssl rand -base64 32` |
+| `BETTER_AUTH_URL` | in production | `http://localhost:<PORT>` in development | Where Better Auth's `/api/auth` routes are reached, e.g. `https://otbl.co.in` |
 | `SHAREPOINT_TENANT_ID` | yes | | Azure AD tenant for document storage |
 | `SHAREPOINT_CLIENT_ID` | yes | | Azure AD app (client) ID |
 | `SHAREPOINT_CLIENT_SECRET` | yes | | Azure AD app secret |
 | `SHAREPOINT_SITE_URL` | yes | | SharePoint site that holds the documents |
 | `PORT` | no | `7200` | API port |
-| `JWT_EXPIRATION` | no | `30m` | Access-token lifetime |
-| `JWT_REFRESH_EXPIRATION` | no | `7d` | Refresh-token lifetime |
-| `JWT_RESET_PASSWORD_EXPIRATION` | no | `1h` | Reset-token lifetime |
 | `TRUST_PROXY` | no | `false` | Proxy hop count (e.g. `1`) or trusted IPs when running behind a reverse proxy |
 | `RATE_LIMIT_ENABLED` | no | `true` | Turn API rate limiting on or off |
 | `RATE_LIMIT_GENERAL_WINDOW_MS` | no | `60000` | Rate-limit window |
 | `RATE_LIMIT_GENERAL_MAX` | no | `200` | Requests per window |
-| `RATE_LIMIT_SENSITIVE_MAX` | no | `10` | Limit for sensitive routes |
-| `RATE_LIMIT_LOGIN_ACCOUNT_MAX` | no | `5` | Login attempts per account |
+| `RATE_LIMIT_SENSITIVE_MAX` | no | `10` | Sign-in and password-change attempts per address in 15 minutes |
+| `RATE_LIMIT_LOGIN_ACCOUNT_MAX` | no | `5` | Failed sign-ins per account before it is locked for 15 minutes |
 
 **`apps/web/.env`**
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SERVER_URL` | no | API base URL. Leave it empty to call `/trpc` on the same origin; Next.js then proxies those calls to `TRPC_REWRITE_TARGET`. |
-| `TRPC_REWRITE_TARGET` | no | Where the `/trpc` proxy points. Defaults to `http://127.0.0.1:7200`. |
+| `NEXT_PUBLIC_SERVER_URL` | no | API base URL. Leave it empty to call `/trpc` and `/api/auth` on the same origin; Next.js then proxies those calls to `TRPC_REWRITE_TARGET`. |
+| `TRPC_REWRITE_TARGET` | no | Where the `/trpc` and `/api/auth` proxies point. Defaults to `http://127.0.0.1:7200`. |
 
 ### 3. Build the shared packages
 

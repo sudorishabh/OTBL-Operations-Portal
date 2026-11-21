@@ -16,6 +16,7 @@ import Input from "@/components/shared/input";
 import CustomButton from "@/components/shared/btn";
 import ProfileSkeleton from "@/components/skeleton/profile/profile-skeleton";
 import { trpc } from "@/lib/trpc";
+import { authClient, authErrorMessage } from "@/lib/auth-client";
 import { useApiError } from "@/hooks/useApiError";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { userSchemas, type userTypes } from "@pkg/schema";
@@ -107,17 +108,34 @@ export default function ProfilePage() {
     onError: (error: any) => handleError(error, { showToast: true }),
   });
 
-  const changePassword = trpc.userMutation.updateUserPassword.useMutation({
-    onSuccess: () => {
-      toast.success("Password changed");
-      passwordForm.reset({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-    },
-    onError: (error: any) => handleError(error, { showToast: true }),
-  });
+  // Better Auth checks the current password, then signs this account out
+  // everywhere else, so a leaked password stops working at once.
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const changePassword = async (values: userTypes.UpdateUserPasswordType) => {
+    setIsChangingPassword(true);
+    const { error } = await authClient.changePassword({
+      currentPassword: values.currentPassword,
+      newPassword: values.newPassword,
+      revokeOtherSessions: true,
+    });
+    setIsChangingPassword(false);
+    if (error) {
+      if (error.code === "INVALID_PASSWORD") {
+        passwordForm.setError("currentPassword", {
+          message: "Current password is incorrect",
+        });
+        return;
+      }
+      toast.error(authErrorMessage(error, "Couldn't change your password."));
+      return;
+    }
+    toast.success("Password changed");
+    passwordForm.reset({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  };
 
   const handleCancelEdit = () => {
     if (profile) {
@@ -295,9 +313,7 @@ export default function ProfilePage() {
             <CardContent className='px-5 pb-5'>
               <Form {...passwordForm}>
                 <form
-                  onSubmit={passwordForm.handleSubmit((values) =>
-                    changePassword.mutate(values),
-                  )}
+                  onSubmit={passwordForm.handleSubmit(changePassword)}
                   className='space-y-4'>
                   <Input
                     control={passwordForm.control}
@@ -332,7 +348,7 @@ export default function ProfilePage() {
                       text='Update password'
                       type='submit'
                       variant='primary'
-                      disableForViewer
+                      loading={isChangingPassword}
                     />
                   </div>
                 </form>

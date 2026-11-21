@@ -382,7 +382,8 @@ const UPLOAD_DESCRIPTIONS = [
 // ---------------------------------------------------------------------------
 
 const COLUMNS = {
-  users: ["id", "code", "name", "email", "password", "contact_number", "role", "created_by", "created_at", "updated_at"],
+  users: ["id", "code", "name", "email", "contact_number", "role", "created_by", "created_at", "updated_at"],
+  accounts: ["id", "account_id", "provider_id", "user_id", "password", "created_at", "updated_at"],
   offices: ["id", "code", "name", "address", "state", "city", "gst_number", "pincode", "email", "created_at", "updated_at"],
   parent_clients: ["id", "code", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "created_at", "updated_at"],
   clients: ["id", "code", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "created_at", "updated_at"],
@@ -414,6 +415,9 @@ const LEGACY_TABLES = [
   "site_users", "clean_soil_area", "lifting_oil_slush", "excav_cont_soil", "trans_cont_soil",
   "refill_excav_soil",
 ];
+// Better Auth's sign-ins and their tokens, which point at users, so a reset
+// signs everyone out.
+const AUTH_TABLES = ["sessions", "verifications"];
 
 const data = Object.fromEntries(Object.keys(COLUMNS).map((t) => [t, []]));
 // The highest id already in each table. New rows follow on from it, so an
@@ -659,16 +663,25 @@ const passwordHash = DRY_RUN
     })();
 
 function addUser(role, { name = personName(), email, createdBy = null } = {}) {
-  return add("users", {
+  const user = add("users", {
     code: nextCode("users"),
     name,
     email: email ? uniqueEmail(email.split("@")[0], email.split("@")[1]) : uniqueEmail(name, "otbl.test"),
-    password: passwordHash,
     contact_number: phone(),
     role,
     created_by: createdBy,
     ...stamp(atWorkHour(addDays(BASE, int(0, 90)))),
   });
+  // Their password, in the Better Auth credential account they sign in with.
+  add("accounts", {
+    account_id: String(user.id),
+    provider_id: "credential",
+    user_id: user.id,
+    password: passwordHash,
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+  });
+  return user;
 }
 
 const admin = addUser("admin", { name: "Demo Admin", email: "admin@otbl.test" });
@@ -1975,7 +1988,9 @@ let emptied = false;
 try {
   if (RESET) {
     await pause(`\nAbout to empty every app table in ${target} and load the demo data.`);
-    const legacy = LEGACY_TABLES.filter((t) => db.tables.has(t));
+    const legacy = [...LEGACY_TABLES, ...AUTH_TABLES].filter((t) =>
+      db.tables.has(t),
+    );
     await conn.query("SET FOREIGN_KEY_CHECKS = 0");
     for (const table of [...Object.keys(COLUMNS), ...legacy]) await conn.query(`TRUNCATE TABLE \`${table}\``);
     await conn.query("SET FOREIGN_KEY_CHECKS = 1");

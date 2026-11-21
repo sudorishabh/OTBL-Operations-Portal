@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import {
@@ -14,44 +14,6 @@ import { WorkOrderManagementProvider } from "@/contexts/WorkOrderManagementConte
 import { OfficeManagementProvider } from "@/contexts/OfficeManagementContext";
 
 const Provider = ({ children }: { children: React.ReactNode }) => {
-  const isRefreshing = useRef(false);
-  const refreshPromise = useRef<Promise<boolean> | null>(null);
-
-  const attemptTokenRefresh = useCallback(async (): Promise<boolean> => {
-    if (isRefreshing.current && refreshPromise.current) {
-      return refreshPromise.current;
-    }
-
-    isRefreshing.current = true;
-    refreshPromise.current = (async () => {
-      try {
-        const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || "";
-        const response = await fetch(
-          `${serverUrl}/trpc/authQuery.me`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        const result = await response.json();
-
-        if (result?.result?.data?.success) {
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error("[Auth] Token refresh failed:", error);
-        return false;
-      } finally {
-        isRefreshing.current = false;
-        refreshPromise.current = null;
-      }
-    })();
-
-    return refreshPromise.current;
-  }, []);
-
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -75,26 +37,12 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       })
   );
 
+  // Sends the Better Auth session cookie with every call. The API renews the
+  // session as it is used, so nothing here refreshes tokens.
   const customFetch = useCallback(
-    async (input: RequestInfo | URL, init?: RequestInit) => {
-      const response = await fetch(input, {
-        ...init,
-        credentials: "include",
-      });
-
-      if (response.status === 401) {
-        const refreshed = await attemptTokenRefresh();
-        if (refreshed) {
-          return fetch(input, {
-            ...init,
-            credentials: "include",
-          });
-        }
-      }
-
-      return response;
-    },
-    [attemptTokenRefresh]
+    (input: RequestInfo | URL, init?: RequestInit) =>
+      fetch(input, { ...init, credentials: "include" }),
+    [],
   );
 
   const [trpcClient] = useState(() => {

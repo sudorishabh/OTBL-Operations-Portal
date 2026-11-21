@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -47,7 +47,10 @@ const LoginPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <LoginForm />
+            {/* It reads where to return to from the URL. */}
+            <Suspense>
+              <LoginForm />
+            </Suspense>
           </CardContent>
         </Card>
 

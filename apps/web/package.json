@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@pkg/auth": "workspace:*",
     "@pkg/schema": "workspace:*",
     "@pkg/trpc": "workspace:*",
     "@pkg/utils": "workspace:*",
@@ -31,6 +32,7 @@
     "@trpc/client": "^11.5.1",
     "@trpc/react-query": "^11.5.1",
     "@trpc/server": "^11.7.2",
+    "better-auth": "1.7.27",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -50,7 +52,7 @@
     "superjson": "^2.2.6",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.13",
-    "zod": "^4.3.6"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

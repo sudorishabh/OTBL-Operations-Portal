@@ -1,6 +1,8 @@
 import type { UserRole } from "@pkg/utils/auth";
 import type { Database } from "@pkg/db";
+import type { Auth } from "@pkg/auth";
 
+// The signed-in user, from their Better Auth session. `sub` is their user id.
 export type TrpcUser = {
   sub: string;
   email: string;
@@ -8,14 +10,6 @@ export type TrpcUser = {
 };
 
 export type TrpcAppEnv = {
-  JWT: {
-    SECRET: string;
-    EXPIRES_IN: string;
-    REFRESH_SECRET: string;
-    REFRESH_EXPIRES_IN: string;
-    RESET_PASSWORD_SECRET?: string;
-    RESET_PASSWORD_EXPIRES_IN?: string;
-  };
   NODE_ENV: string;
   DATABASE_URL?: string;
   WEB_CLIENT?: string;
@@ -30,10 +24,14 @@ export type TrpcAppEnv = {
 };
 
 export type TrpcContextBase = {
-  req?: { cookies?: Record<string, string> } | undefined;
+  req?: unknown;
   res?: any;
   db: Database;
   appEnv: TrpcAppEnv;
+  auth: Auth;
+  // The request's headers, for Better Auth calls made as the signed-in user,
+  // which it authorizes against their role, such as adding a user.
+  headers: Headers;
 };
 
 export type TrpcContext = TrpcContextBase & {
