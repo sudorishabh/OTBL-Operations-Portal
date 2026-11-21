@@ -78,7 +78,7 @@ export const Metric = ({
   valueClass?: string;
   hintClass?: string;
 }) => (
-  <div className='min-w-0 px-6 py-3'>
+  <div className='min-w-0 px-4 sm:px-6 py-3'>
     <div className='text-xs text-gray-500'>{label}</div>
     <div
       className={cn(

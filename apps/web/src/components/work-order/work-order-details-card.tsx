@@ -99,7 +99,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
   return (
     <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
       {/* Identity */}
-      <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-6 py-5'>
+      <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 sm:px-6 py-5'>
         <div className='flex min-w-0 items-center gap-3'>
           <div className='shrink-0 rounded-lg bg-emerald-50 p-2 text-emerald-700 ring-1 ring-emerald-100'>
             <FileText className='size-4' />
@@ -222,7 +222,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       </div>
 
       {/* Details */}
-      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-3'>
+      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-4 sm:px-6 py-4 sm:grid-cols-3'>
         <Field
           label='Agreement'
           value={workOrder.agreement_number?.toUpperCase()}
@@ -238,7 +238,7 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
       </div>
 
       {hasNotes && (
-        <div className='flex items-start gap-2 border-t border-gray-100 px-6 py-2.5 text-xs'>
+        <div className='flex items-start gap-2 border-t border-gray-100 px-4 sm:px-6 py-2.5 text-xs'>
           <div
             className={cn(
               "min-w-0 flex-1 space-y-1 text-gray-600",

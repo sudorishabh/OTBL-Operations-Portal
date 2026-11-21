@@ -162,17 +162,20 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
           expenseSummary={expenseSummary}
         />
 
-        <div className='flex flex-wrap justify-end gap-2'>
+        {/* On phones the buttons share one row, with shorter labels. */}
+        <div className='grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-2 sm:flex sm:flex-wrap sm:justify-end'>
           {scheduleOfRates.length > 0 && (
             <>
               <CustomButton
                 text='View Schedule of Rates'
+                shortText='Rates'
                 variant='outline'
                 Icon={Rows3}
                 onClick={() => setParam("dialog", "schedule-of-rates")}
               />
               <CustomButton
                 text='View All Expenses'
+                shortText='Expenses'
                 variant='outline'
                 Icon={ReceiptIndianRupee}
                 onClick={() => setParam("dialog", "all-expenses")}
@@ -183,6 +186,7 @@ const WorkOrder = ({ workOrderId, from }: Props) => {
               seen here only. */}
           <CustomButton
             text={`Operator Uploads (${woOperatorUploadsCount})`}
+            shortText={`Uploads (${woOperatorUploadsCount})`}
             variant='outline'
             Icon={FolderOpen}
             onClick={() => setParam("dialog", "operator-uploads")}

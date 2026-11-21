@@ -7,7 +7,7 @@ import { InlineSkeleton, SkeletonRegion, TextLine } from "../parts";
 const RestorationCardSkeleton = ({ labels }: { labels: string[] }) => (
   <SkeletonRegion label='Loading restoration'>
     <section className='rounded-lg border border-gray-200 bg-white'>
-      <div className='flex flex-wrap items-center justify-between gap-x-8 gap-y-4 px-6 pb-5 pt-6'>
+      <div className='flex flex-wrap items-center justify-between gap-x-8 gap-y-4 px-4 sm:px-6 pb-5 pt-4 sm:pt-6'>
         <div className='flex min-w-0 items-center gap-3'>
           <Skeleton className='size-8 shrink-0 rounded-lg' />
           <div className='min-w-0'>
@@ -40,7 +40,7 @@ const RestorationCardSkeleton = ({ labels }: { labels: string[] }) => (
           {labels.map((label, index) => (
             <li
               key={index}
-              className='flex items-center gap-3 px-6 py-3 lg:block lg:py-4'>
+              className='flex items-center gap-3 px-4 sm:px-6 py-3 lg:block lg:py-4'>
               <p className='flex min-w-0 flex-1 gap-1.5 text-xs font-medium leading-4 text-gray-700 lg:min-h-8'>
                 <span className='tabular-nums text-gray-400'>{index + 1}</span>
                 <span className='line-clamp-2'>{label}</span>
@@ -55,7 +55,7 @@ const RestorationCardSkeleton = ({ labels }: { labels: string[] }) => (
         </ol>
       )}
 
-      <div className='flex flex-wrap items-center gap-x-5 gap-y-1 rounded-b-lg border-t border-gray-100 bg-gray-50/60 px-6 py-3'>
+      <div className='flex flex-wrap items-center gap-x-5 gap-y-1 rounded-b-lg border-t border-gray-100 bg-gray-50/60 px-4 sm:px-6 py-3'>
         <TextLine
           line='h-4'
           className='w-24'

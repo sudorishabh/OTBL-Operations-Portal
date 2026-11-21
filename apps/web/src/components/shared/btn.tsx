@@ -14,6 +14,8 @@ import {
 interface Props {
   Icon?: React.ElementType;
   text?: string;
+  /** A shorter label for phones, where `text` would crowd its row. */
+  shortText?: string;
   className?: string;
   variant: "primary" | "secondary" | "outline" | "arrow";
   arrowType?: "right" | "left" | "upright" | "downright";
@@ -29,6 +31,7 @@ interface Props {
 const Btn = ({
   Icon,
   text,
+  shortText,
   className,
   onClick,
   variant,
@@ -86,6 +89,15 @@ const Btn = ({
 
   const accessibleName = title || text;
 
+  const label = shortText ? (
+    <>
+      <span className='sm:hidden'>{shortText}</span>
+      <span className='hidden sm:inline'>{text}</span>
+    </>
+  ) : (
+    text
+  );
+
   return (
     <>
       {variant === "arrow" ? (
@@ -139,7 +151,7 @@ const Btn = ({
                 size={16}
               />
             )}
-            {text}
+            {label}
           </Button>
         </span>
       ) : (
@@ -159,7 +171,7 @@ const Btn = ({
               size={16}
             />
           )}
-          {loading ? "Please wait..." : text}
+          {loading ? "Please wait..." : label}
         </Button>
       )}
     </>

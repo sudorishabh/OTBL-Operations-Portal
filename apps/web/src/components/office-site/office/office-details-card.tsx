@@ -43,7 +43,7 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
   return (
     <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
       {/* Identity */}
-      <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-6 py-5'>
+      <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 sm:px-6 py-5'>
         <div className='flex min-w-0 items-center gap-3'>
           <div className='shrink-0 rounded-lg bg-emerald-50 p-2 text-emerald-700 ring-1 ring-emerald-100'>
             <Building2 className='size-4' />
@@ -95,7 +95,7 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
       </div>
 
       {/* Details */}
-      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-4 xl:grid-cols-6'>
+      <div className='grid grid-cols-2 gap-x-6 gap-y-3 px-4 sm:px-6 py-4 sm:grid-cols-4 xl:grid-cols-6'>
         <Field
           label='GST number'
           value={

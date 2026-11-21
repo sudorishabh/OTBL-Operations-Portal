@@ -227,7 +227,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
     );
 
   return (
-    <section className='rounded-lg border bg-white p-6'>
+    <section className='rounded-lg border bg-white p-4 sm:p-6'>
       <ProcessSectionHeader
         Icon={FlaskConical}
         tone='bioremediation'
@@ -259,7 +259,10 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
                   disabled={siteCount === 0}
                   className='gap-2 px-3 text-xs text-gray-800'>
                   <ShoppingCart className='size-3.5 text-gray-500' />
-                  Purchase orders and sub-contracts
+                  <span className='sm:hidden'>Orders</span>
+                  <span className='hidden sm:inline'>
+                    Purchase orders and sub-contracts
+                  </span>
                   <span className='tabular-nums text-gray-400'>
                     {orderCount}
                   </span>
