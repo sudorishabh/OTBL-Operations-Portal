@@ -33,8 +33,9 @@ export type FilterOption = {
 // The value every list filter uses for "don't filter by this".
 export const ALL = "all";
 
+// A finger's height on touch screens, compact elsewhere.
 const controlClass =
-  "h-8! rounded-md border bg-white text-xs shadow-xs transition-colors";
+  "h-8! pointer-coarse:h-10! rounded-md border bg-white text-xs shadow-xs transition-colors";
 const activeClass = "border-emerald-300 bg-emerald-50/60 text-emerald-900";
 
 // The row a list's search, filters, sort and clear button sit in; on phones
@@ -75,7 +76,7 @@ export const SearchFilter = ({
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       aria-label={label}
-      className='h-8 bg-white pl-8 pr-8 text-xs placeholder:text-xs'
+      className='h-8 bg-white pl-8 pr-8 text-xs placeholder:text-xs pointer-coarse:h-10'
     />
     {value && (
       <button
@@ -322,7 +323,7 @@ export const ClearFiltersButton = ({ onClick }: { onClick: () => void }) => (
     type='button'
     variant='ghost'
     onClick={onClick}
-    className='h-8 gap-1 px-2.5 text-xs text-gray-600'>
+    className='h-8 gap-1 px-2.5 text-xs text-gray-600 pointer-coarse:h-10'>
     <X className='size-3.5' />
     Clear filters
   </Button>
