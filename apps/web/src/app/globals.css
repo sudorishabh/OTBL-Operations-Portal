@@ -122,3 +122,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* iPhones and iPads zoom into any field whose text is under 16px once it is
+   tapped, and stay zoomed in. Fields there keep 16px text, so forms stay put;
+   other browsers don't zoom, so they keep the compact sizes. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
