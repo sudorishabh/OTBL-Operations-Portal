@@ -1,6 +1,6 @@
 import { WO_PROCESS, allActivityOptions } from "./constants";
 
-export type EffectiveWorkOrderStatus = "pending" | "completed" | "cancelled";
+export type EffectiveWorkOrderStatus = "pending" | "completed";
 
 // Only bioremediation records completion quantities.
 export const SOR_ACTIVITY_TO_COMPLETION_ACTIVITY: Record<string, string> = {
@@ -84,7 +84,6 @@ export function getEffectiveWorkOrderStatus(
   sites: SiteWithCompletions[] | null | undefined,
 ): EffectiveWorkOrderStatus {
   const s = String(dbStatus ?? "").trim().toLowerCase();
-  if (s === "cancelled") return "cancelled";
   if (s === "completed") return "completed";
   return computeSorFullyConsumed(scheduleOfRates, sites) ? "completed" : "pending";
 }
@@ -95,7 +94,6 @@ export function effectiveWorkOrderStatusFromDbOnly(
   const s = String(dbStatus ?? "")
     .trim()
     .toLowerCase();
-  if (s === "cancelled") return "cancelled";
   if (s === "completed") return "completed";
   return "pending";
 }

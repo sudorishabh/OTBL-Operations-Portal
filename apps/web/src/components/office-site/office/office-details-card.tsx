@@ -44,11 +44,7 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
   const workOrderHint = [
     `${formatCount(workOrders.pending)} pending`,
     `${formatCount(workOrders.completed)} completed`,
-    workOrders.cancelled > 0 &&
-      `${formatCount(workOrders.cancelled)} cancelled`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].join(" · ");
 
   return (
     <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>

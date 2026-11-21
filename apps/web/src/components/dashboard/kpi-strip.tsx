@@ -66,7 +66,7 @@ export const KpiStrip = () => {
         value={summary ? <Rupees amount={income} /> : "—"}
         hint={
           summary
-            ? "Work orders not cancelled"
+            ? "Every work order's schedule of rates"
             : summaryQuery.isError && NOT_LOADED
         }
       />

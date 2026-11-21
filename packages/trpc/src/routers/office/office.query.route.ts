@@ -398,7 +398,6 @@ export const officeQueryRouter = router({
           ctx.db
             .select({
               total: count(),
-              cancelled: tally(eq(workOrderTable.status, "cancelled")),
               completed: tally(
                 or(
                   eq(workOrderTable.status, "completed"),
@@ -448,7 +447,6 @@ export const officeQueryRouter = router({
           total: Number(statusRow?.total ?? 0),
           pending: Number(statusRow?.pending ?? 0),
           completed: Number(statusRow?.completed ?? 0),
-          cancelled: Number(statusRow?.cancelled ?? 0),
         };
         const totalBudgetAmount = Number(budgetRow?.total ?? 0);
         const totalExpenseAmount = Number(incomeRow?.total ?? 0);

@@ -44,7 +44,6 @@ import {
   ENDING_SOON_DAYS,
   e,
   hasDocuments,
-  notCancelled,
   stillPending,
   visibleWorkOrders,
   wo,
@@ -94,14 +93,12 @@ export type WorkOrderStatusCounts = {
   total: number;
   pending: number;
   completed: number;
-  cancelled: number;
 };
 
 const noWorkOrders = (): WorkOrderStatusCounts => ({
   total: 0,
   pending: 0,
   completed: 0,
-  cancelled: 0,
 });
 
 // Done and still open, of a kind of work order site.
@@ -145,13 +142,13 @@ export const dashboardQueryRouter = router({
               })
               .from(wos)
               .innerJoin(wo, eq(wos.work_order_id, wo.id))
-              .where(and(visible, notCancelled))
+              .where(visible)
               .groupBy(isNull(wos.site_id), wos.is_completed),
             ctx.db
               .select({ total: sum(scheduleOfRatesTable.total_cost) })
               .from(scheduleOfRatesTable)
               .innerJoin(wo, eq(scheduleOfRatesTable.work_order_id, wo.id))
-              .where(and(visible, notCancelled)),
+              .where(visible),
           ]);
 
           const overall = noWorkOrders();
@@ -174,8 +171,6 @@ export const dashboardQueryRouter = router({
                 counts.completed += usedUp;
               } else if (row.status === WORK_ORDER_STATUS.COMPLETED) {
                 counts.completed += rowCount;
-              } else if (row.status === WORK_ORDER_STATUS.CANCELLED) {
-                counts.cancelled += rowCount;
               }
             }
           }
@@ -200,8 +195,8 @@ export const dashboardQueryRouter = router({
               })),
             sites,
             restorations,
-            // What the schedules of rates of work orders not cancelled add up
-            // to: the income they are worth.
+            // What the work orders' schedules of rates add up to: the
+            // income they are worth.
             sorTotal: Number(rates?.total ?? 0),
           };
         } catch (error) {
@@ -359,10 +354,10 @@ export const dashboardQueryRouter = router({
       }),
     ),
 
-  // What needs following up across the visible work orders that are not
-  // cancelled: pending work orders past their end date or ending soon, job
-  // orders still to be certified or invoiced, and contract orders whose
-  // completion documents are still to come. The filters narrow all of it.
+  // What needs following up across the visible work orders: pending work
+  // orders past their end date or ending soon, job orders still to be
+  // certified or invoiced, and contract orders whose completion documents
+  // are still to come. The filters narrow all of it.
   getAttention: protectedProcedure
     .input(
       z
@@ -435,7 +430,7 @@ export const dashboardQueryRouter = router({
               .from(jo)
               .innerJoin(wos, eq(jo.work_order_site_id, wos.id))
               .innerJoin(wo, eq(wos.work_order_id, wo.id))
-              .where(and(visible, notCancelled)),
+              .where(visible),
             ctx.db
               .select({
                 type: co.type,
@@ -444,7 +439,7 @@ export const dashboardQueryRouter = router({
               })
               .from(co)
               .innerJoin(wo, eq(co.work_order_id, wo.id))
-              .where(and(visible, notCancelled))
+              .where(visible)
               .groupBy(co.type),
           ]);
 
@@ -639,9 +634,6 @@ export const dashboardQueryRouter = router({
                 state: officeTable.state,
                 total: count(),
                 pending,
-                cancelled: countWhere(
-                  eq(wo.status, WORK_ORDER_STATUS.CANCELLED),
-                ),
                 spent,
               })
               .from(wo)
@@ -674,13 +666,11 @@ export const dashboardQueryRouter = router({
             offices: officeRows.map((row) => {
               const workOrders = Number(row.total);
               const pendingCount = Number(row.pending);
-              const cancelled = Number(row.cancelled);
               return {
                 ...row,
                 total: workOrders,
                 pending: pendingCount,
-                completed: workOrders - pendingCount - cancelled,
-                cancelled,
+                completed: workOrders - pendingCount,
                 sites: Number(
                   siteRows.find((site) => site.office_id === row.id)?.count ??
                     0,
