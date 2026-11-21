@@ -354,14 +354,6 @@ const REMARKS = [
   "Site access through the client's approach road only.", "Monsoon break to be accounted in the schedule.",
   "Land owner's NOC obtained.",
 ];
-const CANCEL_REASONS = [
-  "Client withdrew the requirement after a site re-survey.",
-  "Land owner did not give access to the spill site.",
-  "Scope merged into a larger annual rate contract.",
-  "Budget not approved by the asset for this financial year.",
-  "Spill site cleaned up by the client's own team.",
-  "Work order reissued under a revised agreement number.",
-];
 const LOCATION_HINTS = [
   "Near well plinth", "Along the flow line", "Behind the GGS boundary wall", "Paddy field near the pipeline",
   "Village approach road", "Drain near the tank farm", "Low-lying area near the CTF",
@@ -391,15 +383,15 @@ const UPLOAD_DESCRIPTIONS = [
 
 const COLUMNS = {
   users: ["id", "code", "name", "email", "password", "contact_number", "role", "created_by", "created_at", "updated_at"],
-  offices: ["id", "code", "name", "address", "state", "city", "gst_number", "pincode", "email", "status", "created_at", "updated_at"],
-  parent_clients: ["id", "code", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
-  clients: ["id", "code", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "status", "created_at", "updated_at"],
+  offices: ["id", "code", "name", "address", "state", "city", "gst_number", "pincode", "email", "created_at", "updated_at"],
+  parent_clients: ["id", "code", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "created_at", "updated_at"],
+  clients: ["id", "code", "parent_client_id", "name", "address", "state", "city", "pincode", "gst_number", "contact_number", "email", "created_at", "updated_at"],
   client_contacts: ["id", "client_id", "parent_client_id", "name", "designation", "contact_number", "email", "contact_type", "created_at", "updated_at"],
   contractors: ["id", "code", "name", "contact_number", "email", "address", "state", "gst_number", "pan_number", "created_at", "updated_at"],
   office_users: ["id", "user_id", "office_id", "assigned_by", "created_at", "updated_at"],
-  sites: ["id", "code", "name", "address", "state", "city", "pincode", "office_id", "status", "created_at", "updated_at"],
+  sites: ["id", "code", "name", "address", "state", "city", "pincode", "office_id", "created_at", "updated_at"],
   proposals: ["id", "client_id", "office_id", "code", "title", "document_key", "documents", "description", "proposal_submission_date", "status", "created_by", "created_at", "updated_at"],
-  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "purchase_order_code", "agreement_number", "rate_contract_number", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "cancellation_reason", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
+  work_orders: ["id", "code", "financial_year", "fy_serial", "serial", "purchase_order_code", "agreement_number", "rate_contract_number", "proposal_id", "client_id", "office_id", "start_date", "end_date", "handing_over_date", "document_key", "documents", "process_type", "description", "area", "remarks", "status", "approved_at", "approved_by", "created_by", "created_at", "updated_at"],
   schedule_of_rates: ["id", "work_order_id", "activity", "unit", "estimated_quantity", "rc_unit_rate", "gst_percentage", "unit_rate_inc_gst", "total_cost", "transportation_km", "transportation_slabs", "created_at", "updated_at"],
   work_order_sites: ["id", "work_order_id", "client_id", "site_id", "date", "end_date", "process_type", "status", "isCompleted", "created_at", "updated_at"],
   site_activity_items: ["id", "work_order_site_id", "schedule_of_rates_id", "activity", "unit", "created_at", "updated_at"],
@@ -699,7 +691,6 @@ for (let i = 0; i < COUNT; i++) {
     gst_number: gstin(loc.state, OTBL_PAN),
     pincode: pincode(loc),
     email: uniqueEmail(name, "otbl.test"),
-    status: i > 0 && chance(0.04) ? "inactive" : "active",
     ...stamp(atWorkHour(addDays(BASE, int(0, 60)))),
   });
   offices.push(office);
@@ -712,7 +703,6 @@ for (let i = 0; i < COUNT; i++) {
     ...stamp(addHours(office.created_at, int(1, 72))),
   });
 }
-const activeOffices = offices.filter((o) => o.status === "active");
 
 // Office operators, on their own office and sometimes on a second one.
 const officeOpsOf = new Map(offices.map((o) => [o.id, []]));
@@ -804,7 +794,6 @@ for (let i = 0; i < COUNT; i++) {
     gst_number: gstin(loc.state, pan("C", base.short)),
     contact_number: chance(0.9) ? phone() : null,
     email: chance(0.9) ? uniqueEmail("head office", domain) : null,
-    status: chance(0.03) ? "inactive" : "active",
     ...stamp(atWorkHour(addDays(BASE, int(0, 60)))),
   });
   parent._short = base.short;
@@ -838,7 +827,6 @@ const addBranch = (parent) => {
     gst_number: gstin(loc.state, pan("C", parent._short)),
     contact_number: chance(0.9) ? phone() : null,
     email: chance(0.9) ? uniqueEmail(`${loc.city} office`, domain) : null,
-    status: chance(0.05) ? "inactive" : "active",
     ...stamp(addHours(parent.created_at, int(1, 24 * 30))),
   });
   client._short = parent._short;
@@ -863,10 +851,9 @@ for (const parent of parents) addBranch(parent);
 for (let i = Math.ceil(COUNT * 0.2); i > 0; i--) {
   addBranch(chance(0.5) ? pick(parents.slice(0, REAL_PARENTS.length)) : pick(parents));
 }
-const activeClients = clients.filter((c) => c.status === "active");
 const clientFor = (office) => {
-  const local = (clientsByState.get(office.state) ?? []).filter((c) => c.status === "active");
-  return local.length && chance(0.7) ? pick(local) : pick(activeClients);
+  const local = clientsByState.get(office.state) ?? [];
+  return local.length && chance(0.7) ? pick(local) : pick(clients);
 };
 
 // Vendors, shared by every office.
@@ -924,7 +911,6 @@ for (const office of offices) {
         city: loc.city,
         pincode: pincode(loc),
         office_id: office.id,
-        status: chance(0.06) ? "inactive" : "active",
         ...stamp(atWorkHour(addDays(BASE, int(30, 200)))),
       }),
     );
@@ -1161,8 +1147,7 @@ function buildRestoration(ctx) {
   const windowEnd = phase === "completed" ? addDays(end, -10) : earliest(end, horizon);
   const span = daysBetween(windowStart, windowEnd);
   let count;
-  if (phase === "cancelled") count = span > 20 && chance(0.6) ? 1 : 0;
-  else if (span < 25) count = span > 2 ? 1 : 0;
+  if (span < 25) count = span > 2 ? 1 : 0;
   else count = span < 60 ? int(1, 2) : int(2, 4);
 
   // Each measured row's quantity, shared out between the job orders. The first
@@ -1306,20 +1291,17 @@ function planBioSite(ctx, site) {
   let state =
     phase === "completed"
       ? "done"
-      : phase === "cancelled"
-        ? "cancelled"
-        : pickWeighted({ done: 30, treating: 50, mobilizing: 20 });
+      : pickWeighted({ done: 30, treating: 50, mobilizing: 20 });
   if (state === "done" && monthsAvailable < 3) state = monthsAvailable >= 1 ? "treating" : "mobilizing";
   if (state === "treating" && monthsAvailable < 1) state = "mobilizing";
 
-  const hasEstimate = state === "mobilizing" ? chance(0.6) : state === "cancelled" ? chance(0.8) : true;
+  const hasEstimate = state === "mobilizing" ? chance(0.6) : true;
   const hasZeroDay =
     hasEstimate && mob <= treatmentEnd && (state === "done" || state === "treating" || chance(0.5));
   let months = 0;
   if (hasZeroDay) {
     if (state === "done") months = int(3, Math.min(9, monthsAvailable));
     else if (state === "treating") months = int(1, Math.min(7, monthsAvailable));
-    else if (state === "cancelled") months = Math.min(int(0, 2), monthsAvailable);
   }
 
   const row = add("work_order_sites", {
@@ -1441,7 +1423,7 @@ function addPurchaseOrder(ctx, date, entries) {
 function buildPurchaseOrders(ctx, plans) {
   const buying = plans.filter((p) => p.procure > 0);
   if (!buying.length) return;
-  const topUp = ctx.phase !== "cancelled" && chance(0.35) ? sample(buying, int(1, buying.length)) : [];
+  const topUp = chance(0.35) ? sample(buying, int(1, buying.length)) : [];
   const firstShare = new Map(buying.map((p) => [p, topUp.includes(p) ? round2(p.procure * 0.65) : p.procure]));
   const firstDate = earliest(
     latest(ctx.start, dayStart(addDays(earliest(...buying.map((p) => p.mob)), -int(3, 15)))),
@@ -1710,10 +1692,8 @@ function buildSharedSubContract(ctx, plans) {
 
 function buildBioremediation(ctx) {
   const sites = sitesOf.get(ctx.office.id);
-  const usable = sites.filter((s) => s.status === "active");
-  const pool = usable.length ? usable : sites;
-  const n = ctx.phase === "cancelled" ? int(1, 2) : int(1, 4);
-  const plans = sample(pool, Math.min(n, pool.length)).map((site) => planBioSite(ctx, site));
+  const n = int(1, 4);
+  const plans = sample(sites, Math.min(n, sites.length)).map((site) => planBioSite(ctx, site));
 
   // The schedule of rates covers the sites' estimated soil; a completed work
   // order's sites use all of it.
@@ -1735,16 +1715,15 @@ const SHOWCASE = [
   { phase: "ongoing", process: "bioremediation" },
   { phase: "ongoing", process: "restoration" },
   { phase: "ongoing", process: "bioremediation_restoration" },
-  { phase: "cancelled", process: "bioremediation" },
 ];
 
 function buildWorkOrder(index) {
   const showcase = index < SHOWCASE.length;
-  const phase = showcase ? SHOWCASE[index].phase : pickWeighted({ completed: 30, ongoing: 62, cancelled: 8 });
+  const phase = showcase ? SHOWCASE[index].phase : pickWeighted({ completed: 33, ongoing: 67 });
   const processType = showcase
     ? SHOWCASE[index].process
     : pickWeighted({ bioremediation: 40, restoration: 25, bioremediation_restoration: 35 });
-  const office = showcase ? offices[0] : pick(activeOffices);
+  const office = showcase ? offices[0] : pick(offices);
   const lead = leadOf.get(office.id);
   const staff = [lead, ...officeOpsOf.get(office.id)];
   const client = clientFor(office);
@@ -1754,19 +1733,15 @@ function buildWorkOrder(index) {
   if (phase === "completed") {
     start = addDays(NOW, -int(500, 1200));
     end = addDays(start, int(240, 420));
-  } else if (phase === "ongoing") {
+  } else {
     start = addDays(NOW, -int(20, 700));
     end = addDays(start, int(365, 730));
     if (end < addDays(NOW, 30)) end = addDays(NOW, int(30, 300));
-  } else {
-    start = addDays(NOW, -int(60, 1100));
-    end = addDays(start, int(180, 540));
   }
   start = dayStart(start);
   end = dayStart(end);
-  const cancelledAt = phase === "cancelled" ? clampPast(atWorkHour(addDays(start, int(30, 150)))) : null;
-  // Nothing is recorded past this: today, or the day the work order was cancelled.
-  const horizon = phase === "completed" ? end : phase === "cancelled" ? cancelledAt : NOW;
+  // Nothing is recorded past a completed work order's end, or past today.
+  const horizon = phase === "completed" ? end : NOW;
 
   const proposal = addProposal({
     client,
@@ -1778,7 +1753,7 @@ function buildWorkOrder(index) {
   const created = atWorkHour(addDays(start, -int(3, 25)));
   const awaitingApproval = phase === "ongoing" && daysBetween(start, NOW) < 60 && chance(0.25);
   const approvedAt =
-    awaitingApproval || (phase === "cancelled" && chance(0.3)) ? null : atWorkHour(addDays(created, int(1, 6)));
+    awaitingApproval ? null : atWorkHour(addDays(created, int(1, 6)));
   const documents = [doc(`Work Order ${index + 1}.pdf`)];
   if (chance(0.6)) documents.push(doc(`Agreement ${index + 1}.pdf`));
   if (chance(0.4)) documents.push(doc(`Rate Contract ${index + 1}.pdf`));
@@ -1800,14 +1775,12 @@ function buildWorkOrder(index) {
     description: chance(0.7) ? `Work order against ${proposal.code} for ${client.name}.` : null,
     area: `${client.city} ${pick(["North", "South", "East", "West", "Central"])} Area`,
     remarks: pick(REMARKS),
-    status: phase === "cancelled" ? "cancelled" : "pending",
-    cancellation_reason: phase === "cancelled" ? pick(CANCEL_REASONS) : null,
+    status: "pending",
     approved_at: approvedAt ? clampPast(approvedAt) : null,
     approved_by: approvedAt ? admin.id : null,
     created_by: lead.id,
     ...stamp(created),
   });
-  if (cancelledAt) wo.updated_at = cancelledAt;
 
   // Its schedule of rates, in the order the app lists the activities.
   const hasBio = processType !== "restoration";
@@ -1827,7 +1800,7 @@ for (let i = 0; i < COUNT; i++) buildWorkOrder(i);
 // Proposals still pending, rejected, or approved without a work order yet.
 for (let i = Math.ceil(COUNT * 0.35); i > 0; i--) {
   const status = pickWeighted({ pending: 55, rejected: 35, approved: 10 });
-  const office = pick(activeOffices);
+  const office = pick(offices);
   addProposal({
     client: clientFor(office),
     office,
