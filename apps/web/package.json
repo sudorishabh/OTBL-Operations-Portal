@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@pkg/auth": "workspace:*",
     "@pkg/schema": "workspace:*",
     "@pkg/trpc": "workspace:*",
     "@pkg/utils": "workspace:*",

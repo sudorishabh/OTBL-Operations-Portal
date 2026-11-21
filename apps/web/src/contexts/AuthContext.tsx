@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, ReactNode } from "react";
 import { useAuth, type User, type UseAuthReturn } from "@/hooks/use-auth";
+import { can, type Permissions } from "@pkg/auth/permissions";
 
 export type { User };
 
@@ -22,21 +23,11 @@ export const useAuthContext = (): AuthContextType => {
   return context;
 };
 
-export const useHasRole = (requiredRole: string): boolean => {
+// Whether the signed-in user's role grants every one of `permissions`, by the
+// same Better Auth access control the API enforces.
+export const useCan = (permissions: Permissions): boolean => {
   const { user } = useAuthContext();
-  if (!user) return false;
-
-  const roleHierarchy: Record<string, number> = {
-    admin: 4,
-    office_operator: 2,
-    site_operator: 2,
-    viewer: 1,
-  };
-
-  const userLevel = roleHierarchy[user.role] || 0;
-  const requiredLevel = roleHierarchy[requiredRole] || 0;
-
-  return userLevel >= requiredLevel;
+  return can(user?.role, permissions);
 };
 
 export const useHasAnyRole = (allowedRoles: string[]): boolean => {
@@ -45,14 +36,15 @@ export const useHasAnyRole = (allowedRoles: string[]): boolean => {
   return allowedRoles.includes(user.role);
 };
 
-export const useIsAdmin = (): boolean => useHasRole("admin");
+export const useIsAdmin = (): boolean => useCan({ portal: ["administer"] });
 
 // Office operators run their offices' sites and orders; the API checks which
 // offices.
 export const useIsOfficeOperatorOrAdmin = (): boolean =>
   useHasAnyRole(["admin", "office_operator"]);
 
+// Signed in, but only to read.
 export const useIsViewer = (): boolean => {
   const { user } = useAuthContext();
-  return user?.role === "viewer";
+  return !!user && !can(user.role, { records: ["write"] });
 };

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 
 export type User = {
@@ -35,7 +36,7 @@ export const useAuth = (): UseAuthReturn => {
     staleTime: 1000 * 60 * 10,
   });
 
-  const logoutMutation = trpc.authMutation.logout.useMutation();
+  const utils = trpc.useUtils();
 
   useEffect(() => {
     if (!isQueryLoading) {
@@ -48,16 +49,18 @@ export const useAuth = (): UseAuthReturn => {
     }
   }, [data, isQueryLoading]);
 
+  // Ends the Better Auth session, then forgets everything loaded for it.
   const logout = useCallback(async () => {
     try {
-      await logoutMutation.mutateAsync();
+      await authClient.signOut();
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
       setUser(null);
+      utils.invalidate();
       router.push("/login");
     }
-  }, [logoutMutation, router]);
+  }, [router, utils]);
 
   const refetchUser = useCallback(() => {
     refetch();

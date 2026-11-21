@@ -1,6 +1,6 @@
 export {
   ProtectedRoute,
-  RoleProtectedRoute,
+  PermissionRoute,
   MultiRoleProtectedRoute,
   AdminRoute,
 } from "./ProtectedRoute";

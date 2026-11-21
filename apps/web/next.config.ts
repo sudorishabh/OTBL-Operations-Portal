@@ -12,6 +12,11 @@ const nextConfig = {
         source: "/trpc/:path*",
         destination: `${trpcRewriteTarget}/trpc/:path*`,
       },
+      // Better Auth's routes, on the same origin so its cookies are too.
+      {
+        source: "/api/auth/:path*",
+        destination: `${trpcRewriteTarget}/api/auth/:path*`,
+      },
     ];
   },
 };

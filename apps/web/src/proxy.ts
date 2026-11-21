@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
 const protectedRoutes = ["/dashboard"];
-const publicRoutes = ["/login"];
 
 export default async function middleware(req: NextRequest) {
   if (req.headers.get("x-middleware-subrequest")) {
@@ -13,22 +13,21 @@ export default async function middleware(req: NextRequest) {
   const isProtectedRoute = protectedRoutes.some(
     (route) => path === route || path.startsWith(route + "/"),
   );
-  const isPublicRoute = publicRoutes.some(
-    (route) => path === route || path.startsWith(route + "/"),
-  );
 
-  const accessToken = req.cookies.get("accessToken")?.value;
-  const refreshToken = req.cookies.get("refreshToken")?.value;
+  // Only whether a Better Auth session cookie is there, not whether its
+  // session is still good: the API checks that on every call, and the
+  // dashboard sends anyone it turns away to the login page.
+  const hasSession = !!getSessionCookie(req, { cookiePrefix: "otbl" });
 
   if (path === "/") {
-    if (accessToken || refreshToken) {
+    if (hasSession) {
       return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
     } else {
       return NextResponse.redirect(new URL("/login", req.nextUrl));
     }
   }
 
-  if (isProtectedRoute && !accessToken && !refreshToken) {
+  if (isProtectedRoute && !hasSession) {
     const loginUrl = new URL("/login", req.nextUrl);
 
     const rawReturnUrl = req.nextUrl.pathname + req.nextUrl.search;
@@ -39,10 +38,6 @@ export default async function middleware(req: NextRequest) {
     }
 
     return NextResponse.redirect(loginUrl);
-  }
-
-  if (isPublicRoute && (accessToken || refreshToken)) {
-    return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
   }
 
   return NextResponse.next();
