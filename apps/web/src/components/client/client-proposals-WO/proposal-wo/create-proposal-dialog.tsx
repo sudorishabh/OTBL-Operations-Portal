@@ -12,7 +12,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import CustomInput from "@/components/shared/input";
-import OfficeSelect from "@/components/shared/office-select";
+import OfficePicker from "@/components/shared/office-picker";
 import CustomButton from "@/components/shared/btn";
 import { trpc } from "@/lib/trpc";
 import CustomForm from "@/components/shared/form";
@@ -77,12 +77,6 @@ const CreateProposalDialog = ({ clientId }: Props) => {
     // The folder is shared by all proposals; never overwrite another's file.
     conflictBehavior: "rename",
   });
-
-  // Only what the picker shows, not each office's members and counts.
-  const { data: officesData, isLoading: isLoadingOffices } =
-    trpc.officeQuery.getOfficeOptions.useQuery(undefined, {
-      enabled: isOpenDialog,
-    });
 
   const form = useForm<ProposalFormInput, unknown, ProposalFormValues>({
     resolver: zodResolver(proposalFormSchema),
@@ -183,7 +177,6 @@ const CreateProposalDialog = ({ clientId }: Props) => {
     addProposal.mutate({ ...values, client_id: clientId, documents });
   }
 
-  const offices = officesData ?? [];
   const isSubmitting =
     form.formState.isSubmitting ||
     addProposal.isPending ||
@@ -197,7 +190,7 @@ const CreateProposalDialog = ({ clientId }: Props) => {
         isEditMode ? "Update the proposal's details" : "Add a new proposal"
       }
       open={isOpenDialog}
-      size='md'
+      size='lg'
       setOpen={handleCloseDialog}>
       <Form {...form}>
         <CustomForm onSubmit={form.handleSubmit(onSubmit)}>
@@ -209,25 +202,12 @@ const CreateProposalDialog = ({ clientId }: Props) => {
               placeholder='Enter code'
             />
 
-            <FormField
+            <CustomInput
               control={form.control}
-              name='office_id'
-              render={({ field }) => (
-                <FormItem className='space-y-1 min-w-0'>
-                  <FormLabel className='text-xs font-medium text-neutral-700'>
-                    Office
-                  </FormLabel>
-                  <FormControl>
-                    <OfficeSelect
-                      offices={offices}
-                      value={field.value}
-                      onChange={field.onChange}
-                      isLoading={isLoadingOffices}
-                    />
-                  </FormControl>
-                  <FormMessage className='text-xs' />
-                </FormItem>
-              )}
+              fieldName='proposal_submission_date'
+              Label='Submission Date'
+              isDate={true}
+              placeholder='Select date'
             />
           </div>
 
@@ -247,15 +227,27 @@ const CreateProposalDialog = ({ clientId }: Props) => {
             optional
           />
 
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <CustomInput
-              control={form.control}
-              fieldName='proposal_submission_date'
-              Label='Submission Date'
-              isDate={true}
-              placeholder='Select date'
-            />
-          </div>
+          {/* A section of its own, with room to search and page through
+              every office. */}
+          <FormField
+            control={form.control}
+            name='office_id'
+            render={({ field, fieldState }) => (
+              <FormItem className='space-y-1 min-w-0'>
+                <FormLabel className='text-xs font-medium text-neutral-700'>
+                  Office
+                </FormLabel>
+                <FormControl>
+                  <OfficePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    invalid={!!fieldState.error}
+                  />
+                </FormControl>
+                <FormMessage className='text-xs' />
+              </FormItem>
+            )}
+          />
 
           <div>
             <DocumentsField
