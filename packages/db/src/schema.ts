@@ -270,12 +270,10 @@ export const workOrderTable = mysqlTable(
       enum: [
         WORK_ORDER_STATUS.PENDING,
         WORK_ORDER_STATUS.COMPLETED,
-        WORK_ORDER_STATUS.CANCELLED,
       ],
     })
       .notNull()
       .default(WORK_ORDER_STATUS.PENDING),
-    cancellation_reason: text("cancellation_reason"),
     approved_at: timestamp("approved_at"),
     approved_by: int("approved_by").references(() => userTable.id, {
       onDelete: "set null",
@@ -409,7 +407,6 @@ export const workOrderSiteTable = mysqlTable(
       enum: [
         WORK_ORDER_STATUS.PENDING,
         WORK_ORDER_STATUS.COMPLETED,
-        WORK_ORDER_STATUS.CANCELLED,
       ],
     })
       .notNull()

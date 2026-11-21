@@ -65,7 +65,6 @@ export const PROPOSAL_STATUS = {
 export const WORK_ORDER_STATUS = {
   PENDING: "pending",
   COMPLETED: "completed",
-  CANCELLED: "cancelled",
 } as const;
 
 export const ACTIVITY_ITEM_TABLES = {
