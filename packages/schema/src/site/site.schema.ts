@@ -1,5 +1,4 @@
 import z from "zod";
-import { constants } from "@pkg/utils";
 import {
   nameValidator,
   addressValidator,
@@ -11,10 +10,6 @@ import {
   pageValidator,
   limitValidator,
 } from "../validators";
-
-const { STATUS } = constants;
-
-const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 
 export const siteBaseSchema = z.object({
   name: nameValidator,
@@ -37,7 +32,6 @@ export const getSiteSchema = z.object({ siteId: positiveIntValidator });
 export const getAllSitesByOfficeIdSchema = z.object({
   office_id: positiveIntValidator,
   searchQuery: searchQueryValidator,
-  status: z.enum(["all", "active", "inactive"]).optional(),
   page: pageValidator,
   limit: limitValidator,
 });

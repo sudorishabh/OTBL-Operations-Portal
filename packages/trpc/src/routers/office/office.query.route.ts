@@ -13,7 +13,6 @@ import {
   sum,
   type SQL,
 } from "drizzle-orm";
-import { z } from "zod";
 import { schema, type Database } from "@pkg/db";
 import {
   CODE_PREFIX,
@@ -48,7 +47,7 @@ const {
   scheduleOfRatesTable,
   bioremediationContSoilTable,
 } = schema;
-const { ROLES, STATUS } = constants;
+const { ROLES } = constants;
 
 // How many of its newest sites each office in the list shows.
 const LATEST_SITES = 6;
@@ -62,7 +61,6 @@ const sitesRankedByNewest = (db: Database, officeIds: number[]) =>
       office_id: siteTable.office_id,
       name: siteTable.name,
       city: siteTable.city,
-      status: siteTable.status,
       created_at: siteTable.created_at,
       site_rank:
         sql<number>`row_number() over (partition by ${siteTable.office_id} order by ${siteTable.created_at} desc, ${siteTable.id} desc)`.as(
@@ -178,14 +176,10 @@ export const officeQueryRouter = router({
                   .where(inArray(officeUserTable.office_id, officeIds))
                   .orderBy(asc(userTable.name), asc(userTable.id)),
                 ctx.db
-                  .select({
-                    office_id: siteTable.office_id,
-                    status: siteTable.status,
-                    count: count(),
-                  })
+                  .select({ office_id: siteTable.office_id, count: count() })
                   .from(siteTable)
                   .where(inArray(siteTable.office_id, officeIds))
-                  .groupBy(siteTable.office_id, siteTable.status),
+                  .groupBy(siteTable.office_id),
                 // Only the work orders the user can see, as on the office's
                 // page.
                 ctx.db
@@ -207,7 +201,6 @@ export const officeQueryRouter = router({
                     office_id: rankedSites.office_id,
                     name: rankedSites.name,
                     city: rankedSites.city,
-                    status: rankedSites.status,
                     created_at: rankedSites.created_at,
                   })
                   .from(rankedSites)
@@ -222,15 +215,13 @@ export const officeQueryRouter = router({
           const operators = members.filter(
             (member) => member.office_id === office.id,
           );
-          const sites = siteCounts.filter((row) => row.office_id === office.id);
 
           return {
             ...office,
             operators,
-            siteCount: sites.reduce((sum, row) => sum + row.count, 0),
-            activeSiteCount: sites
-              .filter((row) => row.status === STATUS.ACTIVE)
-              .reduce((sum, row) => sum + row.count, 0),
+            siteCount:
+              siteCounts.find((row) => row.office_id === office.id)?.count ??
+              0,
             workOrderCount:
               workOrderCounts.find((row) => row.office_id === office.id)
                 ?.count ?? 0,
@@ -356,17 +347,11 @@ export const officeQueryRouter = router({
           .where(eq(officeUserTable.office_id, officeId))
           .orderBy(asc(userTable.name), asc(userTable.id));
 
-        const siteCounts = await ctx.db
-          .select({ status: siteTable.status, count: count() })
+        const [siteCount] = await ctx.db
+          .select({ count: count() })
           .from(siteTable)
-          .where(eq(siteTable.office_id, officeId))
-          .groupBy(siteTable.status);
-
-        const sites = { total: 0, active: 0 };
-        for (const row of siteCounts) {
-          sites.total += row.count;
-          if (row.status === STATUS.ACTIVE) sites.active += row.count;
-        }
+          .where(eq(siteTable.office_id, officeId));
+        const sites = { total: siteCount?.count ?? 0 };
 
         // The same work orders the work order list shows for this office,
         // counted by status and added up by the database. A pending work

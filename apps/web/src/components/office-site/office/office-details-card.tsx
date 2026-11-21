@@ -69,7 +69,6 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Metrics, split by hairlines that hold in every column count. */}
@@ -77,7 +76,6 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
         <Metric
           label='Sites'
           value={formatCount(sites.total)}
-          hint={`${formatCount(sites.active)} active`}
         />
         <Metric
           label='Work orders'

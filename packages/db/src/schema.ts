@@ -204,12 +204,6 @@ export const siteTable = mysqlTable(
       .notNull()
       .references(() => officeTable.id, { onDelete: "cascade" })
       .notNull(),
-    status: varchar("status", {
-      length: 50,
-      enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-    })
-      .notNull()
-      .default(STATUS.ACTIVE),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },

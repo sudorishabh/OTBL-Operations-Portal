@@ -60,11 +60,10 @@ const Figure = ({
   </div>
 );
 
-// A site among the office's newest, as a line in a dated log. Sites are
-// active unless marked, and recent ones are marked new.
+// A site among the office's newest, as a line in a dated log. Recent ones
+// are marked new.
 const SiteLine = ({ site, index }: { site: LatestSite; index: number }) => {
   const addedOn = new Date(site.created_at);
-  const isActive = site.status === "active";
   const isNew = differenceInCalendarDays(new Date(), addedOn) < NEW_SITE_DAYS;
   // Most site names already say where they are.
   const showCity =
@@ -82,10 +81,7 @@ const SiteLine = ({ site, index }: { site: LatestSite; index: number }) => {
         {format(addedOn, "d MMM yyyy")}
       </time>
       <span
-        className={cn(
-          "truncate text-[13px] font-medium",
-          isActive ? "text-gray-800" : "text-gray-400",
-        )}
+        className='truncate text-[13px] font-medium text-gray-800'
         title={site.name}>
         {capitalFirstLetter(site.name)}
       </span>
@@ -93,9 +89,6 @@ const SiteLine = ({ site, index }: { site: LatestSite; index: number }) => {
         <span className='hidden shrink-0 text-xs text-gray-400 md:inline'>
           {capitalizeEachWord(site.city)}
         </span>
-      )}
-      {!isActive && (
-        <span className='shrink-0 text-[11px] text-gray-500'>Inactive</span>
       )}
       {isNew && (
         <span className='ml-auto shrink-0 rounded-full bg-emerald-50 px-1.5 text-[10px] font-semibold leading-4 text-emerald-700 ring-1 ring-inset ring-emerald-200'>
@@ -268,11 +261,6 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
           <Figure
             label='Sites'
             value={office.siteCount}
-            note={
-              office.siteCount > 0
-                ? `${office.activeSiteCount} active`
-                : undefined
-            }
           />
           <Figure
             label='Work orders'

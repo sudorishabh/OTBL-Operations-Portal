@@ -21,7 +21,7 @@ export const siteQueryRouter = router({
     .input(siteSchemas.getAllSitesByOfficeIdSchema)
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { office_id, page, limit, searchQuery, status } = input;
+        const { office_id, page, limit, searchQuery } = input;
         const offset = (page - 1) * limit;
 
         try {
@@ -41,9 +41,6 @@ export const siteQueryRouter = router({
                   like(siteTable.address, `%${escapeLike(searchQuery)}%`),
                   like(siteTable.city, `%${escapeLike(searchQuery)}%`),
                 )
-              : undefined,
-            status && status !== "all"
-              ? eq(siteTable.status, status as any)
               : undefined,
           );
 
