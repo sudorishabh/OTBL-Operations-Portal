@@ -84,12 +84,8 @@ interface CommonProps {
 type Props<TFieldValues extends FieldValues = FieldValues> = CommonProps &
   (FormModeProps<TFieldValues> | StandaloneModeProps);
 
-// The years a date field's dropdowns offer, from 2000 to ten years ahead.
-const FIRST_MONTH = new Date(2000, 0, 1);
-const LAST_MONTH = new Date(new Date().getFullYear() + 10, 11, 31);
-
 // A date picked from a calendar and stored as yyyy-MM-dd. It closes once a day
-// is picked, and its month and year dropdowns reach far dates in a tap or two.
+// is picked.
 const DateInput = ({
   value,
   onPick,
@@ -128,9 +124,6 @@ const DateInput = ({
           mode='single'
           selected={picked}
           defaultMonth={picked}
-          captionLayout='dropdown'
-          startMonth={FIRST_MONTH}
-          endMonth={LAST_MONTH}
           onSelect={(day) => {
             // Tapping the picked day again keeps it rather than clearing it.
             if (day) onPick(format(day, "yyyy-MM-dd"));

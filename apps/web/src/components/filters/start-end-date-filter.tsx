@@ -77,7 +77,6 @@ const DateField = ({
         className='w-auto p-0'>
         <Calendar
           mode='single'
-          captionLayout='dropdown'
           startMonth={FIRST_MONTH}
           endMonth={lastMonth()}
           selected={selected}

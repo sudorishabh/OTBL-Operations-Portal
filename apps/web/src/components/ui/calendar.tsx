@@ -11,11 +11,21 @@ import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 
+// The years a calendar's year dropdown offers unless it is given its own
+// range: from 2000 to ten years ahead, wide enough for past work orders and
+// for contracts running years out.
+const FIRST_MONTH = new Date(2000, 0, 1)
+const LAST_MONTH = new Date(new Date().getFullYear() + 10, 11, 31)
+
+// Every calendar heads its month with month and year dropdowns, so a far
+// date is a tap or two away instead of a click per month.
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  captionLayout = "label",
+  captionLayout = "dropdown",
+  startMonth = FIRST_MONTH,
+  endMonth = LAST_MONTH,
   buttonVariant = "ghost",
   formatters,
   components,
@@ -35,6 +45,8 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
+      startMonth={startMonth}
+      endMonth={endMonth}
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString("default", { month: "short" }),
