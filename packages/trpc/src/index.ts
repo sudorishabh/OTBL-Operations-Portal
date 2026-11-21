@@ -29,6 +29,7 @@ import { expenseQueryRouter } from "./routers/expense/expense.query.route";
 import { expenseMutationRouter } from "./routers/expense/expense.mutation.route";
 import { sharePointQueryRouter } from "./routers/sharepoint/sharepoint.query.route";
 import { sharePointMutationRouter } from "./routers/sharepoint/sharepoint.mutation.route";
+import { dashboardQueryRouter } from "./routers/dashboard/dashboard.query.route";
 import { publicProcedure } from "./middleware";
 
 export const appRouter = router({
@@ -81,6 +82,8 @@ export const appRouter = router({
 
   sharePointQuery: sharePointQueryRouter,
   sharePointMutation: sharePointMutationRouter,
+
+  dashboardQuery: dashboardQueryRouter,
 });
 
 export type AppRouter = typeof appRouter;
