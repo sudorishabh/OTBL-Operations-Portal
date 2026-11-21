@@ -68,7 +68,7 @@ export const StatTile = ({
   );
 
   const frame =
-    "block min-w-0 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm";
+    "block h-full min-w-0 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm";
 
   return href ? (
     <Link

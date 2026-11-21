@@ -37,9 +37,14 @@ export const formatMonth = (
   });
 };
 
-// A day, such as 06 Dec 2026.
+// A day, such as 06 Dec 2026. A bare "2026-12-06" is read as that day
+// here, not as midnight in London.
 export const formatDay = (value: Date | string) =>
-  new Date(value).toLocaleDateString("en-IN", {
+  new Date(
+    typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? `${value}T00:00:00`
+      : value,
+  ).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",

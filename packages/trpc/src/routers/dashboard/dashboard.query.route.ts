@@ -8,14 +8,13 @@ import {
   gte,
   inArray,
   isNull,
-  lt,
-  ne,
-  not,
+  like,
+  or,
   sql,
   sum,
   type SQL,
-  type SQLWrapper,
 } from "drizzle-orm";
+import { z } from "zod";
 import { schema } from "@pkg/db";
 import { constants } from "@pkg/utils";
 import { router } from "../../trpc";
@@ -25,10 +24,11 @@ import {
   getAccessScope,
   parentClientIdsOfClients,
   proposalIdsVisibleToScope,
-  workOrderScopeWhere,
 } from "../../access-scope";
 import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
+import { escapeLike } from "../../helper/escape-like";
+import { buildPagination, pageOffset } from "../../helper/pagination";
 import { sorFullyConsumedSql } from "../work-order/batch-effective-work-order-status";
 import { canUseVendors } from "../contractor/vendor-access";
 import {
@@ -38,15 +38,30 @@ import {
   expenseSource,
   withExpensePlaces,
 } from "../contractor/vendor-expenses";
-import type { TrpcContext } from "../../context";
+import {
+  countWhere,
+  deadlineWhere,
+  ENDING_SOON_DAYS,
+  e,
+  hasDocuments,
+  notCancelled,
+  stillPending,
+  visibleWorkOrders,
+  wo,
+  expenseFilterWhere,
+  expenseFilters,
+  pageInput,
+  trendMonths,
+  workOrderFilterWhere,
+  workOrderFilters,
+  wos,
+} from "./dashboard-conditions";
+import { dashboardListProcedures } from "./dashboard-lists.route";
 
 // The overview's figures, each limited to what the user can see.
 
 const {
-  workOrderTable,
-  workOrderSiteTable,
   scheduleOfRatesTable,
-  workOrderSiteExpenseTable,
   contractorTable,
   clientTable,
   officeTable,
@@ -59,18 +74,11 @@ const {
 } = schema;
 const { PROPOSAL_STATUS, ROLES, WORK_ORDER_STATUS } = constants;
 
-const wo = workOrderTable;
-const wos = workOrderSiteTable;
-const e = workOrderSiteExpenseTable;
-
 // How many months the expense trend covers, this one included.
 const TREND_MONTHS = 12;
 
 // How many of the vendors most was spent with are listed.
 const TOP_VENDORS = 5;
-
-// How far ahead a pending work order's end date counts as coming up.
-const ENDING_SOON_DAYS = 30;
 
 // How many overdue and ending work orders are listed of each.
 const DEADLINE_ROWS = 5;
@@ -78,17 +86,8 @@ const DEADLINE_ROWS = 5;
 // How many of the offices with the most pending work are listed.
 const TOP_OFFICES = 6;
 
-// A month as "2026-04", as expenseMonth gives it.
-const monthKey = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-
-// The last TREND_MONTHS months, oldest first, in the server's time zone.
-const trendMonths = (now = new Date()) =>
-  Array.from({ length: TREND_MONTHS }, (_, index) =>
-    monthKey(
-      new Date(now.getFullYear(), now.getMonth() - (TREND_MONTHS - 1 - index)),
-    ),
-  );
+// What the office breakdown can be sorted by, each most first but the name.
+const OFFICE_SORTS = ["pending", "total", "spent", "name"] as const;
 
 // Work orders by status, as the work order list counts them.
 export type WorkOrderStatusCounts = {
@@ -108,107 +107,123 @@ const noWorkOrders = (): WorkOrderStatusCounts => ({
 // Done and still open, of a kind of work order site.
 type SiteProgress = { total: number; completed: number };
 
-// The work orders the user can see, as a condition on workOrderTable.
-export const visibleWorkOrders = async (ctx: TrpcContext) =>
-  workOrderScopeWhere(
-    await getAccessScope(ctx.db, Number(ctx.user!.sub), ctx.user!.role),
-  );
-
-// Work orders that are not cancelled; their sites and rates still count.
-const notCancelled = ne(wo.status, WORK_ORDER_STATUS.CANCELLED);
-
-// Work orders still pending, as the work order list counts them: not those
-// whose schedule of rates is used up.
-const stillPending = () =>
-  and(eq(wo.status, WORK_ORDER_STATUS.PENDING), not(sorFullyConsumedSql()))!;
-
-// Whether a record's list of uploaded documents has any in it.
-const hasDocuments = (column: SQLWrapper) =>
-  sql`coalesce(json_length(${column}), 0) > 0`;
-
-// How many rows meet a condition, inside a grouped or totalled query.
-const countWhere = (condition: SQL) =>
-  sql<string>`sum(case when ${condition} then 1 else 0 end)`;
-
 export const dashboardQueryRouter = router({
-  // The visible work orders by status, overall and by process; how far their
-  // sites and restorations have got; and what their schedules of rates are
-  // worth. A pending work order whose schedule of rates is used up counts as
-  // completed, as it does in the work order list.
-  getWorkOrderSummary: protectedProcedure.query(
-    handleQuery(async ({ ctx }) => {
-      const visible = await visibleWorkOrders(ctx);
+  ...dashboardListProcedures,
 
-      try {
-        const [statusRows, siteRows, [rates]] = await Promise.all([
-          ctx.db
-            .select({
-              process_type: wo.process_type,
-              status: wo.status,
-              count: count(),
-              used_up: countWhere(sorFullyConsumedSql()),
-            })
-            .from(wo)
-            .where(visible)
-            .groupBy(wo.process_type, wo.status),
-          ctx.db
-            .select({
-              is_restoration: sql<number>`${isNull(wos.site_id)}`,
-              is_completed: wos.is_completed,
-              count: count(),
-            })
-            .from(wos)
-            .innerJoin(wo, eq(wos.work_order_id, wo.id))
-            .where(and(visible, notCancelled))
-            .groupBy(isNull(wos.site_id), wos.is_completed),
-          ctx.db
-            .select({ total: sum(scheduleOfRatesTable.total_cost) })
-            .from(scheduleOfRatesTable)
-            .innerJoin(wo, eq(scheduleOfRatesTable.work_order_id, wo.id))
-            .where(and(visible, notCancelled)),
-        ]);
+  // The visible work orders by status, overall, by process and by financial
+  // year; how far their sites and restorations have got; and what their
+  // schedules of rates are worth. A pending work order whose schedule of
+  // rates is used up counts as completed, as it does in the work order list.
+  // The filters narrow every figure.
+  getWorkOrderSummary: protectedProcedure
+    .input(z.object(workOrderFilters).optional())
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const visible = and(
+          await visibleWorkOrders(ctx),
+          workOrderFilterWhere(input),
+        );
 
-        const overall = noWorkOrders();
-        const byProcess: Record<string, WorkOrderStatusCounts> = {};
+        try {
+          const [statusRows, siteRows, [rates]] = await Promise.all([
+            ctx.db
+              .select({
+                process_type: wo.process_type,
+                financial_year: wo.financial_year,
+                status: wo.status,
+                count: count(),
+                used_up: countWhere(sorFullyConsumedSql()),
+              })
+              .from(wo)
+              .where(visible)
+              .groupBy(wo.process_type, wo.financial_year, wo.status),
+            ctx.db
+              .select({
+                is_restoration: sql<number>`${isNull(wos.site_id)}`,
+                is_completed: wos.is_completed,
+                count: count(),
+              })
+              .from(wos)
+              .innerJoin(wo, eq(wos.work_order_id, wo.id))
+              .where(and(visible, notCancelled))
+              .groupBy(isNull(wos.site_id), wos.is_completed),
+            ctx.db
+              .select({ total: sum(scheduleOfRatesTable.total_cost) })
+              .from(scheduleOfRatesTable)
+              .innerJoin(wo, eq(scheduleOfRatesTable.work_order_id, wo.id))
+              .where(and(visible, notCancelled)),
+          ]);
 
-        for (const row of statusRows) {
-          const rowCount = Number(row.count);
-          const usedUp =
-            row.status === WORK_ORDER_STATUS.PENDING ? Number(row.used_up) : 0;
-          const process = (byProcess[row.process_type] ??= noWorkOrders());
+          const overall = noWorkOrders();
+          const byProcess: Record<string, WorkOrderStatusCounts> = {};
+          const byYear: Record<string, WorkOrderStatusCounts> = {};
 
-          for (const counts of [overall, process]) {
-            counts.total += rowCount;
-            if (row.status === WORK_ORDER_STATUS.PENDING) {
-              counts.pending += rowCount - usedUp;
-              counts.completed += usedUp;
-            } else if (row.status === WORK_ORDER_STATUS.COMPLETED) {
-              counts.completed += rowCount;
-            } else if (row.status === WORK_ORDER_STATUS.CANCELLED) {
-              counts.cancelled += rowCount;
+          for (const row of statusRows) {
+            const rowCount = Number(row.count);
+            const usedUp =
+              row.status === WORK_ORDER_STATUS.PENDING
+                ? Number(row.used_up)
+                : 0;
+            const process = (byProcess[row.process_type] ??= noWorkOrders());
+            const year = (byYear[row.financial_year] ??= noWorkOrders());
+
+            for (const counts of [overall, process, year]) {
+              counts.total += rowCount;
+              if (row.status === WORK_ORDER_STATUS.PENDING) {
+                counts.pending += rowCount - usedUp;
+                counts.completed += usedUp;
+              } else if (row.status === WORK_ORDER_STATUS.COMPLETED) {
+                counts.completed += rowCount;
+              } else if (row.status === WORK_ORDER_STATUS.CANCELLED) {
+                counts.cancelled += rowCount;
+              }
             }
           }
-        }
 
-        const sites: SiteProgress = { total: 0, completed: 0 };
-        const restorations: SiteProgress = { total: 0, completed: 0 };
-        for (const row of siteRows) {
-          const progress = Number(row.is_restoration) ? restorations : sites;
-          progress.total += Number(row.count);
-          if (row.is_completed) progress.completed += Number(row.count);
-        }
+          const sites: SiteProgress = { total: 0, completed: 0 };
+          const restorations: SiteProgress = { total: 0, completed: 0 };
+          for (const row of siteRows) {
+            const progress = Number(row.is_restoration) ? restorations : sites;
+            progress.total += Number(row.count);
+            if (row.is_completed) progress.completed += Number(row.count);
+          }
 
-        return {
-          ...overall,
-          byProcess,
-          sites,
-          restorations,
-          // What the schedules of rates of work orders not cancelled add up
-          // to: the income they are worth.
-          sorTotal: Number(rates?.total ?? 0),
-        };
+          return {
+            ...overall,
+            byProcess,
+            // Newest financial year first.
+            byFinancialYear: Object.entries(byYear)
+              .sort(([a], [b]) => b.localeCompare(a))
+              .map(([financial_year, counts]) => ({
+                financial_year,
+                ...counts,
+              })),
+            sites,
+            restorations,
+            // What the schedules of rates of work orders not cancelled add up
+            // to: the income they are worth.
+            sorTotal: Number(rates?.total ?? 0),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Summarising work orders");
+        }
+      }),
+    ),
+
+  // What the dialogs' filters offer: the financial years the visible work
+  // orders start in, newest first.
+  getFilterOptions: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const visible = await visibleWorkOrders(ctx);
+      try {
+        const years = await ctx.db
+          .selectDistinct({ financial_year: wo.financial_year })
+          .from(wo)
+          .where(visible)
+          .orderBy(desc(wo.financial_year));
+        return { financialYears: years.map((row) => row.financial_year) };
       } catch (error) {
-        throw fromDatabaseError(error, "Summarising work orders");
+        throw fromDatabaseError(error, "Listing filter options");
       }
     }),
   ),
@@ -216,240 +231,257 @@ export const dashboardQueryRouter = router({
   // What has been spent across the visible work orders: in all, over the
   // estimate, month by month for the last year, by what it was spent on and
   // by process, and with the vendors most was spent with. Vendors are left
-  // out for users who can't see them.
-  getFinanceSummary: protectedProcedure.query(
-    handleQuery(async ({ ctx }) => {
-      const [visible, showVendors] = await Promise.all([
-        visibleWorkOrders(ctx),
-        canUseVendors(ctx),
-      ]);
-      const months = trendMonths();
-      const trendStart = new Date(`${months[0]}-01T00:00:00`);
-      const spent = sum(e.amount);
+  // out for users who can't see them. The filters narrow every figure; the
+  // days picked leave the monthly trend alone.
+  getFinanceSummary: protectedProcedure
+    .input(z.object(expenseFilters).optional())
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const [scope, showVendors] = await Promise.all([
+          visibleWorkOrders(ctx),
+          canUseVendors(ctx),
+        ]);
+        // The trend keeps its own months, whatever days are picked.
+        const visible = and(scope, expenseFilterWhere(input));
+        const anyDay = and(
+          scope,
+          expenseFilterWhere(input, { withDates: false }),
+        );
+        const months = trendMonths(TREND_MONTHS);
+        const trendStart = new Date(`${months[0]}-01T00:00:00`);
+        const spent = sum(e.amount);
 
-      try {
-        const [[totals], monthRows, sourceRows, processRows, vendorRows] =
-          await Promise.all([
-            withExpensePlaces(
-              ctx.db
-                .select({
-                  total: spent,
-                  exceeded: exceededAmount,
-                  count: count(),
-                  vendor_count: countDistinct(e.contractor_id),
-                })
-                .from(e)
-                .$dynamic(),
-            ).where(visible),
-            withExpensePlaces(
-              ctx.db
-                .select({ month: expenseMonth, total: spent })
-                .from(e)
-                .$dynamic(),
-            )
-              .where(and(visible, gte(e.start_date, trendStart)))
-              .groupBy(expenseMonth),
-            withExpensePlaces(
-              ctx.db
-                .select({ source: expenseSource, total: spent, count: count() })
-                .from(e)
-                .$dynamic(),
-            )
-              .where(visible)
-              .groupBy(expenseSource),
-            withExpensePlaces(
-              ctx.db
-                .select({ process_type: wos.process_type, total: spent })
-                .from(e)
-                .$dynamic(),
-            )
-              .where(visible)
-              .groupBy(wos.process_type),
-            showVendors
-              ? withExpensePlaces(
-                  ctx.db
-                    .select({
-                      id: contractorTable.id,
-                      code: contractorTable.code,
-                      name: contractorTable.name,
-                      total: spent,
-                      count: count(),
-                    })
-                    .from(e)
-                    .$dynamic(),
-                )
-                  .innerJoin(
-                    contractorTable,
-                    eq(e.contractor_id, contractorTable.id),
+        try {
+          const [[totals], monthRows, sourceRows, processRows, vendorRows] =
+            await Promise.all([
+              withExpensePlaces(
+                ctx.db
+                  .select({
+                    total: spent,
+                    exceeded: exceededAmount,
+                    count: count(),
+                    vendor_count: countDistinct(e.contractor_id),
+                  })
+                  .from(e)
+                  .$dynamic(),
+              ).where(visible),
+              withExpensePlaces(
+                ctx.db
+                  .select({ month: expenseMonth, total: spent })
+                  .from(e)
+                  .$dynamic(),
+              )
+                .where(and(anyDay, gte(e.start_date, trendStart)))
+                .groupBy(expenseMonth),
+              withExpensePlaces(
+                ctx.db
+                  .select({
+                    source: expenseSource,
+                    total: spent,
+                    count: count(),
+                  })
+                  .from(e)
+                  .$dynamic(),
+              )
+                .where(visible)
+                .groupBy(expenseSource),
+              withExpensePlaces(
+                ctx.db
+                  .select({ process_type: wos.process_type, total: spent })
+                  .from(e)
+                  .$dynamic(),
+              )
+                .where(visible)
+                .groupBy(wos.process_type),
+              showVendors
+                ? withExpensePlaces(
+                    ctx.db
+                      .select({
+                        id: contractorTable.id,
+                        code: contractorTable.code,
+                        name: contractorTable.name,
+                        total: spent,
+                        count: count(),
+                      })
+                      .from(e)
+                      .$dynamic(),
                   )
-                  .where(visible)
-                  .groupBy(contractorTable.id)
-                  .orderBy(desc(spent), desc(contractorTable.id))
-                  .limit(TOP_VENDORS)
-              : Promise.resolve(null),
-          ]);
+                    .innerJoin(
+                      contractorTable,
+                      eq(e.contractor_id, contractorTable.id),
+                    )
+                    .where(visible)
+                    .groupBy(contractorTable.id)
+                    .orderBy(desc(spent), desc(contractorTable.id))
+                    .limit(TOP_VENDORS)
+                : Promise.resolve(null),
+            ]);
 
-        const totalOf = (month: string | undefined) =>
-          Number(monthRows.find((row) => row.month === month)?.total ?? 0);
+          const totalOf = (month: string | undefined) =>
+            Number(monthRows.find((row) => row.month === month)?.total ?? 0);
 
-        const byProcess: Record<string, number> = {};
-        for (const row of processRows) {
-          byProcess[row.process_type] = Number(row.total ?? 0);
+          const byProcess: Record<string, number> = {};
+          for (const row of processRows) {
+            byProcess[row.process_type] = Number(row.total ?? 0);
+          }
+
+          return {
+            spent: Number(totals?.total ?? 0),
+            exceeded: Number(totals?.exceeded ?? 0),
+            count: Number(totals?.count ?? 0),
+            // How many vendors anything was spent with.
+            vendorCount: Number(totals?.vendor_count ?? 0),
+            thisMonth: totalOf(months[TREND_MONTHS - 1]),
+            lastMonth: totalOf(months[TREND_MONTHS - 2]),
+            // Every month of the trend, oldest first, those with none at 0.
+            months: months.map((month) => ({ month, total: totalOf(month) })),
+            // Every kind, in a fixed order, those with none at 0.
+            sources: EXPENSE_SOURCES.map((source) => {
+              const row = sourceRows.find((r) => r.source === source);
+              return {
+                source,
+                total: Number(row?.total ?? 0),
+                count: Number(row?.count ?? 0),
+              };
+            }),
+            byProcess,
+            // Most spent first; null when the user can't see vendors.
+            topVendors:
+              vendorRows?.map((row) => ({
+                ...row,
+                total: Number(row.total ?? 0),
+                count: Number(row.count),
+              })) ?? null,
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Summarising expenses");
         }
-
-        return {
-          spent: Number(totals?.total ?? 0),
-          exceeded: Number(totals?.exceeded ?? 0),
-          count: Number(totals?.count ?? 0),
-          // How many vendors anything was spent with.
-          vendorCount: Number(totals?.vendor_count ?? 0),
-          thisMonth: totalOf(months[TREND_MONTHS - 1]),
-          lastMonth: totalOf(months[TREND_MONTHS - 2]),
-          // Every month of the trend, oldest first, those with none at 0.
-          months: months.map((month) => ({ month, total: totalOf(month) })),
-          // Every kind, in a fixed order, those with none at 0.
-          sources: EXPENSE_SOURCES.map((source) => {
-            const row = sourceRows.find((r) => r.source === source);
-            return {
-              source,
-              total: Number(row?.total ?? 0),
-              count: Number(row?.count ?? 0),
-            };
-          }),
-          byProcess,
-          // Most spent first; null when the user can't see vendors.
-          topVendors:
-            vendorRows?.map((row) => ({
-              ...row,
-              total: Number(row.total ?? 0),
-              count: Number(row.count),
-            })) ?? null,
-        };
-      } catch (error) {
-        throw fromDatabaseError(error, "Summarising expenses");
-      }
-    }),
-  ),
+      }),
+    ),
 
   // What needs following up across the visible work orders that are not
   // cancelled: pending work orders past their end date or ending soon, job
   // orders still to be certified or invoiced, and contract orders whose
-  // completion documents are still to come.
-  getAttention: protectedProcedure.query(
-    handleQuery(async ({ ctx }) => {
-      const visible = await visibleWorkOrders(ctx);
+  // completion documents are still to come. The filters narrow all of it.
+  getAttention: protectedProcedure
+    .input(
+      z
+        .object({
+          ...workOrderFilters,
+          // How far ahead counts as ending soon.
+          days: z.number().int().min(1).max(365).optional(),
+        })
+        .optional(),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const visible = and(
+          await visibleWorkOrders(ctx),
+          workOrderFilterWhere(input),
+        );
+        const days = input?.days ?? ENDING_SOON_DAYS;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const soon = new Date(today);
-      soon.setDate(soon.getDate() + ENDING_SOON_DAYS + 1);
+        const overdue = and(visible, deadlineWhere("overdue", days));
+        const endingSoon = and(visible, deadlineWhere("ending", days));
 
-      const overdue = and(visible, stillPending(), lt(wo.end_date, today));
-      const endingSoon = and(
-        visible,
-        stillPending(),
-        gte(wo.end_date, today),
-        lt(wo.end_date, soon),
-      );
-
-      // A few of the work orders a condition matches, those ending first
-      // first.
-      const deadlineRows = (where: SQL | undefined) =>
-        ctx.db
-          .select({
-            id: wo.id,
-            code: wo.code,
-            purchase_order_code: wo.purchase_order_code,
-            client_name: clientTable.name,
-            office_name: officeTable.name,
-            end_date: wo.end_date,
-          })
-          .from(wo)
-          .leftJoin(clientTable, eq(wo.client_id, clientTable.id))
-          .leftJoin(officeTable, eq(wo.office_id, officeTable.id))
-          .where(where)
-          .orderBy(asc(wo.end_date), asc(wo.id))
-          .limit(DEADLINE_ROWS);
-
-      const jo = jobOrderTable;
-      const certified = hasDocuments(jo.documents);
-      const co = contractOrderTable;
-
-      try {
-        const [
-          [overdueCount],
-          overdueRows,
-          [endingSoonCount],
-          endingSoonRows,
-          [jobOrders],
-          orderRows,
-        ] = await Promise.all([
-          ctx.db.select({ count: count() }).from(wo).where(overdue),
-          deadlineRows(overdue),
-          ctx.db.select({ count: count() }).from(wo).where(endingSoon),
-          deadlineRows(endingSoon),
+        // A few of the work orders a condition matches, those ending first
+        // first.
+        const deadlineRows = (where: SQL | undefined) =>
           ctx.db
             .select({
-              total: count(),
-              closed: countWhere(certified),
-              // Its work done saved, its certificate still to come.
-              work_done: countWhere(
-                sql`not ${certified} and ${jo.completion_activities} is not null`,
-              ),
-              not_invoiced: countWhere(
-                sql`${certified} and not ${hasDocuments(jo.invoices)}`,
-              ),
+              id: wo.id,
+              code: wo.code,
+              purchase_order_code: wo.purchase_order_code,
+              client_name: clientTable.name,
+              office_name: officeTable.name,
+              end_date: wo.end_date,
             })
-            .from(jo)
-            .innerJoin(wos, eq(jo.work_order_site_id, wos.id))
-            .innerJoin(wo, eq(wos.work_order_id, wo.id))
-            .where(and(visible, notCancelled)),
-          ctx.db
-            .select({
-              type: co.type,
-              total: count(),
-              completed: countWhere(hasDocuments(co.completion_documents)),
-            })
-            .from(co)
-            .innerJoin(wo, eq(co.work_order_id, wo.id))
-            .where(and(visible, notCancelled))
-            .groupBy(co.type),
-        ]);
+            .from(wo)
+            .leftJoin(clientTable, eq(wo.client_id, clientTable.id))
+            .leftJoin(officeTable, eq(wo.office_id, officeTable.id))
+            .where(where)
+            .orderBy(asc(wo.end_date), asc(wo.id))
+            .limit(DEADLINE_ROWS);
 
-        const jobOrderTotal = Number(jobOrders?.total ?? 0);
-        const closed = Number(jobOrders?.closed ?? 0);
-        const workDone = Number(jobOrders?.work_done ?? 0);
+        const jo = jobOrderTable;
+        const certified = hasDocuments(jo.documents);
+        const co = contractOrderTable;
 
-        return {
-          overdue: {
-            count: Number(overdueCount?.count ?? 0),
-            workOrders: overdueRows,
-          },
-          endingSoon: {
-            days: ENDING_SOON_DAYS,
-            count: Number(endingSoonCount?.count ?? 0),
-            workOrders: endingSoonRows,
-          },
-          jobOrders: {
-            total: jobOrderTotal,
-            open: jobOrderTotal - closed - workDone,
-            awaitingCertificate: workDone,
-            closed,
-            awaitingInvoice: Number(jobOrders?.not_invoiced ?? 0),
-          },
-          // Each kind of contract order, with those completed.
-          contractOrders: Object.fromEntries(
-            orderRows.map((row) => [
-              row.type,
-              { total: Number(row.total), completed: Number(row.completed) },
-            ]),
-          ) as Record<string, { total: number; completed: number }>,
-        };
-      } catch (error) {
-        throw fromDatabaseError(error, "Finding work that needs attention");
-      }
-    }),
-  ),
+        try {
+          const [
+            [overdueCount],
+            overdueRows,
+            [endingSoonCount],
+            endingSoonRows,
+            [jobOrders],
+            orderRows,
+          ] = await Promise.all([
+            ctx.db.select({ count: count() }).from(wo).where(overdue),
+            deadlineRows(overdue),
+            ctx.db.select({ count: count() }).from(wo).where(endingSoon),
+            deadlineRows(endingSoon),
+            ctx.db
+              .select({
+                total: count(),
+                closed: countWhere(certified),
+                // Its work done saved, its certificate still to come.
+                work_done: countWhere(
+                  sql`not ${certified} and ${jo.completion_activities} is not null`,
+                ),
+                not_invoiced: countWhere(
+                  sql`${certified} and not ${hasDocuments(jo.invoices)}`,
+                ),
+              })
+              .from(jo)
+              .innerJoin(wos, eq(jo.work_order_site_id, wos.id))
+              .innerJoin(wo, eq(wos.work_order_id, wo.id))
+              .where(and(visible, notCancelled)),
+            ctx.db
+              .select({
+                type: co.type,
+                total: count(),
+                completed: countWhere(hasDocuments(co.completion_documents)),
+              })
+              .from(co)
+              .innerJoin(wo, eq(co.work_order_id, wo.id))
+              .where(and(visible, notCancelled))
+              .groupBy(co.type),
+          ]);
+
+          const jobOrderTotal = Number(jobOrders?.total ?? 0);
+          const closed = Number(jobOrders?.closed ?? 0);
+          const workDone = Number(jobOrders?.work_done ?? 0);
+
+          return {
+            overdue: {
+              count: Number(overdueCount?.count ?? 0),
+              workOrders: overdueRows,
+            },
+            endingSoon: {
+              days,
+              count: Number(endingSoonCount?.count ?? 0),
+              workOrders: endingSoonRows,
+            },
+            jobOrders: {
+              total: jobOrderTotal,
+              open: jobOrderTotal - closed - workDone,
+              awaitingCertificate: workDone,
+              closed,
+              awaitingInvoice: Number(jobOrders?.not_invoiced ?? 0),
+            },
+            // Each kind of contract order, with those completed.
+            contractOrders: Object.fromEntries(
+              orderRows.map((row) => [
+                row.type,
+                { total: Number(row.total), completed: Number(row.completed) },
+              ]),
+            ) as Record<string, { total: number; completed: number }>,
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Finding work that needs attention");
+        }
+      }),
+    ),
 
   // How many records each module holds that the user can see: proposals by
   // status and main clients; vendors, for those who can see them; and users
@@ -540,83 +572,133 @@ export const dashboardQueryRouter = router({
     }),
   ),
 
-  // The offices with the most pending work among the visible work orders,
-  // each with its work orders by status, its sites and what has been spent
-  // in its work orders; and how many offices have work orders at all.
-  getOfficeBreakdown: protectedProcedure.query(
-    handleQuery(async ({ ctx }) => {
-      const visible = await visibleWorkOrders(ctx);
-      const pending = countWhere(stillPending());
+  // A page of the offices with visible work orders, those with the most
+  // pending work first unless sorted otherwise, each with its work orders by
+  // status, its sites and what has been spent in its work orders; and how
+  // many offices match. Narrowed by a search of their names, codes and
+  // cities, and by state.
+  getOfficeBreakdown: protectedProcedure
+    .input(
+      z
+        .object({
+          search: z.string().trim().max(100).optional(),
+          state: z.string().trim().min(1).max(100).optional(),
+          sort: z.enum(OFFICE_SORTS).default("pending"),
+          ...pageInput(TOP_OFFICES),
+        })
+        .optional(),
+    )
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const visible = await visibleWorkOrders(ctx);
+        const { page = 1, limit = TOP_OFFICES, sort = "pending" } = input ?? {};
+        const term = input?.search ? `%${escapeLike(input.search)}%` : null;
+        const where = and(
+          visible,
+          input?.state ? eq(officeTable.state, input.state) : undefined,
+          term
+            ? or(
+                like(officeTable.name, term),
+                like(officeTable.code, term),
+                like(officeTable.city, term),
+              )
+            : undefined,
+        );
 
-      try {
-        const [officeRows, [officeCount]] = await Promise.all([
-          ctx.db
-            .select({
-              id: officeTable.id,
-              code: officeTable.code,
-              name: officeTable.name,
-              city: officeTable.city,
-              state: officeTable.state,
-              total: count(),
-              pending,
-              cancelled: countWhere(eq(wo.status, WORK_ORDER_STATUS.CANCELLED)),
-            })
-            .from(wo)
-            .innerJoin(officeTable, eq(wo.office_id, officeTable.id))
-            .where(visible)
-            .groupBy(officeTable.id)
-            .orderBy(desc(pending), desc(count()), asc(officeTable.name))
-            .limit(TOP_OFFICES),
-          ctx.db
-            .select({ count: countDistinct(wo.office_id) })
-            .from(wo)
-            .where(visible),
-        ]);
+        // What has been spent in each office's visible work orders, so the
+        // offices can be sorted by it.
+        const officeSpend = ctx.db
+          .select({
+            office_id: wo.office_id,
+            spent: sum(e.amount).as("spent"),
+          })
+          .from(e)
+          .innerJoin(wos, eq(e.work_order_site_id, wos.id))
+          .innerJoin(wo, eq(wos.work_order_id, wo.id))
+          .where(visible)
+          .groupBy(wo.office_id)
+          .as("office_spend");
 
-        const officeIds = officeRows.map((row) => row.id);
-        if (officeIds.length === 0) return { offices: [], officeCount: 0 };
+        const pending = countWhere(stillPending());
+        const spent = sql<string>`coalesce(max(${officeSpend.spent}), 0)`;
+        const order = {
+          pending: [desc(pending), desc(count())],
+          total: [desc(count()), desc(pending)],
+          spent: [desc(spent)],
+          name: [],
+        }[sort];
 
-        const [siteRows, spendRows] = await Promise.all([
-          ctx.db
-            .select({ office_id: siteTable.office_id, count: count() })
-            .from(siteTable)
-            .where(inArray(siteTable.office_id, officeIds))
-            .groupBy(siteTable.office_id),
-          withExpensePlaces(
+        try {
+          const [officeRows, [officeCount]] = await Promise.all([
             ctx.db
-              .select({ office_id: wo.office_id, total: sum(e.amount) })
-              .from(e)
-              .$dynamic(),
-          )
-            .where(and(visible, inArray(wo.office_id, officeIds)))
-            .groupBy(wo.office_id),
-        ]);
+              .select({
+                id: officeTable.id,
+                code: officeTable.code,
+                name: officeTable.name,
+                city: officeTable.city,
+                state: officeTable.state,
+                total: count(),
+                pending,
+                cancelled: countWhere(
+                  eq(wo.status, WORK_ORDER_STATUS.CANCELLED),
+                ),
+                spent,
+              })
+              .from(wo)
+              .innerJoin(officeTable, eq(wo.office_id, officeTable.id))
+              .leftJoin(officeSpend, eq(officeSpend.office_id, officeTable.id))
+              .where(where)
+              .groupBy(officeTable.id)
+              .orderBy(...order, asc(officeTable.name), asc(officeTable.id))
+              .limit(limit)
+              .offset(pageOffset(page, limit)),
+            ctx.db
+              .select({ count: countDistinct(wo.office_id) })
+              .from(wo)
+              .innerJoin(officeTable, eq(wo.office_id, officeTable.id))
+              .where(where),
+          ]);
 
-        return {
-          offices: officeRows.map((row) => {
-            const total = Number(row.total);
-            const pendingCount = Number(row.pending);
-            const cancelled = Number(row.cancelled);
-            return {
-              ...row,
+          const total = Number(officeCount?.count ?? 0);
+          const officeIds = officeRows.map((row) => row.id);
+          const siteRows =
+            officeIds.length === 0
+              ? []
+              : await ctx.db
+                  .select({ office_id: siteTable.office_id, count: count() })
+                  .from(siteTable)
+                  .where(inArray(siteTable.office_id, officeIds))
+                  .groupBy(siteTable.office_id);
+
+          return {
+            offices: officeRows.map((row) => {
+              const workOrders = Number(row.total);
+              const pendingCount = Number(row.pending);
+              const cancelled = Number(row.cancelled);
+              return {
+                ...row,
+                total: workOrders,
+                pending: pendingCount,
+                completed: workOrders - pendingCount - cancelled,
+                cancelled,
+                sites: Number(
+                  siteRows.find((site) => site.office_id === row.id)?.count ??
+                    0,
+                ),
+                spent: Number(row.spent),
+              };
+            }),
+            officeCount: total,
+            pagination: buildPagination({
+              page,
+              limit,
               total,
-              pending: pendingCount,
-              completed: total - pendingCount - cancelled,
-              cancelled,
-              sites: Number(
-                siteRows.find((site) => site.office_id === row.id)?.count ?? 0,
-              ),
-              spent: Number(
-                spendRows.find((spend) => spend.office_id === row.id)?.total ??
-                  0,
-              ),
-            };
-          }),
-          officeCount: Number(officeCount?.count ?? 0),
-        };
-      } catch (error) {
-        throw fromDatabaseError(error, "Breaking work down by office");
-      }
-    }),
-  ),
+              shown: officeRows.length,
+            }),
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Breaking work down by office");
+        }
+      }),
+    ),
 });

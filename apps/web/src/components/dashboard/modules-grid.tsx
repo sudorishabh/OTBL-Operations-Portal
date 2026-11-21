@@ -12,7 +12,7 @@ import {
 import { constants } from "@pkg/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsAdmin } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
+import { CardRow } from "./card-row";
 import { formatCount } from "./format";
 import {
   useAttention,
@@ -26,13 +26,6 @@ import {
 const { CONTRACT_ORDER_TYPE, ROLES } = constants;
 
 type Figure = { label: string; value: number | undefined };
-
-// Figures sit side by side, as many to a row as the module has.
-const FIGURE_COLUMNS: Record<number, string> = {
-  2: "grid-cols-2",
-  3: "grid-cols-3",
-  4: "grid-cols-4",
-};
 
 // One section of the portal: its name, the records it holds, and a link to
 // it.
@@ -51,7 +44,7 @@ const ModuleCard = ({
 }) => (
   <Link
     href={href}
-    className='group block min-w-0 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm transition-colors hover:border-cyan-900/20 hover:bg-cyan-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600/40'>
+    className='group block h-full min-w-0 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm transition-colors hover:border-cyan-900/20 hover:bg-cyan-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600/40'>
     <div className='flex items-center justify-between gap-2'>
       <span className='flex min-w-0 items-center gap-2 text-[13px] font-semibold text-gray-900'>
         <Icon className='size-4 shrink-0 text-cyan-700' />
@@ -59,16 +52,13 @@ const ModuleCard = ({
       </span>
       <ArrowRight className='size-3.5 shrink-0 text-gray-300 transition-colors group-hover:text-cyan-700' />
     </div>
-    <dl
-      className={cn(
-        "mt-2.5 grid items-end gap-2",
-        FIGURE_COLUMNS[figures.length],
-      )}>
+    {/* Two figures to a line, so a module's card fits one of five. */}
+    <dl className='mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2'>
       {figures.map((figure) => (
         <div
           key={figure.label}
           className='min-w-0'>
-          <dt className='text-[11px] leading-tight text-gray-500'>
+          <dt className='truncate text-[11px] leading-tight text-gray-500'>
             {figure.label}
           </dt>
           <dd className='text-[16px] font-semibold leading-tight tabular-nums text-gray-900'>
@@ -104,7 +94,7 @@ export const ModulesGrid = () => {
   const vendors = counts.data?.vendors;
 
   return (
-    <div className='grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-3'>
+    <CardRow label='Modules'>
       <ModuleCard
         href='/dashboard/work-order'
         icon={ReceiptIndianRupee}
@@ -184,6 +174,6 @@ export const ModulesGrid = () => {
           ]}
         />
       )}
-    </div>
+    </CardRow>
   );
 };
