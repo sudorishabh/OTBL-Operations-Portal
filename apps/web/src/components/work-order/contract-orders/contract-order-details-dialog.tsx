@@ -375,7 +375,7 @@ const ContractOrderDetailsDialog = ({
               meta={`${plural(items.length, "requirement")} at ${plural(sites.length, "site")}`}
             />
             <div className='overflow-x-auto rounded-lg border border-gray-200'>
-              <table className='w-full text-sm'>
+              <table className='w-full min-w-[36rem] text-sm'>
                 <thead className='border-b border-gray-200 bg-gray-50'>
                   <tr>
                     <th className={headClass}>Site</th>
@@ -578,7 +578,7 @@ const ContractOrderDetailsDialog = ({
               </p>
             ) : (
               <div className='overflow-x-auto rounded-lg border border-gray-200'>
-                <table className='w-full text-sm'>
+                <table className='w-full min-w-[36rem] text-sm'>
                   <thead className='border-b border-gray-200 bg-gray-50'>
                     <tr>
                       <th className={headClass}>Dated</th>
