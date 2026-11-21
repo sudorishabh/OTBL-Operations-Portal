@@ -45,7 +45,7 @@ export const RowActionsButton = ({
 }: React.ComponentProps<typeof Button> & { label: string }) => (
   <Button
     variant='ghost'
-    className={cn("h-8 w-8 p-0", className)}
+    className={cn("h-8 w-8 p-0 pointer-coarse:size-10", className)}
     {...props}>
     <span className='sr-only'>{label}</span>
     <MoreHorizontal className='h-4 w-4' />

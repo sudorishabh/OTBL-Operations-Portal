@@ -58,7 +58,7 @@ const DateField = ({
           type='button'
           aria-label={value ? `${label}: ${dayLabel(value)}` : `${label}: any`}
           className={cn(
-            "inline-flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border bg-white px-2.5 text-xs shadow-xs transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:w-auto",
+            "inline-flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border bg-white px-2.5 text-xs pointer-coarse:h-10 shadow-xs transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:w-auto",
             value ? "border-emerald-300 bg-emerald-50/60" : "border-input",
           )}>
           <CalendarDays className='size-3.5 shrink-0 text-gray-400' />

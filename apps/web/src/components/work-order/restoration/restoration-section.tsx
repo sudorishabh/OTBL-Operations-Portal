@@ -100,7 +100,7 @@ const RestorationSection = ({ workOrder, scheduleOfRates }: Props) => {
   };
 
   return (
-    <section className='rounded-lg border bg-white p-6'>
+    <section className='rounded-lg border bg-white p-4 sm:p-6'>
       <ProcessSectionHeader
         Icon={RotateCcw}
         tone='restoration'

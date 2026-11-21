@@ -127,16 +127,17 @@ const CreateOfficeDialog = () => {
 
             <div className='rounded-xl border bg-gray-100 shadow-xs overflow-hidden'>
               <div className='px-4 pt-4 border-b bg-gray-50'>
-                <div className='flex justify-between items-center flex-1 mb-4'>
-                  <Input
-                    mode='standalone'
-                    placeholder='Search office operators...'
-                    value={operatorSearch}
-                    onChange={setOperatorSearch}
-                    inputIcon={Search}
-                    className='w-[20rem]'
-                  />
-                  <span className='text-xs font-medium text-gray-500'>
+                <div className='mb-4 flex flex-1 flex-wrap items-center justify-between gap-2'>
+                  <div className='w-full sm:w-80'>
+                    <Input
+                      mode='standalone'
+                      placeholder='Search office operators...'
+                      value={operatorSearch}
+                      onChange={setOperatorSearch}
+                      inputIcon={Search}
+                    />
+                  </div>
+                  <span className='text-xs font-medium text-gray-500 max-sm:hidden'>
                     Office Operators
                   </span>
                 </div>

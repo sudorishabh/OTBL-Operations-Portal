@@ -127,7 +127,6 @@ const OfficeSelect = ({
         <div className='flex items-center gap-2 border-b px-3'>
           <Search className='size-4 shrink-0 text-neutral-400' />
           <input
-            autoFocus
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder='Search by name, city, or address...'

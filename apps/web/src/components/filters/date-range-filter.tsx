@@ -47,7 +47,7 @@ const DateRangeFilter = ({
         <button
           type='button'
           className={cn(
-            "inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border bg-white px-3 text-xs shadow-xs transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            "inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border bg-white px-3 text-xs pointer-coarse:h-10 shadow-xs transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
             from ? "border-emerald-300" : "border-input",
           )}>
           <CalendarDays className='size-3.5 text-gray-400' />

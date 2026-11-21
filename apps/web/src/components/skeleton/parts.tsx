@@ -258,7 +258,7 @@ export const DetailCardSkeleton = ({
   notes?: boolean;
 }) => (
   <SkeletonCard>
-    <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-6 py-5'>
+    <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 sm:px-6 py-5'>
       <div className='flex min-w-0 flex-1 items-center gap-3'>
         <Skeleton className='size-8 shrink-0 rounded-lg' />
         <div className='min-w-0 flex-1'>
@@ -301,7 +301,7 @@ export const DetailCardSkeleton = ({
       {Array.from({ length: metrics }, (_, index) => (
         <div
           key={index}
-          className='min-w-0 px-6 py-3'>
+          className='min-w-0 px-4 sm:px-6 py-3'>
           <TextLine
             line='h-4'
             className='w-16'
@@ -320,7 +320,7 @@ export const DetailCardSkeleton = ({
 
     <div
       className={cn(
-        "grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4",
+        "grid grid-cols-2 gap-x-6 gap-y-3 px-4 sm:px-6 py-4",
         fieldsClassName,
       )}>
       {fields.map((fieldClassName, index) => (
@@ -340,7 +340,7 @@ export const DetailCardSkeleton = ({
     </div>
 
     {notes && (
-      <div className='border-t border-gray-100 px-6 py-2.5'>
+      <div className='border-t border-gray-100 px-4 sm:px-6 py-2.5'>
         <TextLine
           line='h-[19.5px]'
           className='w-1/2'
@@ -415,52 +415,82 @@ const CellSkeleton = ({
   }
 };
 
+// Cards standing in for a list's rows on a phone: a name with a pill, then
+// lines of detail, the last split left and right.
+const PhoneCardsSkeleton = ({ rows }: { rows: number }) => (
+  <ul className='divide-y divide-gray-100 md:hidden'>
+    {Array.from({ length: rows }, (_, row) => (
+      <li
+        key={row}
+        className='space-y-2.5 px-4 py-3.5'>
+        <div className='flex items-center gap-2'>
+          <Skeleton className={cn("h-4", row % 2 ? "w-28" : "w-36")} />
+          <Skeleton className='h-5 w-16 rounded-full' />
+          <Skeleton className='ml-auto h-1.5 w-4 rounded-full' />
+        </div>
+        <Skeleton className='h-3.5 w-24' />
+        <Skeleton className={cn("h-3.5", row % 2 ? "w-48" : "w-40")} />
+        <div className='flex justify-between'>
+          <Skeleton className='h-3 w-36' />
+          <Skeleton className='h-3 w-14' />
+        </div>
+      </li>
+    ))}
+  </ul>
+);
+
 // A table with its real headings and placeholder rows, in the same
-// Table parts the loaded table uses.
+// Table parts the loaded table uses. With `phoneCards`, phones see cards
+// instead, as lists that turn into cards there do.
 export const TableSkeleton = ({
   columns,
   rows = 8,
   className,
   headRowClassName,
   rowClassName,
+  phoneCards = false,
 }: {
   columns: SkeletonColumn[];
   rows?: number;
   className?: string;
   headRowClassName?: string;
   rowClassName?: string;
+  phoneCards?: boolean;
 }) => (
   <div className={cn("overflow-hidden rounded-lg border bg-white", className)}>
-    <Table>
-      <TableHeader>
-        <TableRow className={cn("hover:bg-transparent", headRowClassName)}>
-          {columns.map((column, index) => (
-            <TableHead
-              key={index}
-              className={cn("text-xs", column.headClassName)}>
-              {column.label}
-            </TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {Array.from({ length: rows }, (_, row) => (
-          <TableRow
-            key={row}
-            className={cn("hover:bg-transparent", rowClassName)}>
+    {phoneCards && <PhoneCardsSkeleton rows={Math.min(rows, 6)} />}
+    <div className={cn(phoneCards && "hidden md:block")}>
+      <Table>
+        <TableHeader>
+          <TableRow className={cn("hover:bg-transparent", headRowClassName)}>
             {columns.map((column, index) => (
-              <TableCell
+              <TableHead
                 key={index}
-                className={column.cellClassName}>
-                <CellSkeleton
-                  column={column}
-                  row={row}
-                />
-              </TableCell>
+                className={cn("text-xs", column.headClassName)}>
+                {column.label}
+              </TableHead>
             ))}
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: rows }, (_, row) => (
+            <TableRow
+              key={row}
+              className={cn("hover:bg-transparent", rowClassName)}>
+              {columns.map((column, index) => (
+                <TableCell
+                  key={index}
+                  className={column.cellClassName}>
+                  <CellSkeleton
+                    column={column}
+                    row={row}
+                  />
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   </div>
 );

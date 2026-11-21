@@ -12,24 +12,28 @@ import {
   LIST_ROW,
 } from "@/components/shared/list-table";
 
-const DATE: SkeletonColumn = { bar: "w-20" };
-
 // Same columns as WorkOrderTable.
 const COLUMNS: SkeletonColumn[] = (
   [
-    { label: "Code", bar: ["w-28", "w-32", "w-24"] },
-    { label: "Purchase Order", bar: ["w-16", "w-20", "w-14"] },
-    { label: "Client", bar: ["w-28", "w-24", "w-32"] },
-    { label: "Office", bar: ["w-24", "w-20", "w-28"] },
-    { label: "Start Date", ...DATE },
-    { label: "End Date", ...DATE },
-    { label: "Budget", bar: "w-16" },
+    {
+      label: "Work order",
+      bar: ["w-28", "w-32", "w-24"],
+      sub: ["w-24", "w-28", "w-20"],
+    },
+    {
+      label: "Client",
+      bar: ["w-32", "w-28", "w-36"],
+      sub: ["w-24", "w-20", "w-28"],
+    },
+    { label: "Dates", bar: "w-20", sub: "w-20" },
+    { label: "Budget", bar: "w-16", align: "right" },
     { label: "Status", shape: "pill" },
   ] as SkeletonColumn[]
 )
   .map((column) => ({
     ...column,
-    headClassName: LIST_HEAD,
+    headClassName:
+      column.align === "right" ? `${LIST_HEAD} text-right` : LIST_HEAD,
     cellClassName: LIST_CELL,
   }))
   .concat({
@@ -44,7 +48,8 @@ const WorkOrdersTable = () => (
     rows={10}
     className='border-gray-200'
     headRowClassName={LIST_HEAD_ROW}
-    rowClassName={`h-[57px] ${LIST_ROW}`}
+    rowClassName={`h-[69px] ${LIST_ROW}`}
+    phoneCards
   />
 );
 

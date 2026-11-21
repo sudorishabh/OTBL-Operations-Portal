@@ -467,154 +467,231 @@ const KINDS = {
 const formatNumber = (value: number) =>
   value.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
-// A site's bio samples and oil zapping, newest first, in the portal's list
-// table look: what it was, its reading, when, its documents and a menu.
-const CombinedList = ({
-  items,
-  total,
+type ActivityActions = {
+  canDelete: boolean;
+  onDeleteBio: (id: number) => void;
+  onDeleteOil: (id: number) => void;
+};
+
+// What an activity is, with its icon: a bio sample and its month, or oil
+// zapping.
+const ActivityName = ({ item }: { item: CombinedItem }) => {
+  const kind = KINDS[item.type];
+  return (
+    <div className='flex min-w-0 items-center gap-3'>
+      <span
+        className={cn(
+          "grid size-8 shrink-0 place-items-center rounded-md ring-1 ring-inset",
+          kind.tone,
+        )}>
+        <kind.Icon className='size-4' />
+      </span>
+      <div className='min-w-0'>
+        <p className='font-medium text-gray-900'>{kind.label}</p>
+        <p className={LIST_SUBTEXT}>
+          {item.type === "bio"
+            ? (item.application_month ?? "Monthly sample")
+            : "Oil zapper applied"}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// A bio sample's TPH, or how much oil zapper was applied.
+const ActivityReading = ({ item }: { item: CombinedItem }) =>
+  item.type === "bio" ? (
+    <>
+      <span className='mr-1.5 text-xs text-gray-500'>TPH</span>
+      <span className='font-semibold tabular-nums text-gray-900'>
+        {item.tph_value ?? "—"}
+      </span>
+    </>
+  ) : (
+    <>
+      <span className='font-semibold tabular-nums text-gray-900'>
+        {item.estimated_quantity
+          ? formatNumber(Number(item.estimated_quantity))
+          : "—"}
+      </span>
+      <span className='ml-1 text-xs text-gray-500'>
+        {constants.OIL_ZAPPER.UNIT}
+      </span>
+    </>
+  );
+
+const ActivityDocuments = ({ item }: { item: CombinedItem }) =>
+  item.documents.length > 0 ? (
+    <DocumentsMenu
+      documents={item.documents}
+      align='start'>
+      <button
+        type='button'
+        className='inline-flex cursor-pointer items-center gap-1.5 text-gray-700 transition-colors hover:text-emerald-700 hover:underline'>
+        <FileText className='size-3.5 text-gray-400' />
+        {item.documents.length === 1
+          ? item.type === "bio"
+            ? "View report"
+            : "View document"
+          : `${item.documents.length} documents`}
+      </button>
+    </DocumentsMenu>
+  ) : (
+    <span className='text-gray-300'>—</span>
+  );
+
+const ActivityMenu = ({
+  item,
   canDelete,
   onDeleteBio,
   onDeleteOil,
+}: { item: CombinedItem } & ActivityActions) => {
+  const kind = KINDS[item.type];
+  const name =
+    item.type === "bio" && item.application_month
+      ? `${kind.label}, ${item.application_month}`
+      : kind.label;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <RowActionsButton label={`Actions for ${name}`} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='end'>
+        <DropdownMenuItem
+          disabled={!canDelete}
+          onClick={() =>
+            item.type === "bio" ? onDeleteBio(item.id) : onDeleteOil(item.id)
+          }
+          className='text-red-600 focus:text-red-600'>
+          <Trash2 className='mr-2 h-4 w-4' />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+const activityDate = (item: CombinedItem) =>
+  format(new Date(item.date), "d MMM yyyy");
+
+// A site's bio samples and oil zapping, newest first, in the portal's list
+// table look: what it was, its reading, when, its documents and a menu.
+// Phones get a card for each instead.
+const CombinedList = ({
+  items,
+  total,
+  ...actions
 }: {
   items: CombinedItem[];
   // How many there are before the type tabs narrow them.
   total: number;
-  canDelete: boolean;
-  onDeleteBio: (id: number) => void;
-  onDeleteOil: (id: number) => void;
-}) => (
-  <div className={LIST_FRAME}>
-    <Table>
-      <TableHeader>
-        <TableRow className={LIST_HEAD_ROW}>
-          <TableHead className={LIST_HEAD}>Activity</TableHead>
-          <TableHead className={LIST_HEAD}>Reading</TableHead>
-          <TableHead className={LIST_HEAD}>Dated</TableHead>
-          <TableHead className={LIST_HEAD}>Documents</TableHead>
-          <TableHead className={cn(LIST_HEAD, "w-px")}>
-            <span className='sr-only'>Actions</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+} & ActivityActions) => {
+  const emptyText =
+    total === 0
+      ? "No bio samples or oil zapping recorded yet."
+      : "None of this kind recorded yet.";
+
+  return (
+    <div className={LIST_FRAME}>
+      <ul className='divide-y divide-gray-100 md:hidden'>
         {items.length === 0 ? (
-          <TableRow className={cn(LIST_ROW, "hover:bg-transparent")}>
-            <TableCell
-              colSpan={5}
-              className='py-8 text-center text-xs text-gray-500'>
-              {total === 0
-                ? "No bio samples or oil zapping recorded yet."
-                : "None of this kind recorded yet."}
-            </TableCell>
-          </TableRow>
+          <li className='py-8 text-center text-xs text-gray-500'>
+            {emptyText}
+          </li>
         ) : (
-          items.map((item) => {
-            const kind = KINDS[item.type];
-            const name =
-              item.type === "bio" && item.application_month
-                ? `${kind.label}, ${item.application_month}`
-                : kind.label;
-            return (
-              <TableRow
-                key={`${item.type}-${item.id}`}
-                className={LIST_ROW}>
-                <TableCell className={LIST_CELL}>
-                  <div className='flex items-center gap-3'>
-                    <span
-                      className={cn(
-                        "grid size-8 shrink-0 place-items-center rounded-md ring-1 ring-inset",
-                        kind.tone,
-                      )}>
-                      <kind.Icon className='size-4' />
-                    </span>
-                    <div className='min-w-0'>
-                      <p className='font-medium text-gray-900'>{kind.label}</p>
-                      <p className={LIST_SUBTEXT}>
-                        {item.type === "bio"
-                          ? (item.application_month ?? "Monthly sample")
-                          : "Oil zapper applied"}
-                      </p>
-                    </div>
+          items.map((item) => (
+            <li
+              key={`${item.type}-${item.id}`}
+              className='flex items-start gap-2 px-4 py-3 text-sm'>
+              <div className='min-w-0 flex-1 space-y-2'>
+                <div className='flex items-start justify-between gap-3'>
+                  <ActivityName item={item} />
+                  <div className='shrink-0 whitespace-nowrap pt-0.5 text-right'>
+                    <ActivityReading item={item} />
+                    <p className={LIST_SUBTEXT}>{activityDate(item)}</p>
                   </div>
-                </TableCell>
-                <TableCell className={cn(LIST_CELL, "whitespace-nowrap")}>
-                  {item.type === "bio" ? (
-                    <>
-                      <span className='mr-1.5 text-xs text-gray-500'>TPH</span>
-                      <span className='font-semibold tabular-nums text-gray-900'>
-                        {item.tph_value ?? "—"}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className='font-semibold tabular-nums text-gray-900'>
-                        {item.estimated_quantity
-                          ? formatNumber(Number(item.estimated_quantity))
-                          : "—"}
-                      </span>
-                      <span className='ml-1 text-xs text-gray-500'>
-                        {constants.OIL_ZAPPER.UNIT}
-                      </span>
-                    </>
-                  )}
-                </TableCell>
+                </div>
+                {item.documents.length > 0 && (
+                  <div className='pl-11 text-xs'>
+                    <ActivityDocuments item={item} />
+                  </div>
+                )}
+              </div>
+              <div className='-mr-2'>
+                <ActivityMenu
+                  item={item}
+                  {...actions}
+                />
+              </div>
+            </li>
+          ))
+        )}
+      </ul>
+
+      <div className='hidden md:block'>
+        <Table>
+          <TableHeader>
+            <TableRow className={LIST_HEAD_ROW}>
+              <TableHead className={LIST_HEAD}>Activity</TableHead>
+              <TableHead className={LIST_HEAD}>Reading</TableHead>
+              <TableHead className={LIST_HEAD}>Dated</TableHead>
+              <TableHead className={LIST_HEAD}>Documents</TableHead>
+              <TableHead className={cn(LIST_HEAD, "w-px")}>
+                <span className='sr-only'>Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.length === 0 ? (
+              <TableRow className={cn(LIST_ROW, "hover:bg-transparent")}>
                 <TableCell
-                  className={cn(LIST_CELL, "whitespace-nowrap text-gray-600")}>
-                  {format(new Date(item.date), "d MMM yyyy")}
-                </TableCell>
-                <TableCell className={LIST_CELL}>
-                  {item.documents.length > 0 ? (
-                    <DocumentsMenu
-                      documents={item.documents}
-                      align='start'>
-                      <button
-                        type='button'
-                        className='inline-flex cursor-pointer items-center gap-1.5 text-gray-700 transition-colors hover:text-emerald-700 hover:underline'>
-                        <FileText className='size-3.5 text-gray-400' />
-                        {item.documents.length === 1
-                          ? item.type === "bio"
-                            ? "View report"
-                            : "View document"
-                          : `${item.documents.length} documents`}
-                      </button>
-                    </DocumentsMenu>
-                  ) : (
-                    <span className='text-gray-300'>—</span>
-                  )}
-                </TableCell>
-                <TableCell className={cn(LIST_CELL, "py-2 text-right sm:py-2")}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <RowActionsButton label={`Actions for ${name}`} />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align='end'>
-                      <DropdownMenuItem
-                        disabled={!canDelete}
-                        onClick={() =>
-                          item.type === "bio"
-                            ? onDeleteBio(item.id)
-                            : onDeleteOil(item.id)
-                        }
-                        className='text-red-600 focus:text-red-600'>
-                        <Trash2 className='mr-2 h-4 w-4' />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  colSpan={5}
+                  className='py-8 text-center text-xs text-gray-500'>
+                  {emptyText}
                 </TableCell>
               </TableRow>
-            );
-          })
-        )}
-      </TableBody>
-    </Table>
-    <div className='border-t border-gray-200 bg-gray-50/60 px-4 py-2 text-xs text-gray-500'>
-      {items.length === total
-        ? `${total} ${total === 1 ? "activity" : "activities"}`
-        : `Showing ${items.length} of ${total} activities`}
+            ) : (
+              items.map((item) => (
+                <TableRow
+                  key={`${item.type}-${item.id}`}
+                  className={LIST_ROW}>
+                  <TableCell className={LIST_CELL}>
+                    <ActivityName item={item} />
+                  </TableCell>
+                  <TableCell className={cn(LIST_CELL, "whitespace-nowrap")}>
+                    <ActivityReading item={item} />
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      LIST_CELL,
+                      "whitespace-nowrap text-gray-600",
+                    )}>
+                    {activityDate(item)}
+                  </TableCell>
+                  <TableCell className={LIST_CELL}>
+                    <ActivityDocuments item={item} />
+                  </TableCell>
+                  <TableCell
+                    className={cn(LIST_CELL, "py-2 text-right sm:py-2")}>
+                    <ActivityMenu
+                      item={item}
+                      {...actions}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className='border-t border-gray-200 bg-gray-50/60 px-4 py-2 text-xs text-gray-500'>
+        {items.length === total
+          ? `${total} ${total === 1 ? "activity" : "activities"}`
+          : `Showing ${items.length} of ${total} activities`}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const BioremediationSections = ({ woSiteId }: { woSiteId: number }) => {
   const utils = trpc.useUtils();

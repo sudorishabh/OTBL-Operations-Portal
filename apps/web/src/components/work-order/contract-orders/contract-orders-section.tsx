@@ -181,6 +181,160 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
 
   // What the section lets you do beside its tab: add an order. Its filters
   // sit over the table.
+  // An order's type, code, date, reference and whether it takes one expense
+  // per item.
+  const renderOrderIdentity = (order: ContractOrder) => {
+    const group = orderTypeOf(order.type);
+    return (
+      <div className='flex items-start gap-3'>
+        <div
+          title={group.label}
+          className={cn(
+            "mt-0.5 shrink-0 rounded-md p-1.5 ring-1 ring-inset",
+            group.tone,
+          )}>
+          <group.Icon className='size-3.5' />
+        </div>
+        <div className='min-w-0'>
+          <button
+            type='button'
+            onClick={() => setDetailsId(order.id)}
+            title={`Open ${order.code}`}
+            className='block max-w-full cursor-pointer truncate rounded font-mono text-sm font-semibold text-gray-900 hover:text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
+            {order.code}
+          </button>
+          <p className='whitespace-nowrap text-xs text-gray-600'>
+            {format(new Date(order.order_date), "d MMM yyyy")}
+          </p>
+          {order.order_number && (
+            <p
+              className='truncate text-xs text-gray-400'
+              title={order.order_number}>
+              Ref. {order.order_number}
+            </p>
+          )}
+          {order.single_expense && (
+            <p className='text-[11px] text-gray-400'>One expense each</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Who the order goes to.
+  const renderOrderVendors = (order: ContractOrder) => {
+    return (
+      <>
+        {order.vendors.map((vendor) => (
+          <p
+            key={vendor.id}
+            className='truncate text-gray-700 lg:max-w-[8.5rem]'
+            title={vendor.name}>
+            {vendor.name}
+          </p>
+        ))}
+      </>
+    );
+  };
+
+  // What the order asks of each site: a line per site, its name, then what's
+  // required, wrapping under the requirements, not the name.
+  const renderOrderRequirements = (order: ContractOrder) => {
+    return (
+      <div className='grid grid-cols-[max-content_1fr] items-start gap-x-2 gap-y-1.5'>
+        {requirementsBySite(order.items).map(([siteId, site]) => (
+          <React.Fragment key={siteId}>
+            <span className='inline-flex h-5 items-center gap-1 whitespace-nowrap text-xs font-medium text-gray-700'>
+              <MapPin className='size-3 text-gray-400' />
+              {site.name}
+            </span>
+            <div className='flex flex-wrap gap-1.5'>
+              {site.items.map((item) => (
+                <span
+                  key={item.id}
+                  className='inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-gray-50 px-1.5 py-0.5 text-xs ring-1 ring-inset ring-gray-200'>
+                  <span className='font-medium text-gray-700'>
+                    {itemLabel(item.item, item.description)}
+                  </span>
+                  <span className='tabular-nums text-gray-500'>
+                    {requirementTerms(order, item)}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
+
+  // What a purchase order costs; a sub-contract is costed at each site.
+  const renderOrderCost = (order: ContractOrder) => {
+    const cost = purchaseOrderCost(order);
+    return (
+      <>
+        {cost ? (
+          <>
+            <p className='text-sm font-medium tabular-nums text-gray-900'>
+              {formatAmount(cost.total)}
+            </p>
+            <p className='text-[11px] tabular-nums text-gray-400'>
+              {formatAmount(cost.rate)}/{OIL_ZAPPER.UNIT} + {cost.gst}% GST
+            </p>
+          </>
+        ) : (
+          <span
+            className='text-xs leading-5 text-gray-400'
+            title='Costed at each site, through its expenses'>
+            At site rates
+          </span>
+        )}
+      </>
+    );
+  };
+
+  // The order's documents, and its edit and delete.
+  const renderOrderActions = (order: ContractOrder) => {
+    const documents = toDocuments(order.documents);
+    return (
+      <div className='flex items-center justify-end gap-0.5'>
+        {documents.length > 0 && (
+          <DocumentsMenu documents={documents}>
+            <button
+              type='button'
+              title='Order documents'
+              className='rounded p-1.5 text-gray-400 pointer-coarse:p-2.5 hover:bg-gray-100 hover:text-gray-700'>
+              <FileText className='size-3.5' />
+            </button>
+          </DocumentsMenu>
+        )}
+        {!isViewer && (
+          <>
+            <button
+              type='button'
+              title='Edit order'
+              onClick={() => openDialog(order)}
+              className='rounded p-1.5 text-gray-400 pointer-coarse:p-2.5 hover:bg-gray-100 hover:text-gray-700'>
+              <Pencil className='size-3.5' />
+            </button>
+            <button
+              type='button'
+              title='Delete order'
+              disabled={deleteOrder.isPending}
+              onClick={() => {
+                if (confirm(`Delete order ${order.code}?`)) {
+                  deleteOrder.mutate({ id: order.id });
+                }
+              }}
+              className='rounded p-1.5 text-gray-400 pointer-coarse:p-2.5 hover:bg-red-50 hover:text-red-500'>
+              <Trash2 className='size-3.5' />
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
+
   const actions = (
     <CustomButton
       variant='outline'
@@ -211,9 +365,46 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
         isFiltered={isFiltered}
       />
       {/* A row per order, spread across the width; scrolls sideways when
-          narrow. A footer counts them and what the purchase orders cost. */}
+          narrow. Phones and tablets get a card per order instead. A footer counts them
+          and what the purchase orders cost. */}
       <div className='overflow-hidden rounded-lg border border-gray-200'>
-        <div className='overflow-x-auto'>
+        <ul className='divide-y divide-gray-100 lg:hidden'>
+          {shownOrders.length === 0 && (
+            <li className='py-6 text-center text-xs text-gray-500'>
+              {isFiltered
+                ? "No orders match these filters."
+                : `No ${ORDER_TYPES.find((group) => group.type === filters.type)?.filterLabel.toLowerCase()} yet.`}
+            </li>
+          )}
+          {shownOrders.map((order) => (
+            <li
+              key={order.id}
+              onClick={() => setDetailsId(order.id)}
+              className='cursor-pointer space-y-2.5 px-4 py-3'>
+              <div className='flex items-start justify-between gap-3'>
+                {renderOrderIdentity(order)}
+                <div className='shrink-0 text-right'>
+                  {renderOrderCost(order)}
+                </div>
+              </div>
+              <div className='flex flex-wrap gap-x-3 text-xs leading-5'>
+                {renderOrderVendors(order)}
+              </div>
+              {renderOrderRequirements(order)}
+              {/* Its badge, dialog and buttons leave the card's tap alone. */}
+              <div
+                className='flex items-center justify-between gap-2'
+                onClick={(event) => event.stopPropagation()}>
+                <OrderCompletionDocuments
+                  workOrderId={workOrderId}
+                  order={order}
+                />
+                {renderOrderActions(order)}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className='overflow-x-auto max-lg:hidden'>
           <Table>
             <TableHeader>
               <TableRow className='bg-gray-50 hover:bg-gray-50'>
@@ -260,108 +451,22 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                 </TableRow>
               )}
               {shownOrders.map((order) => {
-                const group = orderTypeOf(order.type);
-                const documents = toDocuments(order.documents);
-                const cost = purchaseOrderCost(order);
                 return (
                   <TableRow
                     key={order.id}
                     onClick={() => setDetailsId(order.id)}
                     className='cursor-pointer hover:bg-gray-50/60'>
                     <TableCell className={cn(cellClass, "pl-4 sm:pl-4")}>
-                      <div className='flex items-start gap-3'>
-                        <div
-                          title={group.label}
-                          className={cn(
-                            "mt-0.5 shrink-0 rounded-md p-1.5 ring-1 ring-inset",
-                            group.tone,
-                          )}>
-                          <group.Icon className='size-3.5' />
-                        </div>
-                        <div className='min-w-0'>
-                          <button
-                            type='button'
-                            onClick={() => setDetailsId(order.id)}
-                            title={`Open ${order.code}`}
-                            className='block max-w-full cursor-pointer truncate rounded font-mono text-sm font-semibold text-gray-900 hover:text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30'>
-                            {order.code}
-                          </button>
-                          <p className='whitespace-nowrap text-xs text-gray-600'>
-                            {format(new Date(order.order_date), "d MMM yyyy")}
-                          </p>
-                          {order.order_number && (
-                            <p
-                              className='truncate text-xs text-gray-400'
-                              title={order.order_number}>
-                              Ref. {order.order_number}
-                            </p>
-                          )}
-                          {order.single_expense && (
-                            <p className='text-[11px] text-gray-400'>
-                              One expense each
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                      {renderOrderIdentity(order)}
                     </TableCell>
                     <TableCell className={cn(cellClass, "text-xs leading-5")}>
-                      {order.vendors.map((vendor) => (
-                        <p
-                          key={vendor.id}
-                          className='max-w-[8.5rem] truncate text-gray-700'
-                          title={vendor.name}>
-                          {vendor.name}
-                        </p>
-                      ))}
+                      {renderOrderVendors(order)}
                     </TableCell>
                     <TableCell className={cellClass}>
-                      {/* A line per site: its name, then what's required,
-                          wrapping under the requirements, not the name. */}
-                      <div className='grid grid-cols-[max-content_1fr] items-start gap-x-2 gap-y-1.5'>
-                        {requirementsBySite(order.items).map(
-                          ([siteId, site]) => (
-                            <React.Fragment key={siteId}>
-                              <span className='inline-flex h-5 items-center gap-1 whitespace-nowrap text-xs font-medium text-gray-700'>
-                                <MapPin className='size-3 text-gray-400' />
-                                {site.name}
-                              </span>
-                              <div className='flex flex-wrap gap-1.5'>
-                                {site.items.map((item) => (
-                                  <span
-                                    key={item.id}
-                                    className='inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-gray-50 px-1.5 py-0.5 text-xs ring-1 ring-inset ring-gray-200'>
-                                    <span className='font-medium text-gray-700'>
-                                      {itemLabel(item.item, item.description)}
-                                    </span>
-                                    <span className='tabular-nums text-gray-500'>
-                                      {requirementTerms(order, item)}
-                                    </span>
-                                  </span>
-                                ))}
-                              </div>
-                            </React.Fragment>
-                          ),
-                        )}
-                      </div>
+                      {renderOrderRequirements(order)}
                     </TableCell>
                     <TableCell className={cn(cellClass, "text-right")}>
-                      {cost ? (
-                        <>
-                          <p className='text-sm font-medium tabular-nums text-gray-900'>
-                            {formatAmount(cost.total)}
-                          </p>
-                          <p className='text-[11px] tabular-nums text-gray-400'>
-                            {formatAmount(cost.rate)}/{OIL_ZAPPER.UNIT} +{" "}
-                            {cost.gst}% GST
-                          </p>
-                        </>
-                      ) : (
-                        <span
-                          className='text-xs leading-5 text-gray-400'
-                          title='Costed at each site, through its expenses'>
-                          At site rates
-                        </span>
-                      )}
+                      {renderOrderCost(order)}
                     </TableCell>
                     <TableCell
                       className={cellClass}
@@ -375,41 +480,7 @@ const ContractOrdersSection = ({ workOrderId, children }: Props) => {
                     <TableCell
                       className={cn(cellClass, "py-2.5 sm:py-2.5")}
                       onClick={(event) => event.stopPropagation()}>
-                      <div className='flex items-center justify-end gap-0.5'>
-                        {documents.length > 0 && (
-                          <DocumentsMenu documents={documents}>
-                            <button
-                              type='button'
-                              title='Order documents'
-                              className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700'>
-                              <FileText className='size-3.5' />
-                            </button>
-                          </DocumentsMenu>
-                        )}
-                        {!isViewer && (
-                          <>
-                            <button
-                              type='button'
-                              title='Edit order'
-                              onClick={() => openDialog(order)}
-                              className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700'>
-                              <Pencil className='size-3.5' />
-                            </button>
-                            <button
-                              type='button'
-                              title='Delete order'
-                              disabled={deleteOrder.isPending}
-                              onClick={() => {
-                                if (confirm(`Delete order ${order.code}?`)) {
-                                  deleteOrder.mutate({ id: order.id });
-                                }
-                              }}
-                              className='rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500'>
-                              <Trash2 className='size-3.5' />
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      {renderOrderActions(order)}
                     </TableCell>
                   </TableRow>
                 );

@@ -77,7 +77,7 @@ const RestorationCard = ({
 
   return (
     <section className='group relative rounded-lg border border-gray-200 bg-white transition-colors duration-200 hover:border-purple-300 focus-within:border-purple-300 focus-within:ring-2 focus-within:ring-purple-500/30'>
-      <div className='flex flex-wrap items-center justify-between gap-x-8 gap-y-4 px-6 pb-5 pt-6'>
+      <div className='flex flex-wrap items-center justify-between gap-x-8 gap-y-4 px-4 sm:px-6 pb-5 pt-4 sm:pt-6'>
         <div className='flex min-w-0 items-center gap-3'>
           <div
             className={cn(
@@ -155,7 +155,7 @@ const RestorationCard = ({
             return (
               <li
                 key={rate.activity}
-                className='flex items-center gap-3 px-6 py-3 lg:block lg:py-4'>
+                className='flex items-center gap-3 px-4 sm:px-6 py-3 lg:block lg:py-4'>
                 <p className='flex min-w-0 flex-1 gap-1.5 text-xs font-medium leading-4 text-gray-700 lg:min-h-8'>
                   <span className='tabular-nums text-gray-400'>{index + 1}</span>
                   <span className='line-clamp-2'>{rate.label}</span>
@@ -178,13 +178,13 @@ const RestorationCard = ({
           })}
         </ol>
       ) : (
-        <p className='border-t border-gray-100 px-6 py-3 text-xs text-gray-400'>
+        <p className='border-t border-gray-100 px-4 sm:px-6 py-3 text-xs text-gray-400'>
           The schedule of rates has no restoration activities.
         </p>
       )}
 
       {/* Who the work is given to, through job orders. */}
-      <div className='flex flex-wrap items-center gap-x-5 gap-y-1 rounded-b-lg border-t border-gray-100 bg-gray-50/60 px-6 py-3 text-xs text-gray-600'>
+      <div className='flex flex-wrap items-center gap-x-5 gap-y-1 rounded-b-lg border-t border-gray-100 bg-gray-50/60 px-4 sm:px-6 py-3 text-xs text-gray-600'>
         <span className='inline-flex items-center gap-1.5'>
           <ClipboardList className='size-3.5 text-gray-400' />
           {jobOrders.length === 0

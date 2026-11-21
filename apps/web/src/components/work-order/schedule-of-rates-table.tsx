@@ -360,7 +360,7 @@ const ScheduleOfRatesTable = ({
 
           <div className={LIST_FRAME}>
             <div className='overflow-x-auto'>
-              <Table>
+              <Table className='min-w-[36rem]'>
                 <TableHeader>
                   <TableRow className={LIST_HEAD_ROW}>
                     <TableHead className={LIST_HEAD}>Activity</TableHead>
@@ -624,7 +624,7 @@ const ScheduleOfRatesTable = ({
           />
           <div className={LIST_FRAME}>
             <div className='overflow-x-auto'>
-              <Table>
+              <Table className='min-w-[36rem]'>
                 <TableHeader>
                   <TableRow className={LIST_HEAD_ROW}>
                     <TableHead className={LIST_HEAD}>Site</TableHead>

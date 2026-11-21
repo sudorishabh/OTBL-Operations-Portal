@@ -113,7 +113,7 @@ const ClientProposalSkeleton = () => {
   const isAdmin = useIsAdmin();
   return (
     <SkeletonRegion label='Loading proposals'>
-      <section className='rounded-lg border bg-white p-6'>
+      <section className='rounded-lg border bg-white p-4 sm:p-6'>
         <SectionHeaderSkeleton
           title='Proposals and work orders'
           actions={isAdmin ? 1 : 0}

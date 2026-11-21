@@ -52,7 +52,7 @@ export const SiteCardsSkeleton = ({ count = 3 }: { count?: number }) => (
 // actions, and the site cards.
 const BioremediationSectionSkeleton = () => (
   <SkeletonRegion label='Loading sites'>
-    <section className='rounded-lg border bg-white p-6'>
+    <section className='rounded-lg border bg-white p-4 sm:p-6'>
       <SectionHeaderSkeleton
         title='Bioremediation'
         description='Done site by site, through purchase orders and sub-contracts'

@@ -230,8 +230,9 @@ const EditScheduleOfRatesDialog = ({
           if (!next && !updateRates.isPending) setOpen(false);
         }}>
         <div className='space-y-4'>
+          {/* Scrolls sideways on phones rather than squeezing the inputs. */}
           <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
-            <Table>
+            <Table className='min-w-[40rem]'>
               <TableHeader>
                 <TableRow className='border-gray-200 bg-gray-50 hover:bg-gray-50'>
                   <TableHead className={headClass}>Activity</TableHead>

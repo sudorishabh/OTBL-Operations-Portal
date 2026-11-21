@@ -10,10 +10,12 @@ import {
 // Same columns as UserTable.
 export const USER_COLUMNS: SkeletonColumn[] = (
   [
-    { label: "Name", bar: ["w-24", "w-28", "w-20", "w-32"] },
-    { label: "Email", bar: ["w-36", "w-40", "w-32"] },
-    { label: "Contact", bar: "w-20" },
-    { label: "Role", shape: "pill", bar: ["w-24", "w-16", "w-24", "w-20"] },
+    {
+      label: "Name",
+      bar: ["w-24", "w-28", "w-20", "w-32"],
+      sub: ["w-24", "w-16", "w-24", "w-20"],
+    },
+    { label: "Contact", bar: ["w-36", "w-40", "w-32"], sub: "w-20" },
     {
       label: "Offices / Sites",
       shape: "pill",
@@ -39,7 +41,8 @@ export const UsersTableSkeleton = () => (
     rows={10}
     className='border-gray-200'
     headRowClassName={LIST_HEAD_ROW}
-    rowClassName={`h-[57px] ${LIST_ROW}`}
+    rowClassName={`h-[69px] ${LIST_ROW}`}
+    phoneCards
   />
 );
 

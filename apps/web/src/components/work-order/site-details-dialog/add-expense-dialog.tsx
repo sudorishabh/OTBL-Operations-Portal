@@ -701,7 +701,7 @@ const AddExpenseDialog = ({
       <DialogContent className='w-full sm:max-w-2xl flex flex-col gap-0 p-0 overflow-hidden max-h-[92dvh]'>
 
         <DialogHeader
-          className={`shrink-0 px-6 pt-5 pb-4 border-b ${isExceededMode ? "bg-orange-50" : ""}`}>
+          className={`shrink-0 px-4 pt-5 pb-4 pr-12 text-left border-b sm:px-6 ${isExceededMode ? "bg-orange-50" : ""}`}>
           <DialogTitle
             className={`text-base font-semibold flex items-center gap-2 ${isExceededMode ? "text-orange-700" : ""}`}>
             {isExceededMode && <AlertTriangle className='w-4 h-4 text-orange-600' />}
@@ -725,7 +725,7 @@ const AddExpenseDialog = ({
         </DialogHeader>
 
         {isExceededMode && (
-          <div className='shrink-0 mx-6 mt-4 flex items-start gap-2.5 rounded-lg bg-orange-50 border border-orange-200 px-3.5 py-3'>
+          <div className='shrink-0 mx-4 mt-4 sm:mx-6 flex items-start gap-2.5 rounded-lg bg-orange-50 border border-orange-200 px-3.5 py-3'>
             <AlertTriangle className='w-4 h-4 text-orange-500 shrink-0 mt-0.5' />
             <div>
               <p className='text-xs font-semibold text-orange-700'>
@@ -740,7 +740,7 @@ const AddExpenseDialog = ({
           </div>
         )}
 
-        <div className='flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0'>
+        <div className='flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0 sm:px-6'>
 
           {takesSeveralItems && (
             <ExpenseOrderItemLines
@@ -1199,7 +1199,7 @@ const AddExpenseDialog = ({
           </div>
         </div>
 
-        <div className={`shrink-0 flex gap-2 px-6 py-4 border-t ${isExceededMode ? "bg-orange-50/60" : "bg-white"}`}>
+        <div className={`shrink-0 flex gap-2 px-4 py-4 border-t sm:px-6 ${isExceededMode ? "bg-orange-50/60" : "bg-white"}`}>
           <CustomButton
             text={
               isUploadingDoc

@@ -15,10 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -60,6 +60,9 @@ interface CommonProps {
   placeholder?: string;
   optional?: boolean;
   type?: string;
+  // The browser's autofill hint, such as "new-password" on a form that
+  // creates an account, so saved logins aren't filled into it.
+  autoComplete?: string;
   inputIconButton?: {
     icon: React.JSXElementConstructor<React.SVGProps<SVGSVGElement>>;
     onClick: () => void;
@@ -81,6 +84,64 @@ interface CommonProps {
 type Props<TFieldValues extends FieldValues = FieldValues> = CommonProps &
   (FormModeProps<TFieldValues> | StandaloneModeProps);
 
+// The years a date field's dropdowns offer, from 2000 to ten years ahead.
+const FIRST_MONTH = new Date(2000, 0, 1);
+const LAST_MONTH = new Date(new Date().getFullYear() + 10, 11, 31);
+
+// A date picked from a calendar and stored as yyyy-MM-dd. It closes once a day
+// is picked, and its month and year dropdowns reach far dates in a tap or two.
+const DateInput = ({
+  value,
+  onPick,
+  disabled,
+  className,
+}: {
+  // Forms may load a saved date as a Date, not a string.
+  value: Date | string | undefined | null;
+  onPick: (formatted: string) => void;
+  disabled?: boolean;
+  className?: string;
+}) => {
+  const [open, setOpen] = React.useState(false);
+  const date = value ? new Date(value) : undefined;
+  const picked = date && isValid(date) ? date : undefined;
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant='outline'
+          disabled={disabled}
+          className={`w-full justify-start text-left font-normal ${
+            !picked && "text-muted-foreground"
+          } ${className || ""}`}>
+          <CalendarIcon className='mr-2 h-4 w-4' />
+          {picked ? format(picked, "yyyy-MM-dd") : "Pick a date"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className='w-auto p-0'
+        align='start'>
+        <Calendar
+          mode='single'
+          selected={picked}
+          defaultMonth={picked}
+          captionLayout='dropdown'
+          startMonth={FIRST_MONTH}
+          endMonth={LAST_MONTH}
+          onSelect={(day) => {
+            // Tapping the picked day again keeps it rather than clearing it.
+            if (day) onPick(format(day, "yyyy-MM-dd"));
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 const Input = <TFieldValues extends FieldValues = FieldValues>(
   props: Props<TFieldValues>,
 ) => {
@@ -96,6 +157,7 @@ const Input = <TFieldValues extends FieldValues = FieldValues>(
     placeholder,
     optional,
     type,
+    autoComplete,
     inputIconButton,
     onChange,
     inputIcon,
@@ -172,46 +234,15 @@ const Input = <TFieldValues extends FieldValues = FieldValues>(
 
     if (isDate) {
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant='outline'
-              disabled={disabled}
-              className={`w-full justify-start text-left font-normal ${commonInputStyles} ${
-                !value && "text-muted-foreground"
-              } ${className || ""}`}>
-              <CalendarIcon className='mr-2 h-4 w-4' />
-              {/* Forms may load a saved date as a Date, not a string. */}
-              {value instanceof Date
-                ? isValid(value)
-                  ? format(value, "yyyy-MM-dd")
-                  : "Pick a date"
-                : value || "Pick a date"}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className='p-0'
-            align='start'>
-            <div className='p-2'>
-              <Calendar
-                mode='single'
-                selected={value ? new Date(value) : undefined}
-                onSelect={(date) => {
-                  if (!date) {
-                    onChangeHandler("");
-                    onChange?.("");
-                    return;
-                  }
-                  const formatted = format(date, "yyyy-MM-dd");
-                  onChangeHandler(formatted);
-                  onChange?.(formatted);
-                }}
-                disabled={disabled}
-                initialFocus
-              />
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <DateInput
+          value={value}
+          disabled={disabled}
+          className={`${commonInputStyles} ${className || ""}`}
+          onPick={(formatted) => {
+            onChangeHandler(formatted);
+            onChange?.(formatted);
+          }}
+        />
       );
     }
 
@@ -228,6 +259,7 @@ const Input = <TFieldValues extends FieldValues = FieldValues>(
           })()}
         <InputComponent
           type={type ?? "text"}
+          autoComplete={autoComplete}
           className={`${inputIcon ? "pl-10" : ""} ${commonInputStyles} ${
             inputIconButton ? "pr-10" : ""
           } ${className || ""} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}

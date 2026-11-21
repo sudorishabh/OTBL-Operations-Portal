@@ -136,11 +136,13 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
     );
   }
 
+  // Phones always get the cards, so the choice of view starts at tablets.
   const siteActions = (
     <>
       <Tabs
         value={viewMode}
-        onValueChange={(val) => setViewMode(val as "card" | "table")}>
+        onValueChange={(val) => setViewMode(val as "card" | "table")}
+        className='max-sm:hidden'>
         <TabsList className='grid w-36 grid-cols-2 h-8'>
           <TabsTrigger
             value='card'
@@ -198,10 +200,18 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
             />
           </TabsContent>
           <TabsContent value='table'>
-            <SitesTable
-              sites={sitesList}
-              onSiteClick={handleSiteDetails}
-            />
+            <div className='sm:hidden'>
+              <WOSitesCard
+                sites={sitesList}
+                handleSiteDetails={handleSiteDetails}
+              />
+            </div>
+            <div className='max-sm:hidden'>
+              <SitesTable
+                sites={sitesList}
+                onSiteClick={handleSiteDetails}
+              />
+            </div>
           </TabsContent>
         </Tabs>
         {isFetchingMore && <SiteCardsSkeleton />}
@@ -227,7 +237,7 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
     );
 
   return (
-    <section className='rounded-lg border bg-white p-6'>
+    <section className='rounded-lg border bg-white p-4 sm:p-6'>
       <ProcessSectionHeader
         Icon={FlaskConical}
         tone='bioremediation'
@@ -259,7 +269,10 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
                   disabled={siteCount === 0}
                   className='gap-2 px-3 text-xs text-gray-800'>
                   <ShoppingCart className='size-3.5 text-gray-500' />
-                  Purchase orders and sub-contracts
+                  <span className='sm:hidden'>Orders</span>
+                  <span className='hidden sm:inline'>
+                    Purchase orders and sub-contracts
+                  </span>
                   <span className='tabular-nums text-gray-400'>
                     {orderCount}
                   </span>

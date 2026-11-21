@@ -14,6 +14,8 @@ import {
 interface Props {
   Icon?: React.ElementType;
   text?: string;
+  /** A shorter label for phones, where `text` would crowd its row. */
+  shortText?: string;
   className?: string;
   variant: "primary" | "secondary" | "outline" | "arrow";
   arrowType?: "right" | "left" | "upright" | "downright";
@@ -29,6 +31,7 @@ interface Props {
 const Btn = ({
   Icon,
   text,
+  shortText,
   className,
   onClick,
   variant,
@@ -49,15 +52,15 @@ const Btn = ({
   switch (variant) {
     case "primary":
       variantStyle =
-        "bg-emerald-600 text-gray-100 rounded-md cursor-pointer hover:bg-emerald-700/90 shadow-sm transition-all duration-200 hover:shadow-md gap-1.5 h-8 text-[0.813rem]";
+        "bg-emerald-600 text-gray-100 rounded-md cursor-pointer hover:bg-emerald-700/90 shadow-sm transition-all duration-200 hover:shadow-md gap-1.5 h-8 pointer-coarse:h-10 text-[0.813rem]";
       break;
     case "secondary":
       variantStyle =
-        "bg-gray-50 text-gray-700 rounded-md cursor-pointer borde hover:bg-gray-200/60 shadow-sm transition-all duration-200 hover:shadow-sm gap-1.5 h-8 text-[0.813rem]";
+        "bg-gray-50 text-gray-700 rounded-md cursor-pointer borde hover:bg-gray-200/60 shadow-sm transition-all duration-200 hover:shadow-sm gap-1.5 h-8 pointer-coarse:h-10 text-[0.813rem]";
       break;
     case "outline":
       variantStyle =
-        "bg-white text-gray-800 shadow-none hover:bg-gray-50 cursor-pointer border border-gray-300 shadow-s transition-all duration-200  h-8 text-[0.813rem]";
+        "bg-white text-gray-800 shadow-none hover:bg-gray-50 cursor-pointer border border-gray-300 shadow-s transition-all duration-200  h-8 pointer-coarse:h-10 text-[0.813rem]";
       break;
   }
 
@@ -85,6 +88,15 @@ const Btn = ({
             : null;
 
   const accessibleName = title || text;
+
+  const label = shortText ? (
+    <>
+      <span className='sm:hidden'>{shortText}</span>
+      <span className='hidden sm:inline'>{text}</span>
+    </>
+  ) : (
+    text
+  );
 
   return (
     <>
@@ -139,7 +151,7 @@ const Btn = ({
                 size={16}
               />
             )}
-            {text}
+            {label}
           </Button>
         </span>
       ) : (
@@ -159,7 +171,7 @@ const Btn = ({
               size={16}
             />
           )}
-          {loading ? "Please wait..." : text}
+          {loading ? "Please wait..." : label}
         </Button>
       )}
     </>
