@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { constants } from "@pkg/utils";
 import {
   nameValidator,
   emailValidator,
@@ -14,9 +13,6 @@ import {
   limitValidator,
 } from "../validators";
 
-const { STATUS } = constants;
-
-const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
 const officeNamesOrderEnum = z.enum(["asc", "desc", "latest", "oldest"]);
 
 const officeBaseSchema = z.object({
@@ -31,12 +27,10 @@ const officeBaseSchema = z.object({
 
 export const createOfficeSchema = officeBaseSchema.extend({
   operator_ids: z.array(positiveIntValidator).optional(),
-  status: statusEnum.optional(),
 });
 
 export const updateOfficeSchema = officeBaseSchema.extend({
   id: positiveIntValidator,
-  status: statusEnum.optional(),
 });
 
 export const assignUserToOfficeSchema = z.object({
@@ -52,7 +46,6 @@ export const expelUserFromOfficeSchema = z.object({
 // Without a page every matching office comes back, for pickers and lookups.
 export const getOfficesSchema = z.object({
   searchQuery: searchQueryValidator,
-  status: z.enum([...statusEnum.options, "all"]).optional(),
   state: z.string().trim().max(255).optional(),
   officeNamesOrder: officeNamesOrderEnum.optional(),
   page: pageValidator.optional(),

@@ -36,7 +36,6 @@ const OfficeSitePage = () => {
   const listRef = useRef<HTMLDivElement>(null);
 
   const filterInput = {
-    status: filters.status,
     state: filters.state === "all" ? undefined : filters.state,
     searchQuery: debouncedSearch || undefined,
     officeNamesOrder,
@@ -65,7 +64,7 @@ const OfficeSitePage = () => {
   };
 
   const hasActiveFilters =
-    !!debouncedSearch || filters.status !== "all" || filters.state !== "all";
+    !!debouncedSearch || filters.state !== "all";
 
   const renderList = () => {
     if (isLoading) return <OfficeSiteSkeleton />;

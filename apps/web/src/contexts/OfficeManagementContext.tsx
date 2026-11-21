@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState } from "react";
 export type OfficeSort = "asc" | "desc" | "latest" | "oldest";
 
 export type OfficeFilters = {
-  status: "active" | "inactive" | "all";
   /** "all" or a state name. */
   state: string;
 };
@@ -20,7 +19,6 @@ type OfficeManagementContextType = {
 };
 
 const defaultFilters: OfficeFilters = {
-  status: "all",
   state: "all",
 };
 

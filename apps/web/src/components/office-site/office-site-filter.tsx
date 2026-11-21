@@ -16,12 +16,6 @@ import {
   type OfficeSort,
 } from "@/contexts/OfficeManagementContext";
 
-const STATUS_OPTIONS = [
-  { label: "All statuses", value: ALL },
-  { label: "Active offices", value: "active" },
-  { label: "Inactive offices", value: "inactive" },
-];
-
 const SORT_OPTIONS = [
   { label: "Name A–Z", value: "asc" },
   { label: "Name Z–A", value: "desc" },
@@ -62,7 +56,7 @@ const OfficeSiteFilter = () => {
     setFilters({ ...filters, ...next });
 
   const hasActiveFilters =
-    searchQuery !== "" || filters.status !== ALL || filters.state !== ALL;
+    searchQuery !== "" || filters.state !== ALL;
 
   return (
     <FilterBar className='mb-6'>
@@ -71,14 +65,6 @@ const OfficeSiteFilter = () => {
         placeholder='Search offices by code, name, city, state...'
         value={searchQuery}
         onChange={setSearchQuery}
-      />
-      <SelectFilter
-        label='Office status'
-        value={filters.status}
-        onChange={(status) =>
-          setFilter({ status: status as OfficeFilters["status"] })
-        }
-        options={STATUS_OPTIONS}
       />
       <ComboboxFilter
         label='State'

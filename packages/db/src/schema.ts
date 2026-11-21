@@ -179,12 +179,6 @@ export const officeTable = mysqlTable(
     gst_number: varchar("gst_number", { length: 15 }).notNull(),
     pincode: varchar("pincode", { length: 10 }).notNull(),
     email: varchar("email", { length: 320 }).notNull(),
-    status: varchar("status", {
-      length: 50,
-      enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-    })
-      .notNull()
-      .default(STATUS.ACTIVE),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },

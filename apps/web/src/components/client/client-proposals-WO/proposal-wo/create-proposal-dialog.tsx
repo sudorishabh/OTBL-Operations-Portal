@@ -80,10 +80,9 @@ const CreateProposalDialog = ({ clientId }: Props) => {
 
   // Only what the picker shows, not each office's members and counts.
   const { data: officesData, isLoading: isLoadingOffices } =
-    trpc.officeQuery.getOfficeOptions.useQuery(
-      { active_only: true },
-      { enabled: isOpenDialog },
-    );
+    trpc.officeQuery.getOfficeOptions.useQuery(undefined, {
+      enabled: isOpenDialog,
+    });
 
   const form = useForm<ProposalFormInput, unknown, ProposalFormValues>({
     resolver: zodResolver(proposalFormSchema),

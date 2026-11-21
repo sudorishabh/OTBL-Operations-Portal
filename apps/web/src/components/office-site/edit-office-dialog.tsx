@@ -3,20 +3,15 @@ import React, { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { Activity } from "lucide-react";
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import CustomForm from "@/components/shared/form";
-import Input from "@/components/shared/input";
 import { Form } from "@/components/ui/form";
 import { trpc } from "@/lib/trpc";
 import useHandleParams from "@/hooks/useHandleParams";
 import { useApiError } from "@/hooks/useApiError";
 import { officeSchemas, officeTypes } from "@pkg/schema";
-import { constants } from "@pkg/utils";
 import OfficeInfoFields from "./office-info-fields";
-
-const { STATUS } = constants;
 
 const EditOfficeDialog = () => {
   const { getParam, deleteParams } = useHandleParams();
@@ -47,7 +42,6 @@ const EditOfficeDialog = () => {
       city: office.city,
       pincode: office.pincode,
       gst_number: office.gst_number,
-      status: office.status,
     });
   }, [isOpenDialog, office, form]);
 
@@ -88,18 +82,6 @@ const EditOfficeDialog = () => {
         <Form {...form}>
           <CustomForm onSubmit={form.handleSubmit(onSubmit)}>
             <OfficeInfoFields />
-
-            <Input
-              control={form.control}
-              fieldName='status'
-              Label='Status'
-              LabelIcon={Activity}
-              isSelect
-              selectOptions={[
-                { label: "Active", value: STATUS.ACTIVE },
-                { label: "Inactive", value: STATUS.INACTIVE },
-              ]}
-            />
 
             <div className='flex justify-end gap-4 pt-4 border-t'>
               <CustomButton
