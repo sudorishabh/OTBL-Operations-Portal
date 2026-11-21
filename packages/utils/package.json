@@ -25,17 +25,11 @@
     "prebuild": "pnpm run clean"
   },
   "dependencies": {
-    "bcrypt": "^6.0.0",
-    "date-fns": "^4.1.0",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "date-fns": "^4.1.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@types/bcrypt": "^6.0.0",
-    "@types/express": "^5.0.5",
-    "@types/jsonwebtoken": "^9.0.10",
     "rimraf": "^3.0.0",
     "typescript": "^5.0.0"
   }
