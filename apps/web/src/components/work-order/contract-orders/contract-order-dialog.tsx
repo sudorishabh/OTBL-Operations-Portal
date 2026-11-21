@@ -20,6 +20,7 @@ import DocumentsField from "@/components/shared/documents-field";
 import VendorPicker from "@/components/vendor/vendor-picker";
 import { type PickerItem } from "@/components/shared/paged-picker";
 import { Input } from "@/components/ui/input";
+import DatePicker from "@/components/shared/date-picker";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -549,10 +550,10 @@ const ContractOrderDialog = ({
           </div>
           <div>
             <label className={fieldLabel}>Order date</label>
-            <Input
-              type='date'
+            <DatePicker
               value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
+              onChange={setOrderDate}
+              aria-label='Order date'
               className='h-9'
             />
           </div>

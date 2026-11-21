@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
 import { Input } from "@/components/ui/input";
+import DatePicker from "@/components/shared/date-picker";
 import JobOrderActivitiesTable, {
   toActivityEntries,
   toActivityRows,
@@ -222,6 +223,8 @@ const JobOrderDialog = ({
   const setValue =
     (field: keyof FormValues) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setValues((prev) => ({ ...prev, [field]: e.target.value }));
+  const setDate = (field: keyof FormValues) => (value: string) =>
+    setValues((prev) => ({ ...prev, [field]: value }));
 
   // Stays open on the saved job order, so its form can be downloaded.
   const onSaved = async (jobOrder: JobOrderFormContent, id: number | null) => {
@@ -372,29 +375,30 @@ const JobOrderDialog = ({
 
               <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
                 <Field label='Job order date'>
-                  <Input
-                    type='date'
+                  <DatePicker
                     value={values.start_date}
-                    onChange={setValue("start_date")}
+                    onChange={setDate("start_date")}
+                    aria-label='Job order date'
                     className='h-9'
                   />
                 </Field>
                 <Field label='Scheduled completion'>
-                  <Input
-                    type='date'
+                  <DatePicker
                     value={values.end_date}
                     min={values.start_date || undefined}
-                    onChange={setValue("end_date")}
+                    onChange={setDate("end_date")}
+                    aria-label='Scheduled completion'
                     className='h-9'
                   />
                 </Field>
                 <Field
                   label='Mobilization date'
                   hint='Only for ex-situ bioremediation jobs'>
-                  <Input
-                    type='date'
+                  <DatePicker
                     value={values.mobilization_date}
-                    onChange={setValue("mobilization_date")}
+                    onChange={setDate("mobilization_date")}
+                    clearable
+                    aria-label='Mobilization date'
                     className='h-9'
                   />
                 </Field>
@@ -421,10 +425,11 @@ const JobOrderDialog = ({
                   />
                 </Field>
                 <Field label='RC NOA date'>
-                  <Input
-                    type='date'
+                  <DatePicker
                     value={values.rc_noa_date}
-                    onChange={setValue("rc_noa_date")}
+                    onChange={setDate("rc_noa_date")}
+                    clearable
+                    aria-label='RC NOA date'
                     className='h-9'
                   />
                 </Field>
