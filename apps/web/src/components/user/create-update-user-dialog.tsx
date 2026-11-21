@@ -320,6 +320,7 @@ const CreateUpdateUserDialog = () => {
               fieldName='name'
               Label='Name'
               LabelIcon={User}
+              autoComplete='off'
               placeholder='Enter user name'
             />
 
@@ -329,6 +330,7 @@ const CreateUpdateUserDialog = () => {
               Label='Email'
               LabelIcon={Mail}
               type='email'
+              autoComplete='off'
               placeholder='Enter email address'
             />
 
@@ -338,6 +340,7 @@ const CreateUpdateUserDialog = () => {
               Label={isEditMode ? "New Password" : "Password"}
               LabelIcon={KeyRound}
               type={showPassword ? "text" : "password"}
+              autoComplete='new-password'
               placeholder={
                 isEditMode
                   ? "Leave blank to keep current password"

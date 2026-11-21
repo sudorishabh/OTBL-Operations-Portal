@@ -60,6 +60,9 @@ interface CommonProps {
   placeholder?: string;
   optional?: boolean;
   type?: string;
+  // The browser's autofill hint, such as "new-password" on a form that
+  // creates an account, so saved logins aren't filled into it.
+  autoComplete?: string;
   inputIconButton?: {
     icon: React.JSXElementConstructor<React.SVGProps<SVGSVGElement>>;
     onClick: () => void;
@@ -154,6 +157,7 @@ const Input = <TFieldValues extends FieldValues = FieldValues>(
     placeholder,
     optional,
     type,
+    autoComplete,
     inputIconButton,
     onChange,
     inputIcon,
@@ -255,6 +259,7 @@ const Input = <TFieldValues extends FieldValues = FieldValues>(
           })()}
         <InputComponent
           type={type ?? "text"}
+          autoComplete={autoComplete}
           className={`${inputIcon ? "pl-10" : ""} ${commonInputStyles} ${
             inputIconButton ? "pr-10" : ""
           } ${className || ""} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
