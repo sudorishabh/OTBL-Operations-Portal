@@ -38,7 +38,6 @@ export type JobOrderActivityRow = {
 
 const {
   ROLES,
-  STATUS,
   PROPOSAL_STATUS,
   WORK_ORDER_STATUS,
   CONTRACT_ORDER_TYPE,
@@ -90,12 +89,6 @@ export const parentClientTable = mysqlTable("parent_clients", {
   gst_number: varchar("gst_number", { length: 15 }),
   contact_number: varchar("contact_number", { length: 15 }),
   email: varchar("email", { length: 320 }),
-  status: varchar("status", {
-    length: 50,
-    enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-  })
-    .notNull()
-    .default(STATUS.ACTIVE),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
@@ -118,12 +111,6 @@ export const clientTable = mysqlTable("clients", {
     length: 15,
   }),
   email: varchar("email", { length: 320 }),
-  status: varchar("status", {
-    length: 50,
-    enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-  })
-    .notNull()
-    .default(STATUS.ACTIVE),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });

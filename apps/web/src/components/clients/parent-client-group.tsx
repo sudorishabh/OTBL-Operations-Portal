@@ -36,7 +36,6 @@ import { cn } from "@/lib/utils";
 import BranchRow from "./branch-row";
 import {
   ClientContactLines,
-  ClientStatus,
   ContactsButton,
   formatClientLocation,
   LIST_SUBGRID,
@@ -113,7 +112,6 @@ const ParentClientGroup = ({ parentClient, branches }: Props) => {
                 {displayName}
               </button>
               <RecordCode code={parentClient.code} />
-              <ClientStatus status={parentClient.status} />
               <MainClientInfoChip
                 parentClient={parentClient}
                 branchCount={branchCount}

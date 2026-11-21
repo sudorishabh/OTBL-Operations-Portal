@@ -13,7 +13,7 @@ import {
 import { capitalFirstLetter, formatCurrency } from "@pkg/utils";
 import { trpc } from "@/lib/trpc";
 import Error from "@/components/shared/error";
-import { Field, Metric, Pill } from "@/components/shared/detail-card-parts";
+import { Field, Metric } from "@/components/shared/detail-card-parts";
 import useHandleParams from "@/hooks/useHandleParams";
 import ClientInfoSkeleton from "../skeleton/client/client-info-skeleton";
 import ClientContactsDialog from "@/components/clients/client-contacts-dialog";
@@ -21,11 +21,6 @@ import ClientContactsDialog from "@/components/clients/client-contacts-dialog";
 interface Props {
   clientId: string;
 }
-
-const STATUS_STYLES: Record<string, string> = {
-  active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  inactive: "bg-amber-50 text-amber-700 ring-amber-200",
-};
 
 const formatDate = (value?: string | Date | null) => {
   const date = value ? new Date(value) : null;
@@ -78,7 +73,6 @@ const ClientDetailsCard = ({ clientId }: Props) => {
   }
 
   const { client, clientUsers } = clientData;
-  const status = (client.status || "").toLowerCase();
   const location = [client.city, client.state]
     .filter(Boolean)
     .map((part) => capitalFirstLetter(part))
@@ -141,13 +135,6 @@ const ClientDetailsCard = ({ clientId }: Props) => {
           </div>
 
           <div className='flex flex-wrap items-center gap-1.5'>
-            <Pill
-              className={
-                STATUS_STYLES[status] ??
-                "bg-gray-50 text-gray-700 ring-gray-200"
-              }>
-              {capitalFirstLetter(client.status)}
-            </Pill>
             <button
               type='button'
               onClick={() => setIsContactsOpen(true)}

@@ -60,7 +60,6 @@ const UpdateClientDialog = ({ clientId }: Props) => {
       gst_number: client.gst_number,
       contact_number: client.contact_number ?? "",
       email: client.email ?? "",
-      status: client.status,
     });
   }, [client, isOpen, form]);
 
@@ -113,7 +112,6 @@ const UpdateClientDialog = ({ clientId }: Props) => {
             nameLabel='Client Name'
             namePlaceholder='e.g. ONGC - Jorhat'
             showParentClient
-            showStatus
           />
 
           <ContactPersonsField

@@ -17,12 +17,6 @@ import {
 } from "@/contexts/ClientManagementContext";
 import { trpc } from "@/lib/trpc";
 
-const STATUS_OPTIONS = [
-  { label: "All statuses", value: ALL },
-  { label: "Active", value: "active" },
-  { label: "Inactive", value: "inactive" },
-];
-
 const CLIENT_SORT_OPTIONS = [
   { label: "Name A–Z", value: "name_asc" },
   { label: "Name Z–A", value: "name_desc" },
@@ -82,7 +76,6 @@ const ClientSearchFilter = () => {
 
   const hasActiveFilters =
     clientSearchQuery !== "" ||
-    clientFilters.status !== ALL ||
     clientFilters.parentClientId !== ALL ||
     clientFilters.state !== ALL;
 
@@ -93,14 +86,6 @@ const ClientSearchFilter = () => {
         placeholder='Search clients by code, name, GST, email, city...'
         value={clientSearchQuery}
         onChange={setClientSearchQuery}
-      />
-      <SelectFilter
-        label='Status'
-        value={clientFilters.status}
-        onChange={(status) =>
-          setFilter({ status: status as ClientFilters["status"] })
-        }
-        options={STATUS_OPTIONS}
       />
       <ComboboxFilter
         label='Main client'

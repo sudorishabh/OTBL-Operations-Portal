@@ -316,6 +316,13 @@
       "when": 1795241902265,
       "tag": "0044_drop_site_status",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "5",
+      "when": 1795242329517,
+      "tag": "0045_drop_client_status",
+      "breakpoints": true
     }
   ]
 }

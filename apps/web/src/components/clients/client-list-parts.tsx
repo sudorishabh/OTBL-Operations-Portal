@@ -30,7 +30,6 @@ export interface ClientListItem {
   pincode?: string | null;
   contact_number?: string | null;
   email?: string | null;
-  status?: string;
   contacts_count?: number;
   work_order_number?: number;
   proposal_number?: number;
@@ -83,26 +82,6 @@ export const ClientLink = ({
       className={cn("group cursor-pointer outline-none", className)}>
       {children}
     </div>
-  );
-};
-
-export const ClientStatus = ({ status }: { status?: string }) => {
-  const isActive = status === "active";
-
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1 text-[11px] font-medium",
-        isActive ? "text-emerald-700" : "text-gray-400",
-      )}>
-      <span
-        className={cn(
-          "size-1.5 rounded-full",
-          isActive ? "bg-emerald-500" : "bg-gray-300",
-        )}
-      />
-      {isActive ? "Active" : "Inactive"}
-    </span>
   );
 };
 
