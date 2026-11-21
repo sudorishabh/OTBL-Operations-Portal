@@ -3,6 +3,7 @@ import { format, parseISO } from "date-fns";
 import { CalendarDays, X } from "lucide-react";
 import { type DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Popover,
   PopoverContent,
@@ -24,7 +25,7 @@ const toDay = (date?: Date) => (date ? format(date, "yyyy-MM-dd") : undefined);
 const dayLabel = (day: string) => format(parseISO(day), "d MMM yy");
 
 // A range of dates, such as when proposals were submitted, picked on a
-// two-month calendar.
+// two-month calendar; one month on phones, where two don't fit.
 const DateRangeFilter = ({
   label,
   from,
@@ -32,6 +33,7 @@ const DateRangeFilter = ({
   onChange,
   align = "end",
 }: Props) => {
+  const isPhone = useIsMobile();
   const selected: DateRange | undefined = from
     ? { from: parseISO(from), to: to ? parseISO(to) : undefined }
     : undefined;
@@ -60,7 +62,7 @@ const DateRangeFilter = ({
         className='w-auto p-0'>
         <Calendar
           mode='range'
-          numberOfMonths={2}
+          numberOfMonths={isPhone ? 1 : 2}
           selected={selected}
           defaultMonth={selected?.from}
           onSelect={(range) => onChange(toDay(range?.from), toDay(range?.to))}

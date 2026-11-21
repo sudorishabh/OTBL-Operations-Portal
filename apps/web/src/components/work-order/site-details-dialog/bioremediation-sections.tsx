@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Input } from "@/components/ui/input";
+import DatePicker from "@/components/shared/date-picker";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -83,11 +84,11 @@ const EntryDateField = ({
     <label className='text-[10px] text-slate-600 font-medium mb-1 block'>
       {label}
     </label>
-    <Input
-      type='date'
+    <DatePicker
       value={value}
       max={todayInput()}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={onChange}
+      aria-label={label}
       className='h-9'
     />
   </div>

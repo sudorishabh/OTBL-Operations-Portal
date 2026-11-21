@@ -9,6 +9,7 @@ import {
 } from "@pkg/utils";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import DatePicker from "@/components/shared/date-picker";
 import { QTY_EPSILON } from "./restoration-display";
 
 const { JOB_ORDER_ACTIVITIES } = constants;
@@ -182,15 +183,13 @@ const JobOrderActivitiesTable = ({
                 )}
               </td>
               <td className='px-2 py-1.5'>
-                <Input
-                  type='date'
+                <DatePicker
                   value={entry.completion_date}
-                  onChange={(e) =>
-                    onChange(activity.key, {
-                      ...entry,
-                      completion_date: e.target.value,
-                    })
+                  onChange={(completion_date) =>
+                    onChange(activity.key, { ...entry, completion_date })
                   }
+                  clearable
+                  placeholder='No date'
                   aria-label={`${label} date`}
                   disabled={disabled}
                   className='h-8 text-xs'

@@ -14,15 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { format, isValid } from "date-fns";
+import DatePicker from "@/components/shared/date-picker";
 import {
   Control,
   FieldPath,
@@ -83,64 +75,6 @@ interface CommonProps {
 
 type Props<TFieldValues extends FieldValues = FieldValues> = CommonProps &
   (FormModeProps<TFieldValues> | StandaloneModeProps);
-
-// The years a date field's dropdowns offer, from 2000 to ten years ahead.
-const FIRST_MONTH = new Date(2000, 0, 1);
-const LAST_MONTH = new Date(new Date().getFullYear() + 10, 11, 31);
-
-// A date picked from a calendar and stored as yyyy-MM-dd. It closes once a day
-// is picked, and its month and year dropdowns reach far dates in a tap or two.
-const DateInput = ({
-  value,
-  onPick,
-  disabled,
-  className,
-}: {
-  // Forms may load a saved date as a Date, not a string.
-  value: Date | string | undefined | null;
-  onPick: (formatted: string) => void;
-  disabled?: boolean;
-  className?: string;
-}) => {
-  const [open, setOpen] = React.useState(false);
-  const date = value ? new Date(value) : undefined;
-  const picked = date && isValid(date) ? date : undefined;
-
-  return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant='outline'
-          disabled={disabled}
-          className={`w-full justify-start text-left font-normal ${
-            !picked && "text-muted-foreground"
-          } ${className || ""}`}>
-          <CalendarIcon className='mr-2 h-4 w-4' />
-          {picked ? format(picked, "yyyy-MM-dd") : "Pick a date"}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className='w-auto p-0'
-        align='start'>
-        <Calendar
-          mode='single'
-          selected={picked}
-          defaultMonth={picked}
-          captionLayout='dropdown'
-          startMonth={FIRST_MONTH}
-          endMonth={LAST_MONTH}
-          onSelect={(day) => {
-            // Tapping the picked day again keeps it rather than clearing it.
-            if (day) onPick(format(day, "yyyy-MM-dd"));
-            setOpen(false);
-          }}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-};
 
 const Input = <TFieldValues extends FieldValues = FieldValues>(
   props: Props<TFieldValues>,
@@ -234,11 +168,11 @@ const Input = <TFieldValues extends FieldValues = FieldValues>(
 
     if (isDate) {
       return (
-        <DateInput
+        <DatePicker
           value={value}
           disabled={disabled}
           className={`${commonInputStyles} ${className || ""}`}
-          onPick={(formatted) => {
+          onChange={(formatted) => {
             onChangeHandler(formatted);
             onChange?.(formatted);
           }}

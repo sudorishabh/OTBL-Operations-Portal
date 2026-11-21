@@ -10,7 +10,7 @@ import { useApiError } from "@/hooks/useApiError";
 import { useIsViewer } from "@/contexts/AuthContext";
 import DialogWindow from "@/components/shared/dialog-window";
 import CustomButton from "@/components/shared/btn";
-import { Input } from "@/components/ui/input";
+import DatePicker from "@/components/shared/date-picker";
 import JobOrderActivitiesTable, {
   toActivityEntries,
   toActivityRows,
@@ -216,11 +216,12 @@ const JobOrderCompletionDialog = ({
 
           <label className='block sm:w-56'>
             <span className={fieldLabel}>Work completed on</span>
-            <Input
-              type='date'
+            <DatePicker
               value={completedOn}
-              onChange={(e) => setCompletedOn(e.target.value)}
+              onChange={setCompletedOn}
+              clearable
               disabled={isViewer}
+              aria-label='Work completed on'
               className='h-9'
             />
             <span className='mt-1 block text-[11px] text-gray-400'>
