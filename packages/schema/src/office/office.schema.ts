@@ -54,6 +54,15 @@ export const getOfficesSchema = z.object({
 
 export const getOfficeSchema = z.object({ officeId: positiveIntValidator });
 
+// A page of the offices a user can pick from, found by code, name, city or
+// state. `selectedId` also returns the picked office, wherever it falls.
+export const getOfficePickerPageSchema = z.object({
+  searchQuery: searchQueryValidator,
+  page: pageValidator,
+  limit: limitValidator,
+  selectedId: positiveIntValidator.optional(),
+});
+
 export const getOfficeUsersSchema = z.object({
   office_id: positiveIntValidator,
 });

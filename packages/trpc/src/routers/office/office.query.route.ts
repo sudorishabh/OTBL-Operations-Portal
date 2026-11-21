@@ -311,6 +311,67 @@ export const officeQueryRouter = router({
     }),
   ),
 
+  // A page of the offices the user can see, for picking one, such as a
+  // proposal's office, with how many match and the one already picked.
+  getOfficePickerPage: protectedProcedure
+    .input(officeSchemas.getOfficePickerPageSchema)
+    .query(
+      handleQuery(async ({ input, ctx }) => {
+        const { searchQuery, page, limit, selectedId } = input;
+        const scope = await getAccessScope(
+          ctx.db,
+          Number(ctx.user!.sub),
+          ctx.user!.role,
+        );
+        const visible = await visibleOfficesWhere(ctx.db, scope);
+        const term = searchQuery ? `%${escapeLike(searchQuery)}%` : null;
+        const where = and(
+          visible,
+          term
+            ? or(
+                codeMatches(officeTable.code, CODE_PREFIX.OFFICE, searchQuery!),
+                like(officeTable.name, term),
+                like(officeTable.city, term),
+                like(officeTable.state, term),
+              )
+            : undefined,
+        );
+        const fields = {
+          id: officeTable.id,
+          code: officeTable.code,
+          name: officeTable.name,
+          city: officeTable.city,
+          state: officeTable.state,
+        };
+
+        try {
+          const [offices, totals, [selected]] = await Promise.all([
+            ctx.db
+              .select(fields)
+              .from(officeTable)
+              .where(where)
+              .orderBy(asc(officeTable.name), asc(officeTable.id))
+              .limit(limit)
+              .offset((page - 1) * limit),
+            ctx.db.select({ total: count() }).from(officeTable).where(where),
+            selectedId
+              ? ctx.db
+                  .select(fields)
+                  .from(officeTable)
+                  .where(and(visible, eq(officeTable.id, selectedId)))
+              : Promise.resolve([]),
+          ]);
+          return {
+            offices,
+            total: totals[0]?.total ?? 0,
+            selected: selected ?? null,
+          };
+        } catch (error) {
+          throw fromDatabaseError(error, "Fetching a page of offices");
+        }
+      }),
+    ),
+
   // One office for its own page: its details and office operators,
   // and totals across its sites and work orders.
   getOffice: protectedProcedure.input(officeSchemas.getOfficeSchema).query(
