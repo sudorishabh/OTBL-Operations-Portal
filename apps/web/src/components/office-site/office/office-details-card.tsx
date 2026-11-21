@@ -7,13 +7,8 @@ import {
   capitalizeEachWord,
   formatCurrency,
 } from "@pkg/utils";
-import { Field, Metric, Pill } from "@/components/shared/detail-card-parts";
+import { Field, Metric } from "@/components/shared/detail-card-parts";
 import type { OfficeDetails } from "./office-types";
-
-const STATUS_STYLES: Record<string, string> = {
-  active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  inactive: "bg-amber-50 text-amber-700 ring-amber-200",
-};
 
 const formatDate = (value: string | Date) =>
   format(new Date(value), "dd MMM yyyy");
@@ -24,7 +19,6 @@ const formatCount = (value: number) => value.toLocaleString("en-IN");
 // orders, then its details.
 const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
   const { office, sites, workOrders } = details;
-  const status = office.status.toLowerCase();
   const location = [office.city, office.state]
     .filter(Boolean)
     .map((part) => capitalizeEachWord(part))
@@ -44,11 +38,7 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
   const workOrderHint = [
     `${formatCount(workOrders.pending)} pending`,
     `${formatCount(workOrders.completed)} completed`,
-    workOrders.cancelled > 0 &&
-      `${formatCount(workOrders.cancelled)} cancelled`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].join(" · ");
 
   return (
     <div className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
@@ -79,13 +69,6 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
             </div>
           </div>
         </div>
-
-        <Pill
-          className={
-            STATUS_STYLES[status] ?? "bg-gray-50 text-gray-700 ring-gray-200"
-          }>
-          {capitalFirstLetter(office.status)}
-        </Pill>
       </div>
 
       {/* Metrics, split by hairlines that hold in every column count. */}
@@ -93,7 +76,6 @@ const OfficeDetailsCard = ({ details }: { details: OfficeDetails }) => {
         <Metric
           label='Sites'
           value={formatCount(sites.total)}
-          hint={`${formatCount(sites.active)} active`}
         />
         <Metric
           label='Work orders'

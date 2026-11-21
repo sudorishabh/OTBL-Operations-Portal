@@ -54,7 +54,6 @@ export const SitesTable = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className='text-xs'>Status</TableHead>
             <TableHead className='pl-4 text-xs'>Name</TableHead>
             <TableHead className='text-xs'>Address</TableHead>
             <TableHead className='text-xs'>Pincode</TableHead>
@@ -66,7 +65,7 @@ export const SitesTable = ({
           {sites.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={5}
                 className='text-center py-8 text-muted-foreground'>
                 {emptyMessage}
               </TableCell>
@@ -76,13 +75,6 @@ export const SitesTable = ({
               <TableRow
                 key={site.id}
                 className='hover:bg-gray-50'>
-                <TableCell className='pl-6'>
-                  {site.status === "active" ? (
-                    <div className='text-green-500 h-3 w-3 rounded-full bg-green-500'></div>
-                  ) : (
-                    <div className='text-red-500 h-3 w-3 rounded-full bg-red-500'></div>
-                  )}
-                </TableCell>
                 <TableCell className='text-xs font-medium pl-4'>
                   <div className='flex items-center gap-2'>
                     <RecordCode code={site.code} />

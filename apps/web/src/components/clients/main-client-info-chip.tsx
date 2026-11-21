@@ -65,7 +65,6 @@ const MainClientDetails = ({
   branchCount: number;
 }) => {
   const isAdmin = useIsAdmin();
-  const isActive = parentClient.status !== "inactive";
   const place = [parentClient.city, parentClient.state]
     .filter(Boolean)
     .map((part) => capitalizeEachWord(part!))
@@ -83,20 +82,9 @@ const MainClientDetails = ({
   return (
     <>
       <div className='px-4 py-3'>
-        <div className='flex items-start justify-between gap-3'>
-          <p className='text-sm font-semibold text-gray-900'>
-            {capitalizeEachWord(parentClient.name)}
-          </p>
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
-              isActive
-                ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                : "bg-amber-50 text-amber-700 ring-amber-200",
-            )}>
-            {isActive ? "Active" : "Inactive"}
-          </span>
-        </div>
+        <p className='text-sm font-semibold text-gray-900'>
+          {capitalizeEachWord(parentClient.name)}
+        </p>
         <p className='mt-0.5 text-xs text-gray-500'>
           Main client with {branchCount}{" "}
           {branchCount === 1 ? "branch" : "branches"} and {contacts}{" "}

@@ -46,7 +46,6 @@ const STATUS_OPTIONS = [
   { label: "All statuses", value: ALL },
   { label: "Pending", value: "pending" },
   { label: "Completed", value: "completed" },
-  { label: "Cancelled", value: "cancelled" },
 ];
 
 const SORT_OPTIONS = [

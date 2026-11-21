@@ -15,12 +15,6 @@ import {
   pageValidator,
   limitValidator,
 } from "../validators";
-import { constants } from "@pkg/utils";
-
-const { STATUS } = constants;
-
-const statusEnum = z.enum([STATUS.ACTIVE, STATUS.INACTIVE]);
-
 // The details a main client and each of its branches both have.
 const clientDetailsSchema = z.object({
   name: nameValidator,
@@ -31,7 +25,6 @@ const clientDetailsSchema = z.object({
   gst_number: gstNumberValidator,
   contact_number: optionalContactNumberValidator,
   email: optionalEmailValidator,
-  status: statusEnum.optional(),
 });
 
 // A contact person's own fields; who they belong to is given apart.
@@ -131,7 +124,6 @@ export const clientSortEnum = z.enum(["name_asc", "name_desc", "newest", "oldest
 
 export const getAllClientsSchema = z.object({
   searchQuery: searchQueryValidator,
-  status: z.enum(["all", "active", "inactive"]).optional(),
   // A main client's id, or "none" for clients without a main client.
   parentClientId: z.union([positiveIntValidator, z.literal("none")]).optional(),
   state: z.string().trim().max(255).optional(),

@@ -14,11 +14,7 @@ const { WO_ACTIVITIES, WO_PROCESS, allActivityOptions } = constants;
 
 export const activityTypeEnum = z.enum(["insitu", "exsitu"]);
 
-export const workOrderStatusEnum = z.enum([
-  "pending",
-  "completed",
-  "cancelled",
-]);
+export const workOrderStatusEnum = z.enum(["pending", "completed"]);
 
 export const processTypeEnum = z.enum([
   "bioremediation",
@@ -241,15 +237,6 @@ export const approveWorkOrderSchema = z.object({
   id: positiveIntValidator,
 });
 
-export const cancelWorkOrderSchema = z.object({
-  id: positiveIntValidator,
-  cancellation_reason: z
-    .string({ message: "A cancellation reason is required" })
-    .trim()
-    .min(1, "A cancellation reason is required")
-    .max(1000, "Cancellation reason cannot exceed 1000 characters"),
-});
-
 export const deleteWorkOrderSchema = z.object({
   id: positiveIntValidator,
 });
@@ -275,7 +262,7 @@ export const getAllWorkOrdersPaginatedSchema = z.object({
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(100).default(10),
   searchQuery: z.string().optional(),
-  status: z.string().optional(),
+  status: z.enum(["all", "pending", "completed"]).optional(),
   office_id: z.number().optional(),
   client_id: z.number().optional(),
   process_type: z

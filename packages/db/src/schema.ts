@@ -38,7 +38,6 @@ export type JobOrderActivityRow = {
 
 const {
   ROLES,
-  STATUS,
   PROPOSAL_STATUS,
   WORK_ORDER_STATUS,
   CONTRACT_ORDER_TYPE,
@@ -90,12 +89,6 @@ export const parentClientTable = mysqlTable("parent_clients", {
   gst_number: varchar("gst_number", { length: 15 }),
   contact_number: varchar("contact_number", { length: 15 }),
   email: varchar("email", { length: 320 }),
-  status: varchar("status", {
-    length: 50,
-    enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-  })
-    .notNull()
-    .default(STATUS.ACTIVE),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
@@ -118,12 +111,6 @@ export const clientTable = mysqlTable("clients", {
     length: 15,
   }),
   email: varchar("email", { length: 320 }),
-  status: varchar("status", {
-    length: 50,
-    enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-  })
-    .notNull()
-    .default(STATUS.ACTIVE),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
@@ -179,12 +166,6 @@ export const officeTable = mysqlTable(
     gst_number: varchar("gst_number", { length: 15 }).notNull(),
     pincode: varchar("pincode", { length: 10 }).notNull(),
     email: varchar("email", { length: 320 }).notNull(),
-    status: varchar("status", {
-      length: 50,
-      enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-    })
-      .notNull()
-      .default(STATUS.ACTIVE),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
@@ -210,12 +191,6 @@ export const siteTable = mysqlTable(
       .notNull()
       .references(() => officeTable.id, { onDelete: "cascade" })
       .notNull(),
-    status: varchar("status", {
-      length: 50,
-      enum: [STATUS.ACTIVE, STATUS.INACTIVE],
-    })
-      .notNull()
-      .default(STATUS.ACTIVE),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
@@ -270,12 +245,10 @@ export const workOrderTable = mysqlTable(
       enum: [
         WORK_ORDER_STATUS.PENDING,
         WORK_ORDER_STATUS.COMPLETED,
-        WORK_ORDER_STATUS.CANCELLED,
       ],
     })
       .notNull()
       .default(WORK_ORDER_STATUS.PENDING),
-    cancellation_reason: text("cancellation_reason"),
     approved_at: timestamp("approved_at"),
     approved_by: int("approved_by").references(() => userTable.id, {
       onDelete: "set null",
@@ -409,7 +382,6 @@ export const workOrderSiteTable = mysqlTable(
       enum: [
         WORK_ORDER_STATUS.PENDING,
         WORK_ORDER_STATUS.COMPLETED,
-        WORK_ORDER_STATUS.CANCELLED,
       ],
     })
       .notNull()

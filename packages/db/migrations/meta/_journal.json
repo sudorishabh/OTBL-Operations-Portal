@@ -295,6 +295,34 @@
       "when": 1795153579512,
       "tag": "0041_expense_description",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1795241317683,
+      "tag": "0042_drop_work_order_cancellation",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1795241679269,
+      "tag": "0043_drop_office_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "5",
+      "when": 1795241902265,
+      "tag": "0044_drop_site_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "5",
+      "when": 1795242329517,
+      "tag": "0045_drop_client_status",
+      "breakpoints": true
     }
   ]
 }

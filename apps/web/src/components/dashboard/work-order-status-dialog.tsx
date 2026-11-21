@@ -48,7 +48,6 @@ const YearTable = ({ years }: { years: Summary["byFinancialYear"] }) => (
           <th className={HEAD}>Work orders</th>
           <th className={`${HEAD} text-right`}>Pending</th>
           <th className={`${HEAD} text-right`}>Completed</th>
-          <th className={`${HEAD} text-right`}>Cancelled</th>
         </tr>
       </thead>
       <tbody>
@@ -73,9 +72,6 @@ const YearTable = ({ years }: { years: Summary["byFinancialYear"] }) => (
               <span className='ml-1 text-[11px] text-gray-400'>
                 {formatShare(year.completed, year.total)}
               </span>
-            </td>
-            <td className='px-5 py-2 text-right tabular-nums text-gray-700'>
-              {formatCount(year.cancelled)}
             </td>
           </tr>
         ))}
@@ -152,11 +148,6 @@ export const WorkOrderStatusDialog = ({
                 hint: formatShare(data.completed, data.total),
               },
               {
-                label: "Cancelled",
-                value: formatCount(data.cancelled),
-                hint: formatShare(data.cancelled, data.total),
-              },
-              {
                 label: "Income (SOR total)",
                 value: formatCompactRupees(data.sorTotal),
                 hint: formatCurrency(data.sorTotal),
@@ -183,7 +174,7 @@ export const WorkOrderStatusDialog = ({
                         label={label}
                         value={counts.completed}
                         total={counts.total}
-                        detail={`${formatCount(counts.pending)} pending · ${formatCount(counts.cancelled)} cancelled`}
+                        detail={`${formatCount(counts.pending)} pending`}
                       />
                     );
                   })}

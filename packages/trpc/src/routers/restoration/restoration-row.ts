@@ -84,8 +84,7 @@ const QTY_EPSILON = 0.001;
 
 // A restoration is complete once its job orders' completion certificates
 // have used up the quantity of every activity in its schedule of rates, and
-// reopens if they no longer do. Activities without a quantity don't count; a
-// cancelled one is left alone.
+// reopens if they no longer do. Activities without a quantity don't count.
 export async function syncRestorationCompletion(
   db: DbOrTx,
   workOrderSiteId: number,
@@ -93,14 +92,12 @@ export async function syncRestorationCompletion(
   const [row] = await db
     .select({
       process_type: workOrderSiteTable.process_type,
-      status: workOrderSiteTable.status,
       is_completed: workOrderSiteTable.is_completed,
     })
     .from(workOrderSiteTable)
     .where(eq(workOrderSiteTable.id, workOrderSiteId));
 
   if (!row || row.process_type !== WO_PROCESS.RESTORATION) return;
-  if (row.status === WORK_ORDER_STATUS.CANCELLED) return;
 
   const targets = await db
     .select({

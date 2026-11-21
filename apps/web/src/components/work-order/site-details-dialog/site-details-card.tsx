@@ -19,7 +19,7 @@ const { TPH_TARGET, WO_PROCESS } = constants;
 interface WorkOrderSiteDetails {
   id: number;
   end_date: string;
-  status: "pending" | "completed" | "cancelled";
+  status: "pending" | "completed";
   is_completed?: boolean;
   client_id: number;
   work_order_id: number;
@@ -107,10 +107,6 @@ const STATUS_STYLES: Record<
   completed: {
     label: "Complete",
     pill: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  },
-  cancelled: {
-    label: "Cancelled",
-    pill: "bg-rose-50 text-rose-700 ring-rose-200",
   },
 };
 

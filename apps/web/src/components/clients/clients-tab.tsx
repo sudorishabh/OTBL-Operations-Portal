@@ -25,17 +25,15 @@ const ClientsTab = () => {
   const { clientSearchQuery, clientFilters } = useClientManagementContext();
 
   const debouncedSearch = useDebounce(clientSearchQuery.trim(), 300);
-  const { status, parentClientId, state, sort } = clientFilters;
+  const { parentClientId, state, sort } = clientFilters;
   const isFiltered =
     !!debouncedSearch ||
-    status !== "all" ||
     parentClientId !== "all" ||
     state !== "all";
 
   const queryInput = {
     limit: CLIENTS_PAGE_SIZE,
     searchQuery: debouncedSearch || undefined,
-    status,
     parentClientId:
       parentClientId === "all"
         ? undefined

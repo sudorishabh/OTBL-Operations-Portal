@@ -66,7 +66,6 @@ const ParentClientDialog = () => {
             gst_number: parentClient.gst_number ?? "",
             contact_number: parentClient.contact_number ?? "",
             email: parentClient.email ?? "",
-            status: parentClient.status,
           }
         : EMPTY_CLIENT_DETAILS,
     );
@@ -143,7 +142,6 @@ const ParentClientDialog = () => {
             <ClientDetailsFields
               nameLabel='Main Client Name'
               namePlaceholder='e.g. Oil and Natural Gas Corporation Ltd'
-              showStatus={isEdit}
             />
 
             <ContactPersonsField

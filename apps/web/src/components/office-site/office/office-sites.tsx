@@ -1,11 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import {
-  ALL,
   ClearFiltersButton,
   FilterBar,
   SearchFilter,
-  SelectFilter,
 } from "@/components/filters/list-filters";
 import Error from "@/components/shared/error";
 import TablePagination, {
@@ -22,23 +20,15 @@ import type { OfficeDetails } from "./office-types";
 const PAGE_SIZE = 10;
 
 type SitesPage = RouterOutputs["siteQuery"]["getSitesByOfficeId"];
-type SiteStatus = "all" | "active" | "inactive";
-
-const STATUS_OPTIONS = [
-  { label: "All sites", value: ALL },
-  { label: "Active sites", value: "active" },
-  { label: "Inactive sites", value: "inactive" },
-];
 
 // The office's sites, searchable and a page at a time, each with its work
 // orders and edit options.
 const OfficeSites = ({ details }: { details: OfficeDetails }) => {
   const { office, sites: counts, canEditSites } = details;
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<SiteStatus>(ALL);
   const debouncedSearch = useDebounce(search.trim(), 300);
-  const isFiltered = search !== "" || status !== ALL;
-  const [page, setPage] = usePageNumber({ status, search: debouncedSearch });
+  const isFiltered = search !== "";
+  const [page, setPage] = usePageNumber({ search: debouncedSearch });
   const listRef = useRef<HTMLDivElement>(null);
 
   // The rows on screen stay while another page or filter loads.
@@ -46,7 +36,6 @@ const OfficeSites = ({ details }: { details: OfficeDetails }) => {
     trpc.siteQuery.getSitesByOfficeId.useQuery(
       {
         office_id: office.id,
-        status,
         searchQuery: debouncedSearch || undefined,
         page,
         limit: PAGE_SIZE,
@@ -57,8 +46,7 @@ const OfficeSites = ({ details }: { details: OfficeDetails }) => {
   const total = result?.totalCount ?? 0;
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // Back to the last page when this one no longer exists, such as after a
-  // site on it is made inactive while inactive sites are hidden.
+  // Back to the last page when this one no longer exists.
   useEffect(() => {
     if (result && !isPlaceholderData && page > lastPage) setPage(lastPage);
   }, [result, isPlaceholderData, page, lastPage, setPage]);
@@ -80,20 +68,7 @@ const OfficeSites = ({ details }: { details: OfficeDetails }) => {
             value={search}
             onChange={setSearch}
           />
-          <SelectFilter
-            label='Site status'
-            value={status}
-            onChange={(value) => setStatus(value as SiteStatus)}
-            options={STATUS_OPTIONS}
-          />
-          {isFiltered && (
-            <ClearFiltersButton
-              onClick={() => {
-                setSearch("");
-                setStatus(ALL);
-              }}
-            />
-          )}
+          {isFiltered && <ClearFiltersButton onClick={() => setSearch("")} />}
         </FilterBar>
       )}
 

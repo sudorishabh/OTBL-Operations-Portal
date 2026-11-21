@@ -62,7 +62,7 @@ export const WorkOrderStatusCard = ({ className }: { className?: string }) => {
                       label={label}
                       value={counts.completed}
                       total={counts.total}
-                      detail={`${formatCount(counts.pending)} pending · ${formatCount(counts.cancelled)} cancelled`}
+                      detail={`${formatCount(counts.pending)} pending`}
                     />
                   );
                 })}

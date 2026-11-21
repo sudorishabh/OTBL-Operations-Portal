@@ -13,7 +13,6 @@ import {
   sum,
   type SQL,
 } from "drizzle-orm";
-import { z } from "zod";
 import { schema, type Database } from "@pkg/db";
 import {
   CODE_PREFIX,
@@ -48,7 +47,7 @@ const {
   scheduleOfRatesTable,
   bioremediationContSoilTable,
 } = schema;
-const { ROLES, STATUS } = constants;
+const { ROLES } = constants;
 
 // How many of its newest sites each office in the list shows.
 const LATEST_SITES = 6;
@@ -62,7 +61,6 @@ const sitesRankedByNewest = (db: Database, officeIds: number[]) =>
       office_id: siteTable.office_id,
       name: siteTable.name,
       city: siteTable.city,
-      status: siteTable.status,
       created_at: siteTable.created_at,
       site_rank:
         sql<number>`row_number() over (partition by ${siteTable.office_id} order by ${siteTable.created_at} desc, ${siteTable.id} desc)`.as(
@@ -89,14 +87,9 @@ const visibleOfficesWhere = async (db: Database, scope: AccessScope) => {
 export const officeQueryRouter = router({
   getOffices: protectedProcedure.input(officeSchemas.getOfficesSchema).query(
     handleQuery(async ({ input, ctx }) => {
-      const { searchQuery, status, state, officeNamesOrder, page, limit } =
-        input;
+      const { searchQuery, state, officeNamesOrder, page, limit } = input;
 
       let officeQuery = undefined;
-
-      if (status && status !== "all") {
-        officeQuery = and(officeQuery, eq(officeTable.status, status));
-      }
 
       if (state) {
         officeQuery = and(officeQuery, eq(officeTable.state, state));
@@ -183,14 +176,10 @@ export const officeQueryRouter = router({
                   .where(inArray(officeUserTable.office_id, officeIds))
                   .orderBy(asc(userTable.name), asc(userTable.id)),
                 ctx.db
-                  .select({
-                    office_id: siteTable.office_id,
-                    status: siteTable.status,
-                    count: count(),
-                  })
+                  .select({ office_id: siteTable.office_id, count: count() })
                   .from(siteTable)
                   .where(inArray(siteTable.office_id, officeIds))
-                  .groupBy(siteTable.office_id, siteTable.status),
+                  .groupBy(siteTable.office_id),
                 // Only the work orders the user can see, as on the office's
                 // page.
                 ctx.db
@@ -212,7 +201,6 @@ export const officeQueryRouter = router({
                     office_id: rankedSites.office_id,
                     name: rankedSites.name,
                     city: rankedSites.city,
-                    status: rankedSites.status,
                     created_at: rankedSites.created_at,
                   })
                   .from(rankedSites)
@@ -227,15 +215,13 @@ export const officeQueryRouter = router({
           const operators = members.filter(
             (member) => member.office_id === office.id,
           );
-          const sites = siteCounts.filter((row) => row.office_id === office.id);
 
           return {
             ...office,
             operators,
-            siteCount: sites.reduce((sum, row) => sum + row.count, 0),
-            activeSiteCount: sites
-              .filter((row) => row.status === STATUS.ACTIVE)
-              .reduce((sum, row) => sum + row.count, 0),
+            siteCount:
+              siteCounts.find((row) => row.office_id === office.id)?.count ??
+              0,
             workOrderCount:
               workOrderCounts.find((row) => row.office_id === office.id)
                 ?.count ?? 0,
@@ -298,42 +284,32 @@ export const officeQueryRouter = router({
   ),
 
   // Every office the user can see, with only what list filters show and
-  // search by; also gives the states offices are in. Pickers can ask for
-  // active offices only.
-  getOfficeOptions: protectedProcedure
-    .input(z.object({ active_only: z.boolean().optional() }).optional())
-    .query(
-      handleQuery(async ({ input, ctx }) => {
-        const scope = await getAccessScope(
-          ctx.db,
-          Number(ctx.user!.sub),
-          ctx.user!.role,
-        );
+  // search by; also gives the states offices are in.
+  getOfficeOptions: protectedProcedure.query(
+    handleQuery(async ({ ctx }) => {
+      const scope = await getAccessScope(
+        ctx.db,
+        Number(ctx.user!.sub),
+        ctx.user!.role,
+      );
 
-        try {
-          return await ctx.db
-            .select({
-              id: officeTable.id,
-              code: officeTable.code,
-              name: officeTable.name,
-              city: officeTable.city,
-              state: officeTable.state,
-            })
-            .from(officeTable)
-            .where(
-              and(
-                await visibleOfficesWhere(ctx.db, scope),
-                input?.active_only
-                  ? eq(officeTable.status, STATUS.ACTIVE)
-                  : undefined,
-              ),
-            )
-            .orderBy(asc(officeTable.name), asc(officeTable.id));
-        } catch (error) {
-          throw fromDatabaseError(error, "Fetching office options");
-        }
-      }),
-    ),
+      try {
+        return await ctx.db
+          .select({
+            id: officeTable.id,
+            code: officeTable.code,
+            name: officeTable.name,
+            city: officeTable.city,
+            state: officeTable.state,
+          })
+          .from(officeTable)
+          .where(await visibleOfficesWhere(ctx.db, scope))
+          .orderBy(asc(officeTable.name), asc(officeTable.id));
+      } catch (error) {
+        throw fromDatabaseError(error, "Fetching office options");
+      }
+    }),
+  ),
 
   // One office for its own page: its details and office operators,
   // and totals across its sites and work orders.
@@ -371,17 +347,11 @@ export const officeQueryRouter = router({
           .where(eq(officeUserTable.office_id, officeId))
           .orderBy(asc(userTable.name), asc(userTable.id));
 
-        const siteCounts = await ctx.db
-          .select({ status: siteTable.status, count: count() })
+        const [siteCount] = await ctx.db
+          .select({ count: count() })
           .from(siteTable)
-          .where(eq(siteTable.office_id, officeId))
-          .groupBy(siteTable.status);
-
-        const sites = { total: 0, active: 0 };
-        for (const row of siteCounts) {
-          sites.total += row.count;
-          if (row.status === STATUS.ACTIVE) sites.active += row.count;
-        }
+          .where(eq(siteTable.office_id, officeId));
+        const sites = { total: siteCount?.count ?? 0 };
 
         // The same work orders the work order list shows for this office,
         // counted by status and added up by the database. A pending work
@@ -398,7 +368,6 @@ export const officeQueryRouter = router({
           ctx.db
             .select({
               total: count(),
-              cancelled: tally(eq(workOrderTable.status, "cancelled")),
               completed: tally(
                 or(
                   eq(workOrderTable.status, "completed"),
@@ -448,7 +417,6 @@ export const officeQueryRouter = router({
           total: Number(statusRow?.total ?? 0),
           pending: Number(statusRow?.pending ?? 0),
           completed: Number(statusRow?.completed ?? 0),
-          cancelled: Number(statusRow?.cancelled ?? 0),
         };
         const totalBudgetAmount = Number(budgetRow?.total ?? 0);
         const totalExpenseAmount = Number(incomeRow?.total ?? 0);

@@ -15,7 +15,6 @@ import {
   Users,
 } from "lucide-react";
 import { capitalFirstLetter, capitalizeEachWord } from "@pkg/utils";
-import { Pill } from "@/components/shared/detail-card-parts";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,11 +30,6 @@ import { cn } from "@/lib/utils";
 export type OfficeListItem =
   RouterOutputs["officeQuery"]["getOffices"]["offices"][number];
 type LatestSite = OfficeListItem["latestSites"][number];
-
-const STATUS_STYLES: Record<string, string> = {
-  active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  inactive: "bg-amber-50 text-amber-700 ring-amber-200",
-};
 
 // Phones list this many of the newest sites; wider screens list them all.
 const PHONE_SITES = 3;
@@ -66,11 +60,10 @@ const Figure = ({
   </div>
 );
 
-// A site among the office's newest, as a line in a dated log. Sites are
-// active unless marked, and recent ones are marked new.
+// A site among the office's newest, as a line in a dated log. Recent ones
+// are marked new.
 const SiteLine = ({ site, index }: { site: LatestSite; index: number }) => {
   const addedOn = new Date(site.created_at);
-  const isActive = site.status === "active";
   const isNew = differenceInCalendarDays(new Date(), addedOn) < NEW_SITE_DAYS;
   // Most site names already say where they are.
   const showCity =
@@ -88,10 +81,7 @@ const SiteLine = ({ site, index }: { site: LatestSite; index: number }) => {
         {format(addedOn, "d MMM yyyy")}
       </time>
       <span
-        className={cn(
-          "truncate text-[13px] font-medium",
-          isActive ? "text-gray-800" : "text-gray-400",
-        )}
+        className='truncate text-[13px] font-medium text-gray-800'
         title={site.name}>
         {capitalFirstLetter(site.name)}
       </span>
@@ -99,9 +89,6 @@ const SiteLine = ({ site, index }: { site: LatestSite; index: number }) => {
         <span className='hidden shrink-0 text-xs text-gray-400 md:inline'>
           {capitalizeEachWord(site.city)}
         </span>
-      )}
-      {!isActive && (
-        <span className='shrink-0 text-[11px] text-gray-500'>Inactive</span>
       )}
       {isNew && (
         <span className='ml-auto shrink-0 rounded-full bg-emerald-50 px-1.5 text-[10px] font-semibold leading-4 text-emerald-700 ring-1 ring-inset ring-emerald-200'>
@@ -216,7 +203,6 @@ const OfficeActions = ({ office }: { office: OfficeListItem }) => {
 // totals in aligned columns, and a log of its newest sites. The whole card
 // opens the office's page, which lists every site and work order.
 const OfficeCard = ({ office }: { office: OfficeListItem }) => {
-  const status = office.status.toLowerCase();
   const location = [office.city, office.state]
     .filter(Boolean)
     .map((part) => capitalizeEachWord(part))
@@ -242,14 +228,6 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
                 </Link>
               </h3>
               <RecordCode code={office.code} />
-              <Pill
-                className={cn(
-                  "shrink-0",
-                  STATUS_STYLES[status] ??
-                    "bg-gray-50 text-gray-700 ring-gray-200",
-                )}>
-                {capitalFirstLetter(office.status)}
-              </Pill>
             </div>
             <div className='mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500'>
               {location && (
@@ -283,11 +261,6 @@ const OfficeCard = ({ office }: { office: OfficeListItem }) => {
           <Figure
             label='Sites'
             value={office.siteCount}
-            note={
-              office.siteCount > 0
-                ? `${office.activeSiteCount} active`
-                : undefined
-            }
           />
           <Figure
             label='Work orders'

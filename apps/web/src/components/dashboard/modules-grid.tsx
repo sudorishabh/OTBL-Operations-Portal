@@ -77,8 +77,7 @@ const ModuleCard = ({
 );
 
 // Every section of the portal the user can open, with what it holds. Vendors
-// show for those who can see them, users for admins. Orders and job orders
-// are those of work orders not cancelled.
+// show for those who can see them, users for admins.
 export const ModulesGrid = () => {
   const summary = useWorkOrderSummary();
   const attention = useAttention();

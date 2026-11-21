@@ -7,7 +7,6 @@ import {
   ClientContactLines,
   ClientCounts,
   ClientLink,
-  ClientStatus,
   ContactsButton,
   formatClientLocation,
   LIST_SUBGRID,
@@ -58,7 +57,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ client }) => {
               {client.name.toUpperCase()}
             </span>
             <RecordCode code={client.code} />
-            <ClientStatus status={client.status} />
           </div>
           <p
             className='mt-0.5 truncate text-xs text-gray-500'

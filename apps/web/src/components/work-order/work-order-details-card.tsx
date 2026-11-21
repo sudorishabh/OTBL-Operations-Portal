@@ -5,7 +5,6 @@ import {
   CalendarDays,
   ExternalLink,
   FileText,
-  Ban,
 } from "lucide-react";
 import { capitalFirstLetter, constants, formatCurrency } from "@pkg/utils";
 import { cn } from "@/lib/utils";
@@ -36,8 +35,7 @@ interface Props {
     agreement_number?: string | null;
     area?: string | null;
     remarks?: string | null;
-    status: "pending" | "completed" | "cancelled";
-    cancellation_reason: string | null;
+    status: "pending" | "completed";
     created_at: string;
     updated_at: string;
     office_id: number;
@@ -132,24 +130,23 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
         </div>
 
         <div className='flex flex-wrap items-center gap-1.5'>
-          {workOrder.status !== "cancelled" &&
-            (workOrder.is_approved ? (
-              <Pill
-                className='bg-emerald-50 text-emerald-700 ring-emerald-200'
-                title={
-                  workOrder.approved_by_name
-                    ? `Approved by ${workOrder.approved_by_name}`
-                    : "Approved"
-                }>
-                Approved
-              </Pill>
-            ) : (
-              <Pill
-                className='bg-amber-50 text-amber-700 ring-amber-200'
-                title='Draft, awaiting approval'>
-                Draft
-              </Pill>
-            ))}
+          {workOrder.is_approved ? (
+            <Pill
+              className='bg-emerald-50 text-emerald-700 ring-emerald-200'
+              title={
+                workOrder.approved_by_name
+                  ? `Approved by ${workOrder.approved_by_name}`
+                  : "Approved"
+              }>
+              Approved
+            </Pill>
+          ) : (
+            <Pill
+              className='bg-amber-50 text-amber-700 ring-amber-200'
+              title='Draft, awaiting approval'>
+              Draft
+            </Pill>
+          )}
           <Pill className={STATUS_STYLES[workOrder.status]}>
             {capitalFirstLetter(workOrder.status)}
           </Pill>
@@ -270,15 +267,6 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
         </div>
       )}
 
-      {workOrder.cancellation_reason && (
-        <div className='flex items-start gap-2 border-t border-rose-100 bg-rose-50/70 px-6 py-2.5 text-xs'>
-          <Ban className='mt-0.5 size-3.5 shrink-0 text-rose-500' />
-          <p className='min-w-0 leading-relaxed text-rose-700'>
-            <span className='font-medium text-rose-600'>Cancelled </span>
-            {workOrder.cancellation_reason}
-          </p>
-        </div>
-      )}
     </div>
   );
 };

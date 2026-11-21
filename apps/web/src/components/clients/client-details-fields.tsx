@@ -15,7 +15,6 @@ export type ClientDetailsValues = {
   gst_number: string;
   contact_number?: string;
   email?: string;
-  status?: "active" | "inactive";
   parent_client_id?: number | null;
 };
 
@@ -30,18 +29,11 @@ export const EMPTY_CLIENT_DETAILS: ClientDetailsValues = {
   email: "",
 };
 
-const STATUS_OPTIONS = [
-  { label: "Active", value: "active" },
-  { label: "Inactive", value: "inactive" },
-];
-
 interface Props {
   nameLabel: string;
   namePlaceholder: string;
   // A branch picks its main client; a main client has none.
   showParentClient?: boolean;
-  // New ones start active, so the status is only set when editing.
-  showStatus?: boolean;
 }
 
 // The details section of the main client and branch forms, read from the
@@ -50,7 +42,6 @@ const ClientDetailsFields = ({
   nameLabel,
   namePlaceholder,
   showParentClient,
-  showStatus,
 }: Props) => {
   const { control } = useFormContext<ClientDetailsValues>();
 
@@ -66,7 +57,7 @@ const ClientDetailsFields = ({
           </div>
         )}
 
-        <div className={showStatus ? undefined : "md:col-span-2"}>
+        <div className='md:col-span-2'>
           <Input
             control={control}
             fieldName='name'
@@ -74,16 +65,6 @@ const ClientDetailsFields = ({
             placeholder={namePlaceholder}
           />
         </div>
-
-        {showStatus && (
-          <Input
-            control={control}
-            fieldName='status'
-            Label='Status'
-            isSelect
-            selectOptions={STATUS_OPTIONS}
-          />
-        )}
 
         <Input
           control={control}

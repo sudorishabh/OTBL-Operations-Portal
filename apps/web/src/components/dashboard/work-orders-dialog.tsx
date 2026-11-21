@@ -28,7 +28,6 @@ const STATUSES = [
   { value: ALL, label: "All statuses" },
   { value: "pending", label: "Pending" },
   { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
 ];
 
 const SORTS: { value: Sort; label: string }[] = [

@@ -46,13 +46,10 @@ export const OfficeTable = ({ offices }: { offices: Office[] }) => (
                   {formatCount(office.pending)}
                 </span>{" "}
                 pending · {formatCount(office.completed)} completed
-                {office.cancelled > 0 &&
-                  ` · ${formatCount(office.cancelled)} cancelled`}
               </span>
               <StatusStripe
                 pending={office.pending}
                 completed={office.completed}
-                cancelled={office.cancelled}
               />
             </td>
             <td className='px-4 py-2 text-right tabular-nums text-gray-700'>

@@ -3,7 +3,6 @@ import {
   eq,
   gte,
   lt,
-  ne,
   not,
   sql,
   type SQL,
@@ -33,9 +32,6 @@ export const visibleWorkOrders = async (ctx: TrpcContext) =>
   workOrderScopeWhere(
     await getAccessScope(ctx.db, Number(ctx.user!.sub), ctx.user!.role),
   );
-
-// Work orders that are not cancelled; their sites and rates still count.
-export const notCancelled = ne(wo.status, WORK_ORDER_STATUS.CANCELLED);
 
 // Work orders still pending, as the work order list counts them: not those
 // whose schedule of rates is used up.

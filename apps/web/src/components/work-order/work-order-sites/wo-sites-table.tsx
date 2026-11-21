@@ -31,7 +31,7 @@ interface Site {
   address: string;
   city: string;
   state: string;
-  status: "pending" | "completed" | "cancelled";
+  status: "pending" | "completed";
   // Unset for a site added before its dates are known.
   start_date: string | null;
   end_date: string | null;
@@ -49,7 +49,6 @@ interface Props {
 const STATUSES: Record<Site["status"], { label: string; tone: PillTone }> = {
   pending: { label: "Pending", tone: "yellow" },
   completed: { label: "Complete", tone: "green" },
-  cancelled: { label: "Cancelled", tone: "red" },
 };
 
 // Operators shown by name before the rest are counted.

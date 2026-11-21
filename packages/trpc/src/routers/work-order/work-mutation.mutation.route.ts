@@ -357,10 +357,6 @@ export const workOrderMutationRouter = router({
           throw notFound("Work order", input.id);
         }
 
-        if (workOrder.status === constants.WORK_ORDER_STATUS.CANCELLED) {
-          throw businessRule("A cancelled work order cannot be approved.");
-        }
-
         if (workOrder.approved_at) {
           throw businessRule("This work order is already approved.");
         }
@@ -377,39 +373,6 @@ export const workOrderMutationRouter = router({
           return { success: true };
         } catch (error) {
           throw fromDatabaseError(error, "Approving work order");
-        }
-      }),
-    ),
-
-  cancelWorkOrder: adminProcedure
-    .input(workOrderSchemas.cancelWorkOrderSchema)
-    .mutation(
-      handleMutation(async ({ input, ctx }) => {
-        const [workOrder] = await ctx.db
-          .select()
-          .from(workOrderTable)
-          .where(eq(workOrderTable.id, input.id));
-
-        if (!workOrder) {
-          throw notFound("Work order", input.id);
-        }
-
-        if (workOrder.status === constants.WORK_ORDER_STATUS.CANCELLED) {
-          throw businessRule("This work order is already cancelled.");
-        }
-
-        try {
-          await ctx.db
-            .update(workOrderTable)
-            .set({
-              status: constants.WORK_ORDER_STATUS.CANCELLED,
-              cancellation_reason: input.cancellation_reason,
-            })
-            .where(eq(workOrderTable.id, input.id));
-
-          return { success: true };
-        } catch (error) {
-          throw fromDatabaseError(error, "Cancelling work order");
         }
       }),
     ),

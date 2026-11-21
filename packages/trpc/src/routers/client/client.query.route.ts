@@ -51,7 +51,6 @@ type ClientSort = "name_asc" | "name_desc" | "newest" | "oldest";
 
 type ClientListFilters = {
   searchQuery?: string;
-  status?: "all" | "active" | "inactive";
   parentClientId?: number | "none";
   state?: string;
 };
@@ -60,14 +59,13 @@ type ClientListFilters = {
 // see. The search also matches the main client's name, so queries using this
 // must join parentClientTable.
 const clientListWhere = (
-  { searchQuery, status, parentClientId, state }: ClientListFilters,
+  { searchQuery, parentClientId, state }: ClientListFilters,
   scope: AccessScope,
   clientIds: number[] | null,
 ) => {
   const term = searchQuery ? `%${escapeLike(searchQuery)}%` : undefined;
 
   return and(
-    status && status !== "all" ? eq(clientTable.status, status) : undefined,
     parentClientId === "none"
       ? isNull(clientTable.parent_client_id)
       : parentClientId
@@ -579,13 +577,9 @@ export const clientQueryRouter = router({
     .input(clientSchemas.getClientGroupsSchema)
     .query(
       handleQuery(async ({ input, ctx }) => {
-        const { page, limit, searchQuery, status, parentClientId, state, sort } =
+        const { page, limit, searchQuery, parentClientId, state, sort } =
           input;
-        const isFiltered =
-          !!searchQuery ||
-          (!!status && status !== "all") ||
-          !!parentClientId ||
-          !!state;
+        const isFiltered = !!searchQuery || !!parentClientId || !!state;
 
         const scope = await getAccessScope(
           ctx.db,

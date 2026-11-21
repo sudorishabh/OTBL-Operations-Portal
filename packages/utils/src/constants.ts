@@ -14,11 +14,6 @@ export const ROLE_HIERARCHY: Record<Role, number> = {
   viewer: 1,
 };
 
-export const STATUS = {
-  ACTIVE: "active",
-  INACTIVE: "inactive",
-} as const;
-
 export const WO_PROCESS = {
   BIOREMEDIATION: "bioremediation",
   RESTORATION: "restoration",
@@ -65,7 +60,6 @@ export const PROPOSAL_STATUS = {
 export const WORK_ORDER_STATUS = {
   PENDING: "pending",
   COMPLETED: "completed",
-  CANCELLED: "cancelled",
 } as const;
 
 export const ACTIVITY_ITEM_TABLES = {
@@ -339,11 +333,8 @@ export const allActivityOptions = [
   },
 ];
 
-export type Status = (typeof STATUS)[keyof typeof STATUS];
-
 export default {
   ROLES,
-  STATUS,
   ROLE_HIERARCHY,
   WO_PROCESS,
   WO_ACTIVITIES,

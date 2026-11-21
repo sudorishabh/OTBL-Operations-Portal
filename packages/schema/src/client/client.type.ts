@@ -30,7 +30,6 @@ export type parentClientType = {
   gst_number: string | null;
   contact_number: string | null;
   email: string | null;
-  status: "active" | "inactive";
   created_at: string;
   updated_at: string;
 };
@@ -71,7 +70,6 @@ export type clientType = {
   code: string;
   parent_client_id: number | null;
   name: string;
-  status: "active" | "inactive";
   created_at: string;
   updated_at: string;
   state: string;

@@ -38,7 +38,6 @@ import { capitalFirstLetter } from "@pkg/utils";
 const STATUS_TONES: Record<string, PillTone> = {
   completed: "green",
   pending: "yellow",
-  cancelled: "red",
 };
 
 interface Props {

@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState } from "react";
 export type ClientSort = "name_asc" | "name_desc" | "newest" | "oldest";
 
 export type ClientFilters = {
-  status: "active" | "inactive" | "all";
   /** "all", "none" for clients without a main client, or a main client's id. */
   parentClientId: string;
   /** "all" or a state name. */
@@ -21,7 +20,6 @@ type ClientManagementContextType = {
 };
 
 const defaultClientFilters: ClientFilters = {
-  status: "all",
   parentClientId: "all",
   state: "all",
   sort: "name_asc",

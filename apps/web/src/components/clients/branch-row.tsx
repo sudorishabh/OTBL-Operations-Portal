@@ -8,7 +8,6 @@ import {
   ClientContactLines,
   ClientCounts,
   ClientLink,
-  ClientStatus,
   ContactsButton,
   formatClientLocation,
   LIST_SUBGRID,
@@ -75,7 +74,6 @@ const BranchRow = ({ branch, parentName, isLast }: Props) => {
               {label}
             </span>
             <RecordCode code={branch.code} />
-            <ClientStatus status={branch.status} />
           </div>
           <p
             className='mt-0.5 truncate text-xs text-gray-500'

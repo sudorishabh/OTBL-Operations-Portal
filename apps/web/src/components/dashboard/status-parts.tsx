@@ -1,11 +1,11 @@
 import React from "react";
-import { CheckCircle2, Clock3, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3 } from "lucide-react";
 import type { Segment } from "./segmented-bar";
 
 // How the overview draws work orders by status: the portal's status
 // colours, each with its icon, in one order everywhere.
 
-type StatusCounts = { pending: number; completed: number; cancelled: number };
+type StatusCounts = { pending: number; completed: number };
 
 // The parts of a status bar, for SegmentedBar.
 export const statusSegments = (counts: StatusCounts): Segment[] => [
@@ -26,15 +26,6 @@ export const statusSegments = (counts: StatusCounts): Segment[] => [
     textClassName: "text-white",
     icon: CheckCircle2,
     iconClassName: "text-emerald-600",
-  },
-  {
-    key: "cancelled",
-    label: "Cancelled",
-    value: counts.cancelled,
-    fillClassName: "bg-rose-600",
-    textClassName: "text-white",
-    icon: XCircle,
-    iconClassName: "text-rose-600",
   },
 ];
 
