@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import CustomButton from "@/components/shared/btn";
 import DocumentsField from "@/components/shared/documents-field";
+import DatePicker from "@/components/shared/date-picker";
 import {
   toDocuments,
   toStoredDocument,
@@ -624,10 +625,10 @@ const AddExpenseDialog = ({
       <Label className='text-xs font-medium text-gray-700'>
         Date <span className='text-red-500'>*</span>
       </Label>
-      <Input
-        type='date'
+      <DatePicker
         value={startDate}
-        onChange={(e) => setStartDate(e.target.value)}
+        onChange={setStartDate}
+        aria-label='Date'
         className='h-9 text-sm'
       />
     </div>
@@ -1156,10 +1157,10 @@ const AddExpenseDialog = ({
                 <Label className='text-xs font-medium text-gray-700'>
                   Start date <span className='text-red-500'>*</span>
                 </Label>
-                <Input
-                  type='date' value={startDate}
-                  onChange={(e) => {
-                    const next = e.target.value;
+                <DatePicker
+                  value={startDate}
+                  aria-label='Start date'
+                  onChange={(next) => {
                     setStartDate(next);
                     // A later start takes the end with it, so the range stays valid.
                     if (next && endDate < next) setEndDate(next);
@@ -1171,9 +1172,11 @@ const AddExpenseDialog = ({
                 <Label className='text-xs font-medium text-gray-700'>
                   End date <span className='text-red-500'>*</span>
                 </Label>
-                <Input
-                  type='date' value={endDate} min={startDate || undefined}
-                  onChange={(e) => setEndDate(e.target.value)}
+                <DatePicker
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={setEndDate}
+                  aria-label='End date'
                   className='h-9 text-sm'
                 />
               </div>
