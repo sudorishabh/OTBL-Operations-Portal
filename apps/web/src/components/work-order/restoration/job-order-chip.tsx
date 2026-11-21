@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { format } from "date-fns";
 import { CalendarDays, Info } from "lucide-react";
 import {
@@ -261,28 +261,36 @@ const JobOrderDetails = ({ jobOrder }: { jobOrder: JobOrder }) => {
   );
 };
 
-// A job order's number as a chip that shows all of the job order on hover.
-const JobOrderChip = ({ jobOrder }: { jobOrder: JobOrder }) => (
-  <HoverCard
-    openDelay={150}
-    closeDelay={100}>
-    <HoverCardTrigger asChild>
-      <button
-        type='button'
-        aria-label={`Job order ${jobOrder.jo_number} details`}
-        className='inline-flex shrink-0 cursor-default items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-purple-700 ring-1 ring-inset ring-purple-200 transition-colors bg-purple-50 hover:bg-purple-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 data-[state=open]:bg-purple-100'>
-        {jobOrder.jo_number}
-        <Info className='size-3 opacity-70' />
-      </button>
-    </HoverCardTrigger>
-    <HoverCardContent
-      side='bottom'
-      align='start'
-      collisionPadding={16}
-      className='max-h-[min(32rem,var(--radix-hover-card-content-available-height))] w-[26rem] overflow-y-auto p-0'>
-      <JobOrderDetails jobOrder={jobOrder} />
-    </HoverCardContent>
-  </HoverCard>
-);
+// A job order's number as a chip that shows all of the job order on hover,
+// or on a tap, as touch screens have no hover.
+const JobOrderChip = ({ jobOrder }: { jobOrder: JobOrder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <HoverCard
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      openDelay={150}
+      closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type='button'
+          onClick={() => setIsOpen(true)}
+          aria-label={`Job order ${jobOrder.jo_number} details`}
+          className='inline-flex shrink-0 cursor-default items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-purple-700 ring-1 ring-inset ring-purple-200 transition-colors bg-purple-50 hover:bg-purple-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 data-[state=open]:bg-purple-100'>
+          {jobOrder.jo_number}
+          <Info className='size-3 opacity-70' />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side='bottom'
+        align='start'
+        collisionPadding={16}
+        className='max-h-[min(32rem,var(--radix-hover-card-content-available-height))] w-[26rem] max-w-[calc(100vw-2rem)] overflow-y-auto p-0'>
+        <JobOrderDetails jobOrder={jobOrder} />
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
 
 export default JobOrderChip;
