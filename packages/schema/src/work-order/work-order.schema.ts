@@ -16,11 +16,10 @@ export const activityTypeEnum = z.enum(["insitu", "exsitu"]);
 
 export const workOrderStatusEnum = z.enum(["pending", "completed"]);
 
-export const processTypeEnum = z.enum([
-  "bioremediation",
-  "restoration",
-  "bioremediation_restoration",
-]);
+export const processTypeEnum = z.enum(
+  ["bioremediation", "restoration", "bioremediation_restoration"],
+  { message: "Choose the work order's process" },
+);
 
 export const woActivityNameEnum = z.enum([
   "clean_soil_area",
