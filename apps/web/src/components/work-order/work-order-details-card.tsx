@@ -5,7 +5,6 @@ import {
   CalendarDays,
   ExternalLink,
   FileText,
-  Ban,
 } from "lucide-react";
 import { capitalFirstLetter, constants, formatCurrency } from "@pkg/utils";
 import { cn } from "@/lib/utils";
@@ -37,7 +36,6 @@ interface Props {
     area?: string | null;
     remarks?: string | null;
     status: "pending" | "completed" | "cancelled";
-    cancellation_reason: string | null;
     created_at: string;
     updated_at: string;
     office_id: number;
@@ -270,15 +268,6 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
         </div>
       )}
 
-      {workOrder.cancellation_reason && (
-        <div className='flex items-start gap-2 border-t border-rose-100 bg-rose-50/70 px-6 py-2.5 text-xs'>
-          <Ban className='mt-0.5 size-3.5 shrink-0 text-rose-500' />
-          <p className='min-w-0 leading-relaxed text-rose-700'>
-            <span className='font-medium text-rose-600'>Cancelled </span>
-            {workOrder.cancellation_reason}
-          </p>
-        </div>
-      )}
     </div>
   );
 };

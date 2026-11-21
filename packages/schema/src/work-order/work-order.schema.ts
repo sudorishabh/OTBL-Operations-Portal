@@ -241,15 +241,6 @@ export const approveWorkOrderSchema = z.object({
   id: positiveIntValidator,
 });
 
-export const cancelWorkOrderSchema = z.object({
-  id: positiveIntValidator,
-  cancellation_reason: z
-    .string({ message: "A cancellation reason is required" })
-    .trim()
-    .min(1, "A cancellation reason is required")
-    .max(1000, "Cancellation reason cannot exceed 1000 characters"),
-});
-
 export const deleteWorkOrderSchema = z.object({
   id: positiveIntValidator,
 });

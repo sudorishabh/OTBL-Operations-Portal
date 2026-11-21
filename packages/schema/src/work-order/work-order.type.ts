@@ -26,7 +26,6 @@ export type workOrderType = {
   area: string;
   remarks: string;
   status: "pending" | "completed" | "cancelled";
-  cancellation_reason: string | null;
   created_by: number | null;
   created_at: string;
   updated_at: string;

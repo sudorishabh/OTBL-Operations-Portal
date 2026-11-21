@@ -276,7 +276,6 @@ export const workOrderQueryRouter = router({
             agreement_number: workOrderTable.agreement_number,
             description: workOrderTable.description,
             status: workOrderTable.status,
-            cancellation_reason: workOrderTable.cancellation_reason,
             created_at: workOrderTable.created_at,
             updated_at: workOrderTable.updated_at,
           })
@@ -325,7 +324,6 @@ export const workOrderQueryRouter = router({
             area: workOrderTable.area,
             remarks: workOrderTable.remarks,
             status: workOrderTable.status,
-            cancellation_reason: workOrderTable.cancellation_reason,
             created_at: workOrderTable.created_at,
             updated_at: workOrderTable.updated_at,
           })
@@ -677,7 +675,6 @@ export const workOrderQueryRouter = router({
             area: workOrderTable.area,
             remarks: workOrderTable.remarks,
             status: workOrderTable.status,
-            cancellation_reason: workOrderTable.cancellation_reason,
             approved_at: workOrderTable.approved_at,
             approved_by: workOrderTable.approved_by,
             created_at: workOrderTable.created_at,
