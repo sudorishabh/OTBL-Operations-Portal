@@ -210,7 +210,8 @@ const cellClass = "px-3 py-2.5 sm:px-3 sm:py-2.5";
 // delete buttons take the last column, and a header keeps the same room after
 // its total, less its own padding, for its menu.
 const actionsColumnClass = "w-20";
-const menuSlotClass = "flex w-17 shrink-0 justify-end";
+// Narrower on phones, where every pixel of a row counts.
+const menuSlotClass = "flex w-8 shrink-0 justify-end sm:w-17";
 
 const formatFullDates = (start: string | Date, end: string | Date) => {
   const from = new Date(start);
@@ -810,8 +811,10 @@ const SiteExpensesSection = ({
   }) => (
     <div className='flex min-h-7 items-center gap-2 pr-[13px]'>
       <Icon className='size-3.5 shrink-0 text-gray-400' />
-      <h4 className='text-xs font-semibold text-gray-700'>{title}</h4>
-      <span className='text-[11px] text-gray-400'>{meta}</span>
+      <h4 className='whitespace-nowrap text-xs font-semibold text-gray-700'>
+        {title}
+      </h4>
+      <span className='min-w-0 truncate text-[11px] text-gray-400'>{meta}</span>
       <div className='ml-auto flex items-center gap-3'>
         {action}
         {renderTotal(total, "text-sm")}
@@ -1007,8 +1010,10 @@ const SiteExpensesSection = ({
       <div
         key={group.key}
         className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
-        <div className='flex items-center gap-3 px-3 py-2.5'>
-          <div className='flex min-w-0 flex-1 items-center gap-2'>
+        {/* On phones the order and its title take the first line, and what
+            it has cost and its actions the next. */}
+        <div className='flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5'>
+          <div className='flex min-w-0 flex-1 items-center gap-2 max-sm:basis-full'>
             <button
               type='button'
               onClick={() => toggleGroup(group.key)}
@@ -1057,7 +1062,7 @@ const SiteExpensesSection = ({
             group.onAdd &&
             renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)
           )}
-          {renderTotal(group.total, "min-w-24 text-sm")}
+          {renderTotal(group.total, "min-w-24 text-sm max-sm:ml-auto")}
           <div className={menuSlotClass}>{group.menu}</div>
         </div>
         {isOpen && (
