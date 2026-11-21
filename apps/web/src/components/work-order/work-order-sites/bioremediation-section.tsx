@@ -136,11 +136,13 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
     );
   }
 
+  // Phones always get the cards, so the choice of view starts at tablets.
   const siteActions = (
     <>
       <Tabs
         value={viewMode}
-        onValueChange={(val) => setViewMode(val as "card" | "table")}>
+        onValueChange={(val) => setViewMode(val as "card" | "table")}
+        className='max-sm:hidden'>
         <TabsList className='grid w-36 grid-cols-2 h-8'>
           <TabsTrigger
             value='card'
@@ -198,10 +200,18 @@ const BioremediationSection = ({ workOrder, scheduleOfRates }: Props) => {
             />
           </TabsContent>
           <TabsContent value='table'>
-            <SitesTable
-              sites={sitesList}
-              onSiteClick={handleSiteDetails}
-            />
+            <div className='sm:hidden'>
+              <WOSitesCard
+                sites={sitesList}
+                handleSiteDetails={handleSiteDetails}
+              />
+            </div>
+            <div className='max-sm:hidden'>
+              <SitesTable
+                sites={sitesList}
+                onSiteClick={handleSiteDetails}
+              />
+            </div>
           </TabsContent>
         </Tabs>
         {isFetchingMore && <SiteCardsSkeleton />}
