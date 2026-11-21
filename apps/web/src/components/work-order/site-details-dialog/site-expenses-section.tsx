@@ -508,6 +508,197 @@ const SiteExpensesSection = ({
     return all;
   }, [expenses, activityOptions, orderItems]);
 
+  // An expense's edit and delete buttons, off when it is locked, such as on
+  // a closed job order, or recorded by its purchase order.
+  const renderRecordActions = (record: ExpenseRecord, lockedNote?: string) => {
+    const expense = expenses.find((e) => e.id === record.id);
+    return (
+      <div
+        className='flex items-center justify-end gap-0.5'
+        title={
+          record.fromOrder
+            ? "Recorded by its purchase order. Edit the order to change it."
+            : lockedNote
+        }>
+        <button
+          type='button'
+          aria-label='Edit expense'
+          title={record.fromOrder || lockedNote ? undefined : "Edit"}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (expense) handleEdit(expense);
+          }}
+          disabled={isViewer || !expense || record.fromOrder || !!lockedNote}
+          className='rounded-md p-1.5 text-gray-400 pointer-coarse:p-2.5 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30'>
+          <Pencil className='size-3.5' />
+        </button>
+        <button
+          type='button'
+          aria-label='Delete expense'
+          title={record.fromOrder || lockedNote ? undefined : "Delete"}
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeletingId(record.id);
+          }}
+          disabled={isViewer || record.fromOrder || !!lockedNote}
+          className='rounded-md p-1.5 text-gray-400 pointer-coarse:p-2.5 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30'>
+          <Trash2 className='size-3.5' />
+        </button>
+      </div>
+    );
+  };
+
+  // Everything about an expense, shown when its row or card is opened.
+  const renderRecordDetails = (record: ExpenseRecord) => {
+    const { isExceeded } = record;
+    const documentCount = record.documents.length;
+    return (
+      <dl className='grid grid-cols-2 gap-x-6 gap-y-3 pl-5 sm:grid-cols-4'>
+        <Detail label='Description' className='col-span-2 sm:col-span-4'>
+          <span className='whitespace-pre-wrap break-words'>
+            {record.description ?? "None"}
+          </span>
+        </Detail>
+        <Detail label='Under'>{record.contractorName ?? "Miscellaneous"}</Detail>
+        <Detail label='Activity'>{record.activityLabel}</Detail>
+        <Detail label='Dates' className='col-span-2'>
+          {formatFullDates(record.startDate, record.endDate)}
+        </Detail>
+        <Detail label='Quantity'>
+          {record.quantity
+            ? `${formatQty(Number(record.quantity))}${record.unit ? ` ${record.unit}` : ""}`
+            : "Not recorded"}
+        </Detail>
+        <Detail label='Amount'>
+          <span className='font-semibold tabular-nums'>{formatCurrency(record.amount)}</span>
+        </Detail>
+        <Detail label='Invoice #'>{record.invoiceNumber ?? "None"}</Detail>
+        {(record.quantity || isExceeded) && (
+          <Detail label='Estimate'>
+            {isExceeded ? (
+              <span className='font-medium text-orange-700'>
+                Exceeded the activity&apos;s quantity
+              </span>
+            ) : (
+              "Within the activity's quantity"
+            )}
+          </Detail>
+        )}
+        <Detail label='Recorded' className='col-span-2'>
+          {record.recordedBy ?? "Unknown user"}
+          {record.recordedAt &&
+            ` on ${format(new Date(record.recordedAt), "d MMM yyyy, h:mm a")}`}
+        </Detail>
+        <Detail label='Documents' className='col-span-2 sm:col-span-4'>
+          {documentCount === 0 ? (
+            "None attached"
+          ) : (
+            <ul className='mt-0.5 flex flex-wrap gap-1.5'>
+              {record.documents.map((doc, index) => (
+                <li key={`${doc.url}-${index}`}>
+                  <button
+                    type='button'
+                    onClick={() => openDocument(doc)}
+                    className='inline-flex max-w-64 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 transition-colors hover:border-blue-200 hover:text-blue-700'>
+                    <FileText className='size-3.5 shrink-0 text-gray-400' />
+                    <span className='truncate'>{documentName(doc, index)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Detail>
+      </dl>
+    );
+  };
+
+  // An expense on a phone or tablet: what it was for and what it cost, its
+  // dates and vendor, then its files and invoice beside its edit and delete.
+  // A tap on it shows the rest.
+  const renderRecordCard = (
+    record: ExpenseRecord,
+    showVendor: boolean,
+    lockedNote?: string,
+  ) => {
+    const { isExceeded } = record;
+    const documentCount = record.documents.length;
+    const isOpen = expandedId === record.id;
+
+    return (
+      <li
+        key={record.id}
+        className={cn(
+          "px-3 py-2.5",
+          isExceeded ? "bg-orange-50/40" : isOpen && "bg-gray-50/80",
+        )}>
+        <div className='flex items-start gap-3'>
+          <button
+            type='button'
+            aria-expanded={isOpen}
+            onClick={() => setExpandedId(isOpen ? null : record.id)}
+            className='flex min-w-0 flex-1 items-start gap-1.5 text-left'>
+            <ChevronRight
+              className={cn(
+                "mt-0.5 size-3.5 shrink-0 text-gray-400 transition-transform",
+                isOpen && "rotate-90",
+              )}
+            />
+            <span className='min-w-0'>
+              <span className='block text-[13px] font-medium text-gray-900'>
+                {record.description ?? record.activityLabel}
+              </span>
+              {(record.description || isExceeded) && (
+                <span className='mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500'>
+                  {record.description && <span>{record.activityLabel}</span>}
+                  {isExceeded && (
+                    <span className='inline-flex items-center gap-1 font-medium text-orange-600'>
+                      <AlertTriangle className='size-3' />
+                      Exceeded
+                    </span>
+                  )}
+                </span>
+              )}
+              <span className='mt-1 block text-xs tabular-nums text-gray-500'>
+                {formatDateRange(record.startDate, record.endDate)}
+                {showVendor && record.contractorName && (
+                  <> · {record.contractorName}</>
+                )}
+              </span>
+            </span>
+          </button>
+          <span
+            className={cn(
+              "shrink-0 text-[13px] font-semibold tabular-nums",
+              isExceeded ? "text-orange-700" : "text-gray-900",
+            )}>
+            {formatCurrency(record.amount)}
+          </span>
+        </div>
+        <div className='mt-1 flex items-center justify-between gap-2 pl-5'>
+          <div className='flex min-w-0 items-center gap-2 text-xs'>
+            {documentCount > 0 && (
+              <DocumentsMenu documents={record.documents}>
+                <button
+                  type='button'
+                  className='-ml-1.5 inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 font-medium text-blue-600 transition-colors hover:bg-blue-50'>
+                  <Paperclip className='size-3.5' />
+                  {documentCount === 1 ? "1 file" : `${documentCount} files`}
+                </button>
+              </DocumentsMenu>
+            )}
+            {record.invoiceNumber && (
+              <span className='truncate text-gray-500'>
+                Invoice {record.invoiceNumber}
+              </span>
+            )}
+          </div>
+          {renderRecordActions(record, lockedNote)}
+        </div>
+        {isOpen && <div className='mt-3'>{renderRecordDetails(record)}</div>}
+      </li>
+    );
+  };
+
   // An expense row. Its edit and delete are off when it is locked, such as on
   // a closed job order, saying why.
   const renderRecordRow = (
@@ -517,7 +708,6 @@ const SiteExpensesSection = ({
     lockedNote?: string,
   ) => {
     const { isExceeded } = record;
-    const expense = expenses.find((e) => e.id === record.id);
     const documentCount = record.documents.length;
     const isOpen = expandedId === record.id;
     const toggle = () => setExpandedId(isOpen ? null : record.id);
@@ -621,38 +811,7 @@ const SiteExpensesSection = ({
             </span>
           </TableCell>
           <TableCell className={cn(cellClass, actionsColumnClass, "whitespace-nowrap")}>
-            <div
-              className='flex items-center justify-end gap-0.5'
-              title={
-                record.fromOrder
-                  ? "Recorded by its purchase order. Edit the order to change it."
-                  : lockedNote
-              }>
-              <button
-                type='button'
-                aria-label='Edit expense'
-                title={record.fromOrder || lockedNote ? undefined : "Edit"}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (expense) handleEdit(expense);
-                }}
-                disabled={isViewer || !expense || record.fromOrder || !!lockedNote}
-                className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30'>
-                <Pencil className='size-3.5' />
-              </button>
-              <button
-                type='button'
-                aria-label='Delete expense'
-                title={record.fromOrder || lockedNote ? undefined : "Delete"}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeletingId(record.id);
-                }}
-                disabled={isViewer || record.fromOrder || !!lockedNote}
-                className='rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30'>
-                <Trash2 className='size-3.5' />
-              </button>
-            </div>
+            {renderRecordActions(record, lockedNote)}
           </TableCell>
         </TableRow>
         {isOpen && (
@@ -664,62 +823,7 @@ const SiteExpensesSection = ({
             <TableCell
               colSpan={columnCount}
               className='px-3 pb-4 pt-1 sm:px-3 sm:pb-4 sm:pt-1'>
-              <dl className='grid grid-cols-2 gap-x-6 gap-y-3 pl-5 sm:grid-cols-4'>
-                <Detail label='Description' className='col-span-2 sm:col-span-4'>
-                  <span className='whitespace-pre-wrap break-words'>
-                    {record.description ?? "None"}
-                  </span>
-                </Detail>
-                <Detail label='Under'>{record.contractorName ?? "Miscellaneous"}</Detail>
-                <Detail label='Activity'>{record.activityLabel}</Detail>
-                <Detail label='Dates' className='col-span-2'>
-                  {formatFullDates(record.startDate, record.endDate)}
-                </Detail>
-                <Detail label='Quantity'>
-                  {record.quantity
-                    ? `${formatQty(Number(record.quantity))}${record.unit ? ` ${record.unit}` : ""}`
-                    : "Not recorded"}
-                </Detail>
-                <Detail label='Amount'>
-                  <span className='font-semibold tabular-nums'>{formatCurrency(record.amount)}</span>
-                </Detail>
-                <Detail label='Invoice #'>{record.invoiceNumber ?? "None"}</Detail>
-                {(record.quantity || isExceeded) && (
-                  <Detail label='Estimate'>
-                    {isExceeded ? (
-                      <span className='font-medium text-orange-700'>
-                        Exceeded the activity&apos;s quantity
-                      </span>
-                    ) : (
-                      "Within the activity's quantity"
-                    )}
-                  </Detail>
-                )}
-                <Detail label='Recorded' className='col-span-2'>
-                  {record.recordedBy ?? "Unknown user"}
-                  {record.recordedAt &&
-                    ` on ${format(new Date(record.recordedAt), "d MMM yyyy, h:mm a")}`}
-                </Detail>
-                <Detail label='Documents' className='col-span-2 sm:col-span-4'>
-                  {documentCount === 0 ? (
-                    "None attached"
-                  ) : (
-                    <ul className='mt-0.5 flex flex-wrap gap-1.5'>
-                      {record.documents.map((doc, index) => (
-                        <li key={`${doc.url}-${index}`}>
-                          <button
-                            type='button'
-                            onClick={() => openDocument(doc)}
-                            className='inline-flex max-w-64 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 transition-colors hover:border-blue-200 hover:text-blue-700'>
-                            <FileText className='size-3.5 shrink-0 text-gray-400' />
-                            <span className='truncate'>{documentName(doc, index)}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </Detail>
-              </dl>
+              {renderRecordDetails(record)}
             </TableCell>
           </TableRow>
         )}
@@ -735,30 +839,39 @@ const SiteExpensesSection = ({
   ) => {
     const showQty = rows.some((r) => r.quantity);
     return (
-      <Table>
-        <TableHeader>
-          <TableRow className='border-gray-100 hover:bg-transparent'>
-            <TableHead className={cn(headClass, "w-[160px]")}>
-              {/* In line with the dates, past each row's arrow. */}
-              <span className='pl-5'>Dates</span>
-            </TableHead>
-            <TableHead className={headClass}>Expense</TableHead>
-            {showQty && (
-              <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
-            )}
-            {showVendor && <TableHead className={headClass}>Vendor</TableHead>}
-            <TableHead className={cn(headClass, "w-[130px]")}>Invoice</TableHead>
-            <TableHead className={cn(headClass, "w-[100px]")}>Documents</TableHead>
-            <TableHead className={cn(headClass, "w-[120px] text-right")}>Amount</TableHead>
-            <TableHead className={cn(headClass, actionsColumnClass)}>
-              <span className='sr-only'>Actions</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((r) => renderRecordRow(r, showVendor, showQty, lockedNote))}
-        </TableBody>
-      </Table>
+      <>
+        {/* Phones and tablets get a card per expense; the table needs a
+            laptop's width to show its edit and delete. */}
+        <ul className='divide-y divide-gray-100 lg:hidden'>
+          {rows.map((r) => renderRecordCard(r, showVendor, lockedNote))}
+        </ul>
+        <div className='hidden lg:block'>
+          <Table>
+            <TableHeader>
+              <TableRow className='border-gray-100 hover:bg-transparent'>
+                <TableHead className={cn(headClass, "w-[160px]")}>
+                  {/* In line with the dates, past each row's arrow. */}
+                  <span className='pl-5'>Dates</span>
+                </TableHead>
+                <TableHead className={headClass}>Expense</TableHead>
+                {showQty && (
+                  <TableHead className={cn(headClass, "w-[90px] text-right")}>Qty</TableHead>
+                )}
+                {showVendor && <TableHead className={headClass}>Vendor</TableHead>}
+                <TableHead className={cn(headClass, "w-[130px]")}>Invoice</TableHead>
+                <TableHead className={cn(headClass, "w-[100px]")}>Documents</TableHead>
+                <TableHead className={cn(headClass, "w-[120px] text-right")}>Amount</TableHead>
+                <TableHead className={cn(headClass, actionsColumnClass)}>
+                  <span className='sr-only'>Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => renderRecordRow(r, showVendor, showQty, lockedNote))}
+            </TableBody>
+          </Table>
+        </div>
+      </>
     );
   };
 
@@ -1009,11 +1122,12 @@ const SiteExpensesSection = ({
     return (
       <div
         key={group.key}
-        className='overflow-hidden rounded-lg border border-gray-200 bg-white'>
-        {/* On phones the order and its title take the first line, and what
-            it has cost and its actions the next. */}
+        className='@container overflow-hidden rounded-lg border border-gray-200 bg-white'>
+        {/* In a narrow card, as on a phone or tablet, the order and its title
+            take the first line, and what it has cost and its actions the
+            next. */}
         <div className='flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5'>
-          <div className='flex min-w-0 flex-1 items-center gap-2 max-sm:basis-full'>
+          <div className='flex min-w-0 flex-1 items-center gap-2 @max-3xl:basis-full'>
             <button
               type='button'
               onClick={() => toggleGroup(group.key)}
@@ -1062,7 +1176,7 @@ const SiteExpensesSection = ({
             group.onAdd &&
             renderAddExpenseButton(`Add an expense on ${group.badge}`, group.onAdd)
           )}
-          {renderTotal(group.total, "min-w-24 text-sm max-sm:ml-auto")}
+          {renderTotal(group.total, "min-w-24 text-sm @max-3xl:ml-auto")}
           <div className={menuSlotClass}>{group.menu}</div>
         </div>
         {isOpen && (
