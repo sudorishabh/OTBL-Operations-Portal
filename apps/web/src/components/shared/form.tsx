@@ -13,9 +13,10 @@ const CustomForm = ({ children, onSubmit, className }: Props) => {
     onSubmit(e);
   };
 
+  // A little room each side, so focus rings aren't clipped by a dialog.
   return (
     <form
-      className={cn("space-y-4 pl-2 py-4", className)}
+      className={cn("space-y-4 px-1 py-4", className)}
       onSubmit={handleSubmit}>
       {children}
     </form>
