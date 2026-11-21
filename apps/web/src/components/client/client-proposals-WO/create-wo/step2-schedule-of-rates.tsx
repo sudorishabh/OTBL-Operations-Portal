@@ -501,7 +501,9 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
         )}
       </div>
 
-      <div className='flex items-center justify-between gap-3 pt-4'>
+      {/* On phones the hint sits above the buttons rather than squeezed
+          beside them. */}
+      <div className='flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between'>
         <p className='text-xs text-gray-500'>
           {needsRestoration
             ? "Tick at least one restoration activity to continue."
@@ -510,7 +512,7 @@ const Step2ScheduleOfRates: React.FC<Step2ScheduleOfRatesProps> = ({
                 missingCount === 1 ? "activity" : "activities"
               } to continue.`}
         </p>
-        <div className='flex gap-3'>
+        <div className='flex justify-end gap-3'>
           <CustomButton
             type='button'
             text='Back'
