@@ -33,7 +33,6 @@ const STATUS_STYLES = {
   complete: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   inProgress: "bg-purple-50 text-purple-700 ring-purple-200",
   notStarted: "bg-gray-50 text-gray-600 ring-gray-200",
-  cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
 } as const;
 
 // Where the restoration stands. It completes on its own once completion
@@ -43,8 +42,6 @@ export const restorationStatus = (
   restoration: Pick<Restoration, "status" | "is_completed">,
   spent: number,
 ) => {
-  if (restoration.status === "cancelled")
-    return { label: "Cancelled", style: STATUS_STYLES.cancelled };
   if (restoration.is_completed)
     return { label: "Complete", style: STATUS_STYLES.complete };
   if (spent > 0)

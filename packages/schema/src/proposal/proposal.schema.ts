@@ -39,7 +39,7 @@ export const rejectProposalSchema = z.object({
 });
 
 // A proposal's row is grouped by its work order: none yet, pending or
-// completed. Cancelled work orders show under "all" only.
+// completed.
 export const proposalWorkOrderFilterEnum = z.enum([
   "all",
   "none",

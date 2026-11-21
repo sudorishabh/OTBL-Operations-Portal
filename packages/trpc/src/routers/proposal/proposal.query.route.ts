@@ -35,7 +35,7 @@ import {
 
 const { proposalTable, workOrderTable } = schema;
 
-type WorkOrderGroup = "none" | "pending" | "completed" | "cancelled";
+type WorkOrderGroup = "none" | "pending" | "completed";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -142,11 +142,10 @@ export const proposalQueryRouter = router({
           ];
 
           // A work order's status is worked out from its schedule of rates,
-          // not stored, so the database groups the rows by it: none, its
-          // stored completed or cancelled, or completed once its schedule of
-          // rates is used up, else pending.
+          // not stored, so the database groups the rows by it: none, stored
+          // completed, or completed once its schedule of rates is used up,
+          // else pending.
           const hasNoWorkOrder = isNull(workOrderTable.id);
-          const isCancelled = eq(workOrderTable.status, "cancelled");
           const isCompleted = or(
             eq(workOrderTable.status, "completed"),
             and(eq(workOrderTable.status, "pending"), sorFullyConsumedSql()),
@@ -160,15 +159,13 @@ export const proposalQueryRouter = router({
             none: hasNoWorkOrder,
             pending: isPending,
             completed: isCompleted,
-            cancelled: isCancelled,
           };
           const where = and(conditions, groupWhere[workOrderFilter]);
           const tally = (condition: SQL) =>
             sql<string>`coalesce(sum(case when ${condition} then 1 else 0 end), 0)`;
 
           const [[countRow], [totalRow]] = await Promise.all([
-            // How many rows each work order tab would list. Cancelled work
-            // orders have no tab, so they count towards "all" only.
+            // How many rows each work order tab would list.
             ctx.db
               .select({
                 all: count(),

@@ -24,7 +24,7 @@ export interface WorkOrderSiteDetails {
   date: Date;
   end_date: Date;
   process_type: string;
-  status: "pending" | "completed" | "cancelled";
+  status: "pending" | "completed";
   created_at: Date;
   updated_at: Date;
   site?: {

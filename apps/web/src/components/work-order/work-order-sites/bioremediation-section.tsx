@@ -43,12 +43,11 @@ type SectionTab = "sites" | "orders";
 
 const normalizeSiteStatus = (
   input: unknown,
-): "pending" | "completed" | "cancelled" => {
+): "pending" | "completed" => {
   const v = String(input ?? "")
     .trim()
     .toLowerCase();
   if (v === "completed") return "completed";
-  if (v === "cancelled" || v === "canceled") return "cancelled";
   return "pending";
 };
 

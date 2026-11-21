@@ -5,11 +5,7 @@ import {
   dateValidator,
 } from "../../validation/validators";
 
-export const workOrderStatusEnum = z.enum([
-  "pending",
-  "completed",
-  "cancelled",
-]);
+export const workOrderStatusEnum = z.enum(["pending", "completed"]);
 export const yesNoEnum = z.enum(["yes", "no"]);
 
 export const activityPhaseEnum = z.enum([

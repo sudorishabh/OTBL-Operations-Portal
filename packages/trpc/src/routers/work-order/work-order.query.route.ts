@@ -85,12 +85,8 @@ export const workOrderQueryRouter = router({
 
       let conditions: any = undefined;
 
-      const statusFilter =
-        status && status !== "all"
-          ? (status as "pending" | "completed" | "cancelled")
-          : undefined;
-      const useEffectiveStatusFilter =
-        statusFilter === "pending" || statusFilter === "completed";
+      const statusFilter = status && status !== "all" ? status : undefined;
+      const useEffectiveStatusFilter = statusFilter !== undefined;
 
       // A pending work order whose schedule of rates is used up counts as
       // completed. The database decides, so the list pages and counts there.
@@ -108,8 +104,6 @@ export const workOrderQueryRouter = router({
             and(eq(workOrderTable.status, "pending"), sorFullyConsumedSql()),
           ),
         );
-      } else if (statusFilter) {
-        conditions = and(conditions, eq(workOrderTable.status, statusFilter));
       }
 
       if (office_id) {

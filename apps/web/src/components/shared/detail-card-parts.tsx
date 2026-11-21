@@ -6,11 +6,10 @@ import { cn } from "@/lib/utils";
 
 // Pill colours for a work order's status and process.
 export const STATUS_STYLES: Record<
-  "pending" | "completed" | "cancelled",
+  "pending" | "completed",
   string
 > = {
   completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
   pending: "bg-amber-50 text-amber-700 ring-amber-200",
 };
 

@@ -35,7 +35,7 @@ interface Props {
     agreement_number?: string | null;
     area?: string | null;
     remarks?: string | null;
-    status: "pending" | "completed" | "cancelled";
+    status: "pending" | "completed";
     created_at: string;
     updated_at: string;
     office_id: number;
@@ -130,24 +130,23 @@ const WorkOrderDetailsCard = ({ workOrder, stats, expenseSummary }: Props) => {
         </div>
 
         <div className='flex flex-wrap items-center gap-1.5'>
-          {workOrder.status !== "cancelled" &&
-            (workOrder.is_approved ? (
-              <Pill
-                className='bg-emerald-50 text-emerald-700 ring-emerald-200'
-                title={
-                  workOrder.approved_by_name
-                    ? `Approved by ${workOrder.approved_by_name}`
-                    : "Approved"
-                }>
-                Approved
-              </Pill>
-            ) : (
-              <Pill
-                className='bg-amber-50 text-amber-700 ring-amber-200'
-                title='Draft, awaiting approval'>
-                Draft
-              </Pill>
-            ))}
+          {workOrder.is_approved ? (
+            <Pill
+              className='bg-emerald-50 text-emerald-700 ring-emerald-200'
+              title={
+                workOrder.approved_by_name
+                  ? `Approved by ${workOrder.approved_by_name}`
+                  : "Approved"
+              }>
+              Approved
+            </Pill>
+          ) : (
+            <Pill
+              className='bg-amber-50 text-amber-700 ring-amber-200'
+              title='Draft, awaiting approval'>
+              Draft
+            </Pill>
+          )}
           <Pill className={STATUS_STYLES[workOrder.status]}>
             {capitalFirstLetter(workOrder.status)}
           </Pill>

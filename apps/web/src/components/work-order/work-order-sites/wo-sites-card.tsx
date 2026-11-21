@@ -18,7 +18,7 @@ interface Site {
   address: string;
   city: string;
   state: string;
-  status: "pending" | "completed" | "cancelled";
+  status: "pending" | "completed";
   // Unset for a site added before its dates are known.
   start_date: string | null;
   end_date: string | null;
@@ -40,10 +40,6 @@ const STATUS_STYLES: Record<Site["status"], { label: string; pill: string }> = {
   completed: {
     label: "Complete",
     pill: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  },
-  cancelled: {
-    label: "Cancelled",
-    pill: "bg-rose-50 text-rose-700 ring-rose-200",
   },
 };
 

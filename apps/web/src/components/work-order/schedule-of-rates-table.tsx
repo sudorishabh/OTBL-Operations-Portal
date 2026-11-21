@@ -110,7 +110,6 @@ const percentOf = (part: number, whole: number) =>
 const SITE_STATUSES: Record<string, { label: string; tone: PillTone }> = {
   pending: { label: "Pending", tone: "yellow" },
   completed: { label: "Complete", tone: "green" },
-  cancelled: { label: "Cancelled", tone: "red" },
 };
 
 const siteStatus = (site: Site) =>

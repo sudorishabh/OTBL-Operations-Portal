@@ -14,11 +14,7 @@ const { WO_ACTIVITIES, WO_PROCESS, allActivityOptions } = constants;
 
 export const activityTypeEnum = z.enum(["insitu", "exsitu"]);
 
-export const workOrderStatusEnum = z.enum([
-  "pending",
-  "completed",
-  "cancelled",
-]);
+export const workOrderStatusEnum = z.enum(["pending", "completed"]);
 
 export const processTypeEnum = z.enum([
   "bioremediation",
@@ -266,7 +262,7 @@ export const getAllWorkOrdersPaginatedSchema = z.object({
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(100).default(10),
   searchQuery: z.string().optional(),
-  status: z.string().optional(),
+  status: z.enum(["all", "pending", "completed"]).optional(),
   office_id: z.number().optional(),
   client_id: z.number().optional(),
   process_type: z

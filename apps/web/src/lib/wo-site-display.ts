@@ -1,12 +1,11 @@
 import { differenceInCalendarDays, format, isSameDay } from "date-fns";
 import { constants } from "@pkg/utils";
 
-export type SiteStatus = "pending" | "completed" | "cancelled";
+export type SiteStatus = "pending" | "completed";
 
-/** Colour is reserved for the two end states, so a list of live work reads calm. */
+/** Colour is reserved for the end state, so a list of live work reads calm. */
 export const STATUS_STYLES: Record<SiteStatus, string> = {
   completed: "bg-emerald-50 text-emerald-700",
-  cancelled: "bg-rose-50 text-rose-700",
   pending: "bg-gray-100 text-gray-600",
 };
 
@@ -26,7 +25,7 @@ export const toDate = (value: string | Date | null | undefined) => {
 };
 
 export const statusOf = (status: string | null | undefined): SiteStatus =>
-  status === "completed" || status === "cancelled" ? status : "pending";
+  status === "completed" ? status : "pending";
 
 export const isOpenStatus = (status: string | null | undefined) =>
   statusOf(status) === "pending";
