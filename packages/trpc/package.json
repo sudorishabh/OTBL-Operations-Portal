@@ -30,6 +30,7 @@
     "prebuild": "pnpm run clean"
   },
   "dependencies": {
+    "@pkg/auth": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/schema": "workspace:*",
     "@pkg/utils": "workspace:*",

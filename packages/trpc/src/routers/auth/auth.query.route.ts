@@ -1,125 +1,33 @@
 import { eq } from "drizzle-orm";
-import {
-  signToken,
-  signRefreshToken,
-  setAuthenticationCookies,
-  verifyRefreshTokenSafe,
-  type UserRole,
-} from "@pkg/utils/auth";
+import { type UserRole } from "@pkg/utils/auth";
 import { schema } from "@pkg/db";
 import { getAccessScope, getDashboardUi } from "../../access-scope";
 import { router } from "../../trpc";
 import { protectedProcedure, publicProcedure } from "../../middleware";
-import { fromDatabaseError } from "../../errors";
 import { handleQuery } from "../../helper/typed-handler";
 
 const { userTable, workOrderSiteTable } = schema;
 
 export const authQueryRouter = router({
+  // The signed-in user, from their Better Auth session; signing in and out
+  // are Better Auth's own routes, under /api/auth.
   me: publicProcedure.query(
     handleQuery(async ({ ctx }) => {
-      try {
-        if (ctx.user) {
-          const existingUser = await ctx.db
-            .select({
-              id: userTable.id,
-              name: userTable.name,
-              email: userTable.email,
-              role: userTable.role,
-            })
-            .from(userTable)
-            .where(eq(userTable.id, parseInt(ctx.user!.sub)));
+      if (!ctx.user) return { success: false as const, user: null };
 
-          const user = existingUser[0];
+      const [user] = await ctx.db
+        .select({
+          id: userTable.id,
+          name: userTable.name,
+          email: userTable.email,
+          role: userTable.role,
+        })
+        .from(userTable)
+        .where(eq(userTable.id, Number(ctx.user.sub)));
 
-          if (user) {
-            return {
-              success: true,
-              user,
-            };
-          }
-        }
-
-        const refreshToken = ctx.req?.cookies?.refreshToken;
-
-        if (!refreshToken) {
-          return {
-            success: false,
-            user: null,
-          };
-        }
-
-        const verificationResult = verifyRefreshTokenSafe(
-          refreshToken,
-          ctx.appEnv.JWT.REFRESH_SECRET,
-        );
-
-        if (!verificationResult.success) {
-          return {
-            success: false,
-            user: null,
-          };
-        }
-
-        const payload = verificationResult.payload;
-
-        const existingUser = await ctx.db
-          .select({
-            id: userTable.id,
-            name: userTable.name,
-            email: userTable.email,
-            role: userTable.role,
-          })
-          .from(userTable)
-          .where(eq(userTable.id, parseInt(payload.sub)));
-
-        const user = existingUser[0];
-
-        if (!user) {
-          return {
-            success: false,
-            user: null,
-          };
-        }
-
-        const tokenPayload = {
-          sub: user.id.toString(),
-          email: user.email,
-          role: user.role as UserRole,
-        };
-
-        const newAccessToken = signToken(
-          tokenPayload,
-          ctx.appEnv.JWT.SECRET,
-          ctx.appEnv.JWT.EXPIRES_IN,
-        );
-
-        const newRefreshToken = signRefreshToken(
-          tokenPayload,
-          ctx.appEnv.JWT.REFRESH_SECRET,
-          ctx.appEnv.JWT.REFRESH_EXPIRES_IN,
-        );
-
-        setAuthenticationCookies({
-          res: ctx.res,
-          accessToken: newAccessToken,
-          refreshToken: newRefreshToken,
-          accessExpiresIn: ctx.appEnv.JWT.EXPIRES_IN,
-          refreshExpiresIn: ctx.appEnv.JWT.REFRESH_EXPIRES_IN,
-          node_env: ctx.appEnv.NODE_ENV,
-        });
-
-        return {
-          success: true,
-          user,
-        };
-      } catch (error) {
-        console.error("[Auth] Get current user error:", error);
-        return {
-          success: false,
-          user: null,
-        };
-      }
+      return user
+        ? { success: true as const, user }
+        : { success: false as const, user: null };
     }),
   ),
 

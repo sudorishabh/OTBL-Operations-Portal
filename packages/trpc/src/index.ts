@@ -5,7 +5,6 @@ import { siteMutationRouter } from "./routers/site/site.mutation.route";
 import { siteQueryRouter } from "./routers/site/site.query.route";
 import { userMutationRouter } from "./routers/user/user.mutation.route";
 import { userQueryRouter } from "./routers/user/user.query.route";
-import { authMutationRouter } from "./routers/auth/auth.mutation.route";
 import { authQueryRouter } from "./routers/auth/auth.query.route";
 import { clientMutationRouter } from "./routers/client/client.mutation.route";
 import { clientQueryRouter } from "./routers/client/client.query.route";
@@ -39,7 +38,6 @@ export const appRouter = router({
   }),
 
   authQuery: authQueryRouter,
-  authMutation: authMutationRouter,
 
   userMutation: userMutationRouter,
   userQuery: userQueryRouter,
@@ -102,10 +100,7 @@ export {
   protectedProcedure,
   adminProcedure,
   operatorProcedure,
-  createRoleProtectedProcedure,
-  createMultiRoleProcedure,
-  hasRole,
-  hasAnyRole,
+  requirePermission,
   USER_ROLES,
 } from "./middleware";
 

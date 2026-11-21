@@ -17,7 +17,7 @@ import { CODE_PREFIX, constants } from "@pkg/utils";
 import { router } from "../../trpc";
 import { protectedProcedure } from "../../core";
 import { z } from "zod";
-import { hasAnyRole, hasRole } from "../../authorization";
+import { canWriteRecords, isAdmin } from "../../authorization";
 import { notFound, fromDatabaseError } from "../../errors";
 import { handleProtectedQuery } from "../../helper/typed-handler";
 import { escapeLike } from "../../helper/escape-like";
@@ -153,7 +153,7 @@ export const userQueryRouter = router({
   ),
 
   getAllUser: protectedProcedure
-    .use(hasRole(ROLES.ADMIN))
+    .use(isAdmin)
     .input(userSchemas.getAllUsersSchema)
     .query(
       handleProtectedQuery(async ({ input, ctx }) => {
@@ -319,7 +319,7 @@ export const userQueryRouter = router({
   // How many users each role has among those the list's other filters match,
   // for the role tabs above the list.
   getUserCounts: protectedProcedure
-    .use(hasRole(ROLES.ADMIN))
+    .use(isAdmin)
     .input(userSchemas.getUserCountsSchema)
     .query(
       handleProtectedQuery(async ({ input, ctx }) => {
@@ -344,13 +344,8 @@ export const userQueryRouter = router({
     ),
 
   getUserById: protectedProcedure
-    .use(
-      hasAnyRole([
-        ROLES.ADMIN,
-        ROLES.OFFICE_OPERATOR,
-        ROLES.SITE_OPERATOR,
-      ]),
-    )
+    // Anyone but a viewer, who may write records.
+    .use(canWriteRecords)
     .input(z.object({ id: z.number() }))
     .query(
       handleProtectedQuery(async ({ input, ctx }) => {
@@ -378,7 +373,7 @@ export const userQueryRouter = router({
 
   getUsersByRole: protectedProcedure
     // For the office dialogs, which only admins open.
-    .use(hasRole(ROLES.ADMIN))
+    .use(isAdmin)
     .input(
       z.object({
         role: z.enum([

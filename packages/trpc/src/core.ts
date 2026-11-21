@@ -3,11 +3,8 @@ export {
   protectedProcedure,
   adminProcedure,
   operatorProcedure,
-  createRoleProtectedProcedure,
-  createMultiRoleProcedure,
   router,
-  hasRole,
-  hasAnyRole,
+  requirePermission,
   USER_ROLES,
   type UserRole,
 } from "./middleware";

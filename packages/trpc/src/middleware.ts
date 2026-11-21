@@ -3,10 +3,10 @@ import { t } from "./trpc";
 import { loggingMiddleware } from "./logging-middleware";
 import {
   isAuthenticated,
-  hasRole,
-  hasAnyRole,
   isAdmin,
   isOperator,
+  canWriteRecords,
+  requirePermission,
   denyViewerWrites,
   USER_ROLES,
   type UserRole,
@@ -18,10 +18,10 @@ export { schema };
 export { router } from "./trpc";
 
 export {
-  hasRole,
-  hasAnyRole,
   isAdmin,
   isOperator,
+  canWriteRecords,
+  requirePermission,
   USER_ROLES,
   type UserRole,
 };
@@ -44,11 +44,5 @@ export const protectedProcedure = publicProcedure.use(isAuthenticated);
 export const adminProcedure = publicProcedure.use(isAdmin);
 
 export const operatorProcedure = publicProcedure.use(isOperator);
-
-export const createRoleProtectedProcedure = (minRole: UserRole) =>
-  publicProcedure.use(hasRole(minRole));
-
-export const createMultiRoleProcedure = (allowedRoles: UserRole[]) =>
-  publicProcedure.use(hasAnyRole(allowedRoles));
 
 export { t as trpc };

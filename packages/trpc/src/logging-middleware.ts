@@ -6,8 +6,8 @@ export const loggingMiddleware = t.middleware(async (opts) => {
   const start = Date.now();
 
   // The raw input is deliberately not logged: this middleware wraps every
-  // procedure, including authMutation.login, so it would write plaintext
-  // passwords to the logs.
+  // procedure, including those that take a new user's password, so it would
+  // write plaintext passwords to the logs.
   console.log(`🔄 tRPC ${type.toUpperCase()} ${path} - Start`, {
     timestamp: new Date().toISOString(),
   });
