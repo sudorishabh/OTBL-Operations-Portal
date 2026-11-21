@@ -1,7 +1,8 @@
 import cors from "cors";
 import appEnv from "./app-env";
 
-const allowedOrigins = [
+// Also the origins Better Auth accepts sign-ins from.
+export const allowedOrigins = [
   appEnv.WEB_CLIENT,
   appEnv.MOBILE_CLIENT,
   "https://site.otbl.co.in",

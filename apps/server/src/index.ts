@@ -1,8 +1,9 @@
-import cookieParser from "cookie-parser";
 import express, { json, urlencoded } from "express";
+import { toNodeHandler } from "better-auth/node";
 import helmet from "helmet";
 import cors from "./config/cors";
-import { trpcRateLimiter } from "./config/rate-limit";
+import { authRateLimiter, trpcRateLimiter } from "./config/rate-limit";
+import { auth } from "./auth";
 import appEnv from "./config/app-env";
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { appRouter } from "@pkg/trpc";
@@ -26,9 +27,17 @@ app.set("trust proxy", appEnv.TRUST_PROXY);
 app.use(helmet());
 
 app.use(cors);
+
+// Better Auth: signing in and out, sessions and passwords. It reads the raw
+// request body itself, so it is mounted before the body parsers.
+app.use(
+  ["/api/auth/sign-in", "/api/auth/change-password"],
+  authRateLimiter
+);
+app.all("/api/auth/*splat", toNodeHandler(auth));
+
 app.use(json({ limit: "10mb" }));
 app.use(urlencoded({ extended: true, limit: "10mb" }));
-app.use(cookieParser());
 
 app.use("/trpc", trpcRateLimiter);
 

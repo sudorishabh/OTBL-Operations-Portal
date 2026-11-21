@@ -88,13 +88,11 @@ export const createAuth = ({
         createdAt: "created_at",
         updatedAt: "updated_at",
       },
-      // A week, renewed at most once a day while in use.
+      // A week, renewed at most once a day while in use. Every request checks
+      // the session in the database, so signing out, a reset password or a
+      // new role applies at once.
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
-      // Each request reads the session from a signed cookie for up to five
-      // minutes before checking the database again, so a sign-out elsewhere
-      // or a new role can take that long to apply.
-      cookieCache: { enabled: true, maxAge: 5 * 60 },
     },
     account: {
       modelName: "accounts",
