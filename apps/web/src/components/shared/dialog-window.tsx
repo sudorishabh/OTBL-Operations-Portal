@@ -95,7 +95,9 @@ const DialogWindow = ({
       onOpenChange={setOpen}>
       <DialogContent
         className={cn(
-          "flex flex-col gap-0",
+          // Slimmer padding on phones; set here rather than in DialogContent,
+          // so dialogs asking for no padding (p-0) get none on any screen.
+          "flex flex-col gap-0 p-4 sm:p-6",
           !isFullScreen && [
             "max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)]",
             widthClasses[size],
