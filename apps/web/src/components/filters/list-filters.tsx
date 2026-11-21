@@ -276,7 +276,6 @@ export const ComboboxFilter = ({
         <div className='flex items-center gap-2 border-b px-2.5'>
           <Search className='size-3.5 shrink-0 text-gray-400' />
           <input
-            autoFocus
             value={search}
             onChange={(event) => changeSearch(event.target.value)}
             onKeyDown={(event) => {
