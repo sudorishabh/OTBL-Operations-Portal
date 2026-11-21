@@ -3,10 +3,8 @@ import React from "react";
 import Input from "@/components/shared/input";
 import DocumentsField from "@/components/shared/documents-field";
 import type { StoredDocument } from "@/lib/documents";
-import { constants } from "@pkg/utils";
 import { useFormContext } from "react-hook-form";
-
-const { processTypeOptions } = constants;
+import ProcessTypeField from "./process-type-field";
 
 interface Props {
   // The process type is fixed once the work order exists.
@@ -37,6 +35,8 @@ const WorkOrderDetailsFields = ({
 
   return (
     <div className='space-y-4'>
+      {showProcessType && <ProcessTypeField />}
+
       <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
         <Input
           control={form.control}
@@ -45,16 +45,6 @@ const WorkOrderDetailsFields = ({
           placeholder='As on the purchase order'
         />
 
-        {showProcessType && (
-          <Input
-            control={form.control}
-            fieldName='process_type'
-            Label='Process Type'
-            isSelect
-            selectOptions={processTypeOptions}
-            placeholder='Select process type'
-          />
-        )}
         <Input
           control={form.control}
           fieldName='agreement_number'
